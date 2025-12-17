@@ -1,5 +1,6 @@
 """Publish service."""
 
+import re
 from enum import Enum
 
 from pydantic import BaseModel, ConfigDict, model_validator
@@ -180,10 +181,24 @@ def format_subject_okm_field_of_science(subjects: list[Subject] | None) -> None:
     """
     if subjects:
         for subject in subjects:
-            subject_code = subject.subject.split(" - ")[0]
-            if subject_code not in OKM_SUBJECT_CODE:
-                raise UserException(f"Invalid OKM subject code: {subject_code}")
-            subject.subjectScheme = "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus"
-            subject.schemeUri = AnyUrl("http://www.yso.fi/onto/okm-tieteenala/conceptscheme")
-            subject.valueUri = AnyUrl(f"http://www.yso.fi/onto/okm-tieteenala/ta{subject_code}")
-            subject.classificationCode = subject_code
+            subj = check_subject_format(subject.subject)
+            if subj is not None:
+                subject_code = subj.split(" - ")[0]
+                if subject_code not in OKM_SUBJECT_CODE:
+                    raise UserException(f"Invalid OKM subject code: {subject_code}")
+                subject.subjectScheme = "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus"
+                subject.schemeUri = AnyUrl("http://www.yso.fi/onto/okm-tieteenala/conceptscheme")
+                subject.valueUri = AnyUrl(f"http://www.yso.fi/onto/okm-tieteenala/ta{subject_code}")
+                subject.classificationCode = subject_code
+
+
+def check_subject_format(subject: str) -> str | None:
+    """
+    Check if the subject is in format "code - subject" e.g (111 - Mathematics).
+
+    :param subject: subject
+    :returns: subject if format is matched or None
+    """
+    if re.match(r"^\d+\s*-\s*.+$", subject):
+        return subject
+    return None

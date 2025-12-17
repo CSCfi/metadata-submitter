@@ -9,7 +9,7 @@ import pytest
 
 from metadata_backend.api.exceptions import UserException
 from metadata_backend.api.json import to_json_dict
-from metadata_backend.api.models.datacite import Creator, Subject
+from metadata_backend.api.models.datacite import Creator, Publisher, Subject
 from metadata_backend.api.models.submission import Rems, Submission, SubmissionMetadata, SubmissionWorkflow
 from metadata_backend.database.postgres.repositories.submission import (
     SUB_FIELD_METADATA,
@@ -265,6 +265,7 @@ async def test_update_submission(
             creators=[Creator(nameType="Personal", name="Name", givenName="Alice", familyName="Smith")],
             subjects=[Subject(subject="999 - Other")],
             keywords="test",
+            publisher=Publisher(name="University Health Care System"),
         )
 
         assert (

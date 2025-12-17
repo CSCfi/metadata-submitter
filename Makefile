@@ -64,7 +64,9 @@ get_env: ## Get secrets needed for integration tests from vault
 	$(call write_integration_test_secret,DATACITE_KEY,sd-submit/datacite_test,DOI_KEY) \
 	$(call write_integration_test_secret,DATACITE_DOI_PREFIX,sd-submit/datacite_test,DOI_PREFIX) \
 	$(call write_integration_test_secret,CSC_PID_URL,sd-submit/pid,PID_URL) \
-	$(call write_integration_test_secret,CSC_PID_KEY,sd-submit/pid,PID_APIKEY)
+	$(call write_integration_test_secret,CSC_PID_KEY,sd-submit/pid,PID_APIKEY) \
+	$(call write_integration_test_secret,METAX_URL,sd-submit/metax_test,METAX_V3_TEST_URL) \
+	$(call write_integration_test_secret,METAX_TOKEN,sd-submit/metax_test,METAX_V3_TEST_TOKEN)
 
 	$(call write_line,### VAULT SECRETS END ###)
 
@@ -89,7 +91,9 @@ get_ci_env: ## Get secrets needed for CI tests from vault
 	$(call write_integration_test_secret,DATACITE_KEY,sd-submit/datacite_test,DOI_KEY) \
 	$(call write_integration_test_secret,DATACITE_DOI_PREFIX,sd-submit/datacite_test,DOI_PREFIX) \
 	$(call write_integration_test_secret,CSC_PID_URL,sd-submit/pid,PID_URL) \
-	$(call write_integration_test_secret,CSC_PID_KEY,sd-submit/pid,PID_APIKEY)
+	$(call write_integration_test_secret,CSC_PID_KEY,sd-submit/pid,PID_APIKEY) \
+	$(call write_integration_test_secret,METAX_URL,sd-submit/metax_test,METAX_V3_TEST_URL) \
+	$(call write_integration_test_secret,METAX_TOKEN,sd-submit/metax_test,METAX_V3_TEST_TOKEN)
 
 	$(call write_line,### VAULT SECRETS END ###)
 

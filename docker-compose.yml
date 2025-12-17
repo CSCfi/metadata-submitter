@@ -36,9 +36,8 @@ services:
       - "CSC_PID_KEY=${CSC_PID_KEY:?CSC_PID_KEY must be defined}"
       - "METAX_DISCOVERY_URL=${METAX_DISCOVERY_URL}"
       - "BEACON_DISCOVERY_URL=${BEACON_DISCOVERY_URL}"
-      - "METAX_USER=${METAX_USER}"
-      - "METAX_PASS=${METAX_PASS}"
-      - "METAX_URL=${METAX_URL}"
+      - "METAX_URL=${METAX_URL:?METAX_URL must be defined}"
+      - "METAX_TOKEN=${METAX_TOKEN:?METAX_TOKEN must be defined}"
       - "REMS_USER_ID=${REMS_USER_ID}"
       - "REMS_KEY=${REMS_KEY}"
       - "REMS_URL=${REMS_URL}"
@@ -84,25 +83,6 @@ services:
     volumes:
       - ./tests/integration/mock_auth.py:/mock_auth.py
     entrypoint: [ "python", "/mock_auth.py", "0.0.0.0", "8000" ]
-  mockmetax:
-    build:
-      dockerfile: ./dockerfiles/Dockerfile-dev
-      context: .
-      target: appbase
-    image: cscfi/metadata-submitter-dev
-    hostname: mockmetax
-    profiles:
-      - ci
-      - dev
-    healthcheck:
-      test: curl --fail http://127.0.0.1:8002/watchman/ping/ || exit 1
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    volumes:
-      - ./tests/integration/mock_metax_api.py:/mock_metax_api.py
-    entrypoint: [ "python", "/mock_metax_api.py", "0.0.0.0", "8002" ]
   mockrems:
     build:
       dockerfile: ./dockerfiles/Dockerfile-dev

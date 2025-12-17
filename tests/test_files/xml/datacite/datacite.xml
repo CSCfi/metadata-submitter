@@ -9,16 +9,16 @@
             <nameIdentifier nameIdentifierScheme="ORCID" schemeURI="https://orcid.org">
                 https://orcid.org/0000-0002-1825-0097
             </nameIdentifier>
-            <affiliation affiliationIdentifier="grid.1234.5" affiliationIdentifierScheme="GRID"
-                         schemeURI="https://www.grid.ac">
-                Example University
+            <affiliation affiliationIdentifier="https://ror.org/00fnk0q46" affiliationIdentifierScheme="ROR"
+                         schemeURI="https://www.ror.org/">
+                Academy of Medicine
             </affiliation>
         </creator>
     </creators>
 
-    <publisher publisherIdentifier="https://ror.org/04z8jg394" publisherIdentifierScheme="ROR"
+    <publisher publisherIdentifier="https://ror.org/01pbevv17" publisherIdentifierScheme="ROR"
                schemeURI="https://ror.org/">
-        Helmholtz Centre Potsdam - GFZ German Research Centre for Geosciences
+        Attogen Biomedical Research
     </publisher>
 
     <contributors>
@@ -48,9 +48,9 @@
     </rightsList>
 
     <subjects>
-        <subject subjectScheme="LCSH" schemeURI="http://id.loc.gov/authorities/subjects"
-                 valueURI="http://example.org/subject/1" classificationCode="QA76">
-            Climate change
+        <subject subjectScheme="OKM Ontology" schemeURI="http://www.yso.fi/onto/okm-tieteenala/conceptscheme"
+                 valueURI="http://www.yso.fi/onto/okm-tieteenala/ta6122" classificationCode="6122">
+            Literature studies
         </subject>
     </subjects>
 
@@ -131,8 +131,8 @@
 
     <fundingReferences>
         <fundingReference>
-            <funderName>European Commission</funderName>
-            <funderIdentifier funderIdentifierType="ROR" schemeURI="http://example.org/schema/SA12345">https://ror.org/013meh722</funderIdentifier>
+            <funderName>Commission on Higher Education</funderName>
+            <funderIdentifier funderIdentifierType="ROR" schemeURI="http://example.org/schema/SA12345">https://ror.org/04s346m05</funderIdentifier>
             <awardNumber awardURI="http://example.org/grant/GA12345">GA12345</awardNumber>
             <awardTitle>Climate Research Grant</awardTitle>
         </fundingReference>

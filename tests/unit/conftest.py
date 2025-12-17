@@ -68,14 +68,26 @@ class MockPidServiceHandler:
     http_client_close = AsyncMock(return_value=None)
 
 
+class MockMetaxServiceHandler:
+    create_draft_dataset = AsyncMock(return_value=str(str(uuid.uuid4())))
+    update_dataset_metadata = AsyncMock(return_value={})
+    update_dataset_description = AsyncMock(return_value={})
+    publish_dataset = AsyncMock(return_value={})
+    http_client_close = AsyncMock(return_value=None)
+
+
 datacite_module_path = "metadata_backend.services.datacite_service"
 pid_module_path = "metadata_backend.services.pid_service"
+metax_module_path = "metadata_backend.services.metax_service_handler"
 
 if datacite_module_path not in sys.modules:
     sys.modules[datacite_module_path] = type("MockModule", (), {"DataciteServiceHandler": MockDataciteServiceHandler})()
 
 if pid_module_path not in sys.modules:
     sys.modules[pid_module_path] = type("MockModule", (), {"PIDServiceHandler": MockPidServiceHandler})()
+
+if metax_module_path not in sys.modules:
+    sys.modules[metax_module_path] = type("MockModule", (), {"MetaxServiceHandler": MockMetaxServiceHandler})
 
 
 def patch_datacite_create_draft_doi(doi: str):
@@ -94,6 +106,28 @@ def patch_pid_create_draft_doi(doi: str):
 
 def patch_pid_publish():
     return patch(f"{pid_module_path}.PIDServiceHandler.publish", new_callable=AsyncMock, return_value=None)
+
+
+def patch_metax_create_draft_dataset(metax_id: str):
+    return patch(
+        f"{metax_module_path}.MetaxServiceHandler.create_draft_dataset", new_callable=AsyncMock, return_value=metax_id
+    )
+
+
+def patch_metax_update_dataset_metadata():
+    return patch(
+        f"{metax_module_path}.MetaxServiceHandler.update_dataset_metadata", new_callable=AsyncMock, return_value=None
+    )
+
+
+def patch_metax_update_dataset_description():
+    return patch(
+        f"{metax_module_path}.MetaxServiceHandler.update_dataset_description", new_callable=AsyncMock, return_value=None
+    )
+
+
+def patch_metax_publish_dataset():
+    return patch(f"{metax_module_path}.MetaxServiceHandler.publish_dataset", new_callable=AsyncMock, return_value=None)
 
 
 async def _session_start():

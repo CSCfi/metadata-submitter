@@ -32,22 +32,21 @@ DEPLOYMENT_NBIS = "NBIS"
 
 # TODO(improve): read all env variables using BaseSettings
 
-metax_config = {
-    "username": os.getenv("METAX_USER", "sd"),
-    "password": os.getenv("METAX_PASS", "test"),
-    "url": os.getenv("METAX_URL", "http://mockmetax:8002"),
-    "rest_route": "/rest/v2/datasets",
-    "publish_route": "/rpc/v2/datasets/publish_dataset",
-    "catalog_pid": "urn:nbn:fi:att:data-catalog-sd",
-}
+file_names = [
+    "identifier_types.json",
+    "languages.json",
+    "fields_of_science.json",
+    "geo_locations.json",
+    "ror_organizations.json",
+]
 
-file_names = ["identifier_types.json", "languages.json", "fields_of_science.json", "funding_references.json"]
 METAX_REFERENCE_ROOT = Path(__file__).parent.parent / "conf" / "metax_references"
 METAX_REFERENCE_DATA: dict[str, dict[Any, Any]] = {
     "identifier_types": {},
     "languages": {},
     "fields_of_science": {},
-    "funding_references": {},
+    "geo_locations": {},
+    "ror_organizations": {},
 }
 # Load metax reference data from different reference files into a single dict used by metax mapper
 for ref_file in file_names:

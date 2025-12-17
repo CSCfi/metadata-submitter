@@ -19,7 +19,7 @@ class HealthTestCase(AioHTTPTestCase):
             "services": {
                 "datacite": {"status": "Error"},
                 "pid": {"status": "Error"},
-                "metax": {"status": "Down"},
+                "metax": {"status": "Error"},
                 "rems": {"status": "Down"},
                 "aai": {"status": "Error"},
                 "admin": {"status": "Down"},

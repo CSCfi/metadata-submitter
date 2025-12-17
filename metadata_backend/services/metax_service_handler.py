@@ -1,286 +1,167 @@
-"""Class for handling calls to METAX API.
+"""Metax Service."""
 
-API docs https://metax.fairdata.fi/docs/
-Swagger https://metax.fairdata.fi/swagger/v2
-"""
-
-import time
 from typing import Any
 
-from aiohttp import BasicAuth, ClientTimeout, web
-from aiohttp.client_exceptions import ClientConnectorError, InvalidURL
+from aiohttp import ClientTimeout
+from aiohttp.client_exceptions import ClientConnectorError
 from yarl import URL
 
+from ..api.models.metax import DraftMetax
 from ..api.models.submission import SubmissionMetadata
-from ..conf.conf import metax_config
+from ..conf.metax import metax_config
 from ..helpers.logger import LOG
-from .metax_mapper import MetaDataMapper, SubjectNotFoundException
+from .metax_mapper import MetaDataMapper
 from .service_handler import ServiceHandler
 
 
 class MetaxServiceHandler(ServiceHandler):
-    """API handler for uploading submitters' metadata to METAX service."""
+    """Metax Service."""
 
     service_name = "Metax"
 
     def __init__(self) -> None:
-        """Define variables and paths.
+        """Metax Service."""
 
-        Define variables and paths used for connecting to Metax API and
-        default inputs for Metax Dataset creation.
+        metax_url = URL(metax_config.METAX_URL)
+        super().__init__(base_url=metax_url, http_client_headers={"Authorization": f"Token {metax_config.METAX_TOKEN}"})
 
-        :param req: HTTP request from calling service
+    async def create_draft_dataset(self, doi: str, title: str, description: str) -> str:
+        """Create a draft Metax dataset.
+
+        :param doi: DOI
+        :param title: Dataset's title
+        :param description: Dataset's description
+        :returns: Metax ID
         """
-        metax_url = URL(metax_config["url"])
-        super().__init__(
-            base_url=metax_url / metax_config["rest_route"][1:],
-            auth=BasicAuth(metax_config["username"], metax_config["password"]),
-        )
 
-        self.connection_check_url = metax_url
-        self.publish_route = metax_url / metax_config["publish_route"][1:]
+        LOG.debug("Creating draft dataset to Metax service with DOI: %r.", doi)
 
-        self.minimal_dataset_template: dict[Any, Any] = {
-            "data_catalog": metax_config["catalog_pid"],
-            "metadata_provider_org": "csc.fi",
-            "research_dataset": {
-                # submitter given DOI
-                "preferred_identifier": "",
-                "title": {"en": ""},
-                # study abstract or dataset description
-                "description": {"en": ""},
-                # default
-                "access_rights": {
-                    "access_type": {
-                        "in_scheme": "http://uri.suomi.fi/codelist/fairdata/access_type",
-                        "identifier": "http://uri.suomi.fi/codelist/fairdata/access_type/code/restricted",
-                    }
-                },
-                # default
-                "publisher": {
-                    "name": {
-                        "en": "CSC Sensitive Data Services for Research",
-                        "fi": "CSC:n Arkaluonteisen datan palveluiden aineistokatalogi",
-                    },
-                    "@type": "Organization",
-                },
-            },
-        }
+        draft = DraftMetax(title=title, description=description, persistent_identifier=doi)
+        metax_dataset = await self._post_draft(draft.model_dump())
+        metax_id: str = metax_dataset["id"]
+        LOG.debug("Created draft dataset with Metax ID: %r.", metax_id)
 
-    async def _get(self, metax_id: str) -> dict[str, Any]:
-        result: dict[str, Any] = await self._request(method="GET", path=metax_id)
-        LOG.info("Got metax dataset with ID: %r.", metax_id)
+        return metax_id
 
-        return result
+    async def update_dataset_metadata(self, metadata: SubmissionMetadata, metax_id: str) -> None:
+        """Update dataset for publishing.
+
+        :param metadata: The submission metadata
+        :param metax_id: Metax ID
+        """
+        LOG.info("Updating Metax fields with ID %r from submission metadata", metax_id)
+
+        metax_data: dict[str, Any] = await self._get(metax_id)
+        # Map submission's Datacite metadata to Metax's fields
+        mapper = MetaDataMapper(metax_data, metadata)
+        mapped_metax_data = mapper.map_metadata()
+        await self._patch(metax_id, mapped_metax_data.model_dump())
+
+    async def update_dataset_description(self, metax_id: str, description: str) -> None:
+        """Update the draft dataset's description.
+
+        :param metax_id: Metax ID
+        :param description: Dataset's description with REMS link
+        :raises: HTTPError depending on returned error from Metax
+        """
+        LOG.info("Updating the description of Metax ID: %r.", metax_id)
+        await self._patch(metax_id, {"description": {"en": description}})
+        LOG.debug("Updated dataset's description with Metax ID: %s", metax_id)
+
+    async def publish_dataset(self, metax_id: str, doi: str) -> dict[str, Any]:
+        """Publish draft dataset to Metax service.
+
+        :param metax_id: Metax ID
+        :param doi: DOI
+        :returns: Published Metax dataset with "state": "published"
+        """
+        LOG.info("Publishing Metax dataset: %s", metax_id)
+        published_dataset = await self._publish(metax_id)
+        LOG.debug("Dataset with Metax ID %s and DOI %s has been published to Metax service.", metax_id, doi)
+        return published_dataset
+
+    async def delete_dataset(self, metax_id: str) -> None:
+        """
+        Published dataset: Deleting will hide it from listings.
+        Draft dataset: Deleting will removes it permanently.
+
+        :param metax_id: Metax ID
+        """
+        resp = await self._request(method="DELETE", path=f"/datasets/{metax_id}")
+        if resp.get("detail", "No Dataset matches the given query."):
+            raise ValueError(f"Invalid Metax ID: {metax_id}")
+        LOG.debug("Deleted dataset with Metax ID: %s from Metax service", metax_id)
 
     async def _post_draft(self, json_data: dict[str, Any]) -> dict[str, Any]:
         """Post call to Metax REST API.
 
         :param json_data: Dict with request data
-        :returns: Dict with full Metax dataset
+        :returns: Metax dataset response
         """
-        result: dict[str, Any] = await self._request(method="POST", json_data=json_data, params="draft")
-        LOG.info("Created Metax draft dataset with ID: %r.", result["identifier"])
+        dataset: dict[str, Any] = await self._request(method="POST", path="/datasets", json_data=json_data)
+        LOG.info("Draft dataset is created: %r", dataset)
 
-        return result
+        return dataset
 
-    async def _put(self, metax_id: str, json_data: dict[str, Any]) -> dict[str, Any]:
-        """Put call to Metax REST API.
+    async def _get(self, metax_id: str) -> dict[str, Any]:
+        """Get call to Metax REST API.
 
-        :param metax_id: ID of dataset to be updated
-        :param json_data: Dict with request data
-        :returns: Dict with full Metax dataset
+        :param metax_id: Metax ID
+        :returns: Metax dataset with Metax ID
         """
-        result: dict[str, Any] = await self._request(method="PUT", path=metax_id, json_data=json_data)
-        LOG.info("Metax dataset with ID: %r updated.", metax_id)
+        resp: dict[str, Any] = await self._request(method="GET", path=f"/datasets/{metax_id}")
+        if "not found" in resp.get("detail", "").lower():
+            raise ValueError(f"Invalid Metax ID: {metax_id}")
+        LOG.info("Retrieved the dataset with Metax ID: %r.", metax_id)
 
-        return result
+        return resp
 
     async def _patch(self, metax_id: str, json_data: dict[str, Any]) -> dict[str, Any]:
         """Patch call to Metax REST API.
 
-        :param metax_id: ID of dataset to be updated
-        :param json_data: Dict with request data
-        :returns: Dict with full Metax dataset
+        :param metax_id: Metax ID
+        :param json_data: Mapped metax data
+        :returns: Metax dataset
         """
-        result: dict[str, Any] = await self._request(method="PATCH", path=metax_id, json_data=json_data)
-        LOG.info("Patch completed for metax dataset with ID: %r.", metax_id)
+        resp: dict[str, Any] = await self._request(method="PATCH", path=f"/datasets/{metax_id}", json_data=json_data)
+        if "not found" in resp.get("detail", "").lower():
+            raise ValueError(f"Invalid Metax ID: {metax_id}")
+        LOG.info("Dataset with Metax ID %s is updated: %r", metax_id, resp)
 
-        return result
+        return resp
 
-    async def _bulk_patch(self, json_data: list[dict[str, Any]]) -> dict[str, Any]:
-        """Bulk patch call to Metax REST API.
+    async def _publish(self, metax_id: str) -> dict[str, Any]:
+        """Post call to Metax REST API publish endpoint.
 
-        :param json_data: Dict with request data
-        :returns: Dict with full Metax dataset
+        :param metax_id: Metax ID
+        :returns: Published Metax dataset with "state": "published"
         """
-        result: dict[str, Any] = await self._request(method="PATCH", json_data=json_data)
-        LOG.info("Bulk patch completed for metax datasets")
+        resp: dict[str, Any] = await self._request(method="POST", path=f"/datasets/{metax_id}/publish")
+        if "no dataset matches the given query" in resp.get("detail", "").lower():
+            raise ValueError(f"Invalid Metax ID: {metax_id}")
+        LOG.info("Dataset with Metax ID %s has been published to Metax service.", metax_id)
 
-        return result
-
-    async def _publish(self, metax_id: str) -> str:
-        """Post a call to Metax RPC publish endpoint.
-
-        :param metax_id: ID of dataset to be updated
-        :returns: Dict with full Metax dataset
-        """
-        result: dict[str, Any] = await self._request(
-            method="POST", url=self.publish_route, params={"identifier": metax_id}
-        )
-        LOG.info("Metax ID %s was published to Metax service.", metax_id)
-
-        dataset: str = result["preferred_identifier"]
-        return dataset
-
-    async def post_dataset_as_draft(self, user_id: str, doi: str, title: str, description: str) -> str:
-        """Create a draft Metax dataset.
-
-        :param user_id: The user id
-        :param doi: The DOI
-        :param title: The title
-        :param description: The description
-         :returns: The Metax ID
-        """
-        LOG.debug("Creating draft dataset to Metax service with DOI: %r.", doi)
-        await self.check_connection()
-        metax_dataset = self.minimal_dataset_template
-        metax_dataset["metadata_provider_user"] = user_id
-        research_dataset = self.create_metax_research_dataset(doi, title, description)
-        metax_dataset["research_dataset"] = research_dataset
-
-        metax_data = await self._post_draft(metax_dataset)
-        LOG.debug("Created Metax draft dataset with data: %r.", metax_data)
-        metax_id: str = metax_data["identifier"]
-        # Metax service overwrites preferred id (DOI) with temporary id for draft datasets
-        # Patching dataset with full research_dataset data updates preferred id to the real one
-        LOG.debug("Updating Metax draft dataset with ID: %r with permanent preferred identifier.", metax_id)
-        await self._patch(metax_id, {"research_dataset": research_dataset})
-        return metax_id
-
-    # async def update_draft_dataset(self, external_id: str, collection: str, data: Dict) -> None:
-    #     """Update draft dataset to Metax.
-    #
-    #     Construct Metax draft dataset data from submitters' Study or Dataset and
-    #     send it to Metax Dataset API for update.
-    #
-    #     :param external_id: external user id, from OIDC provider
-    #     :param collection: Schema of incoming submitters' metadata
-    #     :param data: Validated Study or Dataset data dict
-    #     :raises: HTTPError depending on returned error from Metax
-    #     """
-    #     LOG.info("Updating collection: %r object data to Metax service.", collection)
-    #     await self.check_connection()
-    #     metax_dataset = self.minimal_dataset_template
-    #     metax_dataset["metadata_provider_user"] = external_id
-    #     if collection == "dataset":
-    #         dataset_data = self.create_metax_dataset_data_from_dataset(data)
-    #     else:
-    #         dataset_data = self.create_metax_dataset_data_from_study(data)
-    #     metax_dataset["research_dataset"] = dataset_data
-    #
-    #     metax_data = await self._put(data["metaxIdentifier"], metax_dataset)
-    #     LOG.debug("Updated metax ID: %r, new metadata is: %r", data["metaxIdentifier"], metax_data)
-    #
-    # async def delete_draft_dataset(self, metax_id: str) -> None:
-    #     """Delete draft dataset from Metax service.
-    #
-    #     :param metax_id: Identification string pointing to Metax dataset to be deleted
-    #     """
-    #     LOG.info("Deleting Metax draft dataset metax ID: %r", metax_id)
-    #     await self._delete_draft(metax_id)
-
-    async def update_dataset_metadata(
-        self,
-        metadata: SubmissionMetadata,
-        metax_id: str,
-        file_bytes: int,
-    ) -> None:
-        """Update dataset for publishing.
-
-        :param metadata: The submission metadata
-        :param metax_id: The Metax ID
-        :param file_bytes: The number of file bytes
-        """
-        LOG.info("Updating metadata with datacite info for Metax dataset: %r", metax_id)
-
-        metax_data: dict[str, Any] = await self._get(metax_id)
-
-        # Map fields from doi info to Metax schema
-        mapper = MetaDataMapper(metax_data["research_dataset"], metadata, file_bytes)
-        try:
-            mapped_metax_data = await mapper.map_metadata()
-        except SubjectNotFoundException as error:
-            # in case the datacite subject cannot be mapped to metax field of science
-            reason = f"{error}"
-            LOG.exception(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-        await self._patch(metax_id, {"identifier": metax_id, "research_dataset": mapped_metax_data})
-
-    async def update_draft_dataset_description(self, metax_id: str, description: str) -> None:
-        """Update the description of the draft dataset.
-
-        :param metax_id: metax dataset id
-        :param description: New description
-        :raises: HTTPError depending on returned error from Metax
-        """
-        LOG.info("Updating the description of Metax ID: %r.", metax_id)
-        data = await self._get(metax_id)
-        data["research_dataset"]["description"]["en"] = description
-        metax_data = await self._put(metax_id, data)
-        LOG.debug("Updated description of Metax ID: %r, new metadata is: %r", metax_id, metax_data)
-
-    async def publish_dataset(self, metax_id: str, doi: str) -> str:
-        """Publish draft dataset to Metax service.
-
-        :param metax_id: The metax id
-        :param doi: The DOI
-        :returns: The Metax preferred ID
-        """
-        LOG.info("Publishing Metax dataset: %s", metax_id)
-
-        preferred_id = await self._publish(metax_id)
-
-        if doi != preferred_id:
-            LOG.warning("Metax Preferred Identifier: %r does not match object's DOI: %r.", preferred_id, doi)
-
-        LOG.debug("Object with Metax ID: %r and DOI: %r is published to Metax service.", metax_id, doi)
-        return preferred_id
-
-    def create_metax_research_dataset(self, doi: str, title: str, description: str) -> dict[str, Any]:
-        """Create Metax research dataset dictionary.
-
-        :param doi: The DOI
-        :param title: The title
-        :param description: The description
-        :returns: The Metax research dataset dictionary.
-        """
-        research_dataset: dict[str, Any] = self.minimal_dataset_template["research_dataset"]
-        research_dataset["preferred_identifier"] = doi
-        research_dataset["title"]["en"] = title
-        research_dataset["description"]["en"] = description
-        LOG.debug("Created Metax dataset with data: %r", research_dataset)
-        return research_dataset
+        return resp
 
     async def healthcheck(self) -> dict[str, str]:
         """Check Metax service health.
 
-        This responds with pong, when pinged.
+        Metax V3 service does not have a proper health endpoint. They have either:
+        -  metax.fairdata.fi/v3/watchman/ returns status for Metax components, not reliable if one component is down.
+        -  metax.fairdata.fi/v3/datasets?limit=1&fields=id can check if Metax is up and running - we use this.
 
         :returns: Dict with status of the datacite status
         """
         try:
-            start = time.time()
             async with self._client.request(
                 method="GET",
-                url=f"{URL(metax_config['url'])}/watchman/ping/",
+                url=f"{URL(metax_config.METAX_URL)}/datasets?limit=1&fields=id",
                 timeout=ClientTimeout(total=10),
             ) as response:
-                LOG.debug("Metax REST API status is: %s.", response.status)
-                content = await response.text()
-                if response.status == 200 and content == "pong":
-                    status = "Ok" if (time.time() - start) < 1000 else "Degraded"
+                content = await response.json()
+                results = content.get("results", [])
+                if len(results) == 1 and results[0].get("id") is not None:
+                    status = "Ok"
                 else:
                     status = "Down"
 
@@ -288,9 +169,6 @@ class MetaxServiceHandler(ServiceHandler):
         except ClientConnectorError as e:
             LOG.exception("Metax REST API is down with error: %r.", e)
             return {"status": "Down"}
-        except InvalidURL as e:
-            LOG.exception("Metax REST API status retrieval failed with: %r.", e)
-            return {"status": "Error"}
-        except web.HTTPError as e:
+        except Exception as e:
             LOG.exception("Metax REST API status retrieval failed with: %r.", e)
             return {"status": "Error"}

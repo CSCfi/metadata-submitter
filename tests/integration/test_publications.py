@@ -2,7 +2,6 @@
 
 import json
 import logging
-from typing import Any
 
 from tests.integration.conf import (
     submissions_url,
@@ -122,34 +121,3 @@ async def test_bigpicture_publication(client_logged_in, project_id):
     #     assert registration.remsResourceId is not None
     #     assert registration.remsCatalogueId is not None
     #     assert registration.remsUrl is not None
-
-
-async def assert_metax(metax: dict[str, Any], schema: str, title: str, description: str, doi: str):
-    expected_rd = json.loads(await get_request_data("metax", "research_dataset.json"))
-    actual_rd = metax["research_dataset"]
-
-    # title = res["title"] if schema == "dataset" else res["descriptor"]["studyTitle"]
-    # description = res["description"] if schema == "dataset" else res["descriptor"]["studyAbstract"]
-
-    assert actual_rd["preferred_identifier"] == doi
-    assert actual_rd["title"]["en"] == title
-    assert actual_rd["description"]["en"].split("\n\n")[0] == description
-    assert actual_rd["creator"] == expected_rd["creator"]
-    assert (
-        actual_rd["access_rights"]["access_type"]["identifier"]
-        == expected_rd["access_rights"]["access_type"]["identifier"]
-    )
-    assert actual_rd["contributor"] == expected_rd["contributor"]
-    assert actual_rd["issued"] == expected_rd["issued"]
-    assert actual_rd["modified"] == expected_rd["modified"]
-    assert actual_rd["other_identifier"][0]["notation"] == expected_rd["other_identifier"][0]["notation"]
-    assert actual_rd["publisher"] == expected_rd["publisher"]
-    assert actual_rd["spatial"] == expected_rd["spatial"]
-    assert actual_rd["temporal"] == expected_rd["temporal"]
-    assert actual_rd["language"] == expected_rd["language"]
-    assert actual_rd["field_of_science"] == expected_rd["field_of_science"]
-
-    if schema == "study":
-        assert "relation" in actual_rd
-    if schema == "dataset":
-        assert "is_output_of" in actual_rd
