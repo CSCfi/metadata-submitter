@@ -33,7 +33,6 @@ DEPLOYMENT_NBIS = "NBIS"
 # TODO(improve): read all env variables using BaseSettings
 
 file_names = [
-    "identifier_types.json",
     "languages.json",
     "fields_of_science.json",
     "geo_locations.json",
@@ -42,7 +41,6 @@ file_names = [
 
 METAX_REFERENCE_ROOT = Path(__file__).parent.parent / "conf" / "metax_references"
 METAX_REFERENCE_DATA: dict[str, dict[Any, Any]] = {
-    "identifier_types": {},
     "languages": {},
     "fields_of_science": {},
     "geo_locations": {},

@@ -14,7 +14,6 @@ from ..api.models.datacite import (
     Subject,
 )
 from ..api.models.metax import (
-    AccessRights,
     Actor,
     FieldOfScience,
     Funder,
@@ -64,16 +63,15 @@ class MetaDataMapper:
         """
         LOG.info("Mapping DataCite metadata to Metax's fields: %r.", self.metadata)
 
-        # self._map_access_rights()
         self._map_actors(self.metadata.creators, Roles.creator)
         self._map_publisher(self.metadata.publisher)
+        self._map_issued()
         self._map_projects(self.metadata.publisher, self.metadata.fundingReferences)
 
         if self.metadata.contributors:
             self._map_actors(self.metadata.contributors, Roles.contributor)
 
         if self.metadata.dates:
-            self._map_issued(self.metadata.dates)
             self._map_temporal(self.metadata.dates)
 
         if self.metadata.geoLocations:
@@ -86,21 +84,6 @@ class MetaDataMapper:
             self._map_field_of_science_and_keyword(self.metadata.subjects)
 
         return self.metax_dataset
-
-    def _map_access_rights(self) -> None:
-        """
-        Map Metax's access rights. Access rights are mapped with default values.
-        """
-        LOG.info("Mapping Metax's access rights.")
-
-        access_type = {"url": "http://uri.suomi.fi/codelist/fairdata/access_type/code/restricted"}
-        license = {"url": "http://uri.suomi.fi/codelist/fairdata/license/code/notspecified"}
-        restriction_ground = {"url": "http://uri.suomi.fi/codelist/fairdata/restriction_grounds/code/personal_data"}
-
-        access_rights = AccessRights(
-            access_type=access_type, license=[license], restriction_grounds=[restriction_ground]
-        )
-        self.metax_dataset.access_rights = access_rights
 
     def _map_actors(self, people: list[Creator] | list[Contributor], role: str) -> None:
         """Map Metax's actors.
@@ -165,19 +148,15 @@ class MetaDataMapper:
             self.metax_dataset.field_of_science.append(fos)
             self.metax_dataset.keyword.append(subject.subject)
 
-    def _map_issued(self, dates: list[Date]) -> None:
-        """Map Metax's issued.
-
-        :param dates: Datacite's dates
+    def _map_issued(self) -> None:
+        """
+        Map Metax's issued.
+        For current SD submission, issued is the date when the dataset is published.
         """
         LOG.info("Mapping Metax's issued.")
 
-        for date in dates:
-            if date.dateType == "Issued":
-                issued = self._to_valid_date(date.date)
-            # For current SD submission, issued is the date when the dataset is published
-            issued = datetime.now().strftime("%Y-%m-%d")
-            self.metax_dataset.issued = issued
+        issued = datetime.now().strftime("%Y-%m-%d")
+        self.metax_dataset.issued = issued
 
     def _map_temporal(self, dates: list[Date]) -> None:
         """Map Metax's temporal.
