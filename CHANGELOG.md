@@ -195,6 +195,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Removed
 
+- Extra codes in metax_mapper
+- Generated json file for identifier_types and related codes
 - Mock metax service and use real Metax test instance for integration test
 - Metax reference data for funding reference
 - DataCite and PID mock services from testing environment.
