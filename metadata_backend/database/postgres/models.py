@@ -6,6 +6,7 @@ from typing import Any, Callable, Optional, Type
 
 from sqlalchemy import (
     JSON,
+    BigInteger,
     Boolean,
     CheckConstraint,
     DateTime,
@@ -280,7 +281,7 @@ class FileEntity(Base):
         String(128), ForeignKey("objects.object_id", ondelete="CASCADE"), nullable=True, index=True
     )
     path: Mapped[str] = mapped_column(String(1024), nullable=False)
-    bytes: Mapped[int] = mapped_column(Integer, nullable=True)
+    bytes: Mapped[int] = mapped_column(BigInteger, nullable=True)
 
     checksum_method: Mapped[str] = mapped_column(String(16), nullable=True)
     unencrypted_checksum: Mapped[str] = mapped_column(String(128), nullable=True)

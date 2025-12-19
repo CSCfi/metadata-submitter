@@ -63,7 +63,7 @@ CREATE TABLE files (
 	submission_id VARCHAR(128) NOT NULL,
 	object_id VARCHAR(128),
 	path VARCHAR(1024) NOT NULL,
-	bytes INTEGER,
+	bytes BIGINT,
 	checksum_method VARCHAR(16),
 	unencrypted_checksum VARCHAR(128),
 	encrypted_checksum VARCHAR(128),
