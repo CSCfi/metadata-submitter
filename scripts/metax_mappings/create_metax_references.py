@@ -18,19 +18,6 @@ log = logging.getLogger("metax")
 log.setLevel(logging.DEBUG)
 
 
-def get_identifier_types() -> None:
-    """Parse codes for mapping identifier types."""
-
-    id_types = {}
-    codes_url = (
-        "https://koodistot.suomi.fi/codelist-api/api/v1/coderegistries/fairdata/codeschemes/identifier_type/"
-        "?format=json&embedCodes=true&downloadFile=true&pretty"
-    )
-    codes_json = requests.get(codes_url).json()["codes"]
-    for code in codes_json:
-        id_types[code["uri"].split("/")[-1]] = code["uri"]
-
-
 def get_languages() -> None:
     """Parse languages to build mapper for submitter used language descriptions as ENUM.
 
