@@ -1,6 +1,5 @@
-"""Class for contacting Pouta Keystone service."""
+"""Class for contacting a Keystone service."""
 
-import os
 import time
 
 from aiohttp import ClientTimeout, web
@@ -8,6 +7,7 @@ from aiohttp.client_exceptions import ClientConnectorError
 from pydantic import BaseModel
 from yarl import URL
 
+from ..conf.keystone import keystone_config
 from ..helpers.logger import LOG
 from .service_handler import ServiceHandler
 
@@ -35,10 +35,7 @@ class KeystoneService(ServiceHandler):
 
     def __init__(self) -> None:
         """Define Keystone variables."""
-        KEYSTONE_ENDPOINT = os.getenv("KEYSTONE_ENDPOINT")
-        if not KEYSTONE_ENDPOINT:
-            raise RuntimeError(f"{KEYSTONE_ENDPOINT} environment variable is undefined.")
-        super().__init__(base_url=URL(KEYSTONE_ENDPOINT.rstrip("/")))
+        super().__init__(base_url=URL(keystone_config.KEYSTONE_ENDPOINT.rstrip("/")))
 
     async def get_project_entry(self, project: str, access_token: str) -> ProjectEntry:
         """Get project entry containing project scoped token with unscoped access token provided by OIDC.
@@ -73,7 +70,7 @@ class KeystoneService(ServiceHandler):
                 project_id, project_name = item["id"], item["name"]
                 break
         if not project_id and not project_name:
-            raise web.HTTPNotFound(reason=f"Project {project} not found for user in Pouta Keystone.")
+            raise web.HTTPNotFound(reason=f"Project '{project}' not found for user in Keystone.")
 
         # Retrieve the scoped token from the Keystone API
         async with self._client.request(
@@ -94,14 +91,6 @@ class KeystoneService(ServiceHandler):
             },
         ) as resp:
             ret = await resp.json()
-
-            # Filter for project roles to ditch unusable projects
-            # obj_role = False
-            # for role in ret["token"]["roles"]:
-            #     if role["name"] in ("object_store_user",):
-            #         obj_role = True
-            # if not obj_role:
-            #     return None
 
             # Get the scoped token
             scoped: str = resp.headers["X-Subject-Token"]

@@ -55,7 +55,7 @@ class FilesAPIHandler(RESTAPIHandler):
         user_id = get_authorized_user_id(request)
         await project_service.verify_user_project(user_id, project_id)
 
-        files = await file_service.list_files_in_bucket(bucket, project_id)
+        files = await file_service.list_files_in_bucket(bucket)
         LOG.info("Retrieved %d files in bucket %s.", len(files.root), bucket)
         return web.json_response(files.model_dump(mode="json"))
 

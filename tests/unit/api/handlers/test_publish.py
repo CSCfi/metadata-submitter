@@ -74,24 +74,18 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         rems_resource_id = 1
         rems_catalogue_id = f"catalogue_{str(uuid.uuid4())}"
 
-        # Create submission and files to allow the submission to be published.
-
-        # Create submission.
-        workflow = SubmissionWorkflow.SD
-        publish_config = get_publish_config(workflow)
-        submission_entity = create_submission_entity(
-            workflow=workflow,
-            title=submission_title,
-            description=submission_description,
-            document={SUB_FIELD_METADATA: submission_metadata, SUB_FIELD_REMS: to_json_dict(rems)},
-        )
-        submission_id = await self.submission_repository.add_submission(submission_entity)
-
-        # Create file.
-        file_entity = FileEntity(submission_id=submission_entity.submission_id, path=file_path, bytes=file_bytes)
-        await self.file_repository.add_file(file_entity, workflow)
-
-        # Publish submission.
+        # Test publishing fails when submission has no bucket.
+        with (
+            self.patch_verify_user_project,
+            self.patch_verify_authorization,
+        ):
+            # Create submission without bucket.
+            submission_entity = create_submission_entity()
+            submission_id = await self.submission_repository.add_submission(submission_entity)
+            response = await self.client.patch(f"{API_PREFIX}/publish/{submission_id}")
+            data = await response.json()
+            assert response.status == 400
+            assert data["detail"] == f"Submission '{submission_id}' is not linked to any bucket."
 
         rems_cls = "metadata_backend.services.rems_service_handler.RemsServiceHandler"
         file_provider_cls = "metadata_backend.api.services.file.FileProviderService"
@@ -101,6 +95,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             self.patch_verify_authorization,
             # File provider
             patch(f"{file_provider_cls}.list_files_in_bucket", new_callable=AsyncMock) as mock_file_provider,
+            # PID
             patch_pid_create_draft_doi(doi) as mock_pid_create_draft_doi,
             patch_pid_publish() as mock_pid_publish,
             # Metax
@@ -113,7 +108,24 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             patch(f"{rems_cls}.create_resource", new_callable=AsyncMock) as mock_rems_create_resource,
             patch(f"{rems_cls}.create_catalogue_item", new_callable=AsyncMock) as mock_rems_create_catalogue_item,
         ):
-            # Mock file provider.
+            # Create submission and files to allow the submission to be published.
+            publish_config = get_publish_config(SubmissionWorkflow.SD)
+            submission_entity = create_submission_entity(
+                title=submission_title,
+                description=submission_description,
+                document={SUB_FIELD_METADATA: submission_metadata, SUB_FIELD_REMS: to_json_dict(rems)},
+                bucket="test-bucket",
+            )
+
+            # Test edge case where file service has not received any files.
+            submission_id = await self.submission_repository.add_submission(submission_entity)
+            mock_file_provider.return_value = FileProviderService.Files(root=[])
+            response = await self.client.patch(f"{API_PREFIX}/publish/{submission_id}")
+            data = await response.json()
+            assert response.status == 400
+            assert data["detail"] == f"Submission '{submission_id}' does not have any data files."
+
+            # Mock file provider
             mock_file_provider.return_value = FileProviderService.Files(
                 [FileProviderService.File(path=file_path, bytes=file_bytes)]
             )
@@ -123,7 +135,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             mock_rems_create_catalogue_item.return_value = rems_catalogue_id
 
             # Publish submission.
-            response = await self.client.patch(f"{API_PREFIX}/publish/{submission_entity.submission_id}")
+            response = await self.client.patch(f"{API_PREFIX}/publish/{submission_id}")
             data = await response.json()
             assert response.status == 200
             assert data == {"submissionId": submission_id}
@@ -207,7 +219,9 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         workflow = SubmissionWorkflow.FEGA
         publish_config = get_publish_config(workflow)
         submission_entity = create_submission_entity(
-            workflow=workflow, document={SUB_FIELD_METADATA: submission_metadata, SUB_FIELD_REMS: to_json_dict(rems)}
+            workflow=workflow,
+            document={SUB_FIELD_METADATA: submission_metadata, SUB_FIELD_REMS: to_json_dict(rems)},
+            bucket="test-bucket",
         )
         submission_id = await self.submission_repository.add_submission(submission_entity)
 
@@ -216,7 +230,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         # Dataset.
         dataset_entity = create_object_entity(
             project_id=submission_entity.project_id,
-            submission_id=submission_entity.submission_id,
+            submission_id=submission_id,
             object_type=dataset_object_type,
             document={"test": "test"},
             title=dataset_title,
@@ -227,7 +241,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         # DAC.
         dac_entity = create_object_entity(
             project_id=submission_entity.project_id,
-            submission_id=submission_entity.submission_id,
+            submission_id=submission_id,
             object_type="dac",
             document={},
         )
@@ -236,7 +250,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         # Policy.
         policy_entity = create_object_entity(
             project_id=submission_entity.project_id,
-            submission_id=submission_entity.submission_id,
+            submission_id=submission_id,
             object_type="policy",
             document={},
         )
@@ -245,7 +259,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         # Study.
         study_entity = create_object_entity(
             project_id=submission_entity.project_id,
-            submission_id=submission_entity.submission_id,
+            submission_id=submission_id,
             object_type=study_object_type,
             document={},
             title=study_title,
@@ -255,7 +269,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
 
         # Create file.
         file_entity = FileEntity(
-            submission_id=submission_entity.submission_id,
+            submission_id=submission_id,
             object_id=dataset_entity.object_id,
             path=file_path,
             bytes=file_bytes,
@@ -286,7 +300,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             mock_rems_create_catalogue_item.return_value = rems_catalogue_id
 
             # Publish submission.
-            response = await self.client.patch(f"{API_PREFIX}/publish/{submission_entity.submission_id}")
+            response = await self.client.patch(f"{API_PREFIX}/publish/{submission_id}")
             data = await response.json()
             assert response.status == 200
             assert data == {"submissionId": submission_id}
@@ -359,14 +373,16 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         workflow = SubmissionWorkflow.BP
         publish_config = get_publish_config(workflow)
         submission_entity = create_submission_entity(
-            workflow=workflow, document={SUB_FIELD_METADATA: submission_metadata, SUB_FIELD_REMS: to_json_dict(rems)}
+            workflow=workflow,
+            document={SUB_FIELD_METADATA: submission_metadata, SUB_FIELD_REMS: to_json_dict(rems)},
+            bucket="test-bucket",
         )
         submission_id = await self.submission_repository.add_submission(submission_entity)
 
         # Create metadata object.
         object_entity = create_object_entity(
             project_id=submission_entity.project_id,
-            submission_id=submission_entity.submission_id,
+            submission_id=submission_id,
             object_type=dataset_object_type,
             document={},
             title=dataset_title,
@@ -376,7 +392,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
 
         # Create file.
         file_entity = FileEntity(
-            submission_id=submission_entity.submission_id,
+            submission_id=submission_id,
             object_id=object_entity.object_id,
             path=file_path,
             bytes=file_bytes,
@@ -406,7 +422,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             mock_rems_create_catalogue_item.return_value = rems_catalogue_id
 
             # Publish submission.
-            response = await self.client.patch(f"{API_PREFIX}/publish/{submission_entity.submission_id}")
+            response = await self.client.patch(f"{API_PREFIX}/publish/{submission_id}")
             data = await response.json()
             assert response.status == 200
             assert data == {"submissionId": submission_id}

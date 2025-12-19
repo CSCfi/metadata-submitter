@@ -7,9 +7,9 @@ services:
       - "OIDC_URL_TEST=${OIDC_URL_TEST}"
     ports:
       - "8000:8000"
-  mock-s3:
+  mockkeystone:
     ports:
-      - "8006:8006"
+      - "5001:5001"
   postgres:
     ports:
       - "5432:5432"

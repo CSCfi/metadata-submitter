@@ -1,4 +1,3 @@
-import os
 import socket
 
 import pytest
@@ -7,14 +6,14 @@ from aiobotocore import session
 from aiohttp import web
 from moto.server import ThreadedMotoServer
 
-from metadata_backend.api.services.file import (
-    S3_ACCESS_KEY_ENV,
-    S3_ENDPOINT_ENV,
-    S3_REGION_ENV,
-    S3_SECRET_KEY_ENV,
-    S3AllasFileProviderService,
-)
+from metadata_backend.api.services.file import S3AllasFileProviderService
+from metadata_backend.conf.s3 import S3Config, s3_config
 from metadata_backend.services.keystone_service import KeystoneService
+
+bucket = "test-bucket"
+file = "test-file"
+content = b"test"
+creds = KeystoneService.EC2Credentials(access="test-id", secret="test-key")
 
 
 @pytest.fixture(autouse=True)
@@ -29,11 +28,10 @@ async def s3_endpoint(monkeypatch):
     server.start()
     endpoint = f"http://localhost:{port}"
 
-    # Set environment variables.
-    monkeypatch.setenv(S3_ACCESS_KEY_ENV, "test")
-    monkeypatch.setenv(S3_SECRET_KEY_ENV, "test")
-    monkeypatch.setenv(S3_REGION_ENV, "us-east-1")
-    monkeypatch.setenv(S3_ENDPOINT_ENV, endpoint)
+    # Set endpoint after server starts
+    monkeypatch.setenv("S3_ENDPOINT", endpoint)
+    new_config = S3Config()
+    monkeypatch.setattr("metadata_backend.api.services.file.s3_config", new_config)
 
     # Cleanup S3 before each test
     sess = session.get_session()
@@ -58,10 +56,6 @@ async def test_verify_user_file_exists(s3_endpoint):
     service = S3AllasFileProviderService()
     session = service._session
 
-    bucket = "test-bucket"
-    file = "test-file"
-    content = b"test"
-
     # Bucket and file does not exist.
     size = await service._verify_user_file(bucket, file)
     assert size is None
@@ -85,6 +79,7 @@ async def test_verify_user_file_exists(s3_endpoint):
         size = await service._verify_user_file(bucket, file)
         assert size == len(content)
 
+        await service.update_bucket_policy(bucket, creds)
         size = await service.verify_user_file(bucket, file)
         assert size == len(content)
 
@@ -93,12 +88,6 @@ async def test_verify_user_file_exists(s3_endpoint):
 async def test_list_buckets_and_files(s3_endpoint):
     service = S3AllasFileProviderService()
     session = service._session
-
-    project_id = "PRJ123"
-    bucket = "test-bucket"
-    file = "test-file"
-    content = b"test"
-    creds = KeystoneService.EC2Credentials(access="test-id", secret="test-key")
 
     async with session.client("s3", endpoint_url=s3_endpoint) as s3:
         # No buckets yet
@@ -115,13 +104,13 @@ async def test_list_buckets_and_files(s3_endpoint):
         # No files in bucket yet
         await service.update_bucket_policy(bucket, creds)
         with pytest.raises(web.HTTPNotFound):
-            await service.list_files_in_bucket(bucket, project_id)
+            await service.list_files_in_bucket(bucket)
 
         # Add a file
         await s3.put_object(Bucket=bucket, Key=file, Body=content)
 
         # Now list_files_in_bucket should return the file
-        files = await service.list_files_in_bucket(bucket, project_id)
+        files = await service.list_files_in_bucket(bucket)
         assert files.root[0].path == f"S3://{bucket}/{file}"
         assert files.root[0].bytes == len(content)
 
@@ -130,10 +119,6 @@ async def test_list_buckets_and_files(s3_endpoint):
 async def test_update_and_verify_bucket_policy(s3_endpoint):
     service = S3AllasFileProviderService()
     session = service._session
-
-    bucket = "test-bucket"
-    api_project = os.environ.get("SD_SUBMIT_PROJECT_ID")
-    creds = KeystoneService.EC2Credentials(access="test-id", secret="test-key")
 
     async with session.client("s3", endpoint_url=s3_endpoint) as s3:
         # Cannot assign to non-existant bucket
@@ -153,7 +138,7 @@ async def test_update_and_verify_bucket_policy(s3_endpoint):
         resp = await s3.get_bucket_policy(Bucket=bucket)
         policy = ujson.loads(resp["Policy"])
         assert policy["Statement"][0]["Sid"] == "GrantSDSubmitReadAccess"
-        assert policy["Statement"][0]["Principal"]["AWS"] == f"arn:aws:iam::{api_project}:root"
+        assert policy["Statement"][0]["Principal"]["AWS"] == f"arn:aws:iam::{s3_config.SD_SUBMIT_PROJECT_ID}:root"
         assert policy["Statement"][0]["Resource"] == [f"arn:aws:s3:::{bucket}", f"arn:aws:s3:::{bucket}/*"]
 
         assert await service.verify_bucket_policy(bucket)

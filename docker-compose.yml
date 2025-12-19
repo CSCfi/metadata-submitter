@@ -133,20 +133,6 @@ services:
     profiles:
       - ci
       - dev
-  mock-s3:
-    image: motoserver/moto:latest
-    hostname: s3mock
-    profiles:
-      - ci
-      - dev
-    healthcheck:
-      test: curl --fail http://127.0.0.1:8006/ || exit 1
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    environment:
-      - MOTO_PORT=8006
   mockkeystone:
     image: ghcr.io/cscfi/docker-keystone-swift:latest
     hostname: mockkeystone

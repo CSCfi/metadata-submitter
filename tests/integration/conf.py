@@ -62,6 +62,7 @@ admin_url = f"{os.getenv('ADMIN_URL', 'http://localhost:8004')}"
 auth = aiohttp.BasicAuth(os.getenv("METAX_USER", "sd"), os.getenv("METAX_PASS", "test"))
 mock_s3_url = f"{os.getenv('S3_ENDPOINT', 'http://localhost:8006')}"
 mock_s3_region = f"{os.getenv('S3_REGION', 'us-east-1')}"
+mock_keystone_url = os.getenv("KEYSTONE_ENDPOINT", "http://localhost:5001")
 
 user_id = "current"
 test_user_given = "Given"
