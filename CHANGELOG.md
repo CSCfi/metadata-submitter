@@ -9,6 +9,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- `files` table `bytes` column datatype from `INTEGER` to `BIGINT`
 - Migrated to using Metax V3 API
 - Overhauled integration test setup to accommodate testing against test DataCite and PID API services.
 - Updated DataCite schema handling (types, rightsList, geolocation points, polygon handling) and improved BigPicture XML/DataCite parsing.
