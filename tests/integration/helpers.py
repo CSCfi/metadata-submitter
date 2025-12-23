@@ -1,6 +1,6 @@
 """Helper functions for the integration tests."""
 
-import io
+import hashlib
 import json
 import logging
 import os
@@ -21,8 +21,6 @@ from .conf import (
     admin_url,
     base_url,
     mock_auth_url,
-    mock_s3_region,
-    mock_s3_url,
     publish_url,
     submissions_url,
     taxonomy_url,
@@ -424,136 +422,79 @@ async def add_file_to_inbox(sess, filepath, username):
         assert resp.status == 201, f"HTTP Status code error {resp.status}"
 
 
-async def add_file_to_bucket(bucket_name, object_key):
-    """Add a new object to a mock S3 bucket.
-
-    :param sess: HTTP session in which request call is made
-    :param bucket_name: name of the bucket
-    :param object_key: key for the object to be added
-    """
-    random_bytes = os.urandom(100)  # 100 bytes of random data
-    file_obj = io.BytesIO(random_bytes)
-    session = aioboto3.Session()
-    async with session.client(
-        "s3",
-        endpoint_url=mock_s3_url,
-        aws_access_key_id="test",
-        aws_secret_access_key="test",
-        region_name=mock_s3_region,
-        use_ssl=False,
-    ) as s3:
-        await s3.upload_fileobj(file_obj, bucket_name, object_key)
-
-
-async def delete_file_from_bucket(bucket_name, object_key):
-    """Delete an object from a mock S3 bucket.
+async def add_bucket(bucket_name, access_key, secret_key, endpoint_url, region):
+    """Add a new S3 bucket using provided credentials.
 
     :param bucket_name: name of the bucket
-    :param object_key: key for the object to be deleted
+    :param access_key: S3 access key ID
+    :param secret_key: S3 secret access key
+    :param endpoint_url: S3 endpoint URL
+    :param region: S3 region
     """
     session = aioboto3.Session()
     async with session.client(
         "s3",
-        endpoint_url=mock_s3_url,
-        aws_access_key_id="test",
-        aws_secret_access_key="test",
-        region_name=mock_s3_region,
-        use_ssl=False,
-    ) as s3:
-        await s3.delete_object(Bucket=bucket_name, Key=object_key)
-
-
-async def add_bucket(bucket_name):
-    """Add a new bucket to a mock S3 service.
-
-    :param bucket_name: name of the bucket
-    """
-    session = aioboto3.Session()
-    async with session.client(
-        "s3",
-        endpoint_url=mock_s3_url,
-        aws_access_key_id="test",
-        aws_secret_access_key="test",
-        region_name=mock_s3_region,
-        use_ssl=False,
+        endpoint_url=endpoint_url,
+        aws_access_key_id=access_key,
+        aws_secret_access_key=secret_key,
+        region_name=region,
     ) as s3:
         await s3.create_bucket(Bucket=bucket_name)
 
 
-async def delete_bucket(bucket_name):
-    """Delete a bucket from a mock S3 service.
+async def add_file_to_bucket(bucket_name, object_key, access_key, secret_key, endpoint_url, region):
+    """Add a new object to S3 bucket using provided credentials.
 
     :param bucket_name: name of the bucket
+    :param object_key: key for the object to be added
+    :param access_key: S3 access key ID
+    :param secret_key: S3 secret access key
+    :param endpoint_url: S3 endpoint URL
+    :param region: S3 region
+    """
+    random_bytes = os.urandom(100)  # 100 bytes of random data
+    session = aioboto3.Session()
+    async with session.client(
+        "s3",
+        endpoint_url=endpoint_url,
+        aws_access_key_id=access_key,
+        aws_secret_access_key=secret_key,
+        region_name=region,
+    ) as s3:
+        await s3.put_object(
+            Bucket=bucket_name,
+            Key=object_key,
+            Body=random_bytes,
+            ChecksumSHA256=hashlib.sha256(random_bytes).hexdigest(),
+        )
+
+
+async def delete_bucket(bucket_name, access_key, secret_key, endpoint_url, region):
+    """Delete a S3 bucket and its contentsusing provided credentials.
+
+    :param bucket_name: name of the bucket
+    :param access_key: S3 access key ID
+    :param secret_key: S3 secret access key
+    :param endpoint_url: S3 endpoint URL
+    :param region: S3 region
     """
     session = aioboto3.Session()
     async with session.client(
         "s3",
-        endpoint_url=mock_s3_url,
-        aws_access_key_id="test",
-        aws_secret_access_key="test",
-        region_name=mock_s3_region,
+        endpoint_url=endpoint_url,
+        aws_access_key_id=access_key,
+        aws_secret_access_key=secret_key,
+        region_name=region,
         use_ssl=False,
     ) as s3:
+        # First, delete all objects in the bucket
+        try:
+            objects = await s3.list_objects_v2(Bucket=bucket_name)
+            if "Contents" in objects:
+                for obj in objects["Contents"]:
+                    await s3.delete_object(Bucket=bucket_name, Key=obj["Key"])
+        except Exception:
+            pass  # Bucket might be empty or not exist
+
+        # Then delete the bucket
         await s3.delete_bucket(Bucket=bucket_name)
-
-
-async def list_buckets():
-    """List all buckets in the mock S3 service."""
-    session = aioboto3.Session()
-    async with session.client(
-        "s3",
-        endpoint_url=mock_s3_url,
-        aws_access_key_id="test",
-        aws_secret_access_key="test",
-        region_name=mock_s3_region,
-        use_ssl=False,
-    ) as s3:
-        buckets = await s3.list_buckets()
-        return [bucket["Name"] for bucket in buckets.get("Buckets", [])]
-
-
-async def list_files_in_bucket(bucket_name):
-    """List all files (objects) in a bucket in the mock S3 service."""
-    session = aioboto3.Session()
-    async with session.client(
-        "s3",
-        endpoint_url=mock_s3_url,
-        aws_access_key_id="test",
-        aws_secret_access_key="test",
-        region_name=mock_s3_region,
-        use_ssl=False,
-    ) as s3:
-        objects = await s3.list_objects_v2(Bucket=bucket_name)
-        return [obj["Key"] for obj in objects.get("Contents", [])]
-
-
-async def set_bucket_policy(bucket_name, project_id):
-    """Set the bucket policy for a specific bucket."""
-    session = aioboto3.Session()
-    async with session.client(
-        "s3",
-        endpoint_url=mock_s3_url,
-        aws_access_key_id="test",
-        aws_secret_access_key="test",
-        region_name=mock_s3_region,
-        use_ssl=False,
-    ) as s3:
-        await s3.put_bucket_policy(
-            Bucket=bucket_name,
-            Policy=json.dumps(
-                {
-                    "Version": "2012-10-17",
-                    "Statement": [
-                        {
-                            "Sid": "GrantSDSubmitReadAccess",
-                            "Effect": "Allow",
-                            "Principal": {
-                                "AWS": f"arn:aws:iam::{project_id}:root",
-                            },
-                            "Action": ["s3:GetObject", "s3:ListBucket", "s3:GetBucketPolicy"],
-                            "Resource": [f"arn:aws:s3:::{bucket_name}", f"arn:aws:s3:::{bucket_name}/*"],
-                        },
-                    ],
-                },
-            ),
-        )

@@ -1,6 +1,5 @@
 """Service to verify that the submitted file exists."""
 
-import os
 from abc import ABC, abstractmethod
 
 import aioboto3
@@ -9,14 +8,9 @@ import ujson
 from aiohttp import web
 from pydantic import BaseModel, RootModel
 
+from ...conf.s3 import s3_config
 from ...helpers.logger import LOG
 from ...services.keystone_service import KeystoneService
-
-S3_ACCESS_KEY_ENV = "STATIC_S3_ACCESS_KEY_ID"  # nosec
-S3_SECRET_KEY_ENV = "STATIC_S3_SECRET_ACCESS_KEY"  # nosec
-SD_SUBMIT_PROJECT_ID_ENV = "SD_SUBMIT_PROJECT_ID"
-S3_REGION_ENV = "S3_REGION"
-S3_ENDPOINT_ENV = "S3_ENDPOINT"
 
 
 class FileProviderService(ABC):
@@ -42,9 +36,14 @@ class FileProviderService(ABC):
         Returns:
             The file size in bytes if the file exists, otherwise None.
         """
+        if not await self._verify_bucket_policy(bucket):
+            reason = f"Bucket '{bucket}' has not been made accessible to SD Submit."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
         size = await self._verify_user_file(bucket, file)
         if size is None:
-            reason = f"File '{file}' does not exist in '{bucket}'."
+            reason = f"File '{file}' does not exist in bucket '{bucket}'."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         if size == 0:
@@ -72,25 +71,25 @@ class FileProviderService(ABC):
 
         return buckets
 
-    async def list_files_in_bucket(self, bucket: str, project_id: str) -> Files:
+    async def list_files_in_bucket(self, bucket: str) -> Files:
         """
         List files in the specified bucket.
 
         Args:
             bucket: The name of the bucket.
-            project_id: The ID of the project.
 
         Returns:
             A list of files (objects) found.
         """
+        # Bucket must have been assigned the correct policy first
         if not await self._verify_bucket_policy(bucket):
-            reason = f"Bucket {bucket} is not accessible in project {project_id}."
+            reason = f"Bucket '{bucket}' has not been made accessible to SD Submit."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
         files = await self._list_files_in_bucket(bucket)
         if not files.root:
-            reason = f"No files found in '{bucket}'."
+            reason = f"No files found in bucket '{bucket}'."
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
         return files
@@ -103,7 +102,7 @@ class FileProviderService(ABC):
 
         Args:
             bucket: The name of the bucket.
-            project_id: The ID of the project.
+            creds: Project specific EC2 credentials of the user.
         """
         await self._update_bucket_policy(bucket, creds)
 
@@ -184,25 +183,15 @@ class S3FileProviderService(FileProviderService):
 
     def __init__(self) -> None:
         """Create S3 file service."""
-
-        def _env(key: str, default_value: str | None = None) -> str:
-            value = os.getenv(key, default_value)
-            if value is None:
-                raise RuntimeError(f"Missing required environment variable: {key}")
-            return value
-
-        access_key = _env(S3_ACCESS_KEY_ENV)
-        secret_key = _env(S3_SECRET_KEY_ENV)
-        self.region = _env(S3_REGION_ENV)
-        self.endpoint = _env(S3_ENDPOINT_ENV)
-        self.api_project_id = _env(SD_SUBMIT_PROJECT_ID_ENV)
-
         """Initialize the base S3 session with static credentials."""
         self._session = aioboto3.Session(
-            aws_access_key_id=access_key,
-            aws_secret_access_key=secret_key,
-            region_name=self.region,
+            aws_access_key_id=s3_config.STATIC_S3_ACCESS_KEY_ID,
+            aws_secret_access_key=s3_config.STATIC_S3_SECRET_ACCESS_KEY,
+            region_name=s3_config.S3_REGION,
         )
+        self.region = s3_config.S3_REGION
+        self.endpoint = s3_config.S3_ENDPOINT
+        self.api_project_id = s3_config.SD_SUBMIT_PROJECT_ID
 
     async def _verify_user_file(self, bucket: str, file: str) -> int | None:
         """
@@ -224,7 +213,9 @@ class S3FileProviderService(FileProviderService):
                 return int(resp["ContentLength"])
             except botocore.exceptions.ClientError as e:
                 if e.response["ResponseMetadata"]["HTTPStatusCode"] == 404:
+                    # File does not exist
                     return None
+                LOG.error("Error verifying user file: %s", e)
                 raise e
 
     async def _list_buckets(self, creds: KeystoneService.EC2Credentials) -> list[str]:
@@ -348,7 +339,7 @@ class S3AllasFileProviderService(S3FileProviderService):
                     Bucket=bucket,
                 )
             except botocore.exceptions.ClientError as e:
-                if e.response["ResponseMetadata"]["HTTPStatusCode"] == 404:
+                if e.response["ResponseMetadata"]["HTTPStatusCode"] in (403, 404):
                     # Bucket does not exist or has no policy
                     return False
                 LOG.error("Error verifying bucket policy: %s", e)

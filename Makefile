@@ -13,15 +13,10 @@ endef
 
 # Write the secret to .env, tests/integration/.env and tests/integration/.env.secret files.
 define write_integration_test_secret
-printf "%s=" $(1) >> .env; \
-vault kv get --field=$(3) secret/$(2) >> .env; \
-echo >> .env; \
-printf "%s=" $(1) >> tests/integration/.env; \
-vault kv get --field=$(3) secret/$(2) >> tests/integration/.env; \
-echo >> tests/integration/.env; \
-printf "%s=" $(1) >> tests/integration/.env.secret; \
-vault kv get --field=$(3) secret/$(2) >> tests/integration/.env.secret; \
-echo >> tests/integration/.env.secret;
+secret_value=$$(vault kv get --field=$(3) secret/$(2)); \
+printf "%s=%s\n" $(1) "$$secret_value" >> .env; \
+printf "%s=%s\n" $(1) "$$secret_value" >> tests/integration/.env; \
+printf "%s=%s\n" $(1) "$$secret_value" >> tests/integration/.env.secret;
 endef
 
 
@@ -40,6 +35,7 @@ get_env: ## Get secrets needed for integration tests from vault
 
 	# Create empty .env file.
 	> .env
+	> tests/integration/.env.secret
 
 	# Create .tests/integration/.env file.
 	cp tests/integration/.env.example tests/integration/.env
@@ -54,10 +50,6 @@ get_env: ## Get secrets needed for integration tests from vault
 	$(call write_secret,AAI_CLIENT_ID,sd-submit/secrets,aai_id) \
 	$(call write_secret,AAI_CLIENT_SECRET,sd-submit/secrets,aai_secret) \
 	$(call write_secret,OIDC_URL,sd-submit/secrets,oidc_url) \
-	$(call write_secret,STATIC_S3_ACCESS_KEY_ID,sd-submit/secrets,s3_access_key) \
-	$(call write_secret,STATIC_S3_SECRET_ACCESS_KEY,sd-submit/secrets,s3_secret_key) \
-	$(call write_secret,SD_SUBMIT_PROJECT_ID,sd-submit/secrets,sd_submit_project_id) \
-	$(call write_secret,S3_ENDPOINT,sd-submit/secrets,allas_host) \
 	$(call write_secret,KEYSTONE_ENDPOINT,sd-submit/secrets,pouta_host) \
 	$(call write_integration_test_secret,DATACITE_API,sd-submit/datacite_test,DOI_API) \
 	$(call write_integration_test_secret,DATACITE_USER,sd-submit/datacite_test,DOI_USER) \
@@ -66,7 +58,14 @@ get_env: ## Get secrets needed for integration tests from vault
 	$(call write_integration_test_secret,CSC_PID_URL,sd-submit/pid,PID_URL) \
 	$(call write_integration_test_secret,CSC_PID_KEY,sd-submit/pid,PID_APIKEY) \
 	$(call write_integration_test_secret,METAX_URL,sd-submit/metax_test,METAX_V3_TEST_URL) \
-	$(call write_integration_test_secret,METAX_TOKEN,sd-submit/metax_test,METAX_V3_TEST_TOKEN)
+	$(call write_integration_test_secret,METAX_TOKEN,sd-submit/metax_test,METAX_V3_TEST_TOKEN) \
+	$(call write_integration_test_secret,S3_ENDPOINT,sd-submit/secrets,allas_host) \
+	$(call write_integration_test_secret,S3_REGION,sd-submit/secrets,s3_region) \
+	$(call write_integration_test_secret,STATIC_S3_ACCESS_KEY_ID,sd-submit/secrets,s3_access_key) \
+	$(call write_integration_test_secret,STATIC_S3_SECRET_ACCESS_KEY,sd-submit/secrets,s3_secret_key) \
+	$(call write_integration_test_secret,SD_SUBMIT_PROJECT_ID,sd-submit/secrets,sd_submit_project_id) \
+	$(call write_integration_test_secret,USER_S3_ACCESS_KEY_ID,sd-submit/secrets,s3_test_user_access_key) \
+	$(call write_integration_test_secret,USER_S3_SECRET_ACCESS_KEY,sd-submit/secrets,s3_test_user_secret_key)
 
 	$(call write_line,### VAULT SECRETS END ###)
 
@@ -93,7 +92,14 @@ get_ci_env: ## Get secrets needed for CI tests from vault
 	$(call write_integration_test_secret,CSC_PID_URL,sd-submit/pid,PID_URL) \
 	$(call write_integration_test_secret,CSC_PID_KEY,sd-submit/pid,PID_APIKEY) \
 	$(call write_integration_test_secret,METAX_URL,sd-submit/metax_test,METAX_V3_TEST_URL) \
-	$(call write_integration_test_secret,METAX_TOKEN,sd-submit/metax_test,METAX_V3_TEST_TOKEN)
+	$(call write_integration_test_secret,METAX_TOKEN,sd-submit/metax_test,METAX_V3_TEST_TOKEN) \
+	$(call write_integration_test_secret,S3_ENDPOINT,sd-submit/secrets,allas_host) \
+	$(call write_integration_test_secret,S3_REGION,sd-submit/secrets,s3_region) \
+	$(call write_integration_test_secret,STATIC_S3_ACCESS_KEY_ID,sd-submit/secrets,s3_access_key) \
+	$(call write_integration_test_secret,STATIC_S3_SECRET_ACCESS_KEY,sd-submit/secrets,s3_secret_key) \
+	$(call write_integration_test_secret,SD_SUBMIT_PROJECT_ID,sd-submit/secrets,sd_submit_project_id) \
+	$(call write_integration_test_secret,USER_S3_ACCESS_KEY_ID,sd-submit/secrets,s3_test_user_access_key) \
+	$(call write_integration_test_secret,USER_S3_SECRET_ACCESS_KEY,sd-submit/secrets,s3_test_user_secret_key)
 
 	$(call write_line,### VAULT SECRETS END ###)
 

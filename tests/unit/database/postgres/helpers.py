@@ -30,8 +30,6 @@ def create_submission_entity(
         name = f"name_{uuid.uuid4()}"
     if project_id is None:
         project_id = f"project_{uuid.uuid4()}"
-    if bucket is None:
-        bucket = f"bucket_{uuid.uuid4()}"
 
     if title is None:
         title = f"title_{uuid.uuid4()}"

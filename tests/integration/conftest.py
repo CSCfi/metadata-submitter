@@ -18,7 +18,7 @@ from yarl import URL
 from tests.integration.conf import (
     base_url,
     mock_auth_url,
-    mock_s3_url,
+    mock_s3_region,
     other_test_user,
     other_test_user_family,
     other_test_user_given,
@@ -26,9 +26,9 @@ from tests.integration.conf import (
 from tests.integration.helpers import (
     add_bucket,
     add_file_to_bucket,
+    delete_bucket,
     delete_submission,
     post_submission,
-    set_bucket_policy,
 )
 
 LOG = logging.getLogger(__name__)
@@ -166,27 +166,32 @@ async def fixture_project_id_2() -> str:
     return "2000"
 
 
-@pytest.fixture
-async def s3_manager():
-    """Fixture to provide S3 management helpers for tests."""
+@pytest.fixture(name="mock_pouta_token")
+async def fixture_mock_pouta_token(client) -> str:
+    """Return a mock pouta access token for testing Keystone service."""
+    async with client.get(f"{mock_auth_url}/userinfo") as resp:
+        userinfo = await resp.json()
+        return userinfo["pouta_access_token"]
 
-    # Reset mock S3 before test
-    async with aiohttp.ClientSession() as session:
-        await session.post(f"{mock_s3_url}/moto-api/reset")
+
+@pytest.fixture
+async def s3_manager(secret_env):
+    """Fixture to provide S3 management helpers for tests using .env.secret credentials."""
+
+    # Buckets/files should be created for test user robot account
+    access_key = os.getenv("USER_S3_ACCESS_KEY_ID")
+    secret_key = os.getenv("USER_S3_SECRET_ACCESS_KEY")
+    endpoint_url = os.getenv("S3_ENDPOINT")
 
     class S3Manager:
         async def add_bucket(self, bucket_name):
-            await add_bucket(bucket_name)
+            await add_bucket(bucket_name, access_key, secret_key, endpoint_url, mock_s3_region)
 
         async def add_file_to_bucket(self, bucket_name, file_name):
-            await add_file_to_bucket(bucket_name, file_name)
+            await add_file_to_bucket(bucket_name, file_name, access_key, secret_key, endpoint_url, mock_s3_region)
 
-        async def set_bucket_policy(self, bucket_name, project_id):
-            await set_bucket_policy(bucket_name, project_id)
+        async def delete_bucket(self, bucket_name):
+            await delete_bucket(bucket_name, access_key, secret_key, endpoint_url, mock_s3_region)
 
     manager = S3Manager()
     yield manager
-
-    # Reset mock S3 after test
-    async with aiohttp.ClientSession() as session:
-        await session.post(f"{mock_s3_url}/moto-api/reset")

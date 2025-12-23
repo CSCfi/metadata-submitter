@@ -270,9 +270,10 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         if not no_files:
             # Add all files in linked bucket to the submission.
             bucket = await submission_service.get_bucket(submission_id)
+            if not bucket:
+                raise UserException(f"Submission '{submission_id}' is not linked to any bucket.")
             if workflow == SubmissionWorkflow.SD:
-                project_id = await submission_service.get_project_id(submission_id)
-                files = await file_provider_service.list_files_in_bucket(bucket, project_id)
+                files = await file_provider_service.list_files_in_bucket(bucket)
                 for file in files.root:
                     # Check that we have not added the file already.
                     # For now, accept that file bytes might have changed and some files
