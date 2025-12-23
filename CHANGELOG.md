@@ -9,6 +9,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- S3 and Keystone environment variables use config pydantic models
 - `files` table `bytes` column datatype from `INTEGER` to `BIGINT`
 - Migrated to using Metax V3 API
 - Overhauled integration test setup to accommodate testing against test DataCite and PID API services.
@@ -118,6 +119,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- Integration testing for FileProviderService using Allas test service
 - Script for generating Metax reference data for ROR organizations and geolocations
 - Mapping from Datacite's metadata to Metax V3's fields
 - Low-level integration testing for DataCite and CSC PID service handlers, including DOI creation logic and new GET support.
