@@ -14,8 +14,6 @@ tags:
     description: Endpoints used for data retrieval
   - name: Manage
     description: Endpoints used for managing data
-  - name: Taxonomy
-    description: Built-in API for autocompleting taxonomy names/ids in the UI
 paths:
   /v1/workflows/{workflow}/projects/{projectId}/submissions:
     post:
@@ -1018,50 +1016,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/User"
-        400:
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/400BadRequest"
-        401:
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/401Unauthorized"
-        403:
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/403Forbidden"
-  /v1/taxonomy:
-    get:
-      tags:
-        - Taxonomy
-      summary: Get results of taxonomy search by id or name
-      parameters:
-        - name: search
-          in: query
-          description: Search query that is a partial or full id, scientific or common name
-          schema:
-            type: string
-          required: true
-        - name: results
-          in: query
-          description: Amount of search results to retrieve (by default 10)
-          schema:
-            type: string
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/TaxonomyResult"
         400:
           description: Bad Request
           content:
@@ -2311,22 +2265,6 @@ components:
             schema:
               type: string
               description: type of schema this Accession ID relates to and was added in submit
-    TaxonomyResult:
-      type: object
-      description: Taxonomy search result
-      properties:
-        tax_id:
-          type: string
-          title: Taxonomy id
-          example: 3320
-        scientific_name:
-          type: string
-          title: Scientific name
-          example: Abies magnifica
-        common_name:
-          type: string
-          title: Common name or genbank common name (if available)
-          example: red fir
     FilesForIngestion:
       type: object
       description: File's information for ingestion

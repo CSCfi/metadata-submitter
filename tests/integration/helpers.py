@@ -23,7 +23,6 @@ from .conf import (
     mock_auth_url,
     publish_url,
     submissions_url,
-    taxonomy_url,
     testfiles_root,
 )
 
@@ -328,24 +327,6 @@ def generate_mock_file(filepath: str):
         "encrypted_checksums": [{"type": "md5", "value": "7Ac236b1a82dac89e7cf45d2b4812345"}],
         "unencrypted_checksums": [{"type": "md5", "value": "7Ac236b1a82dac89e7cf45d2b4812345"}],
     }
-
-
-async def search_taxonomy(sess, query: str, max_results: int = 10):
-    """Send a taxonomy name search query.
-
-    :param sess: HTTP session in which request call is made
-    :param query: string to query taxonomy for
-    :param max_results: how many search results to display (Optional)
-    """
-    params = {"search": query}
-    if max_results != 10:
-        params["results"] = max_results
-
-    url = f"{taxonomy_url}?{urlencode(params)}"
-
-    async with sess.get(url) as resp:
-        LOG.debug(resp)
-        return await resp.json() if resp.status == 200 else resp
 
 
 async def get_mock_admin_token(sess):

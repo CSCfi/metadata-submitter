@@ -57,7 +57,6 @@ workflows_url = f"{base_url}{API_PREFIX}/workflows"
 files_url = f"{base_url}{API_PREFIX}/buckets"
 datacite_url = f"{os.getenv('DATACITE_API', 'http://localhost:8001')}"
 mock_pid_prefix = "10.80869"
-taxonomy_url = f"{base_url}{API_PREFIX}/taxonomy"
 admin_url = f"{os.getenv('ADMIN_URL', 'http://localhost:8004')}"
 
 auth = aiohttp.BasicAuth(os.getenv("METAX_USER", "sd"), os.getenv("METAX_PASS", "test"))
