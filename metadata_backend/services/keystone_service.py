@@ -1,9 +1,6 @@
-"""Class for contacting a Keystone service."""
+"""Keystone service."""
 
-import time
-
-from aiohttp import ClientTimeout, web
-from aiohttp.client_exceptions import ClientConnectorError
+from aiohttp import ClientResponse, web
 from pydantic import BaseModel
 from yarl import URL
 
@@ -12,10 +9,8 @@ from ..helpers.logger import LOG
 from .service_handler import ServiceHandler
 
 
-class KeystoneService(ServiceHandler):
-    """Handler for Keystone API Calls."""
-
-    service_name = "Keystone"
+class KeystoneServiceHandler(ServiceHandler):
+    """Keystone service."""
 
     class ProjectEntry(BaseModel):
         """Model for a project entry containing Keystone token."""
@@ -34,8 +29,16 @@ class KeystoneService(ServiceHandler):
         secret: str
 
     def __init__(self) -> None:
-        """Define Keystone variables."""
-        super().__init__(base_url=URL(keystone_config.KEYSTONE_ENDPOINT.rstrip("/")))
+        """Keystone service."""
+
+        self._config = keystone_config()
+
+        super().__init__(
+            service_name="keystone",
+            base_url=URL(self._config.KEYSTONE_ENDPOINT.rstrip("/")),
+            healthcheck_url=URL(self._config.KEYSTONE_ENDPOINT) / "v3",
+            healthcheck_callback=self.healthcheck_callback,
+        )
 
     async def get_project_entry(self, project: str, access_token: str) -> ProjectEntry:
         """Get project entry containing project scoped token with unscoped access token provided by OIDC.
@@ -159,31 +162,8 @@ class KeystoneService(ServiceHandler):
             )
             return int(resp.status)  # 204 on success
 
-    async def healthcheck(self) -> dict[str, str]:
-        """Check Keystone service heartbeat.
-
-        :returns: Dict with status of the keystone status
-        """
-
-        try:
-            start = time.time()
-            async with self._client.request(
-                method="GET",
-                url=f"{self.base_url}/v3",
-                timeout=ClientTimeout(total=10),
-            ) as response:
-                if response.status == 200:
-                    content = await response.json()
-                    status = content["version"]["status"]
-                    LOG.debug("Keystone REST API response content is: %r.", content)
-                    status = "Ok" if (time.time() - start) < 1000 and status == "stable" else "Degraded"
-                else:
-                    status = "Down"
-
-                return {"status": status}
-        except ClientConnectorError as e:
-            LOG.exception("Keystone REST API is down with error: %r.", e)
-            return {"status": "Down"}
-        except Exception as e:
-            LOG.exception("Keystone REST API status retrieval failed with: %r.", e)
-            return {"status": "Error"}
+    @staticmethod
+    async def healthcheck_callback(response: ClientResponse) -> bool:
+        content = await response.json()
+        version = content.get("version") or {}
+        return (version.get("status") or "") == "stable"

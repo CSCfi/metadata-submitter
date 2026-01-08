@@ -1,6 +1,5 @@
-"""Test API endpoints from PublishSubmissionAPIHandler."""
+"""Tests for publish API handler."""
 
-import os
 import uuid
 from unittest.mock import AsyncMock, call, patch
 
@@ -20,24 +19,35 @@ from metadata_backend.database.postgres.repositories.submission import (
     SUB_FIELD_REMS,
     SubmissionRepository,
 )
-from metadata_backend.services.rems_service_handler import RemsServiceHandler
+from metadata_backend.services.rems_service import RemsServiceHandler
 from tests.unit.database.postgres.helpers import create_object_entity, create_submission_entity
 
-from ...conftest import (
+from ...patches.datacite_service import (
     patch_datacite_create_draft_doi,
     patch_datacite_publish,
+)
+from ...patches.metax_service import (
     patch_metax_create_draft_dataset,
     patch_metax_publish_dataset,
     patch_metax_update_dataset_description,
     patch_metax_update_dataset_metadata,
+)
+from ...patches.pid_service import (
     patch_pid_create_draft_doi,
     patch_pid_publish,
+)
+from ...patches.rems_service import (
+    MOCK_REMS_DEFAULT_LICENSE_ID,
+    MOCK_REMS_DEFAULT_ORGANISATION_ID,
+    MOCK_REMS_DEFAULT_WORKFLOW_ID,
+    mock_rems_last_catalogue_id,
+    mock_rems_last_resource_id,
 )
 from .common import HandlersTestCase
 
 
-class PublishSubmissionHandlerTestCase(HandlersTestCase):
-    """Publishing API endpoint class test cases."""
+class PublishAPIHandlerTestCase(HandlersTestCase):
+    """Tests for publish API handler."""
 
     @pytest.fixture(autouse=True)
     def _inject_fixtures(
@@ -56,7 +66,11 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         submission_metadata = self.submission_metadata
 
         # REMS information.
-        rems = Rems(workflowId=1, organizationId=f"organisation_{str(uuid.uuid4())}", licenses=[1, 2])
+        rems = Rems(
+            organizationId=MOCK_REMS_DEFAULT_ORGANISATION_ID,
+            workflowId=MOCK_REMS_DEFAULT_WORKFLOW_ID,
+            licenses=[MOCK_REMS_DEFAULT_LICENSE_ID],
+        )
 
         submission_title = f"title_{str(uuid.uuid4())}"
         submission_description = f"description_{str(uuid.uuid4())}"
@@ -66,13 +80,10 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         file_bytes = 1024
 
         # Mock data.
-        metax_url = "https://mock.com/"
         metax_id = f"metax_{str(uuid.uuid4())}"
         doi_part1 = f"doi_{str(uuid.uuid4())}"
         doi_part2 = f"doi_{str(uuid.uuid4())}"
         doi = f"{doi_part1}/{doi_part2}"
-        rems_resource_id = 1
-        rems_catalogue_id = f"catalogue_{str(uuid.uuid4())}"
 
         # Test publishing fails when submission has no bucket.
         with (
@@ -87,7 +98,6 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             assert response.status == 400
             assert data["detail"] == f"Submission '{submission_id}' is not linked to any bucket."
 
-        rems_cls = "metadata_backend.services.rems_service_handler.RemsServiceHandler"
         file_provider_cls = "metadata_backend.api.services.file.FileProviderService"
 
         with (
@@ -95,19 +105,19 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             self.patch_verify_authorization,
             # File provider
             patch(f"{file_provider_cls}.list_files_in_bucket", new_callable=AsyncMock) as mock_file_provider,
-            # PID
             patch_pid_create_draft_doi(doi) as mock_pid_create_draft_doi,
             patch_pid_publish() as mock_pid_publish,
             # Metax
-            patch.dict(os.environ, {"METAX_DISCOVERY_URL": metax_url}),
             patch_metax_create_draft_dataset(metax_id) as mock_metax_create_draft_dataset,
             patch_metax_update_dataset_metadata() as mock_metax_update_dataset_metadata,
             patch_metax_update_dataset_description() as mock_metax_update_dataset_description,
             patch_metax_publish_dataset() as mock_metax_publish_dataset,
-            # REMS
-            patch(f"{rems_cls}.create_resource", new_callable=AsyncMock) as mock_rems_create_resource,
-            patch(f"{rems_cls}.create_catalogue_item", new_callable=AsyncMock) as mock_rems_create_catalogue_item,
         ):
+            # Reset REMS mocks.
+            RemsServiceHandler.create_resource.reset_mock()
+            RemsServiceHandler.create_catalogue_item.reset_mock()
+
+            # Mock file provider.
             # Create submission and files to allow the submission to be published.
             publish_config = get_publish_config(SubmissionWorkflow.SD)
             submission_entity = create_submission_entity(
@@ -129,10 +139,6 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             mock_file_provider.return_value = FileProviderService.Files(
                 [FileProviderService.File(path=file_path, bytes=file_bytes)]
             )
-
-            # Mock Rems.
-            mock_rems_create_resource.return_value = rems_resource_id
-            mock_rems_create_catalogue_item.return_value = rems_catalogue_id
 
             # Publish submission.
             response = await self.client.patch(f"{API_PREFIX}/publish/{submission_id}")
@@ -166,20 +172,21 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             mock_metax_update_dataset_description.assert_awaited_once_with(
                 metax_id,
                 f"{submission_description}\n\nSD Apply's Application link: "
-                f"{RemsServiceHandler.application_url(rems_catalogue_id)}",
+                f"{RemsServiceHandler.get_application_url(str(mock_rems_last_catalogue_id()))}",
             )
 
             mock_metax_publish_dataset.assert_awaited_once_with(metax_id, doi)
 
             # Assert Rems.
-            mock_rems_create_resource.assert_awaited_once_with(
-                doi=doi, organization_id=rems.organizationId, licenses=rems.licenses
+            RemsServiceHandler.create_resource.assert_awaited_once_with(
+                rems.organizationId, rems.workflowId, rems.licenses, doi
             )
-            mock_rems_create_catalogue_item.assert_awaited_once_with(
-                resource_id=rems_resource_id,
-                workflow_id=rems.workflowId,
-                organization_id=rems.organizationId,
-                localizations={"en": {"title": submission_title, "infourl": f"{metax_url}{metax_id}"}},
+            RemsServiceHandler.create_catalogue_item.assert_awaited_once_with(
+                rems.organizationId,
+                rems.workflowId,
+                mock_rems_last_resource_id(),
+                submission_title,
+                RemsServiceHandler().get_discovery_url(metax_id),
             )
 
     async def test_publish_submission_fega(self):
@@ -188,7 +195,11 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         submission_metadata = self.submission_metadata
 
         # RENS information.
-        rems = Rems(workflowId=1, organizationId=f"organisation_{str(uuid.uuid4())}", licenses=[1, 2])
+        rems = Rems(
+            organizationId=MOCK_REMS_DEFAULT_ORGANISATION_ID,
+            workflowId=MOCK_REMS_DEFAULT_WORKFLOW_ID,
+            licenses=[MOCK_REMS_DEFAULT_LICENSE_ID],
+        )
 
         # The submission contains one dataset metadata object.
         dataset_object_type = "dataset"
@@ -205,13 +216,10 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         file_bytes = 1024
 
         # Mock data.
-        metax_url = "https://mock.com/"
         metax_id = f"metax_{str(uuid.uuid4())}"
         doi_part1 = f"doi_{str(uuid.uuid4())}"
         doi_part2 = f"doi_{str(uuid.uuid4())}"
         doi = f"{doi_part1}/{doi_part2}"
-        rems_resource_id = 1
-        rems_catalogue_id = f"catalogue_{str(uuid.uuid4())}"
 
         # Create submission and files to allow the submission to be published.
 
@@ -278,26 +286,20 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
 
         # Publish submission.
 
-        rems_cls = "metadata_backend.services.rems_service_handler.RemsServiceHandler"
-
         with (
             self.patch_verify_user_project,
             self.patch_verify_authorization,
             patch_pid_create_draft_doi(doi) as mock_pid_create_draft_doi,
             patch_pid_publish() as mock_pid_publish,
             # Metax
-            patch.dict(os.environ, {"METAX_DISCOVERY_URL": metax_url}),
             patch_metax_create_draft_dataset(metax_id) as mock_metax_create_draft_dataset,
             patch_metax_update_dataset_metadata() as mock_metax_update_dataset_metadata,
             patch_metax_update_dataset_description() as mock_metax_update_dataset_description,
             patch_metax_publish_dataset() as mock_metax_publish_dataset,
-            # REMS
-            patch(f"{rems_cls}.create_resource", new_callable=AsyncMock) as mock_rems_create_resource,
-            patch(f"{rems_cls}.create_catalogue_item", new_callable=AsyncMock) as mock_rems_create_catalogue_item,
         ):
-            # Mock Rems.
-            mock_rems_create_resource.return_value = rems_resource_id
-            mock_rems_create_catalogue_item.return_value = rems_catalogue_id
+            # Reset REMS mocks.
+            RemsServiceHandler.create_resource.reset_mock()
+            RemsServiceHandler.create_catalogue_item.reset_mock()
 
             # Publish submission.
             response = await self.client.patch(f"{API_PREFIX}/publish/{submission_id}")
@@ -325,21 +327,22 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             mock_metax_update_dataset_description.assert_awaited_once_with(
                 metax_id,
                 f"{dataset_description}\n\nSD Apply's Application link: "
-                f"{RemsServiceHandler.application_url(rems_catalogue_id)}",
+                f"{RemsServiceHandler.get_application_url(str(mock_rems_last_catalogue_id()))}",
             )
 
             assert mock_metax_publish_dataset.await_count == 1
             assert call(metax_id, doi) in mock_metax_publish_dataset.await_args_list
 
             # Assert Rems.
-            mock_rems_create_resource.assert_awaited_once_with(
-                doi=doi, organization_id=rems.organizationId, licenses=rems.licenses
+            RemsServiceHandler.create_resource.assert_awaited_once_with(
+                rems.organizationId, rems.workflowId, rems.licenses, doi
             )
-            mock_rems_create_catalogue_item.assert_awaited_once_with(
-                resource_id=rems_resource_id,
-                workflow_id=rems.workflowId,
-                organization_id=rems.organizationId,
-                localizations={"en": {"title": dataset_title, "infourl": f"{metax_url}{metax_id}"}},
+            RemsServiceHandler.create_catalogue_item.assert_awaited_once_with(
+                rems.organizationId,
+                rems.workflowId,
+                mock_rems_last_resource_id(),
+                dataset_title,
+                RemsServiceHandler().get_discovery_url(metax_id),
             )
 
     async def test_publish_submission_bp(self):
@@ -348,7 +351,11 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         submission_metadata = self.submission_metadata
 
         # RENS information.
-        rems = Rems(workflowId=1, organizationId=f"organisation_{str(uuid.uuid4())}", licenses=[1, 2])
+        rems = Rems(
+            organizationId=MOCK_REMS_DEFAULT_ORGANISATION_ID,
+            workflowId=MOCK_REMS_DEFAULT_WORKFLOW_ID,
+            licenses=[MOCK_REMS_DEFAULT_LICENSE_ID],
+        )
 
         # The submission contains one dataset metadata object.
         dataset_object_type = "dataset"
@@ -360,12 +367,9 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         file_bytes = 1024
 
         # Mock data.
-        beacon_url = "https://mock.com/"
         doi_part1 = f"doi_{str(uuid.uuid4())}"
         doi_part2 = f"doi_{str(uuid.uuid4())}"
         doi = f"{doi_part1}/{doi_part2}"
-        rems_resource_id = 1
-        rems_catalogue_id = f"catalogue_{str(uuid.uuid4())}"
 
         # Create submission and files to allow the submission to be published.
 
@@ -402,8 +406,6 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         # Publish submission.
         #
 
-        rems_cls = "metadata_backend.services.rems_service_handler.RemsServiceHandler"
-
         with (
             self.patch_verify_user_project,
             self.patch_verify_authorization,
@@ -411,15 +413,10 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             patch_datacite_publish() as mock_datacite_publish,
             patch_pid_create_draft_doi(doi) as mock_pid_create_draft_doi,
             patch_pid_publish() as mock_pid_publish,
-            # Beacon
-            patch.dict(os.environ, {"BEACON_DISCOVERY_URL": beacon_url}),
-            # REMS
-            patch(f"{rems_cls}.create_resource", new_callable=AsyncMock) as mock_rems_create_resource,
-            patch(f"{rems_cls}.create_catalogue_item", new_callable=AsyncMock) as mock_rems_create_catalogue_item,
         ):
-            # Mock Rems.
-            mock_rems_create_resource.return_value = rems_resource_id
-            mock_rems_create_catalogue_item.return_value = rems_catalogue_id
+            # Reset REMS mocks.
+            RemsServiceHandler.create_resource.reset_mock()
+            RemsServiceHandler.create_catalogue_item.reset_mock()
 
             # Publish submission.
             response = await self.client.patch(f"{API_PREFIX}/publish/{submission_id}")
@@ -440,12 +437,9 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             # TODO(improve): BP beacon service not implement
 
             # Assert Rems.
-            mock_rems_create_resource.assert_awaited_once_with(
-                doi=doi, organization_id=rems.organizationId, licenses=rems.licenses
+            RemsServiceHandler.create_resource.assert_awaited_once_with(
+                rems.organizationId, rems.workflowId, rems.licenses, doi
             )
-            mock_rems_create_catalogue_item.assert_awaited_once_with(
-                resource_id=rems_resource_id,
-                workflow_id=rems.workflowId,
-                organization_id=rems.organizationId,
-                localizations={"en": {"title": dataset_title, "infourl": f"{beacon_url}{doi}"}},
+            RemsServiceHandler.create_catalogue_item.assert_awaited_once_with(
+                rems.organizationId, rems.workflowId, 1, dataset_title, RemsServiceHandler().get_discovery_url(doi)
             )

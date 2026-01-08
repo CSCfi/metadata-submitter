@@ -11,6 +11,7 @@ from .base import StrictBaseModel
 
 # https://datacite-metadata-schema.readthedocs.io/en/4.5/properties/
 
+# Same DataCite models are used in the DataCite API and in the SD Submit API.
 
 # Controlled vocabularies
 #

@@ -2,28 +2,34 @@
 
 from typing import Any
 
-from aiohttp import ClientTimeout
-from aiohttp.client_exceptions import ClientConnectorError
+from aiohttp import ClientResponse
 from yarl import URL
 
 from ..api.models.metax import DraftMetax
 from ..api.models.submission import SubmissionMetadata
-from ..conf.metax import metax_config
+from ..api.services.metax import MetaxMapper
 from ..helpers.logger import LOG
-from .metax_mapper import MetaDataMapper
 from .service_handler import ServiceHandler
 
 
 class MetaxServiceHandler(ServiceHandler):
     """Metax Service."""
 
-    service_name = "Metax"
-
     def __init__(self) -> None:
         """Metax Service."""
 
-        metax_url = URL(metax_config.METAX_URL)
-        super().__init__(base_url=metax_url, http_client_headers={"Authorization": f"Token {metax_config.METAX_TOKEN}"})
+        # Deferred import to avoid loading environment variables when module is imported.
+        from ..conf.metax import metax_config
+
+        self._config = metax_config()
+
+        super().__init__(
+            service_name="metax",
+            base_url=URL(self._config.METAX_URL),
+            http_client_headers={"Authorization": f"Token {self._config.METAX_TOKEN}"},
+            healthcheck_url=URL(self._config.METAX_URL) / "datasets?limit=1&fields=id",
+            healthcheck_callback=self.healthcheck_callback,
+        )
 
     async def create_draft_dataset(self, doi: str, title: str, description: str) -> str:
         """Create a draft Metax dataset.
@@ -53,7 +59,7 @@ class MetaxServiceHandler(ServiceHandler):
 
         metax_data: dict[str, Any] = await self._get(metax_id)
         # Map submission's Datacite metadata to Metax's fields
-        mapper = MetaDataMapper(metax_data, metadata)
+        mapper = MetaxMapper(metax_data, metadata)
         mapped_metax_data = mapper.map_metadata()
         await self._patch(metax_id, mapped_metax_data.model_dump())
 
@@ -143,32 +149,8 @@ class MetaxServiceHandler(ServiceHandler):
 
         return resp
 
-    async def healthcheck(self) -> dict[str, str]:
-        """Check Metax service health.
-
-        Metax V3 service does not have a proper health endpoint. They have either:
-        -  metax.fairdata.fi/v3/watchman/ returns status for Metax components, not reliable if one component is down.
-        -  metax.fairdata.fi/v3/datasets?limit=1&fields=id can check if Metax is up and running - we use this.
-
-        :returns: Dict with status of the datacite status
-        """
-        try:
-            async with self._client.request(
-                method="GET",
-                url=f"{URL(metax_config.METAX_URL)}/datasets?limit=1&fields=id",
-                timeout=ClientTimeout(total=10),
-            ) as response:
-                content = await response.json()
-                results = content.get("results", [])
-                if len(results) == 1 and results[0].get("id") is not None:
-                    status = "Ok"
-                else:
-                    status = "Down"
-
-                return {"status": status}
-        except ClientConnectorError as e:
-            LOG.exception("Metax REST API is down with error: %r.", e)
-            return {"status": "Down"}
-        except Exception as e:
-            LOG.exception("Metax REST API status retrieval failed with: %r.", e)
-            return {"status": "Error"}
+    @staticmethod
+    async def healthcheck_callback(response: ClientResponse) -> bool:
+        content = await response.json()
+        results = content.get("results", [])
+        return len(results) == 1 and results[0].get("id") is not None

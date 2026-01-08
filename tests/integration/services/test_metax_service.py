@@ -12,7 +12,7 @@ SD_SUBMISSION = Path(__file__).parent.parent.parent / "test_files" / "submission
 
 async def test_metax_service(client, secret_env):
     """Test publish Metax fields using test service."""
-    from metadata_backend.services.metax_service_handler import MetaxServiceHandler
+    from metadata_backend.services.metax_service import MetaxServiceHandler
     from metadata_backend.services.pid_service import PIDServiceHandler
 
     metax_service = MetaxServiceHandler()

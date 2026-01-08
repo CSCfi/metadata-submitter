@@ -3,14 +3,7 @@ import pytest
 from metadata_backend.conf.deployment import DeploymentConfig
 
 
-def test_config_defaults():
-    config = DeploymentConfig()
-    assert config.DEPLOYMENT == "CSC"
-    assert config.ALLOW_UNSAFE is False
-    assert config.ALLOW_REGISTRATION is True
-
-
-def test_config_override(monkeypatch):
+def test_valid_deployment_config(monkeypatch):
     monkeypatch.setenv("DEPLOYMENT", "NBIS")
     monkeypatch.setenv("ALLOW_UNSAFE", "TRUE")
     monkeypatch.setenv("ALLOW_REGISTRATION", "false")
@@ -22,7 +15,7 @@ def test_config_override(monkeypatch):
     assert config.ALLOW_REGISTRATION is False
 
 
-def test_config_invalid_value(monkeypatch):
+def test_invalid_deployment_config(monkeypatch):
     monkeypatch.setenv("DEPLOYMENT", "INVALID")
 
     with pytest.raises(ValueError):

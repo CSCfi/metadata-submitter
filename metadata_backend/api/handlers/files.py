@@ -1,16 +1,16 @@
-"""Handle HTTP methods for server."""
+"""Files API handler."""
 
 from aiohttp import web
 from aiohttp.web import Request, StreamResponse
 
 from ...helpers.logger import LOG
-from ..auth import get_authorized_user_id
-from ..resources import get_file_provider_service, get_keystone_service, get_project_service
+from ..json import to_json
+from .auth import get_authorized_user_id
 from .restapi import RESTAPIHandler
 
 
 class FilesAPIHandler(RESTAPIHandler):
-    """API Handler for managing a project's files metadata."""
+    """Files API handler."""
 
     async def get_project_buckets(self, request: Request) -> StreamResponse:
         """List all buckets in a specific project.
@@ -19,9 +19,9 @@ class FilesAPIHandler(RESTAPIHandler):
         :returns: JSON response containing list of buckets
         """
         project_id = request.query.get("projectId")
-        project_service = get_project_service(request)
-        file_service = get_file_provider_service(request)
-        keystone_service = get_keystone_service(request)
+        project_service = self._services.project
+        file_service = self._services.file_provider
+        keystone_service = self._handlers.keystone
 
         # Check that user is affiliated with the project.
         user_id = get_authorized_user_id(request)
@@ -38,7 +38,7 @@ class FilesAPIHandler(RESTAPIHandler):
 
         # Delete temporary EC2 credentials after use
         await keystone_service.delete_ec2_from_project(project_entry, credentials)
-        return self._json_response(buckets)
+        return web.json_response(text=to_json(buckets))
 
     async def get_files_in_bucket(self, request: Request) -> StreamResponse:
         """List all files in a specific bucket from the file provider service.
@@ -48,8 +48,8 @@ class FilesAPIHandler(RESTAPIHandler):
         """
         project_id = request.query.get("projectId")
         bucket = request.match_info["bucket"]
-        project_service = get_project_service(request)
-        file_service = get_file_provider_service(request)
+        project_service = self._services.project
+        file_service = self._services.file_provider
 
         # Check that user is affiliated with the project.
         user_id = get_authorized_user_id(request)
@@ -67,9 +67,9 @@ class FilesAPIHandler(RESTAPIHandler):
         """
         project_id = request.query.get("projectId")
         bucket = request.match_info["bucket"]
-        project_service = get_project_service(request)
-        file_service = get_file_provider_service(request)
-        keystone_service = get_keystone_service(request)
+        project_service = self._services.project
+        file_provider_service = self._services.file_provider
+        keystone_handler = self._handlers.keystone
 
         # Check that user is affiliated with the project.
         user_id = get_authorized_user_id(request)
@@ -77,15 +77,15 @@ class FilesAPIHandler(RESTAPIHandler):
 
         # Get temporary user specific project scoped token.
         access_token = request.cookies.get("pouta_access_token")
-        project_entry = await keystone_service.get_project_entry(project_id, access_token)
-        credentials = await keystone_service.get_ec2_for_project(project_entry)
+        project_entry = await keystone_handler.get_project_entry(project_id, access_token)
+        credentials = await keystone_handler.get_ec2_for_project(project_entry)
 
         # Grant access to the bucket.
-        await file_service.update_bucket_policy(bucket, credentials)
+        await file_provider_service.update_bucket_policy(bucket, credentials)
         LOG.info("Granted access to bucket %s in project %s.", bucket, project_id)
 
         # Delete temporary EC2 credentials after use
-        await keystone_service.delete_ec2_from_project(project_entry, credentials)
+        await keystone_handler.delete_ec2_from_project(project_entry, credentials)
         return web.Response(status=200)
 
     async def check_bucket_access(self, request: Request) -> StreamResponse:
@@ -96,15 +96,15 @@ class FilesAPIHandler(RESTAPIHandler):
         """
         project_id = request.query.get("projectId")
         bucket = request.match_info["bucket"]
-        project_service = get_project_service(request)
-        file_service = get_file_provider_service(request)
+        project_service = self._services.project
+        file_provider_service = self._services.file_provider
 
         # Check that user is affiliated with the project.
         user_id = get_authorized_user_id(request)
         await project_service.verify_user_project(user_id, project_id)
 
         # Check that the bucket has been assigned the correct policy.
-        has_access = await file_service.verify_bucket_policy(bucket)
+        has_access = await file_provider_service.verify_bucket_policy(bucket)
         if not has_access:
             reason = f"Bucket {bucket} is not accessible in project {project_id}."
             LOG.error(reason)

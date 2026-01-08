@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, patch
 
 from aiohttp import web
 
-from metadata_backend.services.keystone_service import KeystoneService
+from metadata_backend.services.keystone_service import KeystoneServiceHandler
 
 
 class KeystoneServiceTestCase(unittest.IsolatedAsyncioTestCase):
@@ -14,9 +14,9 @@ class KeystoneServiceTestCase(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         """Set class for tests."""
         with patch.dict("os.environ", {"KEYSTONE_ENDPOINT": "http://localhost:5001"}):
-            self.keystone_service = KeystoneService()
+            self.keystone_service = KeystoneServiceHandler()
 
-        self.project = KeystoneService.ProjectEntry(
+        self.project = KeystoneServiceHandler.ProjectEntry(
             id="project_uuid",
             name="1000",
             endpoint="endpoint_url",
@@ -24,7 +24,7 @@ class KeystoneServiceTestCase(unittest.IsolatedAsyncioTestCase):
             uid="user_uuid",
             uname="testuser",
         )
-        self.credentials = KeystoneService.EC2Credentials(access="access_key", secret="secret_key")
+        self.credentials = KeystoneServiceHandler.EC2Credentials(access="access_key", secret="secret_key")
 
         # Mock OIDC authentication response
         self.mock_oidc_resp = AsyncMock()
@@ -45,7 +45,7 @@ class KeystoneServiceTestCase(unittest.IsolatedAsyncioTestCase):
 
     async def asyncTearDown(self):
         """Close HTTP client after each test."""
-        await self.keystone_service.http_client_close()
+        await self.keystone_service.close()
 
     async def test_get_project_entry_success(self):
         """Test successful project token fetch."""

@@ -9,11 +9,10 @@ from typing import AsyncIterator, TypeVar
 from sqlalchemy import create_mock_engine, event
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 
+from ...conf.database import database_config
 from .models import Base
 
 SessionFactory = async_sessionmaker[AsyncSession]
-
-PG_DATABASE_URL_ENV = "PG_DATABASE_URL"
 
 
 async def _create_schema(engine: AsyncEngine) -> None:
@@ -31,7 +30,7 @@ async def create_engine(db_url: str | None = None) -> AsyncEngine:
     """
     Create and return an asynchronous SQLAlchemy 2.0 engine.
 
-    If the db_url is not provided, the PG_DATABASE_URL environment variable will be used.
+    If the db_url is not provided, the DATABASE_URL environment variable will be used.
 
     Args:
         db_url: The database URL.
@@ -40,11 +39,10 @@ async def create_engine(db_url: str | None = None) -> AsyncEngine:
          Asynchronous SQLAlchemy 2.0 engine.
     """
 
-    db_url = db_url or os.getenv(PG_DATABASE_URL_ENV)
     if db_url is None:
-        raise ValueError(f"Missing PostgreSQL environmental variable: {PG_DATABASE_URL_ENV}")
+        db_url = database_config().DATABASE_URL
 
-    engine = create_async_engine(db_url, echo=True)
+    engine = create_async_engine(db_url, echo=False)
 
     # Enable foreign keys in SQLite.
     if engine.dialect.name == "sqlite":

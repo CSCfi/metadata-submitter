@@ -11,7 +11,7 @@ from metadata_backend.conf.conf import API_PREFIX
 from .common import HandlersTestCase
 
 
-class UserHandlerTestCase(HandlersTestCase):
+class UserAPIHandlerTestCase(HandlersTestCase):
     """User handler test cases."""
 
     async def test_get_user_csc(self) -> None:

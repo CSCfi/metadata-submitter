@@ -13,19 +13,19 @@ class OIDCConfig(BaseSettings):
 
     BASE_URL: str = Field(description="Application URL")
     OIDC_URL: str = Field(description="OIDC provider URL")
-    REDIRECT_URL: str | None = Field(
-        default=None,
+    REDIRECT_URL: str = Field(
         description="OIDC redirection URL",
     )
     OIDC_CLIENT_ID: str = Field(
         description="OIDC client ID",
-        validation_alias="AAI_CLIENT_ID",  # TODO(improve): rename to OIDC_CLIENT_ID
+        validation_alias="OIDC_CLIENT_ID",
     )
     OIDC_CLIENT_SECRET: str = Field(
         description="OIDC client secret",
-        validation_alias="AAI_CLIENT_SECRET",  # TODO(improve): rename to OIDC_CLIENT_SECRET
+        validation_alias="OIDC_CLIENT_SECRET",
     )
     OIDC_SCOPE: str = Field(default="openid profile email", description="OIDC scopes")
+    JWT_SECRET: str = Field(description="Secret key used to sign and verify JWT")
 
     @computed_field
     def redirect_url(self) -> str:
@@ -40,4 +40,8 @@ class OIDCConfig(BaseSettings):
         return urljoin(self.BASE_URL, "callback")
 
 
-oidc_config = OIDCConfig()
+def oidc_config() -> OIDCConfig:
+    """Get OIDC configuration."""
+
+    # Avoid loading environment variables when module is imported.
+    return OIDCConfig()

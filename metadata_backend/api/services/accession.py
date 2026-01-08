@@ -1,11 +1,11 @@
-"""Service for creation accessions."""
+"""Service for creating accessions."""
 
-import os
 from secrets import choice
 from string import ascii_lowercase, digits
 
 import ulid
 
+from ...conf.bigpicture import bp_config
 from ..models.submission import SubmissionWorkflow
 from ..processors.xml.bigpicture import (
     BP_FILE_OBJECT_TYPE,
@@ -13,8 +13,6 @@ from ..processors.xml.bigpicture import (
     BP_SAMPLE_OBJECT_TYPES,
     BP_SUBMISSION_OBJECT_TYPE,
 )
-
-BP_CENTER_ID_ENV = "BP_CENTER_ID"
 
 
 def generate_accession(workflow: SubmissionWorkflow, object_type: str) -> str:
@@ -110,8 +108,4 @@ def generate_bp_accession_prefix(object_type: str) -> str:
     else:
         accession_type = object_type
 
-    center_id = os.getenv(BP_CENTER_ID_ENV)
-    if not center_id:
-        raise RuntimeError(f"{BP_CENTER_ID_ENV} environment variable is undefined.")
-
-    return f"{center_id}-{accession_type}"
+    return f"{bp_config().BP_CENTER_ID}-{accession_type}"

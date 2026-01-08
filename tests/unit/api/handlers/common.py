@@ -6,10 +6,8 @@ from typing import Any
 from unittest.mock import AsyncMock, patch
 
 from aiohttp import web
-from aiohttp.test_utils import AioHTTPTestCase, make_mocked_coro
-from aiohttp.web import Request
+from aiohttp.test_utils import AioHTTPTestCase
 
-from metadata_backend.api.handlers.restapi import RESTAPIHandler
 from metadata_backend.api.models.models import Project
 from metadata_backend.api.services.project import ProjectService
 from metadata_backend.conf.conf import API_PREFIX
@@ -49,26 +47,10 @@ class HandlersTestCase(AioHTTPTestCase):
         self.patch_verify_user_project = patch.object(
             ProjectService, "verify_user_project", new=AsyncMock(return_value=True)
         )
-        self.patch_verify_user_project_failure = patch.object(
-            ProjectService,
-            "verify_user_project",
-            new=AsyncMock(side_effect=web.HTTPUnauthorized(reason="Mocked unauthorized access")),
-        )
 
         # Mock get projects.
         self.patch_get_user_projects = patch.object(
             ProjectService, "get_user_projects", new=AsyncMock(return_value=[Project(project_id=self.project_id)])
-        )
-        self.patch_verify_user_project_failure = patch.object(
-            ProjectService,
-            "verify_user_project",
-            new=AsyncMock(side_effect=web.HTTPUnauthorized(reason="Mocked unauthorized access")),
-        )
-
-        # Mock REMS license verification.
-        self.patch_verify_rems_workflow_licence = patch(
-            "metadata_backend.services.rems_service_handler.RemsServiceHandler.validate_workflow_licenses",
-            return_value=True,
         )
 
         await self.client.start_server()
@@ -93,24 +75,6 @@ class HandlersTestCase(AioHTTPTestCase):
             "keywords": "test,keyword",
             "publisher": {"name": "University Health Care System"},
         }
-        self.user_id = "USR12345678"
-        self.test_user = {
-            "userId": self.user_id,
-            "name": "tester",
-        }
-
-        RESTAPIHandler.check_ownership = make_mocked_coro(True)
-
-        def mocked_get_param(self, req: Request, name: str) -> str:
-            if name == "projectId" and "projectId" not in req.query:
-                return "mock-project"
-
-            param = req.query.get(name, "")
-            if param == "":
-                raise web.HTTPBadRequest(reason=f"mandatory query parameter {name} is not set")
-            return param
-
-        RESTAPIHandler._get_param = mocked_get_param
 
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""

@@ -1,32 +1,33 @@
-"""Project API handlers."""
+"""User API handler."""
 
 from aiohttp import web
 from aiohttp.web import Request, Response
 
-from ..auth import get_authorized_user_id, get_authorized_user_name
 from ..models.models import User
-from ..resources import get_project_service
+from .auth import get_authorized_user_id, get_authorized_user_name
+from .restapi import RESTAPIHandler
 
 
-async def get_user(req: Request) -> Response:
-    """
-    Return projects for the authenticated user.
+class UserAPIHandler(RESTAPIHandler):
+    """User API handler."""
 
-    Args:
-        req: The aiohttp request.
+    async def get_user(self, req: Request) -> Response:
+        """
+        Return user information for the authenticated user.
 
-    Returns:
-        Projects.
-    """
-    user_id = get_authorized_user_id(req)
-    user_name = get_authorized_user_name(req)
+        Args:
+            req: The HTTP request.
 
-    project_service = get_project_service(req)
+        Returns:
+            Projects.
+        """
+        user_id = get_authorized_user_id(req)
+        user_name = get_authorized_user_name(req)
 
-    user = User(
-        user_id=user_id,
-        user_name=user_name,
-        projects=await project_service.get_user_projects(user_id),
-    )
+        user = User(
+            user_id=user_id,
+            user_name=user_name,
+            projects=await self._services.project.get_user_projects(user_id),
+        )
 
-    return web.json_response(user.model_dump(mode="json"))
+        return web.json_response(user.model_dump(mode="json"))

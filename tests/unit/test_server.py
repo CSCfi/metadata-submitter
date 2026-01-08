@@ -3,7 +3,8 @@
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from typing import override
+from unittest.mock import Mock, patch
 
 from aiohttp import web
 from aiohttp.test_utils import AioHTTPTestCase
@@ -14,39 +15,28 @@ from metadata_backend.server import init, main
 class TestBasicFunctionsApp(unittest.TestCase):
     """Test basic functions from web app."""
 
-    @patch("metadata_backend.server.web")
-    @patch("metadata_backend.server.init")
+    @patch("metadata_backend.server.web", new_callable=Mock)
+    @patch("metadata_backend.server.init", new_callable=Mock)
     def test_main(self, mock_init, mock_webapp):
         """Should start the webapp."""
+        mock_webapp.run_app = Mock()
         main()
-        mock_webapp.run_app.assert_called()
-
-
-if __name__ == "__main__":
-    unittest.main()
+        mock_init.assert_called_once()
+        mock_webapp.run_app.assert_called_once()
 
 
 class AppTestCase(AioHTTPTestCase):
     """Async tests for web app."""
 
+    @override
     async def get_application(self):
-        """Retrieve web Application for test."""
+        """Create web Application."""
         return await init()
 
     async def test_init(self):
-        """Test everything works in init()."""
-        server = await self.get_application()
-        self.assertIs(type(server), web.Application)
-
-    async def test_api_routes_are_set(self):
-        """Test correct amount of API (no frontend) routes is set.
-
-        NOTE: If there's swagger or frontend folder generated in metadata_backend
-        tests will see more routes
-
-        """
-        server = await self.get_application()
-        self.assertIs(len(server.router.routes()), 45)
+        """Test that the web application initializes."""
+        self.assertIs(type(self.app), web.Application)
+        self.assertIs(len(self.app.router.routes()), 47)
 
     async def test_frontend_routes_are_set(self):
         """Test correct routes are set when frontend folder exists."""

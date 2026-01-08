@@ -15,15 +15,15 @@ class FilesAPIHandlerTestCase(HandlersTestCase):
         """Set up async test fixtures."""
         await super().asyncSetUp()
         self.patch_get_project_entry = patch(
-            "metadata_backend.services.keystone_service.KeystoneService.get_project_entry",
+            "metadata_backend.services.keystone_service.KeystoneServiceHandler.get_project_entry",
             return_value={},
         )
         self.patch_get_ec2 = patch(
-            "metadata_backend.services.keystone_service.KeystoneService.get_ec2_for_project",
+            "metadata_backend.services.keystone_service.KeystoneServiceHandler.get_ec2_for_project",
             return_value={},
         )
         self.patch_delete_ec2 = patch(
-            "metadata_backend.services.keystone_service.KeystoneService.delete_ec2_from_project",
+            "metadata_backend.services.keystone_service.KeystoneServiceHandler.delete_ec2_from_project",
             return_value=204,
         )
 

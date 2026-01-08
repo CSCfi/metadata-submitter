@@ -1,29 +1,32 @@
 """Functions to launch backend server."""
 
 import asyncio
-from typing import Any, Optional
+import logging
+from typing import TypeVar
 
 import uvloop
 from aiohttp import web
+from aiohttp.web_routedef import AbstractRouteDef
 
+from metadata_backend.api.handlers.auth import AuthAPIHandler
+from metadata_backend.api.handlers.key import KeyAPIHandler
+from metadata_backend.api.handlers.restapi import RESTAPIServiceHandlers, RESTAPIServices
+from metadata_backend.api.handlers.user import UserAPIHandler
 from metadata_backend.conf.deployment import deployment_config
-from metadata_backend.conf.oidc import oidc_config
+from metadata_backend.services.auth_service import AuthServiceHandler
+from metadata_backend.services.service_handler import ServiceHandler
 
-from .api.auth import AAIServiceHandler, AccessHandler
-from .api.handlers import auth as APIKeyHandler
-from .api.handlers import user as UserHandler
 from .api.handlers.files import FilesAPIHandler
+from .api.handlers.health import HealthAPIHandler
 from .api.handlers.object import ObjectAPIHandler
-from .api.handlers.publish import PublishSubmissionAPIHandler
-from .api.handlers.rems_proxy import RemsAPIHandler
+from .api.handlers.publish import PublishAPIHandler
+from .api.handlers.rems import RemsAPIHandler
 from .api.handlers.static import StaticHandler, html_handler_factory
 from .api.handlers.submission import SubmissionAPIHandler
-from .api.health import HealthHandler
-from .api.middlewares import authorization, http_error_handler
-from .api.resources import ResourceType, set_resource
-from .api.services.auth import AccessService
+from .api.middlewares import AUTH_SERVICE, authorization, http_error_handler
+from .api.services.auth import AuthService
 from .api.services.file import S3AllasFileProviderService
-from .api.services.project import CscProjectService, NbisProjectService
+from .api.services.project import CscProjectService, NbisProjectService, ProjectService
 from .conf.conf import (
     API_PREFIX,
     DEPLOYMENT_CSC,
@@ -42,191 +45,181 @@ from .database.postgres.services.object import ObjectService
 from .database.postgres.services.registration import RegistrationService
 from .database.postgres.services.submission import SubmissionService
 from .helpers.logger import LOG
-from .services.admin_service_handler import AdminServiceHandler
+from .services.admin_service import AdminServiceHandler
 from .services.datacite_service import DataciteServiceHandler
-from .services.keystone_service import KeystoneService
-from .services.metax_service_handler import MetaxServiceHandler
+from .services.keystone_service import KeystoneServiceHandler
+from .services.metax_service import MetaxServiceHandler
 from .services.pid_service import PIDServiceHandler
-from .services.rems_service_handler import RemsServiceHandler
+from .services.rems_service import RemsServiceHandler
 from .services.taxonomy_search_handler import TaxonomySearchHandler
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
+ServiceHandlerType = TypeVar("ServiceHandlerType", bound=ServiceHandler)
 
-async def init(
-    inject_middleware: Optional[list[Any]] = None,
-) -> web.Application:
-    """Initialise server and setup routes.
 
-    Routes should be setup by adding similar paths one after the another. (i.e.
-    ``POST`` and ``GET`` for same path grouped together). Handler method names should
-    be used for route names, so they're easy to use in other parts of the
-    application.
+async def init() -> web.Application:
+    """
+    Create the web application.
 
-    .. note:: if using variable resources (such as ``{schema}``), add
-              specific ones on top of more generic ones.
-
-    :param inject_middleware: list of middlewares to inject
-    :returns: Web Application
+    :returns: The created web application.
     """
     middlewares = [http_error_handler, authorization]
-    if inject_middleware:
-        middlewares = middlewares + inject_middleware
 
     api = web.Application(middlewares=middlewares)  # type: ignore
     server = web.Application()
 
-    # Initialise resources.
-    #
-
-    engine = await create_engine()
-    session_factory = create_session_factory(engine)
-    api_key_repository = ApiKeyRepository(session_factory)
-
-    def _set_resource(resource_type: ResourceType, resource: Any) -> None:  # noqa: ANN401
-        set_resource(api, resource_type, resource)
-        set_resource(server, resource_type, resource)
-
-    registration_repository = RegistrationRepository(session_factory)
-
-    submission_service = SubmissionService(SubmissionRepository(session_factory), registration_repository)
-    object_service = ObjectService(ObjectRepository(session_factory))
-    file_provider_service = S3AllasFileProviderService()
-    keystone_service = KeystoneService()
-
-    _set_resource(ResourceType.ACCESS_SERVICE, AccessService(api_key_repository))
-
-    if deployment_config.DEPLOYMENT == DEPLOYMENT_CSC:
-        _set_resource(ResourceType.PROJECT_SERVICE, CscProjectService())
-    elif deployment_config.DEPLOYMENT == DEPLOYMENT_NBIS:
-        _set_resource(ResourceType.PROJECT_SERVICE, NbisProjectService())
-
-    _set_resource(ResourceType.SUBMISSION_SERVICE, submission_service)
-    _set_resource(ResourceType.OBJECT_SERVICE, object_service)
-    _set_resource(ResourceType.FILE_SERVICE, FileService(FileRepository(session_factory)))
-    _set_resource(ResourceType.REGISTRATION_SERVICE, RegistrationService(registration_repository))
-    _set_resource(ResourceType.FILE_PROVIDER_SERVICE, file_provider_service)
-    _set_resource(ResourceType.KEYSTONE_SERVICE, keystone_service)
-    _set_resource(ResourceType.SESSION_FACTORY, session_factory)
-
-    # Initialize handlers.
-    #
-
-    metax_handler = MetaxServiceHandler()
-    datacite_handler = DataciteServiceHandler()
-    pid_handler = PIDServiceHandler()
-    rems_handler = RemsServiceHandler()
-    aai_handler = AAIServiceHandler()
-    taxonomy_handler = TaxonomySearchHandler()
-    admin_handler = AdminServiceHandler()
-
-    async def close_http_clients(_: web.Application) -> None:
-        """Close http client session."""
-        await metax_handler.http_client_close()
-        await datacite_handler.http_client_close()
-        await rems_handler.http_client_close()
-        await admin_handler.http_client_close()
-        await keystone_service.http_client_close()
-
-    async def on_prepare(_: web.Request, response: web.StreamResponse) -> None:
-        """Modify Server headers."""
+    # Override server header for security reasons.
+    async def override_server_header(_: web.Request, response: web.StreamResponse) -> None:
         response.headers["Server"] = "metadata"
 
-    server.on_response_prepare.append(on_prepare)
+    api.on_response_prepare.append(override_server_header)
+    server.on_response_prepare.append(override_server_header)
 
-    server.on_shutdown.append(close_http_clients)
+    # Initialise logging.
+    logging.getLogger("sqlalchemy").setLevel(logging.WARNING)
+    logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+    logging.getLogger("sqlalchemy.pool").setLevel(logging.WARNING)
 
-    _object = ObjectAPIHandler(
-        metax_handler=metax_handler,
-        datacite_handler=datacite_handler,
-        rems_handler=rems_handler,
-        admin_handler=admin_handler,
-        pid_handler=pid_handler,
-    )
-    _submission = SubmissionAPIHandler(
-        metax_handler=metax_handler,
-        datacite_handler=datacite_handler,
-        rems_handler=rems_handler,
-        admin_handler=admin_handler,
-        pid_handler=pid_handler,
-    )
-    _publish_submission = PublishSubmissionAPIHandler(
-        metax_handler=metax_handler,
-        datacite_handler=datacite_handler,
-        rems_handler=rems_handler,
-        admin_handler=admin_handler,
-        pid_handler=pid_handler,
-    )
-    _rems = RemsAPIHandler(
-        metax_handler=metax_handler,
-        datacite_handler=datacite_handler,
-        rems_handler=rems_handler,
-        admin_handler=admin_handler,
-        pid_handler=pid_handler,
-    )
-    _file = FilesAPIHandler()
+    # Create database engine.
+    engine = await create_engine()
 
+    async def dispose_engine(_: web.Application) -> None:
+        await engine.dispose()
+
+    server.on_cleanup.append(dispose_engine)
+
+    # Create database session factory.
+    session_factory = create_session_factory(engine)
+
+    # Create database repositories.
+    submission_repository = SubmissionRepository(session_factory)
+    object_repository = ObjectRepository(session_factory)
+    registration_repository = RegistrationRepository(session_factory)
+    file_repository = FileRepository(session_factory)
+    api_key_repository = ApiKeyRepository(session_factory)
+
+    # Create database services.
+    submission_service = SubmissionService(submission_repository, registration_repository)
+    object_service = ObjectService(object_repository)
+    registration_service = RegistrationService(registration_repository)
+    file_service = FileService(file_repository)
+    auth_service = AuthService(api_key_repository)
+
+    # Create project service.
+    project_service: ProjectService | None = None
+
+    config = deployment_config()
+    if config.DEPLOYMENT == DEPLOYMENT_NBIS:
+        project_service = NbisProjectService()
+    elif config.DEPLOYMENT == DEPLOYMENT_CSC:
+        project_service = CscProjectService()
+
+    # Create S3 Allas service.
+    file_provider_service = S3AllasFileProviderService()
+
+    # Create service handlers.
+    def _create_handler(handler: ServiceHandlerType) -> ServiceHandlerType:
+        server.on_cleanup.append(lambda _: handler.close())
+        return handler
+
+    metax_handler = _create_handler(MetaxServiceHandler())
+    datacite_handler = _create_handler(DataciteServiceHandler())
+    pid_handler = _create_handler(PIDServiceHandler())
+    rems_handler = _create_handler(RemsServiceHandler())
+    auth_handler = _create_handler(AuthServiceHandler())
+    if config.DEPLOYMENT == DEPLOYMENT_NBIS:
+        admin_handler = _create_handler(AdminServiceHandler())
+    else:
+        admin_handler = None
+    keystone_handler = _create_handler(KeystoneServiceHandler())
+
+    # Create API handlers.
+    services = RESTAPIServices(
+        session_factory=session_factory,
+        # Database services.
+        submission=submission_service,
+        object=object_service,
+        registration=registration_service,
+        file=file_service,
+        # Other services.
+        auth=auth_service,
+        project=project_service,
+        file_provider=file_provider_service,
+    )
+    handlers = RESTAPIServiceHandlers(
+        datacite=datacite_handler,
+        pid=pid_handler,
+        metax=metax_handler,
+        rems=rems_handler,
+        keystone=keystone_handler,
+        auth=auth_handler,
+        admin=admin_handler,
+    )
+    _object = ObjectAPIHandler(services, handlers)
+    _submission = SubmissionAPIHandler(services, handlers)
+    _publish_submission = PublishAPIHandler(services, handlers)
+    _rems = RemsAPIHandler(services, handlers)
+    _file = FilesAPIHandler(services, handlers)
+    _health = HealthAPIHandler(services, handlers)
+    _key = KeyAPIHandler(services, handlers)
+    _user = UserAPIHandler(services, handlers)
+    _taxonomy = TaxonomySearchHandler()
+
+    # Make AccessService available to authorization middleware.
+    api[AUTH_SERVICE] = auth_service
+
+    # Configure API routes.
     api_routes = [
-        # Metadata object requests.
         web.post("/submit/{workflow}", _object.add_submission),
         web.patch("/submit/{workflow}/{submissionId}", _object.update_submission),
         web.delete("/submit/{workflow}/{submissionId}", _object.delete_submission),
         web.head("/submit/{workflow}/{submissionId}", _object.is_submission),
         web.get("/submissions/{submissionId}/objects", _object.list_objects),
         web.get("/submissions/{submissionId}/objects/docs", _object.get_objects),
-        # Submission object requests.
+        # Submissions requests.
         web.get("/submissions", _submission.get_submissions),
-        web.post("/submissions", _submission.post_submission),
+        web.post("/submissions", _submission.post_submission),  # TODO(improve): deprecate endpoint
         web.get("/submissions/{submissionId}", _submission.get_submission),
         web.get("/submissions/{submissionId}/files", _submission.get_submission_files),
         web.get("/submissions/{submissionId}/registrations", _submission.get_submission_registrations),
-        web.patch("/submissions/{submissionId}", _submission.patch_submission),
-        web.delete("/submissions/{submissionId}", _submission.delete_submission),
+        web.patch("/submissions/{submissionId}", _submission.patch_submission),  # TODO(improve): deprecate endpoint
+        web.delete("/submissions/{submissionId}", _submission.delete_submission),  # TODO(improve): deprecate endpoint
         web.post("/submissions/{submissionId}/ingest", _submission.post_data_ingestion),
         # User requests.
-        web.get("/users", UserHandler.get_user),
-        # Publish request.
+        web.get("/users", _user.get_user),
+        # Publish requests.
         web.patch("/publish/{submissionId}", _publish_submission.publish_submission),
-        # Api key requests.
-        web.post("/api/keys", APIKeyHandler.post_api_key),
-        web.delete("/api/keys", APIKeyHandler.delete_api_key),
-        web.get("/api/keys", APIKeyHandler.get_api_keys),
+        # Key requests.
+        web.post("/api/keys", _key.post_api_key),
+        web.delete("/api/keys", _key.delete_api_key),
+        web.get("/api/keys", _key.get_api_keys),
         # File requests.
         web.get("/buckets", _file.get_project_buckets),
         web.get("/buckets/{bucket}/files", _file.get_files_in_bucket),
         web.put("/buckets/{bucket}", _file.grant_access_to_bucket),
         web.head("/buckets/{bucket}", _file.check_bucket_access),
+        # REMS.
+        web.get("/rems", _rems.get_organisations),
+        # Taxonomy.
+        web.get("/taxonomy", _taxonomy.get_query_results),
     ]
-
-    api_routes.append(web.get("/rems", _rems.get_workflows_licenses_from_rems))
-    api_routes.append(web.get("/taxonomy", taxonomy_handler.get_query_results))
 
     api.add_routes(api_routes)
     server.add_subapp(API_PREFIX, api)
     LOG.info("API configurations and routes loaded")
 
-    _access = AccessHandler(oidc_config)
-    aai_routes = [
-        web.get("/aai", _access.login),
-        web.get("/callback", _access.callback),
-        web.get("/logout", _access.logout),
-    ]
-    server.add_routes(aai_routes)
+    _auth = AuthAPIHandler(auth_handler)
+    auth_routes = get_auth_routes(_auth)
+    server.add_routes(auth_routes)
     LOG.info("AAI routes loaded")
-    _health = HealthHandler(
-        metax_handler=metax_handler,
-        datacite_handler=datacite_handler,
-        pid_handler=pid_handler,
-        rems_handler=rems_handler,
-        aai_handler=aai_handler,
-        admin_handler=admin_handler,
-        keystone_handler=keystone_service,
-    )
+
     health_routes = [
         web.get("/health", _health.get_health_status),
     ]
     server.add_routes(health_routes)
     LOG.info("Health routes loaded")
+
     if swagger_static_path.exists():
         swagger_handler = html_handler_factory(swagger_static_path)
         server.router.add_get("/swagger", swagger_handler)
@@ -242,17 +235,16 @@ async def init(
         server.add_routes(frontend_routes)
         LOG.info("Frontend routes loaded")
 
-    # Cleanup shared resources.
-    #
-
-    # Sqlalcehemy.
-    async def dispose_engine(_: web.Application) -> None:
-        """Dispose the SQLAlchemy engine."""
-        await engine.dispose()
-
-    server.on_cleanup.append(dispose_engine)
-
     return server
+
+
+def get_auth_routes(_auth: AuthAPIHandler) -> list[AbstractRouteDef]:
+    return [
+        web.get("/aai", _auth.login),  # TODO(improve): deprecate endpoint
+        web.get("/login", _auth.login),
+        web.get("/callback", _auth.callback),
+        web.get("/logout", _auth.logout),
+    ]
 
 
 def main() -> None:
@@ -260,7 +252,6 @@ def main() -> None:
     host = "0.0.0.0"  # nosec
     port = 5430
     web.run_app(init(), host=host, port=port, shutdown_timeout=0)
-    LOG.info("Started server on %s:%d", host, port)
 
 
 if __name__ == "__main__":

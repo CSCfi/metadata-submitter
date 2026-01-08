@@ -38,8 +38,8 @@ class Rems(StrictBaseModel):
     """REMS information."""
 
     workflowId: int
-    organizationId: str
-    licenses: list[int]
+    organizationId: str | None = None  # If given then validate against workflow id.
+    licenses: list[int] | None = None
 
 
 class SubmissionMetadata(DataCiteMetadata):

@@ -5,15 +5,15 @@ from unittest.mock import patch
 
 import jwt
 import pytest
-from pydantic import BaseModel
+from aiohttp import web
+from pydantic import BaseModel, ValidationError
 
 from metadata_backend.api.services.auth import (
     API_KEY_ID_LENGTH,
     API_KEY_LENGTH,
     JWT_ALGORITHM,
     JWT_ISSUER,
-    JWT_SECRET_ENV,
-    AccessService,
+    AuthService,
 )
 from metadata_backend.database.postgres.repositories.api_key import ApiKeyRepository
 from metadata_backend.database.postgres.repository import create_engine, create_session_factory, transaction
@@ -34,21 +34,44 @@ def jwt_config() -> Iterator[JwtConfig]:
         expiration=timedelta(minutes=10),
         jwt_secret="mock-secret",
     )
-    env_patcher = patch.dict(os.environ, {JWT_SECRET_ENV: config.jwt_secret})
+    env_patcher = patch.dict(os.environ, {"JWT_SECRET": config.jwt_secret})
     env_patcher.start()
     yield config
     env_patcher.stop()
 
 
 @pytest.fixture
-async def service() -> AccessService:
+async def service() -> AuthService:
     engine = await create_engine()
     session_factory = create_session_factory(engine)
-    return AccessService(ApiKeyRepository(session_factory))
+    return AuthService(ApiKeyRepository(session_factory))
+
+
+async def test_create_jwt_token_from_userinfo():
+    with patch.object(AuthService, "create_jwt_token", lambda user_id, user_name: f"{user_id}:{user_name}"):
+        # CSCUserName
+        userinfo = {"CSCUserName": "user", "given_name": "Alice", "family_name": "Watcher"}
+        token = await AuthService.create_jwt_token_from_userinfo(userinfo)
+        assert token == "user:Alice Watcher"
+
+        # remoteUserIdentifier
+        userinfo = {"remoteUserIdentifier": "user", "given_name": "Alice", "family_name": ""}
+        token = await AuthService.create_jwt_token_from_userinfo(userinfo)
+        assert token == "user:Alice"
+
+        # Sub
+        userinfo = {"sub": "user"}
+        token = await AuthService.create_jwt_token_from_userinfo(userinfo)
+        assert token == "user:user"
+
+        # Missing required claims
+        userinfo = {"email": "test@example.com"}
+        with pytest.raises(web.HTTPUnauthorized):
+            await AuthService.create_jwt_token_from_userinfo(userinfo)
 
 
 def test_create_jwt_token_contains_required_claims(jwt_config) -> None:
-    token = AccessService.create_jwt_token(jwt_config.user_id, jwt_config.user_name, jwt_config.expiration)
+    token = AuthService.create_jwt_token(jwt_config.user_id, jwt_config.user_name, jwt_config.expiration)
     decoded = jwt.decode(token, jwt_config.jwt_secret, algorithms=[JWT_ALGORITHM], issuer=JWT_ISSUER)
 
     assert decoded["sub"] == jwt_config.user_id
@@ -59,41 +82,41 @@ def test_create_jwt_token_contains_required_claims(jwt_config) -> None:
 
 
 def test_read_jwt_token_returns_user_id(jwt_config) -> None:
-    token = AccessService.create_jwt_token(jwt_config.user_id, jwt_config.user_name, jwt_config.expiration)
-    user_id, user_name = AccessService.validate_jwt_token(token)
+    token = AuthService.create_jwt_token(jwt_config.user_id, jwt_config.user_name, jwt_config.expiration)
+    user_id, user_name = AuthService.validate_jwt_token(token)
     assert user_id == jwt_config.user_id
     assert user_name == jwt_config.user_name
 
 
-def test_create_jwt_token_missing_secret_raises(jwt_config) -> None:
-    os.environ.pop(JWT_SECRET_ENV, None)
-    with pytest.raises(RuntimeError):
-        AccessService.create_jwt_token(jwt_config.user_id, jwt_config.user_name, jwt_config.expiration)
+def test_create_jwt_token_missing_secret_raises(jwt_config, monkeypatch) -> None:
+    monkeypatch.delenv("JWT_SECRET", raising=False)
+    with pytest.raises(ValidationError):
+        AuthService.create_jwt_token(jwt_config.user_id, jwt_config.user_name, jwt_config.expiration)
 
 
-def test_read_jwt_token_missing_secret_raises(jwt_config) -> None:
-    token = AccessService.create_jwt_token(jwt_config.user_id, jwt_config.user_name, jwt_config.expiration)
-    os.environ.pop(JWT_SECRET_ENV, None)
-    with pytest.raises(RuntimeError):
-        AccessService.validate_jwt_token(token)
+def test_read_jwt_token_missing_secret_raises(jwt_config, monkeypatch) -> None:
+    token = AuthService.create_jwt_token(jwt_config.user_id, jwt_config.user_name, jwt_config.expiration)
+    monkeypatch.delenv("JWT_SECRET", raising=False)
+    with pytest.raises(ValidationError):
+        AuthService.validate_jwt_token(token)
 
 
 def test_read_invalid_jwt_token_raises(jwt_config) -> None:
     invalid_token = "invalid"
     with pytest.raises(jwt.InvalidTokenError):
-        AccessService.validate_jwt_token(invalid_token)
+        AuthService.validate_jwt_token(invalid_token)
 
 
 def test_read_expired_jwt_token_raises(jwt_config) -> None:
-    expired_token = AccessService.create_jwt_token(jwt_config.user_id, jwt_config.user_name, timedelta(seconds=-1))
+    expired_token = AuthService.create_jwt_token(jwt_config.user_id, jwt_config.user_name, timedelta(seconds=-1))
     with pytest.raises(jwt.ExpiredSignatureError):
-        AccessService.validate_jwt_token(expired_token)
+        AuthService.validate_jwt_token(expired_token)
 
 
 def test_read_wrong_issuer_jwt_token_raises(jwt_config, session_factory) -> None:
-    token = AccessService.create_jwt_token(jwt_config.user_id, jwt_config.user_name, jwt_config.expiration)
+    token = AuthService.create_jwt_token(jwt_config.user_id, jwt_config.user_name, jwt_config.expiration)
     with pytest.raises(jwt.InvalidIssuerError):
-        jwt.decode(token, os.getenv(JWT_SECRET_ENV), algorithms=["HS256"], issuer="invalid")
+        jwt.decode(token, os.getenv("JWT_SECRET"), algorithms=["HS256"], issuer="invalid")
 
 
 async def test_hash_api_key(jwt_config, service, session_factory) -> None:

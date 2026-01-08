@@ -1,0 +1,74 @@
+"""Health API handler."""
+
+import asyncio
+
+from aiohttp import web
+from aiohttp.web import Request, Response
+
+from ...helpers.logger import LOG
+from ...services.service_handler import ServiceHandler
+from ..models.health import Health, ServiceHealth
+from .restapi import RESTAPIHandler
+
+
+class HealthAPIHandler(RESTAPIHandler):
+    """Health API handler."""
+
+    @staticmethod
+    async def get_health(handler: ServiceHandler) -> tuple[str, Health]:
+        """
+        Get service handler health using service handler's healthcheck URL.
+
+        :param handler: The service handler.
+        :returns: The service handler health.
+        """
+
+        try:
+            return handler.service_name, await handler.get_health()
+        except Exception:
+            LOG.exception(
+                "Unexpected error during health check for service '%s', url=%s",
+                handler.service_name,
+                handler.healthcheck_url,
+            )
+            return handler.service_name, Health.ERROR
+
+    async def get_health_status(self, _: Request) -> Response:
+        """
+        Get service health using service handler's healthcheck URLs.
+
+        :returns: The service health.
+        """
+
+        handlers: list[ServiceHandler] = [
+            self._handlers.datacite,
+            self._handlers.pid,
+            self._handlers.metax,
+            self._handlers.rems,
+            self._handlers.auth,
+            self._handlers.keystone,
+            self._handlers.admin,
+        ]
+
+        results: list[tuple[str, Health]] = []
+
+        async with asyncio.TaskGroup() as tg:
+            tasks = {tg.create_task(self.get_health(h)): h for h in handlers if h is not None}
+            for task in tasks:
+                key, health = await task
+                results.append((key, health))
+
+        services = dict(results)
+
+        if any(s == Health.DOWN for s in services.values()):
+            status = Health.DOWN
+        elif any(s == Health.ERROR for s in services.values()):
+            status = Health.ERROR
+        elif any(s == Health.DEGRADED for s in services.values()):
+            status = Health.DEGRADED
+        else:
+            status = Health.UP
+
+        service_health = ServiceHealth(status=status, services=services)
+
+        return web.json_response(service_health.model_dump(), status=200)

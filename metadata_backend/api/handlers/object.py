@@ -1,4 +1,4 @@
-"""HTTP handler for object related requests."""
+"""Object API handler."""
 
 from dataclasses import dataclass
 from typing import AsyncIterator, Sequence, cast
@@ -7,7 +7,6 @@ from aiohttp import BodyPartReader, web
 from aiohttp.web import Request, Response
 
 from ...database.postgres.services.submission import UnknownSubmissionUserException
-from ..auth import get_authorized_user_id
 from ..exceptions import SystemException, UserException
 from ..json import to_json_dict
 from ..models.models import Objects, Project
@@ -16,18 +15,11 @@ from ..processors.xml.bigpicture import BP_FULL_SUBMISSION_XML_OBJECT_CONFIG
 from ..processors.xml.fega import FEGA_FULL_SUBMISSION_XML_OBJECT_CONFIG
 from ..processors.xml.models import XmlObjectConfig
 from ..processors.xml.processors import XmlDocumentProcessor
-from ..resources import (
-    get_file_service,
-    get_object_service,
-    get_project_service,
-    get_session_factory,
-    get_submission_service,
-)
-from ..services.project import ProjectService
 from ..services.submission.bigpicture import BigPictureObjectSubmissionService
 from ..services.submission.sensitive_data import SensitiveDataObjectSubmissionService
 from ..services.submission.submission import ObjectSubmission, ObjectSubmissionService
-from .restapi import RESTAPIIntegrationHandler
+from .auth import get_authorized_user_id
+from .restapi import RESTAPIHandler
 from .submission import SubmissionAPIHandler
 
 
@@ -58,20 +50,18 @@ class SubmissionConfig:
 SUBMISSION_CONFIG = SubmissionConfig()
 
 
-class ObjectAPIHandler(RESTAPIIntegrationHandler):
-    """API Handler for Objects."""
+class ObjectAPIHandler(RESTAPIHandler):
+    """Object API handler."""
 
-    @staticmethod
-    async def _get_project_id(user_id: str, project_service: ProjectService) -> str:
+    async def _get_project_id(self, user_id: str) -> str:
         """
         Returns a single project id associated with the user. Raises an UserException if
         the user is not associated with a single project.
 
         :param user_id: The user id
-        :param req: HTTP request
         :returns: The project id.
         """
-        projects: list[Project] = await project_service.get_user_projects(user_id)
+        projects: list[Project] = await self._services.project.get_user_projects(user_id)
         if len(projects) != 1:
             raise UserException(
                 f"A project_id must be provided because this user is associated with {len(projects)} projects."
@@ -79,22 +69,21 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
 
         return projects[0].project_id
 
-    @staticmethod
-    async def add_submission(req: Request) -> Response:
+    async def add_submission(self, req: Request) -> Response:
         """
         Create a submission given workflow specific documents and return the submission document.
 
         :param req: POST multipart/form-data request
         :returns: The submission document.
         """
-        project_service = get_project_service(req)
+        project_service = self._services.project
         user_id = get_authorized_user_id(req)
 
         workflow_name = req.match_info["workflow"]
 
         project_id = req.query.get("projectId")
         if not project_id:
-            project_id = await ObjectAPIHandler._get_project_id(user_id, project_service)
+            project_id = await self._get_project_id(user_id)
 
         workflow = SubmissionWorkflow(workflow_name)
         if workflow not in SUBMISSION_CONFIG.add_submission_workflows:
@@ -106,20 +95,19 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         objects = await ObjectAPIHandler._get_object_submission_files(req, workflow)
 
         # Process submission.
-        object_submission_service = await ObjectAPIHandler._get_object_submission_service(req, workflow)
+        object_submission_service = await self._get_object_submission_service(workflow)
         submission = await object_submission_service.create(user_id, project_id, objects)
 
         return web.json_response(to_json_dict(submission))
 
-    @staticmethod
-    async def delete_submission(req: Request) -> Response:
+    async def delete_submission(self, req: Request) -> Response:
         """
         Delete a submission given submission id or name.
 
         :param req: HTTP request
         """
-        project_service = get_project_service(req)
-        submission_service = get_submission_service(req)
+        project_service = self._services.project
+        submission_service = self._services.submission
         user_id = get_authorized_user_id(req)
 
         workflow_name = req.match_info["workflow"]
@@ -127,7 +115,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
 
         project_id = req.query.get("projectId")
         if not project_id:
-            project_id = await ObjectAPIHandler._get_project_id(user_id, project_service)
+            project_id = await self._get_project_id(user_id)
 
         unsafe = req.query.get("unsafe", "").lower() == "true"
 
@@ -138,7 +126,14 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         try:
             # Check that submission is modifiable.
             submission_id = await SubmissionAPIHandler.check_submission_modifiable(
-                req, submission_id, workflow=workflow, project_id=project_id, search_name=True, unsafe=unsafe
+                req,
+                submission_id,
+                submission_service,
+                project_service,
+                workflow=workflow,
+                project_id=project_id,
+                search_name=True,
+                unsafe=unsafe,
             )
             # Delete submission.
             await submission_service.delete_submission(submission_id)
@@ -147,14 +142,14 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         except UnknownSubmissionUserException:
             return web.Response(status=204)
 
-    @staticmethod
-    async def is_submission(req: Request) -> Response:
+    async def is_submission(self, req: Request) -> Response:
         """
         Check if the submission exists given submission id or name.
 
         :param req: HTTP request
         """
-        project_service = get_project_service(req)
+        submission_service = self._services.submission
+        project_service = self._services.project
         user_id = get_authorized_user_id(req)
 
         workflow_name = req.match_info["workflow"]
@@ -162,7 +157,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
 
         project_id = req.query.get("projectId")
         if not project_id:
-            project_id = await ObjectAPIHandler._get_project_id(user_id, project_service)
+            project_id = await self._get_project_id(user_id)
 
         # Verify workflow.
         workflow = SubmissionWorkflow(workflow_name)
@@ -172,21 +167,27 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         try:
             # Check that submission is retrievable.
             await SubmissionAPIHandler.check_submission_retrievable(
-                req, submission_id, workflow=workflow, project_id=project_id, search_name=True
+                req,
+                submission_id,
+                submission_service,
+                project_service,
+                workflow=workflow,
+                project_id=project_id,
+                search_name=True,
             )
             return web.Response(status=204)
         except UnknownSubmissionUserException:
             return web.Response(status=404)
 
-    @staticmethod
-    async def update_submission(req: Request) -> Response:
+    async def update_submission(self, req: Request) -> Response:
         """
         Update a submission given workflow specific documents and return the submission document.
 
         :param req: POST multipart/form-data request
         :returns: The submission document.
         """
-        project_service = get_project_service(req)
+        submission_service = self._services.submission
+        project_service = self._services.project
 
         user_id = get_authorized_user_id(req)
         workflow_name = req.match_info["workflow"]
@@ -194,7 +195,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
 
         project_id = req.query.get("projectId")
         if not project_id:
-            project_id = await ObjectAPIHandler._get_project_id(user_id, project_service)
+            project_id = await self._get_project_id(user_id)
 
         unsafe = req.query.get("unsafe", "").lower() == "true"
 
@@ -205,14 +206,21 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         try:
             # Check that submission is modifiable.
             submission_id = await SubmissionAPIHandler.check_submission_modifiable(
-                req, submission_id, workflow=workflow, project_id=project_id, search_name=True, unsafe=unsafe
+                req,
+                submission_id,
+                submission_service,
+                project_service,
+                workflow=workflow,
+                project_id=project_id,
+                search_name=True,
+                unsafe=unsafe,
             )
         except UnknownSubmissionUserException:
             return web.Response(status=404)
 
         # Update submission.
         objects = await ObjectAPIHandler._get_object_submission_files(req, workflow)
-        object_submission_service = await ObjectAPIHandler._get_object_submission_service(req, workflow)
+        object_submission_service = await self._get_object_submission_service(workflow)
         submission = await object_submission_service.update(user_id, project_id, submission_id, objects)
 
         return web.json_response(to_json_dict(submission))
@@ -224,8 +232,9 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         :param req: GET request
         :returns: Metadata objects in a submission.
         """
-        submission_service = get_submission_service(req)
-        object_service = get_object_service(req)
+        submission_service = self._services.submission
+        object_service = self._services.object
+        project_service = self._services.project
 
         submission_id = req.match_info["submissionId"]
         project_id = req.query.get("projectId")  # Optional project id. Required to search submission name.
@@ -235,7 +244,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         # Check that the submission is retrievable.
         try:
             submission_id = await SubmissionAPIHandler.check_submission_retrievable(
-                req, submission_id, project_id=project_id, search_name=True
+                req, submission_id, submission_service, project_service, project_id=project_id, search_name=True
             )
         except UnknownSubmissionUserException:
             return web.Response(status=404)
@@ -272,8 +281,9 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         :param req: GET request
         :returns: Metadata documents in a submission.
         """
-        submission_service = get_submission_service(req)
-        object_service = get_object_service(req)
+        submission_service = self._services.submission
+        object_service = self._services.object
+        project_service = self._services.project
 
         submission_id = req.match_info["submissionId"]
         project_id = req.query.get("projectId")  # Optional project id. Required to search submission name.
@@ -284,7 +294,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
 
         # Check that the submission can be retrieved by the user.
         submission_id = await SubmissionAPIHandler.check_submission_retrievable(
-            req, submission_id, project_id=project_id, search_name=True
+            req, submission_id, submission_service, project_service, project_id=project_id, search_name=True
         )
         # Get workflow and project id from the submission.
         workflow = await submission_service.get_workflow(submission_id)
@@ -360,20 +370,18 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
 
         raise web.HTTPBadRequest()
 
-    @staticmethod
-    async def _get_object_submission_service(req: Request, workflow: SubmissionWorkflow) -> ObjectSubmissionService:
+    async def _get_object_submission_service(self, workflow: SubmissionWorkflow) -> ObjectSubmissionService:
         """
         Get object submission service.
 
-        :param req: HTTP request
         :param workflow: The submission workflow.
         :return: The object submission service.
         """
-        project_service = get_project_service(req)
-        submission_service = get_submission_service(req)
-        object_service = get_object_service(req)
-        file_service = get_file_service(req)
-        session_factory = get_session_factory(req)
+        project_service = self._services.project
+        submission_service = self._services.submission
+        object_service = self._services.object
+        file_service = self._services.file
+        session_factory = self._services.session_factory
 
         if workflow == SubmissionWorkflow.SD:
             return SensitiveDataObjectSubmissionService(

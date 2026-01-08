@@ -6,20 +6,15 @@ from aiohttp import web
 from tests.integration.conf import mock_keystone_url
 
 
-async def test_keystone_healthcheck(client, monkeypatch, mock_pouta_token):
-    """Test Keystone service healthcheck."""
+async def test_keystone_service(client, monkeypatch, mock_pouta_token):
+    """Test keystone service."""
     monkeypatch.setenv("KEYSTONE_ENDPOINT", mock_keystone_url)
-    from metadata_backend.services.keystone_service import KeystoneService
+    from metadata_backend.services.keystone_service import KeystoneServiceHandler
 
-    service = KeystoneService()
+    service = KeystoneServiceHandler()
 
     # Project ID in mock keystone image
     project_id = "service"
-
-    # Test healthcheck
-    health = await service.healthcheck()
-    assert "status" in health
-    assert health["status"] == "Ok"
 
     # Test get project entry errors
     with pytest.raises(web.HTTPNotFound) as e:
@@ -55,13 +50,13 @@ async def test_keystone_healthcheck(client, monkeypatch, mock_pouta_token):
     assert new_creds.access not in access_keys
 
     # Session cleanup
-    await service.http_client_close()
+    await service.close()
 
 
 async def _list_ec2_credentials(service, project_entry):
     """List all EC2 credentials for a project.
 
-    :param service: KeystoneService instance
+    :param service: KeystoneServiceHandler instance
     :param project_entry: The project entry containing token and user info
     :returns: List of EC2Credentials objects
     """

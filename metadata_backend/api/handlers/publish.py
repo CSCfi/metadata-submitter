@@ -1,76 +1,40 @@
-"""Handle HTTP methods for server."""
+"""Publish API handler."""
 
-import os
 import traceback
 from datetime import datetime
-from typing import Any
 
 from aiohttp import web
 from aiohttp.web import Request, Response
 
 from ...conf.deployment import deployment_config
-from ...database.postgres.services.object import ObjectService
-from ...database.postgres.services.registration import RegistrationService
 from ...helpers.logger import LOG
 from ..exceptions import SystemException, UserException
 from ..json import to_json
 from ..models.datacite import DataCiteMetadata
 from ..models.models import File, Registration
 from ..models.submission import Rems, Submission, SubmissionMetadata, SubmissionWorkflow
-from ..resources import (
-    get_file_provider_service,
-    get_file_service,
-    get_object_service,
-    get_registration_service,
-    get_submission_service,
-)
 from ..services.datacite import DataciteService
 from ..services.publish import PublishConfig, PublishSource, get_publish_config
-from .restapi import RESTAPIIntegrationHandler
+from .restapi import RESTAPIHandler
 from .submission import SubmissionAPIHandler
 
 
-class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
-    """API Handler for publishing submissions."""
+class PublishAPIHandler(RESTAPIHandler):
+    """Publish API handler."""
 
-    @staticmethod
-    def _make_discovery_url(registration: Registration, publish_config: PublishConfig) -> str:
-        """Make a discovery url.
+    def _get_rems_discovery_url(self, registration: Registration, publish_config: PublishConfig) -> str:
+        """Get REMS discovery url.
 
         :param registration: The registration
         :param publish_config: The discovery service configuration
         :returns: The discovery URL
         """
         if publish_config.use_metax_service:
-            return PublishSubmissionAPIHandler._make_metax_discovery_url(registration.metaxId)
+            return self._handlers.rems.get_discovery_url(registration.metaxId)
         if publish_config.use_bp_beacon_service:
-            return PublishSubmissionAPIHandler._make_beacon_discovery_url(registration.doi)
+            return self._handlers.rems.get_discovery_url(registration.doi)
 
         raise SystemException(f"Invalid publish configuration: {to_json(publish_config)}")
-
-    @staticmethod
-    def _make_metax_discovery_url(metax_id: str) -> str:
-        """Make a discovery url that points to Metax.
-
-        :param metax_id: The Metax ID
-        :returns: The discovery URL
-        """
-        try:
-            return f"{os.environ['METAX_DISCOVERY_URL']}{metax_id}"
-        except KeyError as ex:
-            raise SystemException("Missing required environment variable: METAX_DISCOVERY_URL") from ex
-
-    @staticmethod
-    def _make_beacon_discovery_url(doi: str) -> str:
-        """Make a discovery url that points to Beacon.
-
-        :param doi: The DOI
-        :returns: The discovery URL
-        """
-        try:
-            return f"{os.environ['BEACON_DISCOVERY_URL']}{doi}"
-        except KeyError as ex:
-            raise SystemException("Missing required environment variable: BEACON_DISCOVERY_URL") from ex
 
     async def _register_draft_doi(self, publish_config: PublishConfig) -> str:
         """Register a draft DOI through Datacite directly or through CSC PID.
@@ -80,9 +44,9 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         """
         try:
             if publish_config.use_datacite_service:
-                return await self.datacite_handler.create_draft_doi()
+                return await self._handlers.datacite.create_draft_doi()
             if publish_config.use_pid_service:
-                return await self.pid_handler.create_draft_doi()
+                return await self._handlers.pid.create_draft_doi()
         except Exception as ex:
             raise SystemException("Failed to register DOI using DataCite. Please try again later.") from ex
 
@@ -90,7 +54,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
 
     async def _register_metax_id(self, submission_id: str, registration: Registration) -> None:
         try:
-            metax_id = await self.metax_handler.create_draft_dataset(
+            metax_id = await self._handlers.metax.create_draft_dataset(
                 registration.doi, registration.title, registration.description
             )
             registration.metaxId = metax_id
@@ -101,27 +65,22 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
             ) from ex
 
     async def _publish_datacite(
-        self,
-        registration: Registration,
-        datacite: DataCiteMetadata,
-        registration_service: RegistrationService,
-        publish_config: PublishConfig,
+        self, registration: Registration, datacite: DataCiteMetadata, publish_config: PublishConfig
     ) -> None:
         """Publish to DataCite.
 
         :param registration: The registration
         :param datacite: The DataCite metadata
-        :param registration_service: The registration service
         :param publish_config: The publish configuration
         """
         try:
-            discovery_url = self._make_discovery_url(registration, publish_config)
+            discovery_url = self._get_rems_discovery_url(registration, publish_config)
 
             if not registration.dataciteUrl:
                 if publish_config.use_datacite_service:
-                    publish_service: DataciteService = self.datacite_handler
+                    publish_service: DataciteService = self._handlers.datacite
                 elif publish_config.use_pid_service:
-                    publish_service = self.pid_handler
+                    publish_service = self._handlers.pid
                 else:
                     raise SystemException(f"Invalid publish configuration: {to_json(publish_config)}")
 
@@ -132,7 +91,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
                     require_okm_field_of_science=publish_config.require_okm_field_of_science,
                 )
 
-                await registration_service.update_datacite_url(registration.submissionId, discovery_url)
+                await self._services.registration.update_datacite_url(registration.submissionId, discovery_url)
         except Exception as ex:
             raise SystemException(
                 f"Failed to publish submission in DataCite. Please try again later: {str(ex)}"
@@ -145,72 +104,53 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         :param metadata: The submission metadata
         """
         try:
-            await self.metax_handler.update_dataset_metadata(metadata, registration.metaxId)
+            await self._handlers.metax.update_dataset_metadata(metadata, registration.metaxId)
         except Exception as ex:
             raise SystemException(
                 f"Failed to update submission '{registration.submissionId}' in Metax. Please try again later."
             ) from ex
 
-    async def _publish_rems(
-        self,
-        rems: Rems,
-        registration: Registration,
-        publish_config: PublishConfig,
-        registration_service: RegistrationService,
-    ) -> None:
+    async def _publish_rems(self, rems: Rems, registration: Registration, publish_config: PublishConfig) -> None:
         """Prepare dictionary with values to be published to REMS. Adds the metax id if available.
 
         :param rems: The rems data
         :param registration: The registration
         :param publish_config: The publish configuration
-        :param registration_service: The registration service.
         """
         try:
-            data: dict[str, Any] = {
-                "accession_id": registration.objectId,
-                "schema": registration.objectType,
-                "doi": registration.doi,
-                "description": registration.description,
-                "localizations": {
-                    "en": {
-                        "title": registration.title,
-                        "infourl": self._make_discovery_url(registration, publish_config),
-                    }
-                },
-            }
-            if registration.metaxId:
-                data.update({"metaxIdentifier": registration.metaxId})
-
             if not registration.remsResourceId:
-                resource_id = await self.rems_handler.create_resource(
-                    doi=registration.doi, organization_id=rems.organizationId, licenses=rems.licenses
+                resource_id = await self._handlers.rems.create_resource(
+                    rems.organizationId, rems.workflowId, rems.licenses, registration.doi
                 )
-                await registration_service.update_rems_resource_id(registration.submissionId, str(resource_id))
+                await self._services.registration.update_rems_resource_id(registration.submissionId, str(resource_id))
                 registration.remsResourceId = str(resource_id)
             else:
                 resource_id = int(registration.remsResourceId)
 
             if not registration.remsCatalogueId:
-                catalogue_id = await self.rems_handler.create_catalogue_item(
-                    resource_id=resource_id,
-                    workflow_id=rems.workflowId,
-                    organization_id=rems.organizationId,
-                    localizations=data["localizations"],
+                catalogue_id = str(
+                    await self._handlers.rems.create_catalogue_item(
+                        rems.organizationId,
+                        rems.workflowId,
+                        resource_id,
+                        registration.title,
+                        self._get_rems_discovery_url(registration, publish_config),
+                    )
                 )
-                await registration_service.update_rems_catalogue_id(registration.submissionId, catalogue_id)
+                await self._services.registration.update_rems_catalogue_id(registration.submissionId, catalogue_id)
                 registration.remsCatalogueId = catalogue_id
             else:
                 catalogue_id = registration.remsCatalogueId
 
             if not registration.remsUrl:
-                rems_url = self.rems_handler.application_url(catalogue_id)
+                rems_url = self._handlers.rems.get_application_url(catalogue_id)
 
                 # Add rems URL to Metax description.
                 if registration.metaxId:
                     new_description = registration.description + f"\n\nSD Apply's Application link: {rems_url}"
-                    await self.metax_handler.update_dataset_description(registration.metaxId, new_description)
+                    await self._handlers.metax.update_dataset_description(registration.metaxId, new_description)
 
-                await registration_service.update_rems_url(registration.submissionId, rems_url)
+                await self._services.registration.update_rems_url(registration.submissionId, rems_url)
                 registration.remsUrl = rems_url
         except Exception as ex:
             LOG.error(
@@ -232,7 +172,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         :param registration: The registration
         """
         try:
-            await self.metax_handler.publish_dataset(registration.metaxId, registration.doi)
+            await self._handlers.metax.publish_dataset(registration.metaxId, registration.doi)
         except Exception as ex:
             raise SystemException(
                 f"Failed to publish submission '{registration.submissionId}' to Metax. Please try again later."
@@ -253,16 +193,15 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         submission_id = req.match_info["submissionId"]
         # Hidden parameter to allow submission to be published without files.
         no_files = req.rel_url.query.get("no_files") == "true"
-        submission_service = get_submission_service(req)
-        object_service = get_object_service(req)
-        file_service = get_file_service(req)
-        registration_service = get_registration_service(req)
-        file_provider_service = get_file_provider_service(req)
+        submission_service = self._services.submission
+        project_service = self._services.project
+        file_service = self._services.file
+        file_provider_service = self._services.file_provider
 
         # Check that the user can modify this submission.
-        await SubmissionAPIHandler.check_submission_modifiable(req, submission_id)
+        await SubmissionAPIHandler.check_submission_modifiable(req, submission_id, submission_service, project_service)
 
-        workflow = await submission_service.get_workflow(submission_id)
+        workflow = await self._services.submission.get_workflow(submission_id)
 
         # Get publish configuration.
         publish_config = get_publish_config(workflow)
@@ -310,10 +249,8 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         if publish_config.use_rems_service and not rems:
             raise UserException(f"Submission '{submission_id}' does not have required REMS information.")
 
-        if deployment_config.ALLOW_REGISTRATION:
-            await self._register_submission(
-                submission, datacite, rems, object_service, registration_service, publish_config
-            )
+        if deployment_config().ALLOW_REGISTRATION:
+            await self._register_submission(submission, datacite, rems, publish_config)
 
         # Update submission status to published.
         await submission_service.publish(submission_id)
@@ -322,13 +259,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         return web.Response(body=to_json({"submissionId": submission_id}), status=200, content_type="application/json")
 
     async def _register_submission(
-        self,
-        submission: Submission,
-        datacite: DataCiteMetadata,
-        rems: Rems,
-        object_service: ObjectService,
-        registration_service: RegistrationService,
-        publish_config: PublishConfig,
+        self, submission: Submission, datacite: DataCiteMetadata, rems: Rems, publish_config: PublishConfig
     ) -> None:
         """
         Register submission with external discovery services.
@@ -336,10 +267,11 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         :param submission: The submission
         :param datacite: The datacite metadata
         :param rems: The rems metadata
-        :param object_service: The object service
-        :param registration_service: The registration service
         :param publish_config: The publish configuration
         """
+
+        object_service = self._services.object
+        registration_service = self._services.registration
 
         submission_id = submission.submissionId
 
@@ -391,12 +323,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         # Publish to DataCite. Requires DOIs. Modifies the datacite information.
         if publish_config.use_pid_service or publish_config.use_datacite_service:
-            await self._publish_datacite(
-                registration,
-                datacite,
-                registration_service,
-                publish_config,
-            )
+            await self._publish_datacite(registration, datacite, publish_config)
 
         # Update Metax with DOI information.
         if publish_config.use_metax_service:
@@ -407,7 +334,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         # Publish to REMS and add REMS URL to Metax draft description.
         if publish_config.use_rems_service:
-            await self._publish_rems(rems, registration, publish_config, registration_service)
+            await self._publish_rems(rems, registration, publish_config)
 
         # Publish to Metax.
         if publish_config.use_metax_service:

@@ -1,25 +1,28 @@
-"""Class for integrating with Admin API service."""
+"""NeIC SDA Admin service."""
 
-import time
 from typing import Any, cast
 
-from aiohttp import ClientTimeout, web
-from aiohttp.client_exceptions import ClientConnectorError, InvalidURL
+from aiohttp import web
 from yarl import URL
 
-from ..conf.conf import admin_config
+from ..conf.admin import admin_config
 from ..helpers.logger import LOG
 from .service_handler import ServiceHandler
 
 
 class AdminServiceHandler(ServiceHandler):
-    """API Handler for Admin API service."""
-
-    service_name = "Admin"
+    """NeIC SDA Admin service."""
 
     def __init__(self) -> None:
-        """Get Admin API credentials from config."""
-        super().__init__(base_url=URL(admin_config["url"]))
+        """NeIC SDA Admin service."""
+
+        self._config = admin_config()
+
+        super().__init__(
+            service_name="admin",
+            base_url=URL(self._config.ADMIN_URL),
+            healthcheck_url=URL(self._config.ADMIN_URL) / "ready",
+        )
 
     @staticmethod
     def get_admin_auth_headers(req: web.Request) -> dict[str, str]:
@@ -94,35 +97,3 @@ class AdminServiceHandler(ServiceHandler):
         admin_auth_headers = self.get_admin_auth_headers(req)
         await self._request(method="POST", path=f"/dataset/release/{dataset}", headers=admin_auth_headers)
         LOG.info("Dataset %s has been released", dataset)
-
-    async def healthcheck(self) -> dict[str, Any]:
-        """Check Admin service readiness.
-
-        This can return 200 or 503.
-
-        :returns: Dict with status of the Admin API
-        """
-        try:
-            start = time.time()
-            async with self._client.request(
-                method="GET",
-                url=f"{self.base_url}/ready",
-                timeout=ClientTimeout(total=10),
-            ) as response:
-                content = await response.text()
-                LOG.info("ADMIN API response content is: %s.", content)
-                if response.status == 200:
-                    status = "Ok" if (time.time() - start) < 1000 else "Degraded"
-                else:
-                    status = "Down"
-
-                return {"status": status}
-        except ClientConnectorError as e:
-            LOG.exception("Admin API is down with error: %r.", e)
-            return {"status": "Down"}
-        except InvalidURL as e:
-            LOG.exception("Admin API status retrieval failed with: %r.", e)
-            return {"status": "Error"}
-        except web.HTTPError as e:
-            LOG.exception("Admin API status retrieval failed with: %r.", e)
-            return {"status": "Error"}

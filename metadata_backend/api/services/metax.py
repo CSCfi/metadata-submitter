@@ -1,10 +1,12 @@
-"""Class for mapping Submitter metadata to Metax metadata."""
+"""Metax services."""
 
 from datetime import datetime
 from typing import Any
 
-from ..api.exceptions import UserException
-from ..api.models.datacite import (
+from ...conf.conf import METAX_REFERENCE_DATA
+from ...helpers.logger import LOG
+from ..exceptions import UserException
+from ..models.datacite import (
     Contributor,
     Creator,
     Date,
@@ -13,7 +15,7 @@ from ..api.models.datacite import (
     Publisher,
     Subject,
 )
-from ..api.models.metax import (
+from ..models.metax import (
     Actor,
     FieldOfScience,
     Funder,
@@ -28,21 +30,19 @@ from ..api.models.metax import (
     Spatial,
     Temporal,
 )
-from ..api.models.submission import SubmissionMetadata
-from ..api.services.publish import check_subject_format
-from ..conf.conf import METAX_REFERENCE_DATA
-from ..helpers.logger import LOG
+from ..models.submission import SubmissionMetadata
+from ..services.publish import check_subject_format
 
 
-class MetaDataMapper:
-    """This helper class maps data from Datacite's metadata to Metax's dataset fields."""
+class MetaxMapper:
+    """Map DataCite metadata to Metax metadata."""
 
     def __init__(
         self,
         metax_data: dict[str, Any],
         metadata: SubmissionMetadata,
     ) -> None:
-        """Set variables.
+        """Map DataCite metadata to Metax metadata.
 
         :param metax_data: Metax's data
         :param metadata: The submission metadata
@@ -89,7 +89,7 @@ class MetaDataMapper:
         """Map Metax's actors.
 
         :param creators: Datacite's creators
-        :param contributors: Datacit's contributors
+        :param contributors: Datacite's contributors
         """
         LOG.info("Mapping Metax's creators or contributors.")
 
