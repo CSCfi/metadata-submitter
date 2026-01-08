@@ -22,6 +22,7 @@ from metadata_backend.api.processors.xml.bigpicture import (
     BP_STAINING_OBJECT_TYPE,
 )
 from metadata_backend.api.services.accession import generate_bp_accession, generate_default_accession
+from metadata_backend.conf.bigpicture import bp_config
 
 
 def test_generate_default_accession_format():
@@ -31,30 +32,29 @@ def test_generate_default_accession_format():
     assert re.match(pattern, accession), f"Generated accession '{accession}' is not a valid ULID"
 
 
-def assert_bp_accession_format(accession_center: str, accession_type: str, object_type: str):
+def assert_bp_accession_format(center_id: str, accession_type: str, object_type: str):
     accession = generate_bp_accession(object_type)
-    pattern = rf"^{accession_center}-{accession_type}-[a-hjkmnp-z2-9]{{6}}-[a-hjkmnp-z2-9]{{6}}$"
+    pattern = rf"^{center_id}-{accession_type}-[a-hjkmnp-z2-9]{{6}}-[a-hjkmnp-z2-9]{{6}}$"
     assert re.match(pattern, accession), f"Accession '{accession}' does not match the expected pattern '{pattern}'"
 
 
 def test_generate_bp_accession_format():
-    center_name = "TEST"
-    with patch.dict(os.environ, {"BP_CENTER_ID": center_name}, clear=True):
-        assert_bp_accession_format(center_name, "annotation", BP_ANNOTATION_OBJECT_TYPE)
-        assert_bp_accession_format(center_name, "dataset", BP_DATASET_OBJECT_TYPE)
-        assert_bp_accession_format(center_name, "image", BP_IMAGE_OBJECT_TYPE)
-        assert_bp_accession_format(center_name, "landingpage", BP_LANDING_PAGE_OBJECT_TYPE)
-        assert_bp_accession_format(center_name, "observation", BP_OBSERVATION_OBJECT_TYPE)
-        assert_bp_accession_format(center_name, "observer", BP_OBSERVER_OBJECT_TYPE)
-        assert_bp_accession_format(center_name, "organisation", BP_ORGANISATION_OBJECT_TYPE)
-        assert_bp_accession_format(center_name, "policy", BP_POLICY_OBJECT_TYPE)
-        assert_bp_accession_format(center_name, "rems", BP_REMS_OBJECT_TYPE)
-        assert_bp_accession_format(center_name, "sample", BP_SAMPLE_BIOLOGICAL_BEING_OBJECT_TYPE)
-        assert_bp_accession_format(center_name, "sample", BP_SAMPLE_SLIDE_OBJECT_TYPE)
-        assert_bp_accession_format(center_name, "sample", BP_SAMPLE_SPECIMEN_OBJECT_TYPE)
-        assert_bp_accession_format(center_name, "sample", BP_SAMPLE_BLOCK_OBJECT_TYPE)
-        assert_bp_accession_format(center_name, "sample", BP_SAMPLE_CASE_OBJECT_TYPE)
-        assert_bp_accession_format(center_name, "staining", BP_STAINING_OBJECT_TYPE)
+    center_id = bp_config().BP_CENTER_ID
+    assert_bp_accession_format(center_id, "annotation", BP_ANNOTATION_OBJECT_TYPE)
+    assert_bp_accession_format(center_id, "dataset", BP_DATASET_OBJECT_TYPE)
+    assert_bp_accession_format(center_id, "image", BP_IMAGE_OBJECT_TYPE)
+    assert_bp_accession_format(center_id, "landingpage", BP_LANDING_PAGE_OBJECT_TYPE)
+    assert_bp_accession_format(center_id, "observation", BP_OBSERVATION_OBJECT_TYPE)
+    assert_bp_accession_format(center_id, "observer", BP_OBSERVER_OBJECT_TYPE)
+    assert_bp_accession_format(center_id, "organisation", BP_ORGANISATION_OBJECT_TYPE)
+    assert_bp_accession_format(center_id, "policy", BP_POLICY_OBJECT_TYPE)
+    assert_bp_accession_format(center_id, "rems", BP_REMS_OBJECT_TYPE)
+    assert_bp_accession_format(center_id, "sample", BP_SAMPLE_BIOLOGICAL_BEING_OBJECT_TYPE)
+    assert_bp_accession_format(center_id, "sample", BP_SAMPLE_SLIDE_OBJECT_TYPE)
+    assert_bp_accession_format(center_id, "sample", BP_SAMPLE_SPECIMEN_OBJECT_TYPE)
+    assert_bp_accession_format(center_id, "sample", BP_SAMPLE_BLOCK_OBJECT_TYPE)
+    assert_bp_accession_format(center_id, "sample", BP_SAMPLE_CASE_OBJECT_TYPE)
+    assert_bp_accession_format(center_id, "staining", BP_STAINING_OBJECT_TYPE)
 
 
 def test_generate_bp_accession_invalid_type():

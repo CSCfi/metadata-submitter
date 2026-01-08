@@ -18,11 +18,11 @@ the table below.
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
 | ENV                            | Default                       | Description                                                                       | Mandatory |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
-| ``PG_DATABASE_URL``            |                               | Connection URL for the PostgreSQL database.                                       | Yes       |
+| ``DATABASE_URL``               |                               | Connection URL for the PostgreSQL database.                                       | Yes       |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
-| ``AAI_CLIENT_SECRET``          | ``public```                   | OIDC client secret.                                                               | Yes       |
+| ``OIDC_CLIENT_SECRET``         | ``public```                   | OIDC client secret.                                                               | Yes       |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
-| ``AAI_CLIENT_ID``              | ``secret``                    | OIDC client ID.                                                                   | Yes       |
+| ``OIDC_CLIENT_ID``             | ``secret``                    | OIDC client ID.                                                                   | Yes       |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
 | ``BASE_URL``                   | ``http://localhost:5430``     | base URL of the metadata submitter.                                               | Yes       |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
@@ -83,7 +83,7 @@ The Authentication follows the `OIDC Specification <https://openid.net/specs/ope
 We follow the steps of the OpenID Connect protocol.
 
 - The RP (Client) sends a request to the OpenID Provider (OP),
-  for this we require ``AAI_CLIENT_SECRET``, ``AAI_CLIENT_ID``, ``OIDC_URL`` and a callback url constructed from ``BASE_URL``.
+  for this we require ``OIDC_CLIENT_SECRET``, ``OIDC_CLIENT_ID``, ``OIDC_URL`` and a callback url constructed from ``BASE_URL``.
 - The OP authenticates the End-User and obtains authorization.
 - The OP responds with an ID Token and usually an Access Token, which are validated with configuration provided by ``OIDC_URL``.
 - The RP can send a request with the Access Token to the UserInfo Endpoint.
@@ -96,9 +96,9 @@ endpoint ``https://<provider_url>/.well-known/openid-configuration``.
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
 | ENV                            | Default                       | Description                                                                       | Mandatory |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
-| ``AAI_CLIENT_SECRET``          | ``public```                   | OIDC client secret.                                                               | Yes       |
+| ``OIDC_CLIENT_SECRET``         | ``public```                   | OIDC client secret.                                                               | Yes       |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
-| ``AAI_CLIENT_ID``              | ``secret``                    | OIDC client ID.                                                                   | Yes       |
+| ``OIDC_CLIENT_ID``             | ``secret``                    | OIDC client ID.                                                                   | Yes       |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
 | ``BASE_URL``                   | ``http://localhost:5430``     | base URL of the metadata submitter.                                               | Yes       |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+

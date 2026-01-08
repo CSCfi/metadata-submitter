@@ -1,7 +1,6 @@
 """Service to verify that the user has access to the given projects."""
 
 import json
-import os
 from abc import ABC, abstractmethod
 from typing import override
 from urllib.parse import urlparse
@@ -10,13 +9,10 @@ from aiocache import SimpleMemoryCache, cached
 from aiohttp import web
 from ldap3 import Connection, Server
 
+from ...conf.ldap import csc_ldap_config
 from ...helpers.logger import LOG
 from ..exceptions import SystemException
 from ..models.models import Project
-
-CSC_LDAP_HOST_ENV = "CSC_LDAP_HOST"
-CSC_LDAP_USER_ENV = "CSC_LDAP_USER"
-CSC_LDAP_PASSWORD_ENV = "CSC_LDAP_PASSWORD"  # nosec
 
 CSC_LDAP_DN = "ou=idm,dc=csc,dc=fi"
 CSC_LDAP_PROJECT_ATTRIBUTE = "CSCPrjNum"
@@ -107,15 +103,11 @@ class LdapProjectService(ProjectService):
             user_id: The user ID.
         """
 
-        def _env(key: str, default_value: str | None = None) -> str:
-            value = os.getenv(key, default_value)
-            if value is None:
-                raise RuntimeError(f"Missing required environment variable: {key}")
-            return value
+        config = csc_ldap_config()
 
-        host = _env(CSC_LDAP_HOST_ENV)
-        user = _env(CSC_LDAP_USER_ENV)
-        password = _env(CSC_LDAP_PASSWORD_ENV)
+        host = config.CSC_LDAP_HOST
+        user = config.CSC_LDAP_USER
+        password = config.CSC_LDAP_PASSWORD
 
         parsed = urlparse(host)
         scheme = parsed.scheme.lower()

@@ -10,7 +10,6 @@ FORMAT = "[%(asctime)s][%(name)s][%(process)d %(processName)s][%(levelname)-8s](
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 logging.basicConfig(format=FORMAT, datefmt=DATE_FORMAT)
 
-
 testfiles_root = Path(__file__).parent.parent / "test_files"
 test_fega_xml_files = [
     ("study", "SRP000539.xml"),
@@ -50,6 +49,7 @@ base_url = os.getenv("BASE_URL", "http://localhost:5430")
 mock_auth_url = os.getenv("OIDC_URL", "http://localhost:8000")
 objects_url = f"{base_url}{API_PREFIX}/objects"
 submissions_url = f"{base_url}{API_PREFIX}/submissions"
+rems_url = f"{base_url}{API_PREFIX}/rems"
 publish_url = f"{base_url}{API_PREFIX}/publish"
 announce_url = f"{base_url}{API_PREFIX}/announce"
 schemas_url = f"{base_url}{API_PREFIX}/schemas"
@@ -59,6 +59,7 @@ datacite_url = f"{os.getenv('DATACITE_API', 'http://localhost:8001')}"
 mock_pid_prefix = "10.80869"
 taxonomy_url = f"{base_url}{API_PREFIX}/taxonomy"
 admin_url = f"{os.getenv('ADMIN_URL', 'http://localhost:8004')}"
+
 auth = aiohttp.BasicAuth(os.getenv("METAX_USER", "sd"), os.getenv("METAX_PASS", "test"))
 mock_s3_url = f"{os.getenv('S3_ENDPOINT', 'http://localhost:8006')}"
 mock_s3_region = f"{os.getenv('S3_REGION', 'us-east-1')}"

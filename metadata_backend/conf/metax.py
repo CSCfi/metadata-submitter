@@ -13,4 +13,8 @@ class MetaxConfig(BaseSettings):
     METAX_TOKEN: str = Field(description="Metax authentication token")
 
 
-metax_config = MetaxConfig()
+def metax_config() -> MetaxConfig:
+    """Get Metax configuration."""
+
+    # Avoid loading environment variables when module is imported.
+    return MetaxConfig()

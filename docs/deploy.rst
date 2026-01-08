@@ -60,7 +60,7 @@ The production image can be built and run with following docker commands:
     docker build --no-cache -f dockerfiles/Dockerfile -t cscfi/metadata-submitter .
     docker run -p 5430:5430 cscfi/metadata-submitter
 
-.. important:: Requires a PostgreSQL database configured using the PG_DATABASE_URL environment variable.
+.. important:: Requires a PostgreSQL database configured using the DATABASE_URL environment variable.
 
 Kubernetes Deployment
 ~~~~~~~~~~~~~~~~~~~~~

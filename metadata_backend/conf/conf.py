@@ -11,7 +11,6 @@ AAI server is needed to authenticate users and get their user ID.
 External services are queried from the application, e.g. Datacite for DOIs.
 """
 
-import os
 from pathlib import Path
 from typing import Any
 
@@ -56,17 +55,6 @@ for ref_file in file_names:
     with open(ref_file_path, "r", encoding="utf-8") as file:
         METAX_REFERENCE_DATA[ref_file.replace(".json", "")] = ujson.load(file)
 
-rems_config = {
-    "id": os.getenv("REMS_USER_ID", "sd"),
-    "key": os.getenv("REMS_KEY", "test"),
-    "url": os.getenv("REMS_URL", "http://mockrems:8003"),
-}
-
-admin_config = {
-    "url": os.getenv("ADMIN_URL", "http://mockadmin:8004"),
-}
-
-BP_REMS_SCHEMA_TYPE = "bprems"  # Metadata object itself is not stored.
 
 TAXONOMY_NAME_DATA: dict[str, dict[Any, Any]] = {}
 # Load taxonomy name data into a single dict
@@ -77,5 +65,3 @@ if not TAXONOMY_NAME_FILE.is_file():
 
 with open(TAXONOMY_NAME_FILE, "r", encoding="utf-8") as file:
     TAXONOMY_NAME_DATA = ujson.load(file)
-
-POLLING_INTERVAL = int(os.getenv("POLLING_INTERVAL", "3600"))

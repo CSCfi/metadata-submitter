@@ -41,18 +41,6 @@ async def test_get_user_projects_csc() -> None:
             mock_get_connection.assert_called_once_with(ldap_host, ldap_port, ldap_user, ldap_password, ldap_ssl)
 
 
-async def test_get_user_projects_csc_missing_env() -> None:
-    """Test get user projects for CSC deployment (LDAP) when env variable is missing."""
-    service = CscProjectService()
-
-    with patch.dict(
-        os.environ,
-        {},
-    ):
-        with pytest.raises(Exception, match="Missing required environment variable: CSC_LDAP_HOST"):
-            await service.get_user_projects("test")
-
-
 async def test_verify_user_projects_csc() -> None:
     """Test verify user project for CSC deployment (LDAP)."""
     service = CscProjectService()

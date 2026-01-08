@@ -3,22 +3,29 @@
 import asyncio
 import atexit
 import os
-import sys
 import tempfile
-import uuid
 from typing import AsyncGenerator
-from unittest.mock import AsyncMock, patch
 
 import pytest
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from metadata_backend.api.services.accession import BP_CENTER_ID_ENV
+from metadata_backend.conf.admin import AdminConfig
+from metadata_backend.conf.bigpicture import BigPictureConfig
+from metadata_backend.conf.database import DatabaseConfig
+from metadata_backend.conf.datacite import DataciteConfig
+from metadata_backend.conf.keystone import KeystoneConfig
+from metadata_backend.conf.ldap import CscLdapConfig
+from metadata_backend.conf.metax import MetaxConfig
+from metadata_backend.conf.oidc import OIDCConfig
+from metadata_backend.conf.pid import CscPidConfig
+from metadata_backend.conf.rems import RemsConfig
+from metadata_backend.conf.s3 import S3Config
 from metadata_backend.database.postgres.repositories.file import FileRepository
 from metadata_backend.database.postgres.repositories.object import ObjectRepository
 from metadata_backend.database.postgres.repositories.registration import RegistrationRepository
 from metadata_backend.database.postgres.repositories.submission import SubmissionRepository
 from metadata_backend.database.postgres.repository import (
-    PG_DATABASE_URL_ENV,
     SessionFactory,
     create_engine,
     create_session_factory,
@@ -36,98 +43,46 @@ _object_repository: ObjectRepository | None = None
 _file_repository: FileRepository | None = None
 _registration_repository: RegistrationRepository | None = None
 
-# set required S3 env vars for all tests
-os.environ.setdefault("STATIC_S3_ACCESS_KEY_ID", "test")
-os.environ.setdefault("STATIC_S3_SECRET_ACCESS_KEY", "test")
-os.environ.setdefault("SD_SUBMIT_PROJECT_ID", "1000")
-os.environ.setdefault("S3_REGION", "us-east-1")
-os.environ.setdefault("S3_ENDPOINT", "http://localhost")
-os.environ.setdefault("KEYSTONE_ENDPOINT", "http://localhost")
-
 
 def pytest_configure(config):
-    os.environ["BASE_URL"] = "http://test.local:5430"
-    os.environ["OIDC_URL"] = ""
-    os.environ["AAI_CLIENT_ID"] = "public"
-    os.environ["AAI_CLIENT_SECRET"] = "secret"
-    os.environ[BP_CENTER_ID_ENV] = "bb"
+    def _init_mandatory_envs(_confs: list[type[BaseModel]]) -> None:
+        """
+        Initialize mandatory environmental variables.
 
+        These environmental variables are not meant to configure functional services
+        in unit tests but are required for the associated services to be initialized.
+        These services should be mocked in unit tests and tested fully in integration
+        tests.
+        """
+        for _conf_cls in _confs:
+            for _name, _field in _conf_cls.model_fields.items():
+                if _field.annotation is str:
+                    # Initialize mandatory string fields.
+                    os.environ[_name] = "test"
 
-# Mock service handlers to avoid importing undefined environmental variables.
-
-
-class MockDataciteServiceHandler:
-    create_draft_doi = AsyncMock(return_value=str(uuid.uuid4()))
-    publish = AsyncMock(return_value={})
-    http_client_close = AsyncMock(return_value=None)
-
-
-class MockPidServiceHandler:
-    create_draft_doi = AsyncMock(return_value=str(uuid.uuid4()))
-    publish = AsyncMock(return_value={})
-    http_client_close = AsyncMock(return_value=None)
-
-
-class MockMetaxServiceHandler:
-    create_draft_dataset = AsyncMock(return_value=str(str(uuid.uuid4())))
-    update_dataset_metadata = AsyncMock(return_value={})
-    update_dataset_description = AsyncMock(return_value={})
-    publish_dataset = AsyncMock(return_value={})
-    http_client_close = AsyncMock(return_value=None)
-
-
-datacite_module_path = "metadata_backend.services.datacite_service"
-pid_module_path = "metadata_backend.services.pid_service"
-metax_module_path = "metadata_backend.services.metax_service_handler"
-
-if datacite_module_path not in sys.modules:
-    sys.modules[datacite_module_path] = type("MockModule", (), {"DataciteServiceHandler": MockDataciteServiceHandler})()
-
-if pid_module_path not in sys.modules:
-    sys.modules[pid_module_path] = type("MockModule", (), {"PIDServiceHandler": MockPidServiceHandler})()
-
-if metax_module_path not in sys.modules:
-    sys.modules[metax_module_path] = type("MockModule", (), {"MetaxServiceHandler": MockMetaxServiceHandler})
-
-
-def patch_datacite_create_draft_doi(doi: str):
-    return patch(
-        f"{datacite_module_path}.DataciteServiceHandler.create_draft_doi", new_callable=AsyncMock, return_value=doi
+    _init_mandatory_envs(
+        [
+            DatabaseConfig,
+            DataciteConfig,
+            CscPidConfig,
+            CscLdapConfig,
+            MetaxConfig,
+            RemsConfig,
+            S3Config,
+            KeystoneConfig,
+            OIDCConfig,
+            AdminConfig,
+            BigPictureConfig,
+        ]
     )
 
-
-def patch_datacite_publish():
-    return patch(f"{datacite_module_path}.DataciteServiceHandler.publish", new_callable=AsyncMock, return_value=None)
-
-
-def patch_pid_create_draft_doi(doi: str):
-    return patch(f"{pid_module_path}.PIDServiceHandler.create_draft_doi", new_callable=AsyncMock, return_value=doi)
+    # Initialize mandatory environmental variables with specific validation rules.
+    os.environ["CSC_LDAP_HOST"] = "ldap://test"
+    os.environ["S3_REGION"] = "us-east-1"
 
 
-def patch_pid_publish():
-    return patch(f"{pid_module_path}.PIDServiceHandler.publish", new_callable=AsyncMock, return_value=None)
-
-
-def patch_metax_create_draft_dataset(metax_id: str):
-    return patch(
-        f"{metax_module_path}.MetaxServiceHandler.create_draft_dataset", new_callable=AsyncMock, return_value=metax_id
-    )
-
-
-def patch_metax_update_dataset_metadata():
-    return patch(
-        f"{metax_module_path}.MetaxServiceHandler.update_dataset_metadata", new_callable=AsyncMock, return_value=None
-    )
-
-
-def patch_metax_update_dataset_description():
-    return patch(
-        f"{metax_module_path}.MetaxServiceHandler.update_dataset_description", new_callable=AsyncMock, return_value=None
-    )
-
-
-def patch_metax_publish_dataset():
-    return patch(f"{metax_module_path}.MetaxServiceHandler.publish_dataset", new_callable=AsyncMock, return_value=None)
+# Postgres session.
+#
 
 
 async def _session_start():
@@ -140,10 +95,12 @@ async def _session_start():
         _file_repository, \
         _registration_repository
 
+    # Use SQLLite database.
     _temp_sqlite_file = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
     atexit.register(lambda: os.remove(_temp_sqlite_file.name))
 
-    os.environ[PG_DATABASE_URL_ENV] = get_sqllite_db_url(_temp_sqlite_file.name)
+    os.environ["DATABASE_URL"] = get_sqllite_db_url(_temp_sqlite_file.name)
+
     _engine = await create_engine()
     _session_factory = create_session_factory(_engine)
     _submission_repository = SubmissionRepository(_session_factory)
@@ -166,7 +123,7 @@ def pytest_sessionfinish(session, exitstatus):
     asyncio.run(_session_finish())
 
 
-# Session
+# Database session fixture.
 
 
 @pytest.fixture
@@ -174,7 +131,7 @@ async def session_factory() -> AsyncGenerator[SessionFactory, None]:
     yield _session_factory
 
 
-# Repositories
+# Database repository fixtures.
 
 
 @pytest.fixture
@@ -197,7 +154,7 @@ def registration_repository() -> RegistrationRepository:
     return _registration_repository
 
 
-# Services
+# Database service fixtures.
 
 
 @pytest.fixture

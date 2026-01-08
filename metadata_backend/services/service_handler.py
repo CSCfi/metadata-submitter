@@ -1,15 +1,14 @@
-"""Base class for service integrations.
+"""Base class for service handlers that connect to external services."""
 
-It provides a http client with optional basic auth, and requests that retry automatically and come with error handling
-"""
+import asyncio
+import atexit
+from typing import Any, Awaitable, Callable, Optional
 
-from abc import ABC, abstractmethod
-from typing import Any, Optional
-
-from aiohttp import BasicAuth, ClientSession, ClientTimeout
+from aiohttp import BasicAuth, ClientConnectorError, ClientResponse, ClientSession, ClientTimeout
 from aiohttp.web import HTTPError, HTTPGatewayTimeout, HTTPInternalServerError
 from yarl import URL
 
+from ..api.models.health import Health
 from ..helpers.logger import LOG
 from .retry import retry
 
@@ -39,31 +38,34 @@ class ServiceClientError(HTTPError):
         HTTPError.__init__(self, **kwargs)
 
 
-class ServiceHandler(ABC):
-    """General service class handler to have similar implementation between services.
+class ServiceHandler:
+    """Base class for service handlers that connect to external services."""
 
-    Classes inheriting should set the service_name and base_url
-    """
-
-    service_name: str
     _http_client: Optional[ClientSession] = None
 
     def __init__(
         self,
+        service_name: str,
         base_url: URL,
+        *,
         auth: Optional[BasicAuth] = None,
         http_client_timeout: Optional[ClientTimeout] = None,
         http_client_headers: Optional[dict[str, Any]] = None,
+        healthcheck_url: URL,
+        healthcheck_timeout: int = 10,
+        healthcheck_callback: Callable[[ClientResponse], Awaitable[bool]] | None = None,
     ) -> None:
-        """Create an instance with db_client and aiohttp client attached.
+        """Base class for external service integrations."""
 
-        :param auth: database client instance
-        """
-        self.auth = auth
+        self.service_name = service_name
         self.base_url = base_url
+        self.auth = auth
         self.connection_check_url = base_url
         self.http_client_timeout = http_client_timeout
         self.http_client_headers = http_client_headers
+        self.healthcheck_url = healthcheck_url
+        self.healthcheck_timeout = healthcheck_timeout
+        self.healthcheck_callback = healthcheck_callback
 
     @property
     def _client(self) -> ClientSession:
@@ -74,30 +76,21 @@ class ServiceHandler(ABC):
                 timeout=self.http_client_timeout,
                 headers=self.http_client_headers,
             )
+
+            # Automatically close.
+            atexit.register(lambda: asyncio.run(self.close()))
+
         return self._http_client
 
-    async def http_client_close(self) -> None:
+    async def close(self) -> None:
         """Close http client."""
         if self._http_client is not None:
             await self._http_client.close()
-
-    async def check_connection(self, timeout: int = 2) -> None:
-        """Check service is reachable.
-
-        The request should raise exceptions if it fails, and interrupt code execution.
-
-        :param timeout: Request operations timeout
-        """
-        await self._request(method="HEAD", url=self.connection_check_url, timeout=timeout)
 
     @staticmethod
     def _process_error(error: str) -> str:
         """Override in subclass and return formatted error message."""
         return error
-
-    @abstractmethod
-    async def healthcheck(self) -> dict[str, Any]:
-        """Override in subclass and return formatted status message."""
 
     @retry(total_tries=5)
     async def _request(
@@ -114,12 +107,12 @@ class ServiceHandler(ABC):
         """Request to service REST API.
 
         :param method: HTTP method
-        :param headers: request headers
         :param url: Full service url. Uses self.base_url by default
         :param path: When requesting to self.base_url, provide only the path (shortcut).
         :param params: URL parameters, must be url encoded
         :param json_data: Dict with request data
         :param timeout: Request timeout in seconds
+        :param headers: request headers
         :returns: Response body parsed as JSON
         """
         LOG.debug(
@@ -189,3 +182,40 @@ class ServiceHandler(ABC):
         if status >= 500:
             return ServiceServerError(text=reason, reason=reason)
         return ServiceClientError(text=reason, reason=reason, status_code=status)
+
+    async def get_health(self) -> Health:
+        """
+        Get service health using the service handler healthcheck URL.
+
+        :returns: The service handler health.
+        """
+        try:
+            async with self._client.get(
+                self.healthcheck_url, timeout=ClientTimeout(total=self.healthcheck_timeout)
+            ) as resp:
+                if resp.status != 200:
+                    LOG.error("Health check failed for service '%s', url=%s", self.service_name, self.healthcheck_url)
+                    return Health.DOWN
+
+                if self.healthcheck_callback and not await self.healthcheck_callback(resp):
+                    LOG.error(
+                        "Health check callback failed for service '%s', url=%s", self.service_name, self.healthcheck_url
+                    )
+                    return Health.DOWN
+
+                return Health.UP
+        except asyncio.TimeoutError:
+            LOG.warning(
+                "Health check timed out for service '%s', url=%s",
+                self.service_name,
+                self.healthcheck_url,
+            )
+            return Health.DEGRADED
+        except ClientConnectorError:
+            LOG.error("Health check failed for service '%s', url=%s", self.service_name, self.healthcheck_url)
+            return Health.DOWN
+        except Exception:
+            LOG.exception(
+                "Unexpected error during health check for service '%s', url=%s", self.service_name, self.healthcheck_url
+            )
+            return Health.ERROR

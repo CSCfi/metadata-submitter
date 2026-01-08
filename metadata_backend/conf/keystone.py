@@ -12,4 +12,8 @@ class KeystoneConfig(BaseSettings):
     KEYSTONE_ENDPOINT: str = Field(description="Keystone service endpoint URL")
 
 
-keystone_config = KeystoneConfig()
+def keystone_config() -> KeystoneConfig:
+    """Get Keystone configuration."""
+
+    # Avoid loading environment variables when module is imported.
+    return KeystoneConfig()

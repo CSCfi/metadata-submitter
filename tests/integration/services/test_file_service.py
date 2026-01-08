@@ -13,13 +13,13 @@ async def test_file_provider_service(client, secret_env, s3_manager, monkeypatch
     """Test all methods of the FileProviderService using a test service."""
     monkeypatch.setenv("KEYSTONE_ENDPOINT", mock_keystone_url)
     from metadata_backend.api.services.file import S3AllasFileProviderService
-    from metadata_backend.services.keystone_service import KeystoneService
+    from metadata_backend.services.keystone_service import KeystoneServiceHandler
 
-    test_user_creds = KeystoneService.EC2Credentials(
+    test_user_creds = KeystoneServiceHandler.EC2Credentials(
         access=os.getenv("USER_S3_ACCESS_KEY_ID"),
         secret=os.getenv("USER_S3_SECRET_ACCESS_KEY"),
     )
-    api_static_creds = KeystoneService.EC2Credentials(
+    api_static_creds = KeystoneServiceHandler.EC2Credentials(
         access=os.getenv("STATIC_S3_ACCESS_KEY_ID"),
         secret=os.getenv("STATIC_S3_SECRET_ACCESS_KEY"),
     )

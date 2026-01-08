@@ -16,4 +16,8 @@ class S3Config(BaseSettings):
     S3_ENDPOINT: str = Field(description="S3 endpoint URL")
 
 
-s3_config = S3Config()
+def s3_config() -> S3Config:
+    """Get S3 configuration."""
+
+    # Avoid loading environment variables when module is imported.
+    return S3Config()

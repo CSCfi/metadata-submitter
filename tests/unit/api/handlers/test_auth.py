@@ -1,62 +1,58 @@
-"""Test API endpoints for API key handler methods."""
+"""Tests for Auth API handler."""
 
-import uuid
+from unittest.mock import MagicMock
 
-from metadata_backend.api.services.auth import ApiKey
-from metadata_backend.conf.conf import API_PREFIX
-from metadata_backend.database.postgres.repository import transaction
-from tests.unit.conftest import _session_factory
+from aiohttp import web
 
-from .common import HandlersTestCase
+from metadata_backend.api.handlers.auth import AuthAPIHandler
+from metadata_backend.api.services.auth import AuthService
+from metadata_backend.server import get_auth_routes
+from metadata_backend.services.auth_service import AuthServiceHandler
 
 
-class ApiKeyHandlerTestCase(HandlersTestCase):
-    """API key handler test cases."""
+async def test_auth(aiohttp_client, monkeypatch):
+    # Mock OIDC_URL.
+    mock_oidc_url = "http://mock/oidc"
+    mock_auth_url = "http://mock/auth"
+    monkeypatch.setenv("OIDC_URL", mock_oidc_url)
 
-    async def test_post_get_delete_api_key(self) -> None:
-        """Test API key creation, listing and revoking."""
-        async with transaction(_session_factory, requires_new=True, rollback_new=True):
-            with (
-                self.patch_verify_authorization,
-                self.patch_verify_user_project,
-            ):
-                key_id_1 = str(uuid.uuid4())
-                key_id_2 = str(uuid.uuid4())
+    # Create AuthServiceHandler.
+    service_handler = AuthServiceHandler()
 
-                # Create first key.
-                response = await self.client.post(
-                    f"{API_PREFIX}/api/keys", json=ApiKey(key_id=key_id_1).model_dump(mode="json")
-                )
-                self.assertEqual(response.status, 200)
+    # Mock RPHandler.
+    mock_rph = MagicMock()
+    mock_rph.begin.return_value = mock_auth_url
+    mock_rph.get_session_information.return_value = {"code": "code"}
+    mock_rph.finalize.return_value = {"userinfo": {"sub": "user"}}
+    service_handler._rph = mock_rph
 
-                # Check first key exists.
-                response = await self.client.get(f"{API_PREFIX}/api/keys")
-                self.assertEqual(response.status, 200)
-                json = await response.json()
-                assert key_id_1 in [ApiKey(**key).key_id for key in json]
+    # Create API handler and replace its service handler
+    auth = AuthAPIHandler(service_handler)
 
-                # Create second key.
-                response = await self.client.post(
-                    f"{API_PREFIX}/api/keys", json=ApiKey(key_id=key_id_2).model_dump(mode="json")
-                )
-                self.assertEqual(response.status, 200)
+    # Create web app and auth routes.
+    app = web.Application()
+    get_auth_routes(auth)
+    app.add_routes(get_auth_routes(auth))
 
-                # Check first and second key exist.
-                response = await self.client.get(f"{API_PREFIX}/api/keys")
-                self.assertEqual(response.status, 200)
-                json = await response.json()
-                assert key_id_1 in [ApiKey(**key).key_id for key in json]
-                assert key_id_2 in [ApiKey(**key).key_id for key in json]
+    client = await aiohttp_client(app)
 
-                # Remove second key.
-                response = await self.client.delete(
-                    f"{API_PREFIX}/api/keys", json=ApiKey(key_id=key_id_2).model_dump(mode="json")
-                )
-                self.assertEqual(response.status, 204)
+    # Test /login endpoint.
+    resp = await client.get("/login", allow_redirects=False)
+    assert resp.status == 303
+    assert resp.headers["Location"] == mock_auth_url
+    mock_rph.begin.assert_called_once_with("aai")
 
-                # Check first key exists.
-                response = await self.client.get(f"{API_PREFIX}/api/keys")
-                self.assertEqual(response.status, 200)
-                json = await response.json()
-                assert key_id_1 in [ApiKey(**key).key_id for key in json]
-                assert key_id_2 not in [ApiKey(**key).key_id for key in json]
+    # Test /callback endpoint.
+    resp = await client.get("/callback", params={"state": "state", "code": "code"}, allow_redirects=False)
+    assert resp.status == 303
+    assert resp.headers["Location"].endswith("/home")
+    assert "access_token" in resp.cookies
+    jwt_token = resp.cookies["access_token"].value
+
+    user_id, user_name = AuthService.validate_jwt_token(jwt_token)
+    assert user_id == "user"
+    assert user_name == "user"
+
+    # Ensure RPHandler methods were called correctly.
+    mock_rph.get_session_information.assert_called_once_with("state")
+    mock_rph.finalize.assert_called_once_with(mock_oidc_url, {"code": "code"})

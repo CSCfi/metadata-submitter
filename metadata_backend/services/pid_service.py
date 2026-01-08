@@ -2,11 +2,11 @@
 
 from typing import Any, override
 
-from aiohttp.client_exceptions import ClientConnectorError
+from aiohttp import ClientResponse
 from yarl import URL
 
 from ..api.services.datacite import DataciteService
-from ..conf.pid import pid_config
+from ..conf.pid import csc_pid_config
 from ..helpers.logger import LOG
 from .service_handler import ServiceHandler
 
@@ -14,15 +14,18 @@ from .service_handler import ServiceHandler
 class PIDServiceHandler(DataciteService, ServiceHandler):
     """CSC PID service."""
 
-    service_name = "PID"
-
     def __init__(self) -> None:
         """CSC PID service."""
 
+        self._config = csc_pid_config()
+
         super().__init__(
-            base_url=URL(pid_config.CSC_PID_URL),
+            service_name="pid",
+            base_url=URL(self._config.CSC_PID_URL),
+            healthcheck_url=URL(self._config.CSC_PID_URL) / "q" / "health" / "live",
+            healthcheck_callback=self.healthcheck_callback,
         )
-        self._headers = {"Content-Type": "application/json", "apikey": pid_config.CSC_PID_KEY}
+        self._headers = {"Content-Type": "application/json", "apikey": self._config.CSC_PID_KEY}
 
     @override
     async def create_draft_doi(self) -> str:
@@ -68,27 +71,7 @@ class PIDServiceHandler(DataciteService, ServiceHandler):
 
     # No delete endpoint
 
-    async def healthcheck(self) -> dict[str, Any]:
-        """Check service health.
-
-        :returns: the health status.
-        """
-
-        try:
-            async with self._client.request(
-                method="GET",
-                url=f"{URL(self.base_url)}/q/health/live",
-            ) as response:
-                content = await response.json()
-                if content["status"] == "UP":
-                    return {"status": "Ok"}
-
-                LOG.error("PID API is down with error: %r.", content)
-                return {"status": "Down"}
-
-        except ClientConnectorError as e:
-            LOG.exception("PID API is down with error: %r.", e)
-            return {"status": "Down"}
-        except Exception as e:
-            LOG.exception("PID API status retrieval failed with: %r.", e)
-            return {"status": "Error"}
+    @staticmethod
+    async def healthcheck_callback(response: ClientResponse) -> bool:
+        content = await response.json()
+        return "status" in content and content["status"] == "UP"

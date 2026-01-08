@@ -40,7 +40,7 @@ BP_SUBMISSION_DIR = TEST_ROOT_DIR / "xml" / "bigpicture"
 DATACITE_SUBMISSION_DIR = TEST_ROOT_DIR / "xml" / "datacite"
 
 
-class ObjectHandlerTestCase(HandlersTestCase):
+class ObjectAPIHandlerTestCase(HandlersTestCase):
     """Object API endpoint class test cases."""
 
     async def test_submission_sd(self):

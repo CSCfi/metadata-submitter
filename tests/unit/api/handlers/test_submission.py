@@ -1,4 +1,4 @@
-"""Test API endpoints from SubmissionAPIHandler."""
+"""Tests for submission API handler."""
 
 import json
 import uuid
@@ -14,8 +14,8 @@ TEST_ROOT_DIR = Path(__file__).parent.parent.parent.parent / "test_files"
 SUBMISSION_JSON = TEST_ROOT_DIR / "submission" / "submission.json"
 
 
-class SubmissionHandlerTestCase(HandlersTestCase):
-    """Submission API endpoint class test cases."""
+class SubmissionAPIHandlerTestCase(HandlersTestCase):
+    """Tests for submission API handler."""
 
     async def test_post_get_delete_submission(self):
         """Test that submission post and get works."""
@@ -357,12 +357,12 @@ class SubmissionHandlerTestCase(HandlersTestCase):
             response = await self.client.get(f"{API_PREFIX}/submissions?page=ayylmao&projectId=1000")
             self.assertEqual(response.status, 400)
             resp = await response.json()
-            self.assertEqual(resp["detail"], "page parameter must be a number, now it is ayylmao")
+            self.assertEqual(resp["detail"], "The 'page' query parameter must be a number: 'ayylmao'")
 
             response = await self.client.get(f"{API_PREFIX}/submissions?page=1&per_page=-100&projectId=1000")
             self.assertEqual(response.status, 400)
             resp = await response.json()
-            self.assertEqual(resp["detail"], "per_page parameter must be over 0")
+            self.assertEqual(resp["detail"], "The 'per_page' query parameter must be greater than 0: '-100'")
 
             response = await self.client.get(f"{API_PREFIX}/submissions?published=yes&projectId=1000")
             self.assertEqual(response.status, 400)

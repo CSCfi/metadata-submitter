@@ -6,18 +6,20 @@ from typing import Awaitable, Callable
 import jwt
 import ujson
 from aiohttp import web
+from aiohttp.web import AppKey
 from pydantic import ValidationError
 from yarl import URL
 
 from ..helpers.logger import LOG
 from .exceptions import NotFoundUserException, SystemException, UserErrors, UserException
-from .resources import get_access_service
-from .services.auth import AccessService
+from .services.auth import AuthService
 
 AUTHORIZATION_COOKIE = "access_token"
 
 HTTP_ERROR_MESSAGE = "HTTP %r request to %r raised an HTTP %d exception."
 HTTP_ERROR_MESSAGE_BUG = "HTTP %r request to %r raised an HTTP %d exception. This IS a bug."
+
+AUTH_SERVICE: AppKey[AuthService] = AppKey("auth_service")
 
 Handler = Callable[[web.Request], Awaitable[web.StreamResponse]]
 
@@ -82,7 +84,7 @@ async def http_error_handler(req: web.Request, handler: Handler) -> web.StreamRe
 
 
 async def verify_authorization(
-    access_service: AccessService, jwt_token: str | None, api_key: str | None
+    access_service: AuthService, jwt_token: str | None, api_key: str | None
 ) -> tuple[str, str]:
     """
     Verify the jwt authorization token and returns the authorized user id.
@@ -124,6 +126,10 @@ async def authorization(req: web.Request, handler: Handler) -> web.StreamRespons
     :param handler: A request handler
     """
 
+    if req.path.endswith("/health"):
+        # No authorization required for health endpoint.
+        return await handler(req)
+
     LOG.debug("Authorizing request")
 
     # Extract JWT token from the Secure HttpOnly cookie.
@@ -149,7 +155,9 @@ async def authorization(req: web.Request, handler: Handler) -> web.StreamRespons
                     api_key = api_key_or_jwt_token
                     LOG.debug("Found API key in Authorization header")
 
-    req["user_id"], req["user_name"] = await verify_authorization(get_access_service(req), jwt_token, api_key)
+    auth_service: AuthService = req.app[AUTH_SERVICE]
+
+    req["user_id"], req["user_name"] = await verify_authorization(auth_service, jwt_token, api_key)
 
     LOG.debug("Successfully authorized request")
 

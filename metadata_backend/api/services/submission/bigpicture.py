@@ -155,7 +155,6 @@ class BigPictureObjectSubmissionService(ObjectSubmissionService):
             rems=Rems(
                 workflowId=workflow_id,
                 organizationId=organization_id,
-                licenses=[],
             ),
             metadata=SubmissionMetadata.from_datacite(self._datacite) if self._datacite else None,
         )

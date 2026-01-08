@@ -7,13 +7,13 @@ from aiohttp import web
 from moto.server import ThreadedMotoServer
 
 from metadata_backend.api.services.file import S3AllasFileProviderService
-from metadata_backend.conf.s3 import S3Config, s3_config
-from metadata_backend.services.keystone_service import KeystoneService
+from metadata_backend.conf.s3 import s3_config
+from metadata_backend.services.keystone_service import KeystoneServiceHandler
 
 bucket = "test-bucket"
 file = "test-file"
 content = b"test"
-creds = KeystoneService.EC2Credentials(access="test-id", secret="test-key")
+creds = KeystoneServiceHandler.EC2Credentials(access="test-id", secret="test-key")
 
 
 @pytest.fixture(autouse=True)
@@ -30,8 +30,6 @@ async def s3_endpoint(monkeypatch):
 
     # Set endpoint after server starts
     monkeypatch.setenv("S3_ENDPOINT", endpoint)
-    new_config = S3Config()
-    monkeypatch.setattr("metadata_backend.api.services.file.s3_config", new_config)
 
     # Cleanup S3 before each test
     sess = session.get_session()
@@ -138,7 +136,7 @@ async def test_update_and_verify_bucket_policy(s3_endpoint):
         resp = await s3.get_bucket_policy(Bucket=bucket)
         policy = ujson.loads(resp["Policy"])
         assert policy["Statement"][0]["Sid"] == "GrantSDSubmitReadAccess"
-        assert policy["Statement"][0]["Principal"]["AWS"] == f"arn:aws:iam::{s3_config.SD_SUBMIT_PROJECT_ID}:root"
+        assert policy["Statement"][0]["Principal"]["AWS"] == f"arn:aws:iam::{s3_config().SD_SUBMIT_PROJECT_ID}:root"
         assert policy["Statement"][0]["Resource"] == [f"arn:aws:s3:::{bucket}", f"arn:aws:s3:::{bucket}/*"]
 
         assert await service.verify_bucket_policy(bucket)

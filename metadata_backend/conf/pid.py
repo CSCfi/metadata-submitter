@@ -1,11 +1,11 @@
-"""DataCite external service configuration."""
+"""CSC PID external service configuration."""
 
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
 
 class CscPidConfig(BaseSettings):
-    """Csc PID external service configuration."""
+    """CSC PID external service configuration."""
 
     model_config = {"extra": "allow"}  # Allow creation using the constructor.
 
@@ -13,4 +13,8 @@ class CscPidConfig(BaseSettings):
     CSC_PID_KEY: str = Field(description="CSC PID KEY")
 
 
-pid_config = CscPidConfig()
+def csc_pid_config() -> CscPidConfig:
+    """Get CSC PID configuration."""
+
+    # Avoid loading environment variables when module is imported.
+    return CscPidConfig()

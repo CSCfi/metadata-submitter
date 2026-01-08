@@ -1,33 +1,67 @@
-"""Access service."""
+"""Service for issuing JWT tokens and API keys."""
 
 import hashlib
 import hmac
-import os
 import secrets
 import string
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
 import jwt
+from aiohttp import web
 
+from ...conf.oidc import oidc_config
 from ...database.postgres.models import ApiKeyEntity
 from ...database.postgres.repositories.api_key import ApiKeyRepository
+from ...helpers.logger import LOG
 from ..models.models import ApiKey
 
 JWT_ALGORITHM = "HS256"
 JWT_ISSUER = "SD Submit"
-JWT_SECRET_ENV = "JWT_SECRET"  # nosec
 JWT_EXPIRATION = timedelta(days=7)
 
 API_KEY_ID_LENGTH = 12
 API_KEY_LENGTH = 32
 
 
-class AccessService:
+class AuthService:
     """Service for issuing JWT tokens and API keys."""
 
     def __init__(self, repository: ApiKeyRepository) -> None:
         """Initialize the service."""
         self.__repository = repository
+
+    @staticmethod
+    async def create_jwt_token_from_userinfo(userinfo: dict[str, Any]) -> str:
+        """
+        Generate a signed JWT token from /userinfo response.
+
+        :param userinfo: OIDC /userinfo response.
+        :returns: The signed JWT token
+        :raises HTTPUnauthorized: If the required claims are not found.
+        """
+        # Extract user ID.
+        if "CSCUserName" in userinfo:
+            user_id = userinfo["CSCUserName"]
+        elif "remoteUserIdentifier" in userinfo:
+            user_id = userinfo["remoteUserIdentifier"]
+        elif "sub" in userinfo:
+            user_id = userinfo["sub"]
+        else:
+            reason = "Authenticated user is missing required claims."
+            LOG.error(reason)
+            raise web.HTTPUnauthorized(reason="reason")
+
+        # Extract user name, fallback to user_id if not available.
+        given_name = userinfo.get("given_name", "").strip()
+        family_name = userinfo.get("family_name", "").strip()
+
+        if given_name or family_name:
+            user_name = f"{given_name} {family_name}".strip()
+        else:
+            user_name = user_id
+
+        return AuthService.create_jwt_token(user_id, user_name)
 
     @staticmethod
     def create_jwt_token(user_id: str, user_name: str, expiration: timedelta = JWT_EXPIRATION) -> str:
@@ -42,9 +76,6 @@ class AccessService:
         Returns:
             str: The signed JWT token.
         """
-        jwt_secret = os.getenv(JWT_SECRET_ENV)
-        if not jwt_secret:
-            raise RuntimeError(f"{JWT_SECRET_ENV} environment variable is undefined.")
 
         now = datetime.now(timezone.utc)
         exp_time = now + expiration
@@ -57,7 +88,7 @@ class AccessService:
             "iss": JWT_ISSUER,
         }
 
-        return jwt.encode(payload, jwt_secret, algorithm=JWT_ALGORITHM)
+        return jwt.encode(payload, oidc_config().JWT_SECRET, algorithm=JWT_ALGORITHM)
 
     @staticmethod
     def validate_jwt_token(token: str) -> tuple[str, str]:
@@ -74,13 +105,9 @@ class AccessService:
             RuntimeError: If the JWT secret is not set.
             PyJWTError: If the token has expired, is malformed or fails verification.
         """
-        jwt_secret = os.getenv(JWT_SECRET_ENV)
-        if not jwt_secret:
-            raise RuntimeError(f"{JWT_SECRET_ENV} environment variable is undefined.")
-
         decoded = jwt.decode(
             token,
-            jwt_secret,
+            oidc_config().JWT_SECRET,
             algorithms=[JWT_ALGORITHM],
             issuer=JWT_ISSUER,
         )

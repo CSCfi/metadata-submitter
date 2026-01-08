@@ -213,9 +213,6 @@ async def test_sd_rems(client_logged_in, submission_factory):
         LOG.debug("Tried updating submission %s", submission_id)
         assert resp.status == 400, f"HTTP Status code error, got {resp.status}"
         res = await resp.json()
-        assert (
-            res["detail"] == "rems.workflowId: "
-            "Field required; rems.organizationId: "
-            "Field required; rems.licenses: "
-            "Field required; rems.invalid: Extra inputs are not permitted"
-        ), "expected error mismatch"
+        assert res["detail"] == "rems.workflowId: Field required; rems.invalid: Extra inputs are not permitted", (
+            "expected error mismatch"
+        )

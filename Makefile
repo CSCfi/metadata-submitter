@@ -47,8 +47,8 @@ get_env: ## Get secrets needed for integration tests from vault
 	$(call write_secret,CSC_LDAP_HOST,sd-submit/secrets,ldap_host) \
 	$(call write_secret,CSC_LDAP_USER,sd-submit/secrets,ldap_user) \
 	$(call write_secret,CSC_LDAP_PASSWORD,sd-submit/secrets,ldap_password) \
-	$(call write_secret,AAI_CLIENT_ID,sd-submit/secrets,aai_id) \
-	$(call write_secret,AAI_CLIENT_SECRET,sd-submit/secrets,aai_secret) \
+	$(call write_secret,OIDC_CLIENT_ID,sd-submit/secrets,aai_id) \
+	$(call write_secret,OIDC_CLIENT_SECRET,sd-submit/secrets,aai_secret) \
 	$(call write_secret,OIDC_URL,sd-submit/secrets,oidc_url) \
 	$(call write_secret,KEYSTONE_ENDPOINT,sd-submit/secrets,pouta_host) \
 	$(call write_integration_test_secret,DATACITE_API,sd-submit/datacite_test,DOI_API) \
@@ -65,7 +65,11 @@ get_env: ## Get secrets needed for integration tests from vault
 	$(call write_integration_test_secret,STATIC_S3_SECRET_ACCESS_KEY,sd-submit/secrets,s3_secret_key) \
 	$(call write_integration_test_secret,SD_SUBMIT_PROJECT_ID,sd-submit/secrets,sd_submit_project_id) \
 	$(call write_integration_test_secret,USER_S3_ACCESS_KEY_ID,sd-submit/secrets,s3_test_user_access_key) \
-	$(call write_integration_test_secret,USER_S3_SECRET_ACCESS_KEY,sd-submit/secrets,s3_test_user_secret_key)
+	$(call write_integration_test_secret,USER_S3_SECRET_ACCESS_KEY,sd-submit/secrets,s3_test_user_secret_key) \
+    $(call write_integration_test_secret,REMS_URL,sd-submit/secrets,rems_url) \
+    $(call write_integration_test_secret,REMS_USER,sd-submit/secrets,rems_user) \
+    $(call write_integration_test_secret,REMS_KEY,sd-submit/secrets,rems_key) \
+    $(call write_integration_test_secret,REMS_DISCOVERY_URL,sd-submit/secrets,rems_discovery_url)
 
 	$(call write_line,### VAULT SECRETS END ###)
 
@@ -99,7 +103,11 @@ get_ci_env: ## Get secrets needed for CI tests from vault
 	$(call write_integration_test_secret,STATIC_S3_SECRET_ACCESS_KEY,sd-submit/secrets,s3_secret_key) \
 	$(call write_integration_test_secret,SD_SUBMIT_PROJECT_ID,sd-submit/secrets,sd_submit_project_id) \
 	$(call write_integration_test_secret,USER_S3_ACCESS_KEY_ID,sd-submit/secrets,s3_test_user_access_key) \
-	$(call write_integration_test_secret,USER_S3_SECRET_ACCESS_KEY,sd-submit/secrets,s3_test_user_secret_key)
+	$(call write_integration_test_secret,USER_S3_SECRET_ACCESS_KEY,sd-submit/secrets,s3_test_user_secret_key) \
+    $(call write_integration_test_secret,REMS_URL,sd-submit/secrets,rems_url) \
+    $(call write_integration_test_secret,REMS_USER,sd-submit/secrets,rems_user) \
+    $(call write_integration_test_secret,REMS_KEY,sd-submit/secrets,rems_key)  \
+    $(call write_integration_test_secret,REMS_DISCOVERY_URL,sd-submit/secrets,rems_discovery_url)
 
 	$(call write_line,### VAULT SECRETS END ###)
 

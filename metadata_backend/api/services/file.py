@@ -1,4 +1,4 @@
-"""Service to verify that the submitted file exists."""
+"""Service to retrieve file and bucket information from a file provider."""
 
 from abc import ABC, abstractmethod
 
@@ -10,7 +10,7 @@ from pydantic import BaseModel, RootModel
 
 from ...conf.s3 import s3_config
 from ...helpers.logger import LOG
-from ...services.keystone_service import KeystoneService
+from ...services.keystone_service import KeystoneServiceHandler
 
 
 class FileProviderService(ABC):
@@ -52,7 +52,7 @@ class FileProviderService(ABC):
             raise web.HTTPBadRequest(reason=reason)
         return size
 
-    async def list_buckets(self, credentials: KeystoneService.EC2Credentials) -> list[str]:
+    async def list_buckets(self, credentials: KeystoneServiceHandler.EC2Credentials) -> list[str]:
         """
         List all available buckets.
 
@@ -94,7 +94,7 @@ class FileProviderService(ABC):
             raise web.HTTPNotFound(reason=reason)
         return files
 
-    async def update_bucket_policy(self, bucket: str, creds: KeystoneService.EC2Credentials) -> None:
+    async def update_bucket_policy(self, bucket: str, creds: KeystoneServiceHandler.EC2Credentials) -> None:
         """
         Assign a read access policy to the specified bucket.
 
@@ -132,7 +132,7 @@ class FileProviderService(ABC):
         """
 
     @abstractmethod
-    async def _list_buckets(self, credentials: KeystoneService.EC2Credentials) -> list[str]:
+    async def _list_buckets(self, credentials: KeystoneServiceHandler.EC2Credentials) -> list[str]:
         """
         List all buckets.
 
@@ -156,7 +156,7 @@ class FileProviderService(ABC):
         """
 
     @abstractmethod
-    async def _update_bucket_policy(self, bucket: str, creds: KeystoneService.EC2Credentials) -> None:
+    async def _update_bucket_policy(self, bucket: str, creds: KeystoneServiceHandler.EC2Credentials) -> None:
         """
         Assign a read access policy to the specified bucket.
 
@@ -178,20 +178,23 @@ class FileProviderService(ABC):
         """
 
 
-class S3FileProviderService(FileProviderService):
+class S3FileProviderService(FileProviderService, ABC):
     """Service to retrieve file and bucket information from S3 storage."""
 
     def __init__(self) -> None:
         """Create S3 file service."""
-        """Initialize the base S3 session with static credentials."""
+
+        self._config = s3_config()
+
+        # Initialize the base S3 session with static credentials.
         self._session = aioboto3.Session(
-            aws_access_key_id=s3_config.STATIC_S3_ACCESS_KEY_ID,
-            aws_secret_access_key=s3_config.STATIC_S3_SECRET_ACCESS_KEY,
-            region_name=s3_config.S3_REGION,
+            aws_access_key_id=self._config.STATIC_S3_ACCESS_KEY_ID,
+            aws_secret_access_key=self._config.STATIC_S3_SECRET_ACCESS_KEY,
+            region_name=self._config.S3_REGION,
         )
-        self.region = s3_config.S3_REGION
-        self.endpoint = s3_config.S3_ENDPOINT
-        self.api_project_id = s3_config.SD_SUBMIT_PROJECT_ID
+        self.region = self._config.S3_REGION
+        self.endpoint = self._config.S3_ENDPOINT
+        self.api_project_id = self._config.SD_SUBMIT_PROJECT_ID
 
     async def _verify_user_file(self, bucket: str, file: str) -> int | None:
         """
@@ -218,12 +221,12 @@ class S3FileProviderService(FileProviderService):
                 LOG.error("Error verifying user file: %s", e)
                 raise e
 
-    async def _list_buckets(self, creds: KeystoneService.EC2Credentials) -> list[str]:
+    async def _list_buckets(self, creds: KeystoneServiceHandler.EC2Credentials) -> list[str]:
         """
         List all available S3 buckets with user's project scoped credentials.
 
         Args:
-            credentials: The EC2 credentials for the project.
+            creds: The EC2 credentials for the project.
 
         Returns:
             A list of bucket names.
@@ -271,7 +274,7 @@ class S3FileProviderService(FileProviderService):
 class S3AllasFileProviderService(S3FileProviderService):
     """Service to manage S3 buckets in Allas."""
 
-    async def _update_bucket_policy(self, bucket: str, creds: KeystoneService.EC2Credentials) -> None:
+    async def _update_bucket_policy(self, bucket: str, creds: KeystoneServiceHandler.EC2Credentials) -> None:
         """
         Assign a read access policy to the specified S3 bucket.
 

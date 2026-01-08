@@ -15,4 +15,8 @@ class DataciteConfig(BaseSettings):
     DATACITE_DOI_PREFIX: str = Field(description="DataCite DOI prefix")
 
 
-datacite_config = DataciteConfig()
+def datacite_config() -> DataciteConfig:
+    """Get DataCite configuration."""
+
+    # Avoid loading environment variables when module is imported.
+    return DataciteConfig()

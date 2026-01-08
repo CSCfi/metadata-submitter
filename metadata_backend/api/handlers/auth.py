@@ -1,70 +1,67 @@
-"""Authentication API handlers."""
+"""OIDC authentication API handler."""
+
+from typing import cast
 
 from aiohttp import web
 from aiohttp.web import Request, Response
 
-from ..auth import get_authorized_user_id
-from ..models.models import ApiKey
-from ..resources import get_access_service
-from ..services.auth import AccessService
+from ...services.auth_service import AuthServiceHandler
 
 
-async def post_api_key(req: Request) -> Response:
+def get_authorized_user_id(req: Request) -> str:
     """
-    Create and return a new API key for the authenticated user.
+    Get the authorized user id.
 
-    The user must provide the key_id in the request json body.
-
-    Args:
-        req: The aiohttp request.
-
-    Returns:
-        Text response containing the new API key.
+    :param req: The HTTP request.
+    :returns: The authorized user id.
     """
-    user_id = get_authorized_user_id(req)
-
-    # Create and store the new API key.
-    data = await req.json()
-
-    access_service: AccessService = get_access_service(req)
-
-    api_key = await access_service.create_api_key(user_id, ApiKey(**data).key_id)
-
-    return web.Response(text=api_key, content_type="text/plain")
+    if "user_id" not in req:
+        raise web.HTTPUnauthorized(reason="Missing authorized user id.")
+    return cast(str, req["user_id"])
 
 
-async def delete_api_key(req: Request) -> Response:
+def get_authorized_user_name(req: Request) -> str:
     """
-    Revoke an API key for the authenticated user.
+    Get the authorized username.
 
-    The user must provide the key_id in the request json body.
-
-    Args:
-        req: The aiohttp request.
+    :param req: The HTTP request.
+    :returns: The authorized username.
     """
-    user_id = get_authorized_user_id(req)
-
-    # Remove and remove the API key.
-    data = await req.json()
-
-    access_service: AccessService = get_access_service(req)
-
-    await access_service.revoke_api_key(user_id, ApiKey(**data).key_id)
-
-    return web.Response(status=204)
+    if "user_name" not in req:
+        raise web.HTTPUnauthorized(reason="Missing authorized user name.")
+    return cast(str, req["user_name"])
 
 
-async def get_api_keys(req: Request) -> Response:
-    """
-    List all API keys for the authenticated user.
+class AuthAPIHandler:
+    """OIDC authentication API handler."""
 
-    Returns:
-        JSON response containing the API keys.
-    """
-    user_id = get_authorized_user_id(req)
+    def __init__(self, service_handler: AuthServiceHandler) -> None:
+        """OIDC authentication API handler."""
 
-    access_service: AccessService = get_access_service(req)
+        self._service_handler = service_handler
 
-    body = [k.model_dump(mode="json") for k in await access_service.list_api_keys(user_id)]
+    async def login(self, _: Request) -> web.HTTPSeeOther:
+        """Redirect user to AAI login.
 
-    return web.json_response(body)
+        :raises: HTTPInternalServerError if OIDC configuration init failed
+        :returns: HTTPSeeOther redirect to AAI
+        """
+
+        return await self._service_handler.login()
+
+    async def callback(self, req: Request) -> Response:
+        """Handle the OIDC callback and redirect the user with a JWT token in the URL fragment.
+
+        :param req: A HTTP request instance with callback parameters
+        :return: A redirect response to the frontend app with the JWT token included in the URL fragment.
+        """
+
+        return await self._service_handler.callback(req)
+
+    async def logout(self, _: Request) -> web.HTTPSeeOther:
+        """Log the user out by clearing cookie.
+
+        :returns: HTTPSeeOther redirect to login page
+        """
+
+        return await self._service_handler.logout()

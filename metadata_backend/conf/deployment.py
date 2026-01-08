@@ -16,4 +16,8 @@ class DeploymentConfig(BaseSettings):
     )
 
 
-deployment_config = DeploymentConfig()
+def deployment_config() -> DeploymentConfig:
+    """Get Deployment configuration."""
+
+    # Avoid loading environment variables when module is imported.
+    return DeploymentConfig()

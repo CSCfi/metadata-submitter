@@ -1,65 +1,54 @@
-"""Handle Access for request and OIDC workflow."""
+"""OIDC service."""
 
 import os
-import time
-from typing import Any, Optional, cast
+from typing import Any
 
-from aiohttp import ClientTimeout, web
-from aiohttp.client_exceptions import ClientConnectorError, InvalidURL
+from aiohttp import ClientResponse, web
 from aiohttp.web import Request, Response
 from idpyoidc.client.rp_handler import RPHandler
 from idpyoidc.exception import OidcMsgError
 from yarl import URL
 
-from ..conf.oidc import OIDCConfig, oidc_config
+from ..api.services.auth import JWT_EXPIRATION, AuthService
+from ..conf.oidc import oidc_config
 from ..helpers.logger import LOG
-from ..services.service_handler import ServiceHandler
-from .services.auth import JWT_EXPIRATION, AccessService
+from .service_handler import ServiceHandler
 
 
-def get_authorized_user_id(req: Request) -> str:
-    """
-    Get the authorized user id.
+class AuthServiceHandler(ServiceHandler):
+    """OIDC service."""
 
-    :param req: The aiohttp request.
-    :returns: The authorized user id.
-    """
-    if "user_id" not in req:
-        raise web.HTTPUnauthorized(reason="Missing authorized user id.")
-    return cast(str, req["user_id"])
+    def __init__(self) -> None:
+        """OIDC service."""
 
+        self._config = oidc_config()
 
-def get_authorized_user_name(req: Request) -> str:
-    """
-    Get the authorized user name.
+        super().__init__(
+            service_name="auth",
+            base_url=URL(self._config.OIDC_URL.rstrip("/")),
+            healthcheck_url=URL(self._config.OIDC_URL) / ".well-known" / "openid-configuration",
+            healthcheck_callback=self.healthcheck_callback,
+        )
 
-    :param req: The aiohttp request.
-    :returns: The authorized user name.
-    """
-    if "user_name" not in req:
-        raise web.HTTPUnauthorized(reason="Missing authorized user name.")
-    return cast(str, req["user_name"])
-
-
-class AccessHandler:
-    """Handler for user access methods."""
-
-    def __init__(self, config: OIDCConfig) -> None:
-        """Define AAI variables and paths.
-
-        :param config: dictionary with AAI specific config
-        """
-        self.domain = config.BASE_URL
-        self.redirect = config.REDIRECT_URL
-        self.client_id = config.OIDC_CLIENT_ID
-        self.client_secret = config.OIDC_CLIENT_SECRET
-        self.callback_url = config.callback_url
-        self.oidc_url = config.OIDC_URL.rstrip("/") + "/.well-known/openid-configuration"
-        self.iss = config.OIDC_URL
-        self.scope = config.OIDC_SCOPE
+        self.domain = self._config.BASE_URL
+        self.redirect = self._config.REDIRECT_URL
+        self.client_id = self._config.OIDC_CLIENT_ID
+        self.client_secret = self._config.OIDC_CLIENT_SECRET
+        self.callback_url = self._config.callback_url
+        self.oidc_url = self._config.OIDC_URL.rstrip("/") + "/.well-known/openid-configuration"
+        self.iss = self._config.OIDC_URL
+        self.scope = self._config.OIDC_SCOPE
         self.auth_method = "code"
+        self._rph: RPHandler | None = None
 
-        self.oidc_conf = {
+    @property
+    def rph(self) -> RPHandler:
+        if self._rph is None:
+            self._rph = RPHandler(self.oidc_url, client_configs=self.get_client_configs())
+        return self._rph
+
+    def get_client_configs(self) -> dict[str, dict[str, Any]]:
+        return {
             "aai": {
                 "issuer": self.iss,
                 "client_id": self.client_id,
@@ -91,9 +80,8 @@ class AccessHandler:
                 },
             },
         }
-        self.rph = RPHandler(self.oidc_url, client_configs=self.oidc_conf)
 
-    async def login(self, _: Request) -> web.HTTPSeeOther:
+    async def login(self) -> web.HTTPSeeOther:
         """Redirect user to AAI login.
 
         :raises: HTTPInternalServerError if OIDC configuration init failed
@@ -103,7 +91,6 @@ class AccessHandler:
 
         # Generate authentication payload
         try:
-            # this returns str even though begin mentions a dict
             rph_session_url = self.rph.begin("aai")
         except Exception as e:
             # This can be caused if config is improperly configured, and
@@ -167,7 +154,9 @@ class AccessHandler:
             raise web.HTTPUnauthorized(reason="Invalid OIDC callback.")
 
         # Generate a JWT token.
-        jwt_token = await self._create_jwt_token(session["userinfo"])
+        jwt_token = await AuthService.create_jwt_token_from_userinfo(session["userinfo"])
+
+        LOG.info("OIDC redirect to %r", f"{self.redirect}/home")
 
         response = web.HTTPSeeOther(f"{self.redirect}/home")
         secure_cookie = os.environ.get("OIDC_SECURE_COOKIE", "").upper() != "FALSE"
@@ -198,7 +187,7 @@ class AccessHandler:
         response.headers["Location"] = "/home" if self.redirect == self.domain else f"{self.redirect}/home"
         return response
 
-    async def logout(self, _: Request) -> web.HTTPSeeOther:
+    async def logout(self) -> web.HTTPSeeOther:
         """Log the user out by clearing cookie.
 
         :returns: HTTPSeeOther redirect to login page
@@ -209,77 +198,7 @@ class AccessHandler:
         LOG.debug("Logged out user.")
         return response
 
-    async def _create_jwt_token(self, userinfo: dict[str, Any]) -> str:
-        """
-        Parse user identity information from the /userinfo response.
-
-        :param userinfo: Dictionary containing user profile claims from the AAI /userinfo endpoint.
-        :returns: The JET token.
-        :raises HTTPUnauthorized: If the required user ID claims is not found.
-        """
-        # Extract user ID.
-        if "CSCUserName" in userinfo:
-            user_id = userinfo["CSCUserName"]
-        elif "remoteUserIdentifier" in userinfo:
-            user_id = userinfo["remoteUserIdentifier"]
-        elif "sub" in userinfo:
-            user_id = userinfo["sub"]
-        else:
-            reason = "Authenticated user is missing required claims."
-            LOG.error(reason)
-            raise web.HTTPUnauthorized(reason="reason")
-
-        # Extract user name, fallback to user_id if not available.
-        given_name = userinfo.get("given_name", "").strip()
-        family_name = userinfo.get("family_name", "").strip()
-
-        if given_name or family_name:
-            user_name = f"{given_name} {family_name}".strip()
-        else:
-            user_name = user_id
-
-        return AccessService.create_jwt_token(user_id, user_name)
-
-
-class AAIServiceHandler(ServiceHandler):
-    """AAI handler for API Calls."""
-
-    def __init__(self, headers: Optional[dict[str, Any]] = None) -> None:
-        """Get AAI credentials from config."""
-        super().__init__(
-            base_url=URL(oidc_config.OIDC_URL.rstrip("/")),
-            http_client_headers=headers,
-        )
-
-    async def healthcheck(self) -> dict[str, str]:
-        """Check AAI service heartbeat.
-
-        This will return a JSON with well-known OIDC endpoints.
-
-        :returns: Dict with status of the datacite status
-        """
-
-        try:
-            start = time.time()
-            async with self._client.request(
-                method="GET",
-                url=f"{self.base_url}/.well-known/openid-configuration",
-                timeout=ClientTimeout(total=10),
-            ) as response:
-                content = await response.json()
-                LOG.debug("AAI REST API response content is: %r.", content)
-                if response.status == 200 and "userinfo_endpoint" in content:
-                    status = "Ok" if (time.time() - start) < 1000 else "Degraded"
-                else:
-                    status = "Down"
-
-                return {"status": status}
-        except ClientConnectorError as e:
-            LOG.exception("AAI REST API is down with error: %r.", e)
-            return {"status": "Down"}
-        except InvalidURL as e:
-            LOG.exception("AAI REST API status retrieval failed with: %r.", e)
-            return {"status": "Error"}
-        except web.HTTPError as e:
-            LOG.exception("AAI REST API status retrieval failed with: %r.", e)
-            return {"status": "Error"}
+    @staticmethod
+    async def healthcheck_callback(response: ClientResponse) -> bool:
+        content = await response.json()
+        return "userinfo_endpoint" in content
