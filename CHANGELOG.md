@@ -9,6 +9,10 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- Improved OIDC related tests.
+- Renamed environment variables (database, discovery URLs, OIDC, admin polling) and switched to lazy loading via configuration models.
+- Refactored handler architecture (API and service handlers), unified service injection, and reorganized classes into appropriate packages.
+- Refactored health check handling across API and service handlers, including a simplified base class structure.
 - S3 and Keystone environment variables use config pydantic models
 - `files` table `bytes` column datatype from `INTEGER` to `BIGINT`
 - Migrated to using Metax V3 API
@@ -119,6 +123,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- REMS integration tests.
 - Integration testing for FileProviderService using Allas test service
 - Script for generating Metax reference data for ROR organizations and geolocations
 - Mapping from Datacite's metadata to Metax V3's fields
@@ -197,6 +202,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Removed
 
+- Echoing of all Sqlalchemy log messages
 - Extra codes in metax_mapper
 - Generated json file for identifier_types and related codes
 - Mock metax service and use real Metax test instance for integration test
