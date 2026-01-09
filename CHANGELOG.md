@@ -202,6 +202,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Removed
 
+- removed the taxonomy search endpoint.
 - Echoing of all Sqlalchemy log messages
 - Extra codes in metax_mapper
 - Generated json file for identifier_types and related codes
