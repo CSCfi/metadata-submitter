@@ -11,12 +11,11 @@ AAI server is needed to authenticate users and get their user ID.
 External services are queried from the application, e.g. Datacite for DOIs.
 """
 
+import os
 from pathlib import Path
 from typing import Any
 
 import ujson
-
-from .taxonomy_files.taxonomy_conf import TAXONOMY_NAME_FILE
 
 API_PREFIX = "/v1"
 
@@ -56,12 +55,4 @@ for ref_file in file_names:
         METAX_REFERENCE_DATA[ref_file.replace(".json", "")] = ujson.load(file)
 
 
-TAXONOMY_NAME_DATA: dict[str, dict[Any, Any]] = {}
-# Load taxonomy name data into a single dict
-if not TAXONOMY_NAME_FILE.is_file():
-    raise RuntimeError(
-        "Missing taxonomy file `names.json`. Generate with `bash scripts/taxonomy/generate_name_taxonomy.sh`"
-    )
-
-with open(TAXONOMY_NAME_FILE, "r", encoding="utf-8") as file:
-    TAXONOMY_NAME_DATA = ujson.load(file)
+POLLING_INTERVAL = int(os.getenv("POLLING_INTERVAL", "3600"))
