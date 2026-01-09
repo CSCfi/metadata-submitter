@@ -51,7 +51,6 @@ from .services.keystone_service import KeystoneServiceHandler
 from .services.metax_service import MetaxServiceHandler
 from .services.pid_service import PIDServiceHandler
 from .services.rems_service import RemsServiceHandler
-from .services.taxonomy_search_handler import TaxonomySearchHandler
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
@@ -164,7 +163,6 @@ async def init() -> web.Application:
     _health = HealthAPIHandler(services, handlers)
     _key = KeyAPIHandler(services, handlers)
     _user = UserAPIHandler(services, handlers)
-    _taxonomy = TaxonomySearchHandler()
 
     # Make AccessService available to authorization middleware.
     api[AUTH_SERVICE] = auth_service
@@ -201,8 +199,6 @@ async def init() -> web.Application:
         web.head("/buckets/{bucket}", _file.check_bucket_access),
         # REMS.
         web.get("/rems", _rems.get_organisations),
-        # Taxonomy.
-        web.get("/taxonomy", _taxonomy.get_query_results),
     ]
 
     api.add_routes(api_routes)
