@@ -3,6 +3,7 @@
 import os
 from typing import Any
 
+import ujson
 from aiohttp import ClientResponse, web
 from aiohttp.web import Request, Response
 from idpyoidc.client.rp_handler import RPHandler
@@ -200,5 +201,6 @@ class AuthServiceHandler(ServiceHandler):
 
     @staticmethod
     async def healthcheck_callback(response: ClientResponse) -> bool:
-        content = await response.json()
+        text_content = await response.text()
+        content = ujson.loads(text_content)
         return "userinfo_endpoint" in content
