@@ -108,6 +108,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Fixed
 
+- Auth healtcheck.
+- Metax healtcheck.
 - (users) Submission registration endpoint now returns 404 when publish has not been called.
 - DataCite integration test mock service can now generate a DOI.
 - Dockerfile to run Python in the given normal user `submitter` space.
