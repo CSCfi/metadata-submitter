@@ -21,6 +21,7 @@ from ...services.metax_service import MetaxServiceHandler
 from ...services.pid_service import PIDServiceHandler
 from ...services.rems_service import RemsServiceHandler
 from ...services.ror_service import RorServiceHandler
+from ...services.service_handler import HealthHandler
 from ..services.auth import AuthService
 from ..services.file import FileProviderService
 from ..services.project import ProjectService
@@ -59,16 +60,17 @@ class RESTAPIServiceHandlers(BaseModel):
     keystone: KeystoneServiceHandler
     auth: AuthServiceHandler
     admin: AdminServiceHandler | None = None
+    database: HealthHandler
 
 
 class RESTAPIHandler:
     """Base class for HTTP API handlers."""
 
-    def __init__(self, services: RESTAPIServices, service_handlers: RESTAPIServiceHandlers) -> None:
+    def __init__(self, services: RESTAPIServices, handlers: RESTAPIServiceHandlers) -> None:
         """Base class for HTTP API handlers."""
 
         self._services = services
-        self._handlers = service_handlers
+        self._handlers = handlers
 
     @staticmethod
     async def get_json_dict(req: Request) -> dict[str, Any]:

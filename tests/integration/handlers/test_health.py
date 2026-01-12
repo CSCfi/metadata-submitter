@@ -19,9 +19,24 @@ class TestPublicEndpoints:
             result = await resp.json()
             health = ServiceHealth.model_validate(result)
 
-            if any(s == Health.ERROR for s in health.services.values()):
+            # Check overall service health.
+
+            services = health.services.values()
+
+            if Health.ERROR in services:
                 assert health.status == Health.ERROR
-            if any(s == Health.DOWN for s in health.services.values()):
+            elif Health.DOWN in services:
                 assert health.status == Health.DOWN
             else:
                 assert health.status == Health.UP
+
+            # Check individual service health.
+
+            # The services must be UP during integration tests.
+            assert health.services["datacite"] == Health.UP
+            assert health.services["pid"] == Health.UP
+            assert health.services["metax"] == Health.UP
+            assert health.services["rems"] == Health.UP
+            assert health.services["auth"] == Health.UP
+            assert health.services["keystone"] == Health.UP
+            assert health.services["database"] == Health.UP

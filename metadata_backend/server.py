@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from typing import TypeVar
+from typing import TypeVar, override
 
 import uvloop
 from aiohttp import web
@@ -12,17 +12,18 @@ from metadata_backend.api.handlers.auth import AuthAPIHandler
 from metadata_backend.api.handlers.key import KeyAPIHandler
 from metadata_backend.api.handlers.restapi import RESTAPIServiceHandlers, RESTAPIServices
 from metadata_backend.api.handlers.user import UserAPIHandler
+from metadata_backend.api.models.health import Health
 from metadata_backend.conf.deployment import deployment_config
 from metadata_backend.services.auth_service import AuthServiceHandler
 from metadata_backend.services.ror_service import RorServiceHandler
-from metadata_backend.services.service_handler import ServiceHandler
+from metadata_backend.services.service_handler import HealthHandler, ServiceHandler
 
 from .api.handlers.files import FilesAPIHandler
 from .api.handlers.health import HealthAPIHandler
 from .api.handlers.object import ObjectAPIHandler
 from .api.handlers.publish import PublishAPIHandler
 from .api.handlers.rems import RemsAPIHandler
-from .api.handlers.static import StaticHandler, html_handler_factory
+from .api.handlers.static import html_handler_factory
 from .api.handlers.submission import SubmissionAPIHandler
 from .api.middlewares import AUTH_SERVICE, authorization, http_error_handler
 from .api.services.auth import AuthService
@@ -32,7 +33,6 @@ from .conf.conf import (
     API_PREFIX,
     DEPLOYMENT_CSC,
     DEPLOYMENT_NBIS,
-    frontend_static_files,
     swagger_static_path,
 )
 from .database.postgres.repositories.api_key import ApiKeyRepository
@@ -40,7 +40,7 @@ from .database.postgres.repositories.file import FileRepository
 from .database.postgres.repositories.object import ObjectRepository
 from .database.postgres.repositories.registration import RegistrationRepository
 from .database.postgres.repositories.submission import SubmissionRepository
-from .database.postgres.repository import create_engine, create_session_factory
+from .database.postgres.repository import create_engine, create_session_factory, is_healthy
 from .database.postgres.services.file import FileService
 from .database.postgres.services.object import ObjectService
 from .database.postgres.services.registration import RegistrationService
@@ -148,6 +148,18 @@ async def init() -> web.Application:
         project=project_service,
         file_provider=file_provider_service,
     )
+
+    class DatabaseHealthHandler(HealthHandler):
+        def __init__(self) -> None:
+            super().__init__("database")
+
+        @override
+        async def get_health(self) -> Health:
+            if await is_healthy(engine):
+                return Health.UP
+            else:
+                return Health.DOWN
+
     handlers = RESTAPIServiceHandlers(
         datacite=datacite_handler,
         pid=pid_handler,
@@ -157,7 +169,9 @@ async def init() -> web.Application:
         keystone=keystone_handler,
         auth=auth_handler,
         admin=admin_handler,
+        database=DatabaseHealthHandler(),
     )
+
     _object = ObjectAPIHandler(services, handlers)
     _submission = SubmissionAPIHandler(services, handlers)
     _publish_submission = PublishAPIHandler(services, handlers)
@@ -223,16 +237,6 @@ async def init() -> web.Application:
         swagger_handler = html_handler_factory(swagger_static_path)
         server.router.add_get("/swagger", swagger_handler)
         LOG.info("Swagger routes loaded")
-
-    # These should be the last routes added, as they are a catch-all
-    if frontend_static_files.exists():
-        _static = StaticHandler(frontend_static_files)
-        frontend_routes = [
-            web.static("/static", _static.setup_static()),
-            web.get("/{path:.*}", _static.frontend),
-        ]
-        server.add_routes(frontend_routes)
-        LOG.info("Frontend routes loaded")
 
     return server
 

@@ -15,8 +15,10 @@ LOG.setLevel(logging.DEBUG)
 class HealthAPIHandlerTestCase(HandlersTestCase):
     """Tests for health API handler."""
 
-    async def test_healthcheck(self):
-        """Test healthcheck endpoint."""
+    async def test_get_health(self):
+        """Test health check endpoint."""
+
+        # Test mock response.
 
         for health_status in [Health.UP, Health.DOWN, Health.ERROR]:
 
@@ -35,3 +37,12 @@ class HealthAPIHandlerTestCase(HandlersTestCase):
                 assert health.status == health_status
                 for status in health.services.values():
                     assert status == health_status
+
+        # Test real response.
+
+        response = await self.client.get("/health")
+        assert response.status == 200
+        result = await response.json()
+        health = ServiceHealth.model_validate(result)
+        # The database must be UP during unit tests.
+        assert health.services["database"] == Health.UP

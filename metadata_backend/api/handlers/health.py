@@ -6,7 +6,7 @@ from aiohttp import web
 from aiohttp.web import Request, Response
 
 from ...helpers.logger import LOG
-from ...services.service_handler import ServiceHandler
+from ...services.service_handler import HealthHandler
 from ..models.health import Health, ServiceHealth
 from .restapi import RESTAPIHandler
 
@@ -15,21 +15,20 @@ class HealthAPIHandler(RESTAPIHandler):
     """Health API handler."""
 
     @staticmethod
-    async def get_health(handler: ServiceHandler) -> tuple[str, Health]:
+    async def get_health(handler: HealthHandler) -> tuple[str, Health]:
         """
-        Get service handler health using service handler's healthcheck URL.
+        Get service health.
 
-        :param handler: The service handler.
-        :returns: The service handler health.
+        :param handler: The health handler.
+        :returns: The service health.
         """
 
         try:
             return handler.service_name, await handler.get_health()
         except Exception:
             LOG.exception(
-                "Unexpected error during health check for service '%s', url=%s",
+                "Unexpected error during health check for service '%s'",
                 handler.service_name,
-                handler.healthcheck_url,
             )
             return handler.service_name, Health.ERROR
 
@@ -40,7 +39,7 @@ class HealthAPIHandler(RESTAPIHandler):
         :returns: The service health.
         """
 
-        handlers: list[ServiceHandler] = [
+        handlers: list[HealthHandler] = [
             self._handlers.datacite,
             self._handlers.pid,
             self._handlers.metax,
@@ -48,6 +47,7 @@ class HealthAPIHandler(RESTAPIHandler):
             self._handlers.auth,
             self._handlers.keystone,
             self._handlers.admin,
+            self._handlers.database,
         ]
 
         results: list[tuple[str, Health]] = []

@@ -38,18 +38,6 @@ class AppTestCase(AioHTTPTestCase):
         self.assertIs(type(self.app), web.Application)
         self.assertIs(len(self.app.router.routes()), 45)
 
-    async def test_frontend_routes_are_set(self):
-        """Test correct routes are set when frontend folder exists."""
-        frontend_static = "metadata_backend.server.frontend_static_files"
-        with tempfile.TemporaryDirectory() as tempdir:
-            temppath = Path(tempdir)
-            Path(temppath / "assets").mkdir()
-            with patch(frontend_static, temppath):
-                server = await self.get_application()
-                routes = str([x for x in server.router.routes()])
-                self.assertIn(f"{tempdir}/assets", routes)
-                self.assertIn("DynamicResource  /{path}", routes)
-
     async def test_response_headers(self):
         """Test response headers are set correctly in on_prepare_response."""
         resp = await self.client.request("GET", "/")
