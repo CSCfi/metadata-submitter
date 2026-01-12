@@ -50,14 +50,6 @@ flowchart LR
 
 - `Docker`
 - [`Vault CLI`](https://developer.hashicorp.com/vault/docs/get-vault)
-- [`Git LFS`](https://git-lfs.com/)
-
-Git LFS is required to checkout the `metadata_backend/conf/taxonomy_files/names.json` file.
-Without Git LFS, this file can also be generated from NCBI taxonomy using the following command:
-
-```bash
-scripts/taxonomy/generate_name_taxonomy.sh
-```
 
 ### Initialise the project for development and testing
 
@@ -93,7 +85,7 @@ source .venv/bin/activate  # activate the uv venv
 Copy the contents of `.env.example` file to `.env` file and edit it as needed:
 
 ```bash
-cp .env.example .env
+cp tests/integration/.env.example .env
 ```
 
 Additionally, secrets for live services can be inserted into the `.env` file automatically with:
@@ -127,10 +119,6 @@ Then follow these instructions:
 ```bash
 # Optional: update references for metax integration
 scripts/metax_mappings/fetch_refs.sh
-
-# Optional: update taxonomy names for taxonomy search endpoint
-# However, this is a NECESSARY step if you have not installed Git LFS
-scripts/taxonomy/generate_name_taxonomy.sh
 ```
 
 Then copy `.env` file and set up the environment variables.
@@ -138,7 +126,7 @@ The example file has hostnames for development with Docker network (via `docker 
 You will have to change the hostnames to `localhost`.
 
 ```bash
-cp .env.example .env  # Make any changes you need to the file
+cp tests/integration/.env.example .env  # Make any changes you need to the file
 ```
 
 Secrets, which are used for testing against other services are fetched from Vault and added to the `.env` file with the
