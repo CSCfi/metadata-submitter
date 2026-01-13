@@ -2,56 +2,55 @@
 
 import asyncio
 import logging
-from typing import TypeVar, override
+from typing import TypeVar
 
 import uvloop
 from aiohttp import web
 from aiohttp.web_routedef import AbstractRouteDef
 
-from metadata_backend.api.handlers.auth import AuthAPIHandler
-from metadata_backend.api.handlers.key import KeyAPIHandler
-from metadata_backend.api.handlers.restapi import RESTAPIServiceHandlers, RESTAPIServices
-from metadata_backend.api.handlers.user import UserAPIHandler
-from metadata_backend.api.models.health import Health
-from metadata_backend.conf.deployment import deployment_config
-from metadata_backend.services.auth_service import AuthServiceHandler
-from metadata_backend.services.ror_service import RorServiceHandler
-from metadata_backend.services.service_handler import HealthHandler, ServiceHandler
-
+from .api.handlers.auth import AuthAPIHandler
 from .api.handlers.files import FilesAPIHandler
 from .api.handlers.health import HealthAPIHandler
+from .api.handlers.key import KeyAPIHandler
 from .api.handlers.object import ObjectAPIHandler
 from .api.handlers.publish import PublishAPIHandler
 from .api.handlers.rems import RemsAPIHandler
+from .api.handlers.restapi import RESTAPIServiceHandlers, RESTAPIServices
 from .api.handlers.static import html_handler_factory
 from .api.handlers.submission import SubmissionAPIHandler
+from .api.handlers.user import UserAPIHandler
 from .api.middlewares import AUTH_SERVICE, authorization, http_error_handler
 from .api.services.auth import AuthService
 from .api.services.file import S3AllasFileProviderService
 from .api.services.project import CscProjectService, NbisProjectService, ProjectService
+from .services.ror_service import RorServiceHandler
 from .conf.conf import (
     API_PREFIX,
     DEPLOYMENT_CSC,
     DEPLOYMENT_NBIS,
     swagger_static_path,
 )
+from .conf.deployment import deployment_config
 from .database.postgres.repositories.api_key import ApiKeyRepository
 from .database.postgres.repositories.file import FileRepository
 from .database.postgres.repositories.object import ObjectRepository
 from .database.postgres.repositories.registration import RegistrationRepository
 from .database.postgres.repositories.submission import SubmissionRepository
-from .database.postgres.repository import create_engine, create_session_factory, is_healthy
+from .database.postgres.repository import create_engine, create_session_factory
 from .database.postgres.services.file import FileService
 from .database.postgres.services.object import ObjectService
 from .database.postgres.services.registration import RegistrationService
 from .database.postgres.services.submission import SubmissionService
+from .health import DatabaseHealthHandler
 from .helpers.logger import LOG
 from .services.admin_service import AdminServiceHandler
+from .services.auth_service import AuthServiceHandler
 from .services.datacite_service import DataciteServiceHandler
 from .services.keystone_service import KeystoneServiceHandler
 from .services.metax_service import MetaxServiceHandler
 from .services.pid_service import PIDServiceHandler
 from .services.rems_service import RemsServiceHandler
+from .services.service_handler import ServiceHandler
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
@@ -149,17 +148,6 @@ async def init() -> web.Application:
         file_provider=file_provider_service,
     )
 
-    class DatabaseHealthHandler(HealthHandler):
-        def __init__(self) -> None:
-            super().__init__("database")
-
-        @override
-        async def get_health(self) -> Health:
-            if await is_healthy(engine):
-                return Health.UP
-            else:
-                return Health.DOWN
-
     handlers = RESTAPIServiceHandlers(
         datacite=datacite_handler,
         pid=pid_handler,
@@ -169,7 +157,7 @@ async def init() -> web.Application:
         keystone=keystone_handler,
         auth=auth_handler,
         admin=admin_handler,
-        database=DatabaseHealthHandler(),
+        database=DatabaseHealthHandler(engine),
     )
 
     _object = ObjectAPIHandler(services, handlers)
