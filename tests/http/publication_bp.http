@@ -1,128 +1,58 @@
 # https://github.com/Huachao/vscode-restclient
 # https://jsonpath.com/
 
+# Run this script in project root to create XML file payloads with test files:
+# source tests/http/xml-files.sh
+
+# Run this to launch the API service locally:
+# REDIRECT_URL=http://localhost:5430 docker compose --env-file tests/integration/.env.example --profile dev up --build -d
 
 @api_url = http://localhost:5430
 @auth_url = http://localhost:8000
-@doi_url = http://localhost:8001
-
 @auth_email = mock_user@test.what
 
-@file_path = s3://bucket/mock_files/file1.c4gh
-
-@user_id = {{user_data_req.response.body.user_id}}
-@user_name = {{user_data_req.response.body.user_name}}
 @project_id = {{user_data_req.response.body.projects[0].project_id}}
 @submission_id = {{submission_id_req.response.body.submissionId}}
-@dataset_id = {{dataset_id_req.response.body.accessionId}}
-@image_id = {{image_id_req.response.body.$[0].accessionId}}
-@admin_token = {{admin_token_req.response.body.id_token}}
-@file_path = {{file_path_req.response.body[0].filepath}}
 
-### Get admin token
-# @name admin_token_req
-POST {{auth_url}}/token
 
 ### Mock authentication
-GET {{auth_url}}/setmock
-    ?sub={{auth_email}}
-    &given=Mock
-    &family=Family
+curl {{auth_url}}/setmock?sub={{auth_email}}&given=Mock&family=Family
 
 ###
-GET {{api_url}}/aai
+curl {{api_url}}/login
 
 ###
-GET {{api_url}}/logout
-
+curl {{api_url}}/logout
 
 ### Get user data
 # @name user_data_req
-GET {{api_url}}/v1/users
+curl {{api_url}}/v1/users
 
-
-### Create submission
+### Create new submission
 # @name submission_id_req
-POST {{api_url}}/v1/submissions
+curl -X POST '{{api_url}}/v1/submit/Bigpicture?projectId={{project_id}}' \
+     -H 'content-type: multipart/form-data; boundary=WebKitFormBoundary' \
+     --data-binary @xml-files.txt
 
-{
-    "name": "submission test 1",
-    "description": "submission test 1",
-    "projectId": "{{project_id}}",
-    "workflow": "Bigpicture"
-}
+### List all submissions
+curl {{api_url}}/v1/submissions?projectId={{project_id}}
 
-### List submissions
-GET {{api_url}}/v1/submissions
-    ?projectId={{project_id}}
+### Get submission by ID
+curl {{api_url}}/v1/submissions/{{submission_id}}
 
-### Get submission
-GET {{api_url}}/v1/submissions/{{submission_id}}
+### List metadata objects in the submission
+curl {{api_url}}/v1/submissions/{{submission_id}}/objects
 
-### Update metadata in submission
-PATCH {{api_url}}/v1/submissions/{{submission_id}}/metadata
+### Get dataset xml file in the submission
+curl {{api_url}}/v1/submissions/{{submission_id}}/objects/docs?schemaType=dataset
 
-< ../test_files/submission/metadata.json
+### Get image xml file in the submission
+curl {{api_url}}/v1/submissions/{{submission_id}}/objects/docs?schemaType=image
 
-### Add REMS data to a submission
-POST {{api_url}}/v1/objects/bprems
-     ?submission={{submission_id}}
-Content-Type: multipart/form-data; boundary=SomeWebKitFormBoundary
+### Update image xml file in the submission
+curl -X PATCH {{api_url}}/v1/submit/Bigpicture/{{submission_id}}?projectId={{project_id}}
+     -H 'content-type: multipart/form-data; boundary=WebKitFormBoundary' \
+     --data-binary @xml-files-update.txt
 
---SomeWebKitFormBoundary
-Content-Disposition: form-data; name="bprems"; filename="rems.xml"
-Content-Type: text/xml
-
-< ../test_files/bprems/rems.xml
---SomeWebKitFormBoundary--
-
-### Add dataset to a submission
-# @name dataset_id_req
-POST {{api_url}}/v1/objects/bpdataset
-     ?submission={{submission_id}}
-Content-Type: multipart/form-data; boundary=SomeWebKitFormBoundary
-
---SomeWebKitFormBoundary
-Content-Disposition: form-data; name="bpdataset"; filename="dataset.xml"
-Content-Type: text/xml
-
-< ../test_files/bpdataset/dataset.xml
---SomeWebKitFormBoundary--
-
-### Get dataset
-GET {{api_url}}/v1/objects/bpdataset/{{dataset_id}}
-
-### Get dataset XML
-GET {{api_url}}/v1/objects/bpdataset/{{dataset_id}}
-    ?format=xml
-
-
-### Add images to a submission
-# @name image_id_req
-POST {{api_url}}/v1/objects/bpimage
-     ?submission={{submission_id}}
-Content-Type: multipart/form-data; boundary=SomeWebKitFormBoundary
-
---SomeWebKitFormBoundary
-Content-Disposition: form-data; name="bpimage"; filename="images_multi.xml"
-Content-Type: text/xml
-
-< ../test_files/bpimage/images_multi.xml
---SomeWebKitFormBoundary--
-
-### Get image
-GET {{api_url}}/v1/objects/bpimage/{{image_id}}
-
-### Get image XML
-GET {{api_url}}/v1/objects/bpimage/{{image_id}}
-    ?format=xml
-
-### Get submission
-GET {{api_url}}/v1/submissions/{{submission_id}}
-
-### Begin ingestion
-POST {{api_url}}/v1/submissions/{{submission_id}}/ingest
-X-Authorization: Bearer {{admin_token}}
-
-### Announce submission
-PATCH {{api_url}}/v1/announce/{{submission_id}}
+### Delete submission
+curl -X DELETE {{api_url}}/v1/submit/Bigpicture/{{submission_id}}?projectId={{project_id}}
