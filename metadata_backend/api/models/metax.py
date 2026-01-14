@@ -75,10 +75,6 @@ class Actor(BaseModel):
     person: Person | None = None
 
 
-class FieldOfScience(Url):
-    pass
-
-
 class Date(BaseModel):
     date: str
 
@@ -174,7 +170,7 @@ class MetaxFields(DraftMetax):
     actors: list[Actor]
     keyword: list[str]
     # optional fields
-    field_of_science: list[FieldOfScience] | None = None
+    field_of_science: list[Url] | None = None
     issued: str | None = None
     language: list[Language] | None = None
     projects: list[Project] | None = None
@@ -192,3 +188,17 @@ def convert_to_dict(value: str | dict[str, str]) -> dict[str, str]:
     if isinstance(value, str):
         return {"en": value}
     raise ValueError("Value must be a dict or a string.")
+
+
+class FieldOfScience(BaseModel):
+    id: str = Field(..., description="The ID for the Field of Science. ")
+    url: str = Field(..., description=" The URL for the Field of Science.")
+    pref_label: dict[str, str] = Field(..., description="Mapping of language codes to labels.")
+
+    @property
+    def code(self) -> str:
+        """
+        Return the code extracted from the URL.
+        Example: 'http://www.yso.fi/onto/okm-tieteenala/ta999' -> 'ta999'
+        """
+        return self.url.rstrip("/").split("/")[-1]

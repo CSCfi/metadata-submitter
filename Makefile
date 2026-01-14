@@ -59,6 +59,7 @@ get_env: ## Get secrets needed for integration tests from vault
 	$(call write_integration_test_secret,CSC_PID_KEY,sd-submit/pid,PID_APIKEY) \
 	$(call write_integration_test_secret,METAX_URL,sd-submit/metax_test,METAX_V3_TEST_URL) \
 	$(call write_integration_test_secret,METAX_TOKEN,sd-submit/metax_test,METAX_V3_TEST_TOKEN) \
+	$(call write_integration_test_secret,ROR_URL,sd-submit/secrets,ror_url) \
 	$(call write_integration_test_secret,S3_ENDPOINT,sd-submit/secrets,allas_host) \
 	$(call write_integration_test_secret,S3_REGION,sd-submit/secrets,s3_region) \
 	$(call write_integration_test_secret,STATIC_S3_ACCESS_KEY_ID,sd-submit/secrets,s3_access_key) \
@@ -97,6 +98,7 @@ get_ci_env: ## Get secrets needed for CI tests from vault
 	$(call write_integration_test_secret,CSC_PID_KEY,sd-submit/pid,PID_APIKEY) \
 	$(call write_integration_test_secret,METAX_URL,sd-submit/metax_test,METAX_V3_TEST_URL) \
 	$(call write_integration_test_secret,METAX_TOKEN,sd-submit/metax_test,METAX_V3_TEST_TOKEN) \
+    $(call write_integration_test_secret,ROR_URL,sd-submit/secrets,ror_url) \
 	$(call write_integration_test_secret,S3_ENDPOINT,sd-submit/secrets,allas_host) \
 	$(call write_integration_test_secret,S3_REGION,sd-submit/secrets,s3_region) \
 	$(call write_integration_test_secret,STATIC_S3_ACCESS_KEY_ID,sd-submit/secrets,s3_access_key) \

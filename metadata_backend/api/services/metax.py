@@ -1,9 +1,10 @@
 """Metax services."""
 
+import re
+from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any
 
-from ...conf.conf import METAX_REFERENCE_DATA
 from ...helpers.logger import LOG
 from ..exceptions import UserException
 from ..models.datacite import (
@@ -29,67 +30,112 @@ from ..models.metax import (
     Roles,
     Spatial,
     Temporal,
+    Url,
 )
 from ..models.submission import SubmissionMetadata
+from ..resource.metax import METAX_MAPPING_GEO_LOCATIONS, METAX_MAPPING_LANGUAGES
 from ..services.publish import check_subject_format
+from .ror import RorService
+
+
+class MetaxService(ABC):
+    """Metax service."""
+
+    @abstractmethod
+    async def get_fields_of_science(self) -> list[FieldOfScience]:
+        """
+        Get Metax fields of science.
+
+        :return: The Metax fields of science.
+        """
+
+    async def get_field_of_science(self, text: str) -> FieldOfScience | None:
+        fields = await self.get_fields_of_science()
+
+        if not text:
+            return None
+
+        def _normalize(value: str) -> str:
+            """Case- and punctuation-insensitive comparison."""
+            return re.sub(r"[^\w]", "", value.lower())
+
+        norm_text = _normalize(text)
+
+        # Match code.
+        for field in fields:
+            norm_code = _normalize(field.code)
+            # Exact normalized match (e.g. "ta111")
+            if norm_code == norm_text:
+                return field
+            # Numeric suffix match (e.g. "111" -> "ta111").
+            if norm_text.isdigit() and norm_code.endswith(norm_text):
+                return field
+
+        # Match label.
+        for field in fields:
+            for label in field.pref_label.values():
+                if _normalize(label) == norm_text:
+                    return field
+
+        return None
 
 
 class MetaxMapper:
     """Map DataCite metadata to Metax metadata."""
 
-    def __init__(
-        self,
-        metax_data: dict[str, Any],
-        metadata: SubmissionMetadata,
-    ) -> None:
-        """Map DataCite metadata to Metax metadata.
+    def __init__(self, metax_service: MetaxService, ror_service: RorService) -> None:
+        """
+        Map DataCite metadata to Metax metadata.
+
+        :param metax_service: The Metax service.
+        :param ror_service: the ROR service.
+        """
+
+        self._metax_service = metax_service
+        self._ror_service = ror_service
+
+    async def map_metadata(self, metax_data: dict[str, Any], metadata: SubmissionMetadata) -> MetaxFields:
+        """Public class for actual mapping of Metax's fields.
 
         :param metax_data: Metax's data
         :param metadata: The submission metadata
-        """
-        self.metax_dataset = MetaxFields(**metax_data)
-        self.metadata = metadata
-
-        # Values from Metax reference data
-        self.ror_organizations = METAX_REFERENCE_DATA["ror_organizations"]
-        self.languages = METAX_REFERENCE_DATA["languages"]
-        self.fields_of_science = METAX_REFERENCE_DATA["fields_of_science"]
-        self.geo_locations = METAX_REFERENCE_DATA["geo_locations"]
-
-    def map_metadata(self) -> MetaxFields:
-        """Public class for actual mapping of Metax's fields.
-
         :returns: Metax's dataset.
         """
-        LOG.info("Mapping DataCite metadata to Metax's fields: %r.", self.metadata)
+        LOG.info("Mapping DataCite metadata to Metax's fields: %r.", metadata)
 
-        self._map_actors(self.metadata.creators, Roles.creator)
-        self._map_publisher(self.metadata.publisher)
-        self._map_issued()
-        self._map_projects(self.metadata.publisher, self.metadata.fundingReferences)
+        metax_dataset = MetaxFields(**metax_data)
 
-        if self.metadata.contributors:
-            self._map_actors(self.metadata.contributors, Roles.contributor)
+        await self._map_actors(metadata.creators, Roles.creator, metax_dataset)
+        await self._map_publisher(metadata.publisher, metax_dataset)
+        self._map_issued(metax_dataset)
+        await self._map_projects(metadata.publisher, metadata.fundingReferences, metax_dataset)
 
-        if self.metadata.dates:
-            self._map_temporal(self.metadata.dates)
+        if metadata.contributors:
+            await self._map_actors(metadata.contributors, Roles.contributor, metax_dataset)
 
-        if self.metadata.geoLocations:
-            self._map_spatial(self.metadata.geoLocations)
+        if metadata.dates:
+            self._map_temporal(metadata.dates, metax_dataset)
 
-        if self.metadata.language:
-            self._map_language(self.metadata.language)
+        if metadata.geoLocations:
+            self._map_spatial(metadata.geoLocations, metax_dataset)
 
-        if self.metadata.subjects:
-            self._map_field_of_science_and_keyword(self.metadata.subjects)
+        if metadata.language:
+            self._map_language(metadata.language, metax_dataset)
 
-        return self.metax_dataset
+        if metadata.subjects:
+            await self._map_field_of_science_and_keyword(metadata.subjects, metax_dataset)
 
-    def _map_actors(self, people: list[Creator] | list[Contributor], role: str) -> None:
-        """Map Metax's actors.
+        return metax_dataset
 
-        :param creators: Datacite's creators
-        :param contributors: Datacite's contributors
+    async def _map_actors(
+        self, people: list[Creator] | list[Contributor], role: str, metax_dataset: MetaxFields
+    ) -> None:
+        """
+        Map DataCite actors To Metax metadata.
+
+        :param people: DataCite creators or contributors.
+        :param role: Metax role.
+        :param metax_dataset: Metax metadata.
         """
         LOG.info("Mapping Metax's creators or contributors.")
 
@@ -99,7 +145,7 @@ class MetaxMapper:
 
             # Only one organization is allowed in Metax
             affiliation = p.affiliation[0]
-            self._validate_organization(affiliation.name)
+            affiliation.name = await self._validate_organization(affiliation.name)
             organization = Organization(
                 pref_label=affiliation.name, external_identifier=affiliation.affiliationIdentifier
             )
@@ -110,18 +156,18 @@ class MetaxMapper:
             # Only one Person is allowed in Metax
             person = Person(name=p.name, external_identifier=nameIdentifier)
             actor = Actor(organization=organization, roles=[role], person=person)
-            self.metax_dataset.actors.append(actor)
+            metax_dataset.actors.append(actor)
 
-    def _map_publisher(self, publisher: Publisher) -> None:
+    async def _map_publisher(self, publisher: Publisher, metax_dataset: MetaxFields) -> None:
         """Map Datacite's publisher to Metax's actor with role Publisher."""
         LOG.info("Mapping Metax's publisher.")
 
-        self._validate_organization(publisher.name)
+        publisher.name = await self._validate_organization(publisher.name)
         organization = Organization(pref_label=publisher.name, external_identifier=publisher.publisherIdentifier)
         actor = Actor(organization=organization, roles=[Roles.publisher])
-        self.metax_dataset.actors.append(actor)
+        metax_dataset.actors.append(actor)
 
-    def _map_field_of_science_and_keyword(self, subjects: list[Subject]) -> None:
+    async def _map_field_of_science_and_keyword(self, subjects: list[Subject], metax_dataset: MetaxFields) -> None:
         """Map subjects to Metax's field of science and keyword.
 
         :param subjects: Subjects data from datacite
@@ -129,26 +175,24 @@ class MetaxMapper:
         """
         LOG.info("Mapping Metax's field_of_science and keyword.")
 
-        label_to_code = {value["label"]["en"]: code for code, value in self.fields_of_science.items()}
-
         for subject in subjects:
+            fos = None
+
             # Case UI user input with subject format "code - subject" e.g (111 - Mathematics)
             subj = check_subject_format(subject.subject)
             if subj is not None:
-                fos = FieldOfScience(url=subject.valueUri)
+                fos = Url(url=subject.valueUri)
 
-            # Case API user input with subject format "subject"
-            # url is subject's valueUri if there is input data otherwise getting from FOS's reference data.
-            if subject.subject in label_to_code:
-                code = label_to_code[subject.subject]
-                fos = FieldOfScience(
-                    url=subject.valueUri if subject.valueUri else self.fields_of_science[f"ta{code}"]["uri"]
-                )
+            # Case API user input with field of science code or label.
+            field_of_science = await self._metax_service.get_field_of_science(subject.subject)
+            if field_of_science is not None:
+                fos = Url(url=field_of_science.url)
 
-            self.metax_dataset.field_of_science.append(fos)
-            self.metax_dataset.keyword.append(subject.subject)
+            if fos is not None:
+                metax_dataset.field_of_science.append(fos)
+            metax_dataset.keyword.append(subject.subject)
 
-    def _map_issued(self) -> None:
+    def _map_issued(self, metax_dataset: MetaxFields) -> None:
         """
         Map Metax's issued.
         For current SD submission, issued is the date when the dataset is published.
@@ -156,9 +200,9 @@ class MetaxMapper:
         LOG.info("Mapping Metax's issued.")
 
         issued = datetime.now().strftime("%Y-%m-%d")
-        self.metax_dataset.issued = issued
+        metax_dataset.issued = issued
 
-    def _map_temporal(self, dates: list[Date]) -> None:
+    def _map_temporal(self, dates: list[Date], metax_dataset: MetaxFields) -> None:
         """Map Metax's temporal.
 
         :param dates: Datacite's dates
@@ -169,9 +213,9 @@ class MetaxMapper:
             if date.dateType == "Other":
                 date_list = [d.strip() for d in date.date.split("/") if d.strip()]
                 if len(date_list) == 1:
-                    self.metax_dataset.temporal.append(Temporal(start_date=self._to_valid_date(date_list[0])))
+                    metax_dataset.temporal.append(Temporal(start_date=self._to_valid_date(date_list[0])))
                 elif len(date_list) == 2:
-                    self.metax_dataset.temporal.append(
+                    metax_dataset.temporal.append(
                         Temporal(
                             start_date=self._to_valid_date(date_list[0]), end_date=self._to_valid_date(date_list[1])
                         )
@@ -179,16 +223,18 @@ class MetaxMapper:
                 else:
                     raise ValueError(f"Invalid date format for Metax's temporal: {date.date}")
 
-    def _map_language(self, language: str) -> None:
+    def _map_language(self, language: str, metax_dataset: MetaxFields) -> None:
         """Map Metax's language."""
         LOG.info("Mapping Metax's language.")
 
-        if language not in self.languages:
+        if language not in METAX_MAPPING_LANGUAGES:
             raise UserException(f"Invalid language: {language}")
 
-        self.metax_dataset.language = [Language(url=self.languages[language]["uri"])]
+        metax_dataset.language = [Language(url=METAX_MAPPING_LANGUAGES[language].uri)]
 
-    def _map_projects(self, publisher: Publisher, fundingReferences: list[FundingReference] | None = None) -> None:
+    async def _map_projects(
+        self, publisher: Publisher, funding_references: list[FundingReference] | None, metax_dataset: MetaxFields
+    ) -> None:
         """Map Metax's projects."""
         LOG.info("Mapping Metax's projects.")
 
@@ -196,13 +242,13 @@ class MetaxMapper:
         fundings = []
 
         # Only 1 participating_organization as there is only 1 publisher in Datacite.
-        self._validate_organization(publisher.name)
+        publisher.name = await self._validate_organization(publisher.name)
         participating_organizations.append(
             Organization(pref_label=publisher.name, external_identifier=publisher.publisherIdentifier)
         )
 
-        for fundingRef in fundingReferences:
-            self._validate_organization(fundingRef.funderName)
+        for fundingRef in funding_references:
+            fundingRef.funderName = await self._validate_organization(fundingRef.funderName)
             funder = Funder(
                 organization=Organization(
                     pref_label=fundingRef.funderName, external_identifier=fundingRef.funderIdentifier
@@ -211,14 +257,14 @@ class MetaxMapper:
             funding_identifier = fundingRef.awardNumber
             fundings.append(Funding(funder=funder, funding_identifier=funding_identifier))
 
-        self.metax_dataset.projects.append(
+        metax_dataset.projects.append(
             Project(
                 participating_organizations=participating_organizations,
                 funding=fundings,
             )
         )
 
-    def _map_spatial(self, locations: list[GeoLocation]) -> None:
+    def _map_spatial(self, locations: list[GeoLocation], metax_dataset: MetaxFields) -> None:
         """Map Metax's spatial.
 
         Location's reference url will be mapped from the list of Metax's reference data for geo_locations.
@@ -234,9 +280,9 @@ class MetaxMapper:
             geographic_name = location.geoLocationPlace
 
             reference_url = [
-                loc["uri"]
-                for loc in self.geo_locations
-                if "en" in loc.get("pref_label", {}) and loc["pref_label"]["en"] == geographic_name
+                loc.uri
+                for loc in METAX_MAPPING_GEO_LOCATIONS
+                if "en" in loc.pref_label and loc.pref_label["en"] == geographic_name
             ]
             reference = ReferenceLocation(url=reference_url[0]) if reference_url[0] else None
             custom_wkt = []
@@ -277,7 +323,7 @@ class MetaxMapper:
                 custom_wkt.extend([f"POLYGON(({pol_str}))", f"POINT({in_pol_str})"])
 
             spatial = Spatial(geographic_name=geographic_name, reference=reference, custom_wkt=custom_wkt)
-            self.metax_dataset.spatial.append(spatial)
+            metax_dataset.spatial.append(spatial)
 
     def _to_valid_date(self, date: str) -> str:
         """
@@ -316,14 +362,16 @@ class MetaxMapper:
 
         raise ValueError(f"Invalid date value: {date_value}")
 
-    def _validate_organization(self, org_name: str) -> None:
+    async def _validate_organization(self, org_name: str) -> str:
         """
-        Validate organizations.
-        - Creators' and Contributors' affliation.
-        - Publisher's organization.
+        Validate ROR organization name and return the preferred organisation name.
 
-        :raises UserException: If organization not in ROR organizations list.
+        :raises UserException: If the ROR organization could not be found.
         """
 
-        if self.ror_organizations.get(org_name.lower().strip()) is None:
+        preferred_org_name = await self._ror_service.is_ror_organisation(org_name.strip())
+
+        if preferred_org_name is None:
             raise UserException(f"Invalid organization name: {org_name}")
+
+        return preferred_org_name

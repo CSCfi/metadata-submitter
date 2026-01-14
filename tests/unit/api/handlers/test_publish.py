@@ -10,6 +10,7 @@ from metadata_backend.api.models.datacite import Subject
 from metadata_backend.api.models.submission import Rems, SubmissionMetadata, SubmissionWorkflow
 from metadata_backend.api.services.file import FileProviderService
 from metadata_backend.api.services.publish import get_publish_config
+from metadata_backend.api.services.ror import RorService
 from metadata_backend.conf.conf import API_PREFIX
 from metadata_backend.database.postgres.models import FileEntity
 from metadata_backend.database.postgres.repositories.file import FileRepository
@@ -322,7 +323,15 @@ class PublishAPIHandlerTestCase(HandlersTestCase):
             expected_submission_metadata = SubmissionMetadata.model_validate(submission_metadata)
 
             # Dataset.
-            assert call(expected_submission_metadata, metax_id) in mock_metax_update_dataset_metadata.await_args_list
+
+            class IsRorService:
+                def __eq__(self, other):
+                    return isinstance(other, RorService)
+
+            assert (
+                call(expected_submission_metadata, metax_id, IsRorService())
+                in mock_metax_update_dataset_metadata.await_args_list
+            )
 
             mock_metax_update_dataset_description.assert_awaited_once_with(
                 metax_id,

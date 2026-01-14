@@ -1,0 +1,1 @@
+"""Metax resource files."""

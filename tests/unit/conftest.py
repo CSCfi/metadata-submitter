@@ -20,6 +20,7 @@ from metadata_backend.conf.metax import MetaxConfig
 from metadata_backend.conf.oidc import OIDCConfig
 from metadata_backend.conf.pid import CscPidConfig
 from metadata_backend.conf.rems import RemsConfig
+from metadata_backend.conf.ror import RorConfig
 from metadata_backend.conf.s3 import S3Config
 from metadata_backend.database.postgres.repositories.file import FileRepository
 from metadata_backend.database.postgres.repositories.object import ObjectRepository
@@ -73,6 +74,7 @@ def pytest_configure(config):
             OIDCConfig,
             AdminConfig,
             BigPictureConfig,
+            RorConfig,
         ]
     )
 

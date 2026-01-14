@@ -14,6 +14,7 @@ from metadata_backend.api.handlers.restapi import RESTAPIServiceHandlers, RESTAP
 from metadata_backend.api.handlers.user import UserAPIHandler
 from metadata_backend.conf.deployment import deployment_config
 from metadata_backend.services.auth_service import AuthServiceHandler
+from metadata_backend.services.ror_service import RorServiceHandler
 from metadata_backend.services.service_handler import ServiceHandler
 
 from .api.handlers.files import FilesAPIHandler
@@ -125,6 +126,7 @@ async def init() -> web.Application:
     metax_handler = _create_handler(MetaxServiceHandler())
     datacite_handler = _create_handler(DataciteServiceHandler())
     pid_handler = _create_handler(PIDServiceHandler())
+    ror_handler = _create_handler(RorServiceHandler())
     rems_handler = _create_handler(RemsServiceHandler())
     auth_handler = _create_handler(AuthServiceHandler())
     if config.DEPLOYMENT == DEPLOYMENT_NBIS:
@@ -150,6 +152,7 @@ async def init() -> web.Application:
         datacite=datacite_handler,
         pid=pid_handler,
         metax=metax_handler,
+        ror=ror_handler,
         rems=rems_handler,
         keystone=keystone_handler,
         auth=auth_handler,

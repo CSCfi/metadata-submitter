@@ -3,19 +3,23 @@ import uuid
 from pathlib import Path
 from random import randrange
 
-from metadata_backend.api.models.metax import MetaxFields
+from metadata_backend.api.models.metax import FieldOfScience, MetaxFields
 from metadata_backend.api.models.models import Registration
 from metadata_backend.api.models.submission import Submission, SubmissionWorkflow
+from metadata_backend.services.metax_service import MetaxServiceHandler
+from metadata_backend.services.ror_service import RorServiceHandler
 
 SD_SUBMISSION = Path(__file__).parent.parent.parent / "test_files" / "submission" / "submission.json"
 
 
 async def test_metax_service(client, secret_env):
     """Test publish Metax fields using test service."""
+
     from metadata_backend.services.metax_service import MetaxServiceHandler
     from metadata_backend.services.pid_service import PIDServiceHandler
 
     metax_service = MetaxServiceHandler()
+    ror_service = RorServiceHandler()
     pid_service = PIDServiceHandler()
 
     # Submission with DataCite metadata
@@ -49,7 +53,7 @@ async def test_metax_service(client, secret_env):
     )
 
     # Update Metax dataset
-    await metax_service.update_dataset_metadata(submission.metadata, metax_id)
+    await metax_service.update_dataset_metadata(submission.metadata, metax_id, ror_service)
 
     # Update Metax dataset's description
     rems_url = f"https://sd-apply.csc.fi/catalogue/{randrange(100)}"
@@ -133,3 +137,33 @@ async def test_metax_service(client, secret_env):
             date_split = date.date.split("/", 1)
             assert any(date_split[0] == temporal.start_date for temporal in published_metax.temporal)
             assert any(date_split[1] == temporal.end_date for temporal in published_metax.temporal)
+
+
+async def test_get_fields_of_science(client, secret_env):
+    """Test get Metax fields of science."""
+
+    metax_service = MetaxServiceHandler()
+
+    fields = await metax_service.get_fields_of_science()
+    assert len(fields) > 1
+
+    ontology_url = "http://www.yso.fi/onto/okm-tieteenala"
+
+    # Check Mathematics.
+    assert (
+        FieldOfScience(
+            id="8848e88b-a536-43c7-b614-0045b136920d",
+            url=f"{ontology_url}/ta111",
+            pref_label={"en": "Mathematics", "fi": "Matematiikka", "sv": "Matematik"},
+        )
+        in fields
+    )
+
+    field = next((f for f in fields if f.code == "ta111"), None)
+    assert field is not None
+    assert field.url == f"{ontology_url}/ta111"
+
+    # Check URLs.
+    assert all(f.url.startswith(ontology_url) and f.url.rstrip("/").split("/")[-1] == f.code for f in fields), (
+        "Not all URLs have the expected base URL and code suffix"
+    )
