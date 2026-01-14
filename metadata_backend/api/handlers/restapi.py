@@ -20,6 +20,7 @@ from ...services.keystone_service import KeystoneServiceHandler
 from ...services.metax_service import MetaxServiceHandler
 from ...services.pid_service import PIDServiceHandler
 from ...services.rems_service import RemsServiceHandler
+from ...services.ror_service import RorServiceHandler
 from ..services.auth import AuthService
 from ..services.file import FileProviderService
 from ..services.project import ProjectService
@@ -53,6 +54,7 @@ class RESTAPIServiceHandlers(BaseModel):
     datacite: DataciteServiceHandler
     pid: PIDServiceHandler
     metax: MetaxServiceHandler
+    ror: RorServiceHandler
     rems: RemsServiceHandler
     keystone: KeystoneServiceHandler
     auth: AuthServiceHandler

@@ -18,6 +18,7 @@ SD Submit API integrates with the following external services:
 - DataCite ([docs](https://support.datacite.org/docs/api))
 - CSC PID
 - Metax ([docs](https://metax.fairdata.fi/docs/))
+- ROR ([docs](https://ror.readme.io/docs/rest-api))
 - REMS ([source code](https://github.com/CSCfi/rems))
 - NeIC Sensitive Data Archive ([docs](https://neic-sda.readthedocs.io/en/latest/))
 - Imaging Beacon ([source code](https://github.com/CSCfi/imaging-beacon))
@@ -114,12 +115,6 @@ _**Python virtual environment using a Procfile**_, which is described here below
 ### Developing with Python virtual environment
 
 Use `uv` to create and activate the virtual environment for development and testing as [instructed above](#initialise-the-project-for-development-and-testing).
-Then follow these instructions:
-
-```bash
-# Optional: update references for metax integration
-scripts/metax_mappings/fetch_refs.sh
-```
 
 Then copy `.env` file and set up the environment variables.
 The example file has hostnames for development with Docker network (via `docker compose`).
@@ -234,15 +229,34 @@ pytest tests/integration
 
 <details><summary>Click to expand</summary>
 
-Production version can be built and run with following docker commands:
+### Resources
+
+Two infrequently updated resource files used by Metax are stored in
+metadata_backend/resource/metax directory:
+- geo_locations,json
+- languages.json
+
+These files can be refreshed by running:
+
+```bash
+uv run metadata_backend/scripts/fetch_metax.py
+```
+
+### Dockerfile
+
+The Docker image can be built using the Dockerfile located in dockerfiles directory:
 
 ```bash
 docker build --no-cache -f dockerfiles/Dockerfile -t cscfi/metadata-submitter .
+```
+
+Once built, run the container with:
+
+```bash
 docker run -p 5430:5430 cscfi/metadata-submitter
 ```
 
-The [frontend](https://github.com/CSCfi/metadata-submitter-frontend) is built and added as static files to the backend
-deployment with this method.
+### Helm charts
 
 > Helm charts for a kubernetes cluster deployment will also be available soon™️.
 

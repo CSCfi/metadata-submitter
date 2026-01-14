@@ -36,6 +36,7 @@ services:
       - "CSC_PID_KEY=${CSC_PID_KEY:?CSC_PID_KEY must be defined}"
       - "METAX_URL=${METAX_URL:?METAX_URL must be defined}"
       - "METAX_TOKEN=${METAX_TOKEN:?METAX_TOKEN must be defined}"
+      - "ROR_URL=${ROR_URL:?ROR_URL must be defined}"
       - "REMS_USER=${REMS_USER}"
       - "REMS_KEY=${REMS_KEY}"
       - "REMS_URL=${REMS_URL}"

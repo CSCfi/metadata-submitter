@@ -1,25 +1,28 @@
 """Metax Service."""
 
-from typing import Any
+from datetime import timedelta
+from typing import Any, override
 
+from aiocache import SimpleMemoryCache, cached
 from aiohttp import ClientResponse
 from yarl import URL
 
-from ..api.models.metax import DraftMetax
+from ..api.models.metax import DraftMetax, FieldOfScience
 from ..api.models.submission import SubmissionMetadata
-from ..api.services.metax import MetaxMapper
+from ..api.services.metax import MetaxMapper, MetaxService
+from ..api.services.ror import RorService
+from ..conf.metax import metax_config
 from ..helpers.logger import LOG
 from .service_handler import ServiceHandler
 
 
-class MetaxServiceHandler(ServiceHandler):
+class MetaxServiceHandler(MetaxService, ServiceHandler):
     """Metax Service."""
 
     def __init__(self) -> None:
         """Metax Service."""
 
         # Deferred import to avoid loading environment variables when module is imported.
-        from ..conf.metax import metax_config
 
         self._config = metax_config()
 
@@ -30,6 +33,22 @@ class MetaxServiceHandler(ServiceHandler):
             healthcheck_url=(URL(self._config.METAX_URL) / "datasets").update_query(limit=1, fields="id"),
             healthcheck_callback=self.healthcheck_callback,
         )
+
+    @override
+    @cached(ttl=int(timedelta(weeks=1).total_seconds()), cache=SimpleMemoryCache)  # type: ignore
+    async def get_fields_of_science(self) -> list[FieldOfScience]:
+        """
+        Get Metax fields of science.
+
+        :return: The Metax fields of science.
+        """
+
+        resp: dict[str, Any] = await self._request(
+            method="GET", path="reference-data/fields-of-science", params={"limit": "1000"}
+        )
+
+        fields = [FieldOfScience.model_validate(f) for f in resp.get("results", [])]
+        return fields
 
     async def create_draft_dataset(self, doi: str, title: str, description: str) -> str:
         """Create a draft Metax dataset.
@@ -49,18 +68,23 @@ class MetaxServiceHandler(ServiceHandler):
 
         return metax_id
 
-    async def update_dataset_metadata(self, metadata: SubmissionMetadata, metax_id: str) -> None:
+    async def update_dataset_metadata(
+        self, metadata: SubmissionMetadata, metax_id: str, ror_service: RorService
+    ) -> None:
         """Update dataset for publishing.
 
         :param metadata: The submission metadata
-        :param metax_id: Metax ID
+        :param metax_id: The Metax ID
+        :param ror_service: The ROR service
         """
+
         LOG.info("Updating Metax fields with ID %r from submission metadata", metax_id)
+
+        metax_mapper = MetaxMapper(self, ror_service)
 
         metax_data: dict[str, Any] = await self._get(metax_id)
         # Map submission's Datacite metadata to Metax's fields
-        mapper = MetaxMapper(metax_data, metadata)
-        mapped_metax_data = mapper.map_metadata()
+        mapped_metax_data = await metax_mapper.map_metadata(metax_data, metadata)
         await self._patch(metax_id, mapped_metax_data.model_dump())
 
     async def update_dataset_description(self, metax_id: str, description: str) -> None:

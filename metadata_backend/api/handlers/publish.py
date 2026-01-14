@@ -104,7 +104,7 @@ class PublishAPIHandler(RESTAPIHandler):
         :param metadata: The submission metadata
         """
         try:
-            await self._handlers.metax.update_dataset_metadata(metadata, registration.metaxId)
+            await self._handlers.metax.update_dataset_metadata(metadata, registration.metaxId, self._handlers.ror)
         except Exception as ex:
             raise SystemException(
                 f"Failed to update submission '{registration.submissionId}' in Metax. Please try again later."
