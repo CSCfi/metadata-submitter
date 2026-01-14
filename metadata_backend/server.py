@@ -8,22 +8,17 @@ import uvloop
 from aiohttp import web
 from aiohttp.web_routedef import AbstractRouteDef
 
-from metadata_backend.api.handlers.auth import AuthAPIHandler
-from metadata_backend.api.handlers.key import KeyAPIHandler
-from metadata_backend.api.handlers.restapi import RESTAPIServiceHandlers, RESTAPIServices
-from metadata_backend.api.handlers.user import UserAPIHandler
-from metadata_backend.conf.deployment import deployment_config
-from metadata_backend.services.auth_service import AuthServiceHandler
-from metadata_backend.services.ror_service import RorServiceHandler
-from metadata_backend.services.service_handler import ServiceHandler
-
+from .api.handlers.auth import AuthAPIHandler
 from .api.handlers.files import FilesAPIHandler
 from .api.handlers.health import HealthAPIHandler
+from .api.handlers.key import KeyAPIHandler
 from .api.handlers.object import ObjectAPIHandler
 from .api.handlers.publish import PublishAPIHandler
 from .api.handlers.rems import RemsAPIHandler
-from .api.handlers.static import StaticHandler, html_handler_factory
+from .api.handlers.restapi import RESTAPIServiceHandlers, RESTAPIServices
+from .api.handlers.static import html_handler_factory
 from .api.handlers.submission import SubmissionAPIHandler
+from .api.handlers.user import UserAPIHandler
 from .api.middlewares import AUTH_SERVICE, authorization, http_error_handler
 from .api.services.auth import AuthService
 from .api.services.file import S3AllasFileProviderService
@@ -32,9 +27,9 @@ from .conf.conf import (
     API_PREFIX,
     DEPLOYMENT_CSC,
     DEPLOYMENT_NBIS,
-    frontend_static_files,
     swagger_static_path,
 )
+from .conf.deployment import deployment_config
 from .database.postgres.repositories.api_key import ApiKeyRepository
 from .database.postgres.repositories.file import FileRepository
 from .database.postgres.repositories.object import ObjectRepository
@@ -45,13 +40,17 @@ from .database.postgres.services.file import FileService
 from .database.postgres.services.object import ObjectService
 from .database.postgres.services.registration import RegistrationService
 from .database.postgres.services.submission import SubmissionService
+from .health import DatabaseHealthHandler
 from .helpers.logger import LOG
 from .services.admin_service import AdminServiceHandler
+from .services.auth_service import AuthServiceHandler
 from .services.datacite_service import DataciteServiceHandler
 from .services.keystone_service import KeystoneServiceHandler
 from .services.metax_service import MetaxServiceHandler
 from .services.pid_service import PIDServiceHandler
 from .services.rems_service import RemsServiceHandler
+from .services.ror_service import RorServiceHandler
+from .services.service_handler import ServiceHandler
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
@@ -148,6 +147,7 @@ async def init() -> web.Application:
         project=project_service,
         file_provider=file_provider_service,
     )
+
     handlers = RESTAPIServiceHandlers(
         datacite=datacite_handler,
         pid=pid_handler,
@@ -157,7 +157,9 @@ async def init() -> web.Application:
         keystone=keystone_handler,
         auth=auth_handler,
         admin=admin_handler,
+        database=DatabaseHealthHandler(engine),
     )
+
     _object = ObjectAPIHandler(services, handlers)
     _submission = SubmissionAPIHandler(services, handlers)
     _publish_submission = PublishAPIHandler(services, handlers)
@@ -223,16 +225,6 @@ async def init() -> web.Application:
         swagger_handler = html_handler_factory(swagger_static_path)
         server.router.add_get("/swagger", swagger_handler)
         LOG.info("Swagger routes loaded")
-
-    # These should be the last routes added, as they are a catch-all
-    if frontend_static_files.exists():
-        _static = StaticHandler(frontend_static_files)
-        frontend_routes = [
-            web.static("/static", _static.setup_static()),
-            web.get("/{path:.*}", _static.frontend),
-        ]
-        server.add_routes(frontend_routes)
-        LOG.info("Frontend routes loaded")
 
     return server
 

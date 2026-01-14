@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from typing import AsyncIterator, TypeVar
 
-from sqlalchemy import create_mock_engine, event
+from sqlalchemy import create_mock_engine, event, text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 
 from ...conf.database import database_config
@@ -55,6 +55,15 @@ async def create_engine(db_url: str | None = None) -> AsyncEngine:
 
     await _create_schema(engine)
     return engine
+
+
+async def is_healthy(engine: AsyncEngine) -> bool:
+    try:
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+        return True
+    except Exception:
+        return False
 
 
 def save_schema(db_url: str = "postgresql+psycopg2://") -> None:

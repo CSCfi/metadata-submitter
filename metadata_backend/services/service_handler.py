@@ -2,7 +2,8 @@
 
 import asyncio
 import atexit
-from typing import Any, Awaitable, Callable, Optional
+from abc import ABC, abstractmethod
+from typing import Any, Awaitable, Callable, Optional, override
 
 from aiohttp import BasicAuth, ClientConnectorError, ClientResponse, ClientSession, ClientTimeout
 from aiohttp.web import HTTPError, HTTPGatewayTimeout, HTTPInternalServerError
@@ -38,7 +39,28 @@ class ServiceClientError(HTTPError):
         HTTPError.__init__(self, **kwargs)
 
 
-class ServiceHandler:
+class HealthHandler(ABC):
+    """Health check for external services."""
+
+    def __init__(self, service_name: str) -> None:
+        """
+        Health check for external services.
+
+        :param service_name: The service name.
+        """
+
+        self.service_name = service_name
+
+    @abstractmethod
+    async def get_health(self) -> Health:
+        """
+        Get service handler health.
+
+        :returns: The service handler health.
+        """
+
+
+class ServiceHandler(HealthHandler):
     """Base class for service handlers that connect to external services."""
 
     _http_client: Optional[ClientSession] = None
@@ -57,7 +79,8 @@ class ServiceHandler:
     ) -> None:
         """Base class for external service integrations."""
 
-        self.service_name = service_name
+        super().__init__(service_name)
+
         self.base_url = base_url
         self.auth = auth
         self.connection_check_url = base_url
@@ -183,6 +206,7 @@ class ServiceHandler:
             return ServiceServerError(text=reason, reason=reason)
         return ServiceClientError(text=reason, reason=reason, status_code=status)
 
+    @override
     async def get_health(self) -> Health:
         """
         Get service health using the service handler healthcheck URL.
