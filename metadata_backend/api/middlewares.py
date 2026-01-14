@@ -159,6 +159,7 @@ async def authorization(req: web.Request, handler: Handler) -> web.StreamRespons
 
     req["user_id"], req["user_name"] = await verify_authorization(auth_service, jwt_token, api_key)
 
+    # TODO(improve): verify authorization can return None which means access should be unauthorized
     LOG.debug("Successfully authorized request")
 
     return await handler(req)

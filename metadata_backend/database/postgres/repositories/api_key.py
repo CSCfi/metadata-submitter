@@ -60,6 +60,7 @@ class ApiKeyRepository:
             stmt = select(ApiKeyEntity).where(ApiKeyEntity.user_id == user_id)
             result = await session.execute(stmt)
             rows = result.scalars().all()
+            session.expunge_all()
             for row in rows:
                 row.key_id = ""
                 row.api_key = ""

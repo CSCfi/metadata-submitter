@@ -169,7 +169,7 @@ class AuthService:
         # Return the plain text API key prefixed with the API key id.
         return f"{generated_key_id}.{api_key}"
 
-    async def validate_api_key(self, api_key: str) -> str:
+    async def validate_api_key(self, api_key: str) -> str | None:
         """
         Validate the provided API key by comparing it with the stored hash.
 
