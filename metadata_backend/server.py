@@ -23,7 +23,6 @@ from .api.middlewares import AUTH_SERVICE, authorization, http_error_handler
 from .api.services.auth import AuthService
 from .api.services.file import S3AllasFileProviderService
 from .api.services.project import CscProjectService, NbisProjectService, ProjectService
-from .services.ror_service import RorServiceHandler
 from .conf.conf import (
     API_PREFIX,
     DEPLOYMENT_CSC,
@@ -50,6 +49,7 @@ from .services.keystone_service import KeystoneServiceHandler
 from .services.metax_service import MetaxServiceHandler
 from .services.pid_service import PIDServiceHandler
 from .services.rems_service import RemsServiceHandler
+from .services.ror_service import RorServiceHandler
 from .services.service_handler import ServiceHandler
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
