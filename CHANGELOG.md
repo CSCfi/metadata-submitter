@@ -125,6 +125,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- database health check.
 - REMS integration tests.
 - Integration testing for FileProviderService using Allas test service
 - Script for generating Metax reference data for ROR organizations and geolocations
@@ -204,6 +205,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Removed
 
+- frontend files support.
 - removed the taxonomy search endpoint.
 - Echoing of all Sqlalchemy log messages
 - Extra codes in metax_mapper
