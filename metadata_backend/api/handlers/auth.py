@@ -65,3 +65,21 @@ class AuthAPIHandler:
         """
 
         return await self._service_handler.logout()
+
+    async def login_cli(self, _: Request) -> web.Response:
+        """Initiate PKCE Authorization Code Flow for CLI users.
+
+        :raises: HTTPInternalServerError if OIDC configuration init failed
+        :returns: JSON response with authorization_url
+        """
+
+        return await self._service_handler.login_cli()
+
+    async def login_cli_callback(self, req: Request) -> web.Response:
+        """Handle PKCE Authorization Code Flow callback.
+
+        :param req: The HTTP request with code and state parameters
+        :returns: JSON response with access_token
+        """
+
+        return await self._service_handler.login_cli_callback(req)

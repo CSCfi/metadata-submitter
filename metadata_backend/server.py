@@ -211,7 +211,7 @@ async def init() -> web.Application:
     LOG.info("API configurations and routes loaded")
 
     _auth = AuthAPIHandler(auth_handler)
-    auth_routes = get_auth_routes(_auth)
+    auth_routes = get_auth_routes(_auth, config.DEPLOYMENT)
     server.add_routes(auth_routes)
     LOG.info("AAI routes loaded")
 
@@ -229,13 +229,20 @@ async def init() -> web.Application:
     return server
 
 
-def get_auth_routes(_auth: AuthAPIHandler) -> list[AbstractRouteDef]:
-    return [
-        web.get("/aai", _auth.login),  # TODO(improve): deprecate endpoint
-        web.get("/login", _auth.login),
-        web.get("/callback", _auth.callback),
-        web.get("/logout", _auth.logout),
-    ]
+def get_auth_routes(_auth: AuthAPIHandler, deployment: str) -> list[AbstractRouteDef]:
+    """Get the authentication routes depending on deployment configuration."""
+    if deployment == DEPLOYMENT_NBIS:
+        return [
+            web.get("/login", _auth.login_cli),
+            web.get("/callback", _auth.login_cli_callback),
+        ]
+    else:
+        return [
+            web.get("/aai", _auth.login),  # TODO(improve): deprecate endpoint
+            web.get("/login", _auth.login),
+            web.get("/callback", _auth.callback),
+            web.get("/logout", _auth.logout),
+        ]
 
 
 def main() -> None:

@@ -33,12 +33,12 @@ get_env: ## Get secrets needed for integration tests from vault
 		exit 1; \
 	fi
 
-	# Create empty .env file.
-	> .env
+	# Create empty .env.secret file.
 	> tests/integration/.env.secret
 
 	# Create .tests/integration/.env file.
 	cp tests/integration/.env.example tests/integration/.env
+	cp tests/integration/.env.example .env
 
 	$(call write_line,### VAULT SECRETS START ###)
 

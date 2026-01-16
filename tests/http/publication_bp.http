@@ -1,58 +1,98 @@
 # https://github.com/Huachao/vscode-restclient
 # https://jsonpath.com/
 
+# Get secrets from Vault for local deployment:
+# make get_env
+
 # Run this script in project root to create XML file payloads with test files:
 # source tests/http/xml-files.sh
 
 # Run this to launch the API service locally:
-# REDIRECT_URL=http://localhost:5430 docker compose --env-file tests/integration/.env.example --profile dev up --build -d
+# DEPLOYMENT=NBIS docker compose --profile dev up --build -d
 
 @api_url = http://localhost:5430
 @auth_url = http://localhost:8000
 @auth_email = mock_user@test.what
 
-@project_id = {{user_data_req.response.body.projects[0].project_id}}
 @submission_id = {{submission_id_req.response.body.submissionId}}
+@user_id = {{user_data_req.response.body.user_id}}
+@bearer_token = {{token_req.response.body.*}}
 
-
-### Mock authentication
-curl {{auth_url}}/setmock?sub={{auth_email}}&given=Mock&family=Family
-
-###
+# Authentication
+### Get login URL for OIDC Authentication
 curl {{api_url}}/login
 
-###
-curl {{api_url}}/logout
+### Acquire JWT token via OIDC callback (copy the callback url from browser an paste it here)
+# @name token_req
+curl {{api_url}}/callback?code=...
+
+
+### Optional: Generate an API key for further requests
+### Create API key
+# @name token_req
+curl -X POST http://localhost:5430/v1/api/keys \
+     -H 'authorization: Bearer {{bearer_token}}' \
+     -d '{"key_id": "test api key"}'
+
+### Get API keys
+curl {{api_url}}/api/keys \
+     -H 'authorization: Bearer {{bearer_token}}' \
+
+### Delete API key
+curl -X DELETE {{api_url}}/v1/api/keys \
+     -H 'authorization: Bearer {{bearer_token}}' \
+     -d '{"key_id": "test api key"}'
+
 
 ### Get user data
 # @name user_data_req
 curl {{api_url}}/v1/users
+     -H 'Authorization: Bearer {{bearer_token}}'
+
+### List all submissions
+curl {{api_url}}/v1/submissions?projectId={{user_id}}
+     -H 'Authorization: Bearer {{bearer_token}}'
+
 
 ### Create new submission
 # @name submission_id_req
-curl -X POST '{{api_url}}/v1/submit/Bigpicture?projectId={{project_id}}' \
-     -H 'content-type: multipart/form-data; boundary=WebKitFormBoundary' \
-     --data-binary @xml-files.txt
-
-### List all submissions
-curl {{api_url}}/v1/submissions?projectId={{project_id}}
+curl -X POST '{{api_url}}/v1/submit/Bigpicture' \
+     -H 'Authorization: Bearer {{bearer_token}}' \
+     -F "annotation=@../test_files/xml/bigpicture/annotation.xml;type=text/xml" \
+     -F "datacite=@../test_files/xml/bigpicture/datacite.xml;type=text/xml" \
+     -F "dataset=@../test_files/xml/bigpicture/dataset.xml;type=text/xml" \
+     -F "image=@../test_files/xml/bigpicture/image.xml;type=text/xml" \
+     -F "landing_page=@../test_files/xml/bigpicture/landing_page.xml;type=text/xml" \
+     -F "observation=@../test_files/xml/bigpicture/observation.xml;type=text/xml" \
+     -F "observer=@../test_files/xml/bigpicture/observer.xml;type=text/xml" \
+     -F "organisation=@../test_files/xml/bigpicture/organisation.xml;type=text/xml" \
+     -F "policy=@../test_files/xml/bigpicture/policy.xml;type=text/xml" \
+     -F "bprems=@../test_files/xml/bigpicture/rems.xml;type=text/xml" \
+     -F "sample=@../test_files/xml/bigpicture/sample.xml;type=text/xml" \
+     -F "staining=@../test_files/xml/bigpicture/staining.xml;type=text/xml"
 
 ### Get submission by ID
 curl {{api_url}}/v1/submissions/{{submission_id}}
+     -H 'Authorization: Bearer {{bearer_token}}'
 
 ### List metadata objects in the submission
 curl {{api_url}}/v1/submissions/{{submission_id}}/objects
+     -H 'Authorization: Bearer {{bearer_token}}'
 
 ### Get dataset xml file in the submission
 curl {{api_url}}/v1/submissions/{{submission_id}}/objects/docs?schemaType=dataset
+     -H 'Authorization: Bearer {{bearer_token}}'
 
 ### Get image xml file in the submission
 curl {{api_url}}/v1/submissions/{{submission_id}}/objects/docs?schemaType=image
+     -H 'Authorization: Bearer {{bearer_token}}'
 
 ### Update image xml file in the submission
-curl -X PATCH {{api_url}}/v1/submit/Bigpicture/{{submission_id}}?projectId={{project_id}}
+curl -X PATCH {{api_url}}/v1/submit/Bigpicture/{{submission_id}} \
      -H 'content-type: multipart/form-data; boundary=WebKitFormBoundary' \
+     -H 'Authorization: Bearer {{bearer_token}}' \
      --data-binary @xml-files-update.txt
 
 ### Delete submission
-curl -X DELETE {{api_url}}/v1/submit/Bigpicture/{{submission_id}}?projectId={{project_id}}
+curl -X DELETE {{api_url}}/v1/submit/Bigpicture/{{submission_id}} \
+     -H 'Authorization: Bearer {{bearer_token}}'

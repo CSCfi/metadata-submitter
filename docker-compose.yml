@@ -53,6 +53,8 @@ services:
       - "S3_REGION=${S3_REGION}"
       - "S3_ENDPOINT=${S3_ENDPOINT}"
       - "KEYSTONE_ENDPOINT=${KEYSTONE_ENDPOINT}"
+      - "ADMIN_URL=${ADMIN_URL}"
+      - "DEPLOYMENT=${DEPLOYMENT}"
       - "ALLOW_UNSAFE=${ALLOW_UNSAFE}"
       - "ALLOW_REGISTRATION=False"
   mockauth:

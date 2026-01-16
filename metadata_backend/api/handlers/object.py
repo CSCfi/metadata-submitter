@@ -368,6 +368,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         if workflow == SubmissionWorkflow.SD:
             return [ObjectSubmission(filename="submission.json", document=await req.text())]
 
+        # TODO(improve): add a more meaningful error message
         raise web.HTTPBadRequest()
 
     async def _get_object_submission_service(self, workflow: SubmissionWorkflow) -> ObjectSubmissionService:
