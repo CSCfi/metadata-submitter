@@ -1,7 +1,10 @@
 services:
-  sd-submit-api:
+  sd-submit-api-csc:
     ports:
       - "5430:5430"
+  sd-submit-api-nbis:
+    ports:
+      - "5431:5431"
   mockauth:
     environment:
       - "OIDC_URL_TEST=${OIDC_URL_TEST}"

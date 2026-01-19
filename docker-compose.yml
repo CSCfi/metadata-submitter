@@ -1,5 +1,5 @@
 services:
-  sd-submit-api:
+  sd-submit-api-csc:
     build:
       dockerfile: ./dockerfiles/Dockerfile-dev
       context: .
@@ -54,7 +54,65 @@ services:
       - "S3_ENDPOINT=${S3_ENDPOINT}"
       - "KEYSTONE_ENDPOINT=${KEYSTONE_ENDPOINT}"
       - "ADMIN_URL=${ADMIN_URL}"
-      - "DEPLOYMENT=${DEPLOYMENT}"
+      - "DEPLOYMENT=CSC"
+      - "ALLOW_UNSAFE=${ALLOW_UNSAFE}"
+      - "ALLOW_REGISTRATION=False"
+  sd-submit-api-nbis:
+    build:
+      dockerfile: ./dockerfiles/Dockerfile-dev
+      context: .
+      target: develop
+    image: cscfi/metadata-submitter-dev
+    restart: on-failure
+    profiles:
+      - ci
+      - dev
+    command: ["uv", "run", "metadata_submitter"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: curl --fail http://127.0.0.1:5431/health || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    environment:
+      - "OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET}"
+      - "OIDC_CLIENT_ID=${OIDC_CLIENT_ID}"
+      - "OIDC_URL=${OIDC_URL}"
+      - "OIDC_URL_TEST=${OIDC_URL_TEST}"
+      - "OIDC_SECURE_COOKIE=${OIDC_SECURE_COOKIE}"
+      - "BASE_URL=http://localhost:5431"
+      - "REDIRECT_URL=${REDIRECT_URL}"
+      - "LOG_LEVEL=${LOG_LEVEL}"
+      - "DATACITE_API=${DATACITE_API:?DATACITE_API must be defined}"
+      - "DATACITE_USER=${DATACITE_USER:?DATACITE_USER must be defined}"
+      - "DATACITE_KEY=${DATACITE_KEY:?DATACITE_KEY must be defined}"
+      - "DATACITE_DOI_PREFIX=${DATACITE_DOI_PREFIX:?DATACITE_DOI_PREFIX must be defined}"
+      - "CSC_PID_URL=${CSC_PID_URL:?CSC_PID_URL must be defined}"
+      - "CSC_PID_KEY=${CSC_PID_KEY:?CSC_PID_KEY must be defined}"
+      - "METAX_URL=${METAX_URL:?METAX_URL must be defined}"
+      - "METAX_TOKEN=${METAX_TOKEN:?METAX_TOKEN must be defined}"
+      - "ROR_URL=${ROR_URL:?ROR_URL must be defined}"
+      - "REMS_USER=${REMS_USER}"
+      - "REMS_KEY=${REMS_KEY}"
+      - "REMS_URL=${REMS_URL}"
+      - "REMS_DISCOVERY_URL=${REMS_DISCOVERY_URL}"
+      - "CSC_LDAP_HOST=${CSC_LDAP_HOST}"
+      - "CSC_LDAP_USER=${CSC_LDAP_USER}"
+      - "CSC_LDAP_PASSWORD=${CSC_LDAP_PASSWORD}"
+      - "JWT_SECRET=${JWT_SECRET}"
+      - "DATABASE_URL=${DATABASE_URL}"
+      - "BP_CENTER_ID=${BP_CENTER_ID}"
+      - "STATIC_S3_ACCESS_KEY_ID=${STATIC_S3_ACCESS_KEY_ID}"
+      - "STATIC_S3_SECRET_ACCESS_KEY=${STATIC_S3_SECRET_ACCESS_KEY}"
+      - "SD_SUBMIT_PROJECT_ID=${SD_SUBMIT_PROJECT_ID}"
+      - "S3_REGION=${S3_REGION}"
+      - "S3_ENDPOINT=${S3_ENDPOINT}"
+      - "KEYSTONE_ENDPOINT=${KEYSTONE_ENDPOINT}"
+      - "ADMIN_URL=${ADMIN_URL}"
+      - "DEPLOYMENT=NBIS"
       - "ALLOW_UNSAFE=${ALLOW_UNSAFE}"
       - "ALLOW_REGISTRATION=False"
   mockauth:

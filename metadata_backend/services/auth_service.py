@@ -1,13 +1,12 @@
 """OIDC service."""
 
 import os
-from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any
-from urllib.parse import parse_qs, urlparse
 
 import ujson
 from aiohttp import ClientResponse, web
-from aiohttp.web import Request, Response
+from aiohttp.web import Request
 from idpyoidc.client.rp_handler import RPHandler
 from idpyoidc.exception import OidcMsgError
 from yarl import URL
@@ -16,6 +15,8 @@ from ..api.services.auth import JWT_EXPIRATION, AuthService
 from ..conf.oidc import oidc_config
 from ..helpers.logger import LOG
 from .service_handler import ServiceHandler
+
+private_jwk_path = Path(__file__).parent.parent.parent / "private" / "private_jwks.json"
 
 
 class AuthServiceHandler(ServiceHandler):
@@ -43,8 +44,7 @@ class AuthServiceHandler(ServiceHandler):
         self.scope = self._config.OIDC_SCOPE
         self.auth_method = "code"
         self._rph: RPHandler | None = None
-        # PKCE sessions for CLI users: state -> session info
-        self._pkce_sessions: dict[str, dict[str, Any]] = {}
+        self.jwk_path = str(private_jwk_path)
 
     @property
     def rph(self) -> RPHandler:
@@ -60,6 +60,7 @@ class AuthServiceHandler(ServiceHandler):
                 "client_secret": self.client_secret,
                 "client_type": "oidc",
                 "redirect_uris": [self.callback_url],
+                "key_conf": {"private_path": self.jwk_path, "key_defs": []},
                 "behaviour": {
                     "response_types": self.auth_method.split(" "),
                     "scope": self.scope.split(" "),
@@ -72,7 +73,6 @@ class AuthServiceHandler(ServiceHandler):
                                 "ES256",
                                 "ES512",
                             ],
-                            # "with_dpop_header": ["userinfo", "refresh_token"]  # optional
                         },
                     },
                     "pkce": {
@@ -86,11 +86,11 @@ class AuthServiceHandler(ServiceHandler):
             },
         }
 
-    async def login(self) -> web.HTTPSeeOther:
+    async def get_oidc_auth_url(self) -> str:
         """Redirect user to AAI login.
 
         :raises: HTTPInternalServerError if OIDC configuration init failed
-        :returns: HTTPSeeOther redirect to AAI
+        :returns: OIDC Authorization URL
         """
         LOG.debug("Start login")
 
@@ -103,26 +103,17 @@ class AuthServiceHandler(ServiceHandler):
             LOG.exception("OIDC authorization request failed with: %r", e)
             raise web.HTTPInternalServerError(reason="OIDC authorization request failed.")
 
-        # Redirect user to AAI
-        response = web.HTTPSeeOther(rph_session_url)
-        response.headers["Location"] = rph_session_url
-        return response
+        return str(rph_session_url)
 
-    async def callback(self, req: Request) -> Response:
-        """Handle the OIDC callback and redirect the user with a JWT token in the URL fragment.
+    async def callback(self, req: Request) -> tuple[str, dict[str, Any]]:
+        """Handle the OIDC callback and return application-specific JWT.
 
-        This function completes the OpenID Connect (OIDC) authorization code flow. It exchanges
-        the authorization code for tokens (ID token, access token), retrieves user information
-        from the identity provider, creates an application-specific JWT, and then redirects
-        the user to the frontend application with the JWT token appended in the URL fragment.
-
-        The token is included as a URL fragment so that it is only accessible to client-side
-        scripts and not sent to the server in future requests.
+        This function completes the OpenID Connect (OIDC) authorization code flow with DPoP.
+        It exchanges the authorization code for DPoP-bound tokens, retrieves user information
+        and creates an application-specific JWT.
 
         :param req: A HTTP request instance with callback parameters
-
-        # Returns:
-            A redirect response to the frontend app with the JWT token included in the URL fragment.
+        :returns: JWT token as a string
         """
 
         # Response from AAI must have the query params `state` and `code`
@@ -158,159 +149,62 @@ class AuthServiceHandler(ServiceHandler):
             LOG.exception("OIDC Callback failed with: %r", e)
             raise web.HTTPUnauthorized(reason="Invalid OIDC callback.")
 
-        # Generate a JWT token.
-        jwt_token = await AuthService.create_jwt_token_from_userinfo(session["userinfo"])
+        # Generate a JWT token for application authentication
+        jwt = await AuthService.create_jwt_token_from_userinfo(session["userinfo"])
+        return jwt, session["userinfo"]
 
+    async def initiate_web_session(self, jwt_token: str, userinfo: dict[str, Any]) -> web.HTTPSeeOther:
+        """
+        Initiate web session by setting JWT token in secure cookie.
+
+        :param jwt_token: The JWT token to be set in the cookie
+        :param userinfo: The user information dictionary
+        :return: HTTPSeeOther redirect to the home page
+        """
         LOG.info("OIDC redirect to %r", f"{self.redirect}/home")
 
         response = web.HTTPSeeOther(f"{self.redirect}/home")
         secure_cookie = os.environ.get("OIDC_SECURE_COOKIE", "").upper() != "FALSE"
+
+        # Set the application JWT token
         response.set_cookie(
             name="access_token",
             value=jwt_token,
             httponly=True,
             secure=secure_cookie,
-            samesite="Strict",  # or "Lax" depending on your needs
+            samesite="Strict",
             path="/",
             max_age=int(JWT_EXPIRATION.total_seconds()),
         )
-        # Set access token cookie for Pouta access
-        pouta_access_token = session["userinfo"].get("pouta_access_token", "").strip()
+        # TODO(improve): Remove pouta_access_token from session cookies.
+        # Instead fetch it from /userinfo whenever needed.
+        pouta_access_token = userinfo.get("pouta_access_token", "").strip()
         response.set_cookie(
             name="pouta_access_token",
             value=pouta_access_token,
             httponly=True,
             secure=secure_cookie,
-            samesite="Strict",  # or "Lax" depending on your needs
+            samesite="Strict",
             path="/",
             max_age=int(JWT_EXPIRATION.total_seconds()),
         )
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
         response.headers["Pragma"] = "no-Cache"
         response.headers["Expires"] = "0"
-        # done like this otherwise it will not redirect properly
         response.headers["Location"] = "/home" if self.redirect == self.domain else f"{self.redirect}/home"
         return response
 
     async def logout(self) -> web.HTTPSeeOther:
-        """Log the user out by clearing cookie.
+        """Log the user out by clearing all cookies.
 
         :returns: HTTPSeeOther redirect to login page
         """
         response = web.HTTPSeeOther(f"{self.redirect}/")
         response.del_cookie("access_token", path="/")
+        response.del_cookie("pouta_access_token", path="/")
         response.headers["Location"] = "/" if self.redirect == self.domain else f"{self.redirect}/"
-        LOG.debug("Logged out user.")
+        LOG.debug("Logged out user and cleared all cookies.")
         return response
-
-    async def login_cli(self) -> web.Response:
-        """Initiate PKCE Authorization Code Flow for CLI users.
-
-        This endpoint initiates an Authorization Code Flow with PKCE, returning
-        an OIDC authorization URL that the user should visit in their web browser.
-
-        :returns: JSON response with authorization_url and instructions
-        """
-        try:
-            # Get the authorization URL from RPHandler using CLI client config
-            auth_url = self.rph.begin("aai")
-
-            # Extract state from the generated URL to store our session
-            parsed = urlparse(auth_url)
-            params = parse_qs(parsed.query)
-            state = params.get("state", [None])[0]
-
-            if state:
-                # Store session for callback verification
-                session_info = {
-                    "state": state,
-                    "created_at": datetime.now(timezone.utc),
-                    "expires_at": datetime.now(timezone.utc) + timedelta(minutes=5),
-                    "token": None,  # Will be populated on first successful callback
-                }
-                self._pkce_sessions[state] = session_info
-                LOG.info("PKCE CLI flow initiated for state: %s", state)
-
-            return web.Response(text=f"\nComplete the login at:\n{auth_url}\n\n")
-
-        except Exception as e:
-            LOG.exception("Failed to initiate PKCE CLI flow: %r", e)
-            raise web.HTTPInternalServerError(reason="Failed to initiate authentication")
-
-    async def login_cli_callback(self, req: Request) -> web.Response:
-        """Handle PKCE callback for CLI users.
-
-        This endpoint receives the authorization code and state from the OIDC provider.
-        The CLI can pass the full callback URL (including all query parameters) to this endpoint.
-
-        :param req: The HTTP request with authorization code and state
-        :returns: JSON response with access token
-        """
-        # Lazy cleanup of expired sessions if dict is growing
-        if len(self._pkce_sessions) > 100:
-            await self._cleanup_expired_pkce_sessions()
-
-        # Get parameters from OIDC callback
-        code = req.query.get("code")
-        state = req.query.get("state")
-
-        # Validate state and code
-        if not code or not state:
-            reason = "Missing code or state in callback."
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-        # Look up PKCE session by state
-        if state not in self._pkce_sessions:
-            LOG.error("Unknown state in callback: %s", state)
-            raise web.HTTPBadRequest(reason="Invalid or unknown state parameter.")
-
-        pkce_session = self._pkce_sessions[state]
-
-        # Check session expiration
-        if datetime.now(timezone.utc) > pkce_session["expires_at"]:
-            del self._pkce_sessions[state]
-            LOG.error("PKCE session expired for state: %s", state)
-            raise web.HTTPUnauthorized(reason="PKCE session has expired.")
-
-        # If JWT was already created, return it to allow reuse of callback URL
-        # for the duration of PKCE session without creating new JWTs unnecessarily.
-        if pkce_session.get("token"):
-            LOG.info("Reusing cached token for state: %s", state)
-            return web.Response(text=f"{pkce_session['token']}")
-
-        # Use RPHandler to finalize the flow
-        try:
-            session_info = self.rph.get_session_information(state)
-            session_info["code"] = code
-            # Finalize using the CLI client config
-            session = self.rph.finalize(self.iss, session_info)
-        except OidcMsgError as e:
-            LOG.error("OIDC callback failed: %r", e)
-            raise web.HTTPUnauthorized(reason="Token validation failed.")
-        except Exception as e:
-            LOG.error("Unexpected error during authentication: %r", e)
-            raise web.HTTPInternalServerError(reason="Unexpected error during authentication.")
-
-        # Generate JWT token
-        jwt_token = await AuthService.create_jwt_token_from_userinfo(session["userinfo"])
-
-        # Store token in session for reuse within expiration window
-        self._pkce_sessions[state]["token"] = jwt_token
-        self._pkce_sessions[state]["token_generated_at"] = datetime.now(timezone.utc)
-        LOG.info("PKCE authorization flow completed successfully for state: %s", state)
-        return web.Response(text=jwt_token)
-
-    async def _cleanup_expired_pkce_sessions(self) -> None:
-        """Clean up expired PKCE sessions.
-
-        This is called periodically to prevent memory leaks from accumulating sessions.
-        """
-        now = datetime.now(timezone.utc)
-        expired_states = [state for state, session in self._pkce_sessions.items() if now > session["expires_at"]]
-        for state in expired_states:
-            del self._pkce_sessions[state]
-            LOG.debug("Cleaned up expired PKCE session: %s", state)
 
     @staticmethod
     async def healthcheck_callback(response: ClientResponse) -> bool:

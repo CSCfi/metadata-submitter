@@ -231,24 +231,25 @@ async def init() -> web.Application:
 
 def get_auth_routes(_auth: AuthAPIHandler, deployment: str) -> list[AbstractRouteDef]:
     """Get the authentication routes depending on deployment configuration."""
+    routes: list[AbstractRouteDef] = [
+        web.get("/aai", _auth.login),  # TODO(improve): deprecate endpoint
+        web.get("/login", _auth.login),
+        web.get("/callback", _auth.callback),
+        web.get("/logout", _auth.logout),
+    ]
     if deployment == DEPLOYMENT_NBIS:
-        return [
+        routes = [
             web.get("/login", _auth.login_cli),
-            web.get("/callback", _auth.login_cli_callback),
+            web.get("/callback", _auth.callback_cli),
         ]
-    else:
-        return [
-            web.get("/aai", _auth.login),  # TODO(improve): deprecate endpoint
-            web.get("/login", _auth.login),
-            web.get("/callback", _auth.callback),
-            web.get("/logout", _auth.logout),
-        ]
+    return routes
 
 
 def main() -> None:
     """Launch the server."""
+    config = deployment_config()
     host = "0.0.0.0"  # nosec
-    port = 5430
+    port = 5430 if config.DEPLOYMENT == DEPLOYMENT_CSC else 5431
     web.run_app(init(), host=host, port=port, shutdown_timeout=0)
 
 

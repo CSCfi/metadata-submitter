@@ -31,8 +31,7 @@ async def test_auth(aiohttp_client, monkeypatch):
 
     # Create web app and auth routes.
     app = web.Application()
-    get_auth_routes(auth)
-    app.add_routes(get_auth_routes(auth))
+    app.add_routes(get_auth_routes(auth, "CSC"))
 
     client = await aiohttp_client(app)
 
