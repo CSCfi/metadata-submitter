@@ -22,27 +22,22 @@ curl {{api_url}}/login
 
 ### Paste login url here with mock authentication
 # @name token_req
-curl '{{auth_url}}/authorize?redirect_uri=http%3A%2F%2Flocalhost%3A5431%2Fcallback&response_type=code&nonce=zRPpNd75TPu1YdWtjxBftkkcAXjxA4Bf&scope=openid&state=wghpFCmd0zfFvzm32GP-I2fwKcfCNEidqpA5NZXxEKA&code_challenge=Y_TOHInwp43wFZgsZxgJt4HhdUPnyEX1r9rzacIr7Eg&code_challenge_method=S256&client_id=aud2'
-
-### Acquire JWT token via OIDC callback (copy the callback url from browser an paste it here)
-# @name token_req
-# curl {{api_url}}/callback?code=...
-
+curl '{{auth_url}}/authorize?...'
 
 ### Optional: Generate an API key for further requests
 ### Create API key
 # @name token_req
 curl -X POST {{api_url}}/v1/api/keys \
-     -H 'authorization: Bearer {{bearer_token}}' \
+     -H 'Authorization: Bearer {{bearer_token}}' \
      -d '{"key_id": "test api key"}'
 
 ### Get API keys
 curl {{api_url}}/v1/api/keys \
-     -H 'authorization: Bearer {{bearer_token}}' \
+     -H 'Authorization: Bearer {{bearer_token}}' \
 
 ### Delete API key
 curl -X DELETE {{api_url}}/v1/api/keys \
-     -H 'authorization: Bearer {{bearer_token}}' \
+     -H 'Authorization: Bearer {{bearer_token}}' \
      -d '{"key_id": "test api key"}'
 
 

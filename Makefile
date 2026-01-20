@@ -114,3 +114,18 @@ get_ci_env: ## Get secrets needed for CI tests from vault
 	$(call write_line,### VAULT SECRETS END ###)
 
 	@echo "CI Secrets written successfully"
+
+get_env_demo: ## Create an empty .env file for demo purposes
+	# Copy .env.example
+	cp tests/integration/.env.example .env
+
+	# Write all env variables markers to .env file
+	$(call write_line,DATACITE_API=placeholder)
+	$(call write_line,DATACITE_USER=placeholder)
+	$(call write_line,DATACITE_KEY=placeholder)
+	$(call write_line,DATACITE_DOI_PREFIX=placeholder)
+	$(call write_line,CSC_PID_URL=placeholder)
+	$(call write_line,CSC_PID_KEY=placeholder)
+	$(call write_line,METAX_URL=placeholder)
+	$(call write_line,METAX_TOKEN=placeholder)
+	$(call write_line,ROR_URL=placeholder)

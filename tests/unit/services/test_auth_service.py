@@ -31,8 +31,7 @@ async def test_auth(monkeypatch):
 
     # Test login.
     resp = await handler.get_oidc_auth_url()
-    # assert isinstance(resp, web.HTTPSeeOther)
-    # assert resp.headers["Location"].startswith(mock_auth_url)
+    assert resp == mock_auth_url
 
     req = MagicMock()
     req.query = {"state": mock_state, "code": mock_code}

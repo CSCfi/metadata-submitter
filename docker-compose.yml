@@ -67,6 +67,7 @@ services:
     profiles:
       - ci
       - dev
+      - demo
     command: ["uv", "run", "metadata_submitter"]
     depends_on:
       postgres:
@@ -78,12 +79,12 @@ services:
       retries: 5
       start_period: 30s
     environment:
+      - "BASE_URL=http://localhost:5431"
       - "OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET}"
       - "OIDC_CLIENT_ID=${OIDC_CLIENT_ID}"
       - "OIDC_URL=${OIDC_URL}"
       - "OIDC_URL_TEST=${OIDC_URL_TEST}"
       - "OIDC_SECURE_COOKIE=${OIDC_SECURE_COOKIE}"
-      - "BASE_URL=http://localhost:5431"
       - "REDIRECT_URL=${REDIRECT_URL}"
       - "LOG_LEVEL=${LOG_LEVEL}"
       - "DATACITE_API=${DATACITE_API:?DATACITE_API must be defined}"
@@ -130,6 +131,7 @@ services:
     profiles:
       - ci
       - dev
+      - demo
     depends_on:
       mockkeystone:
         condition: service_healthy
@@ -152,6 +154,9 @@ services:
       - "LOG_LEVEL=${LOG_LEVEL}"
       - "OIDC_URL=${OIDC_URL}"
     hostname: mockadmin
+    profiles:
+      - ci
+      - dev
     healthcheck:
       test: curl --fail http://127.0.0.1:8004/ready || exit 1
       interval: 10s
@@ -179,6 +184,7 @@ services:
     profiles:
       - ci
       - dev
+      - demo
     healthcheck:
       test: curl --fail http://127.0.0.1:5001/ || exit 1
       interval: 20s
@@ -191,6 +197,7 @@ services:
     profiles:
       - ci
       - dev
+      - demo
     environment:
       - POSTGRES_DB=metadata_submitter
       - POSTGRES_USER=postgres

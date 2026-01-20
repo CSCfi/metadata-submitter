@@ -1,7 +1,6 @@
 """OIDC service."""
 
 import os
-from pathlib import Path
 from typing import Any
 
 import ujson
@@ -15,8 +14,6 @@ from ..api.services.auth import JWT_EXPIRATION, AuthService
 from ..conf.oidc import oidc_config
 from ..helpers.logger import LOG
 from .service_handler import ServiceHandler
-
-private_jwk_path = Path(__file__).parent.parent.parent / "private" / "private_jwks.json"
 
 
 class AuthServiceHandler(ServiceHandler):
@@ -44,7 +41,6 @@ class AuthServiceHandler(ServiceHandler):
         self.scope = self._config.OIDC_SCOPE
         self.auth_method = "code"
         self._rph: RPHandler | None = None
-        self.jwk_path = str(private_jwk_path)
 
     @property
     def rph(self) -> RPHandler:
@@ -60,11 +56,12 @@ class AuthServiceHandler(ServiceHandler):
                 "client_secret": self.client_secret,
                 "client_type": "oidc",
                 "redirect_uris": [self.callback_url],
-                "key_conf": {"private_path": self.jwk_path, "key_defs": []},
                 "behaviour": {
                     "response_types": self.auth_method.split(" "),
                     "scope": self.scope.split(" "),
                 },
+                # needed for DPoP
+                # "key_conf": {"private_path": "path/to/jwks.json", "key_defs": []},
                 "add_ons": {
                     "dpop": {
                         "function": "idpyoidc.client.oauth2.add_on.dpop.add_support",
