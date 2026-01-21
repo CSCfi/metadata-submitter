@@ -224,7 +224,4 @@ class AuthService:
             list: A list of API keys associated with the user.
         """
 
-        return [
-            ApiKey(key_id=key.user_key_id, created_at=key.created_at)
-            for key in await self.__repository.get_api_keys(user_id)
-        ]
+        return await self.__repository.get_api_keys(user_id)

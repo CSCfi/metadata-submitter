@@ -58,18 +58,14 @@ async def test_get_api_keys_masks_api_key(session_factory: SessionFactory, repo:
             ApiKeyEntity(key_id=key_id_2, user_id=user_id, user_key_id=user_key_id_2, api_key=api_key_2, salt=salt_2)
         )
 
-        results = await repo.get_api_keys(user_id)
-        assert len(results) == 2
+        api_keys = await repo.get_api_keys(user_id)
+        assert len(api_keys) == 2
 
-        for row in results:
-            assert row.key_id == ""  # masked
-            assert row.user_id == user_id
-            assert row.api_key == ""  # masked
-            assert row.salt == ""  # masked
-            assert row.created_at is not None
+        for api_key in api_keys:
+            assert api_key.created_at is not None
 
-        assert user_key_id in [row.user_key_id for row in results]
-        assert user_key_id_2 in [row.user_key_id for row in results]
+        assert user_key_id in [k.key_id for k in api_keys]
+        assert user_key_id_2 in [k.key_id for k in api_keys]
 
 
 async def test_delete_api_key(session_factory: SessionFactory, repo: ApiKeyRepository) -> None:

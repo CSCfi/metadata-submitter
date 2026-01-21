@@ -17,7 +17,7 @@ services:
       test: curl --fail http://127.0.0.1:5430/health || exit 1
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
       start_period: 30s
     environment:
       - "OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET}"
@@ -76,7 +76,7 @@ services:
       test: curl --fail http://127.0.0.1:5431/health || exit 1
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
       start_period: 30s
     environment:
       - "BASE_URL=http://localhost:5431"
