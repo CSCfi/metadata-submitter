@@ -5,11 +5,8 @@ the submission of Bigpicture datasets. The project currently includes
 an API solution developed and maintained in this repository, which
 enables programmatic submission of these datasets.
 
-The flowchart below depicts the steps for the programmatic submission
-process. Each step is explained below in this markdown document with
+Each step is explained below in this markdown document with
 instructions on how to execute them via the command line.
-
-![Bigpicture Submission flowchart](_static/bp-flowchart.svg)
 
 ### Further context
 
@@ -35,7 +32,7 @@ prettify the JSON response in the terminal. Thus, the `| jq` part can be
 omitted from each command if it's not installed or needed in general.
 
 
-### 1. Authenticate to SD Submit
+### 1. Authenticate to the SD Submit API
 
 Start by creating an environment variable in a bash terminal session for the API URL:
 
@@ -43,265 +40,157 @@ Start by creating an environment variable in a bash terminal session for the API
 # Enter the API url inside the quotes
 export API_URL="..."
 
-# If you have deployed the SD Submit API
-# locally for testing, set this as:
-export API_URL="http://localhost:5430"
+# If you have deployed the API locally for testing, set this as:
+export API_URL="http://localhost:5431"
 ```
 
-Fetch session cookie from the server, which will be used for **all subsequent** API calls:
+Authenticate to the API via an OIDC Client.
+Get the login url with below command and open it in a web browser:
 
 ```bash
-# Send request to AAI service
-session_cookie=$(curl -s -L -D - $API_URL/aai \
-    | grep 'Set-Cookie: AIOHTTP_SESSION' \
-    | sed 's/Set-Cookie: \(AIOHTTP_SESSION=[^;]*\).*/\1/')
+curl --request GET $API_URL/login
 ```
 
-You can then inspect the stored user data in the terminal:
+A JWT will be printed in the browser window. Copy it and use it for suqsequent API calls in the authorization header:
 
 ```bash
-# Get user JSON object
-curl -H "Cookie: $session_cookie" \
-     -X GET $API_URL/v1/users/current | jq
+# Set the JWT as env variable
+export TOKEN="..."
+
+# Ensure login has completed by getting user info
+curl --request GET $API_URL/v1/users \
+     --header "authorization: Bearer $TOKEN" | jq
 ```
 
-The `userId` and `projectId` values found in the JSON object of the
-previous response will be used in subsequent API request query strings
-and JSON payloads. They can be stored as bash environment variables
-for convenience with following commands:
+**Optional:**
+A reusable API keys for the service can be created after the original OIDC authentication with the following command.
+This key can then be used as a bearer token instead of the JWT in the authorization header:
 
 ```bash
-# Get user ID
-user_id=$(curl -H "Cookie: $session_cookie" \
-    -s $API_URL/v1/users/current \
-    | jq -r '.userId')
+curl --request POST $API_URL/v1/api/keys \
+     --header "authorization: Bearer $TOKEN" \
+     --data '{"key_id": "test api key"}'
 
-# Get project ID
-project_id=$(curl -H "Cookie: $session_cookie" \
-    -s $API_URL/v1/users/current \
-    | jq -r '.projects[0].projectId')
+# The created API key with the specified key_id will be printed in the terminal
 
-# The above assumes the user is part of a single project.
-# Choose another project from the project list by changing the "projects[0]" index value.
+# Replace the TOKEN env variable with the API key
+export TOKEN="..."
 ```
-
-> **Note:** The `project` concept used for user access in SD Submit
-will include Perun groups in the future.
 
 ### 2. Create a new submission entity
 
-Start the submission process by creating a new submission:
+Start the submission process by creating a new submission. The submission will require all metadata related to the dataset.
+
+#### Submit a new Bigpicture dataset with metadata files
+
+Create a new submission by uploading all required metadata XML files with the following command. The command in this document refers to a set of test XML files available in this repository:
 
 ```bash
-# Assign the submission a name and a description
-# next to their respective keys below
-curl -H "Cookie: $session_cookie" \
-     -X POST "$API_URL/v1/submissions" \
-     --json '{
-       "name": "<ENTER NAME HERE>",
-       "description": "<ENTER DESCRIPTION HERE>",
-       "projectId": "'$project_id'",
-       "workflow": "Bigpicture"
-     }' | jq
+export SUBMISSION_ID=$(curl --request POST "$API_URL/v1/submit/Bigpicture" \
+     --header "Authorization: Bearer $TOKEN" \
+     --form "annotation=@./tests/test_files/xml/bigpicture/annotation.xml;type=text/xml" \
+     --form "datacite=@./tests/test_files/xml/bigpicture/datacite.xml;type=text/xml" \
+     --form "dataset=@./tests/test_files/xml/bigpicture/dataset.xml;type=text/xml" \
+     --form "image=@./tests/test_files/xml/bigpicture/image.xml;type=text/xml" \
+     --form "landing_page=@./tests/test_files/xml/bigpicture/landing_page.xml;type=text/xml" \
+     --form "observation=@./tests/test_files/xml/bigpicture/observation.xml;type=text/xml" \
+     --form "observer=@./tests/test_files/xml/bigpicture/observer.xml;type=text/xml" \
+     --form "organisation=@./tests/test_files/xml/bigpicture/organisation.xml;type=text/xml" \
+     --form "policy=@./tests/test_files/xml/bigpicture/policy.xml;type=text/xml" \
+     --form "bprems=@./tests/test_files/xml/bigpicture/rems.xml;type=text/xml" \
+     --form "sample=@./tests/test_files/xml/bigpicture/sample.xml;type=text/xml" \
+     --form "staining=@./tests/test_files/xml/bigpicture/staining.xml;type=text/xml" | jq -r '.submissionId')
 ```
 
-The resulting `submissionId` value of the submission object can again
-be stored as environment variable for convenience like this:
+All XML files are validated and then added to the submission entity.
+The `SUBMISSION_ID` environment variable is automatically extracted from the response to be used in subsequent API calls.
+
+### 3. Inspect the submission
+
+After creating a submission, you can retrieve its details to verify the submission status and metadata.
+
+#### Get submission by ID
+
+Retrieve full details about a specific submission:
 
 ```bash
-# Get submission ID
-submission_id=$(curl -H "Cookie: $session_cookie" \
-    -X GET $API_URL/v1/submissions?projectId=$project_id \
-    | jq -r '.submissions[0].submissionId')
+curl --request GET "$API_URL/v1/submissions/$SUBMISSION_ID" \
+     --header "Authorization: Bearer $TOKEN" | jq
 ```
 
-The submission is formed as a JSON object, which will include all required
-information about a dataset. Its content can be viewed with the following command:
+#### List metadata objects in the submission
+
+Retrieve a list of metadata objects that have been linked to the submission based on the uploaded XML files.
+The output will display all metadata accession IDs:
 
 ```bash
-# Get submission object
-curl -H "Cookie: $session_cookie" \
-     -X GET $API_URL/v1/submissions/$submission_id | jq
+curl --request GET "$API_URL/v1/submissions/$SUBMISSION_ID/objects" \
+     --header "Authorization: Bearer $TOKEN" | jq
 ```
 
-> **Note:** All users who belong to the same project can view and
-edit this same submission with the instructions below.
-Thus, submission can be filled out by multiple users.
+#### 4. Retrieve individual XML files
 
-### 3. a) Add metadata to the submission
+You can retrieve individual XML files from your submission by specifying the schema type.
+The returned XML content have been modified to include a new accession ID:
 
-SD Submit API can receive XML files directly and link the metadata
-to the submission with the following commands:
+#### Get dataset XML
 
 ```bash
-# Name the schema of the XML file as an env variable. Options are:
-# "bpdataset", "bpsample", "bpimage", "bpstaining" or "bpobservation"
-export schema_type="bpdataset"
-
-# Determine the path to the XML file as an env variable
-export file_path="path/to/file/dataset.xml"
-
-# Add metadata to submission
-curl -H "Cookie: $session_cookie" \
-     -F "$schema_type=@$file_path" \
-     -X POST "$API_URL/v1/objects/$schema_type?submission=$submission_id" \
-     | jq
-
-# If the XML content is not formatted correctly or according to the correct schema,
-# you will receive an error response
+curl --request GET "$API_URL/v1/submissions/$SUBMISSION_ID/objects/docs?schemaType=dataset" \
+     --header "Authorization: Bearer $TOKEN"
 ```
 
-Notice that the response will include a newly generated unique internal
-**accession ID** for this metadata object (or a list of multiple IDs,
-if the file includes a set of multiple metadata items e.g. for images).
-The object accession IDs can be re-read from the submission object within
-the list of metadata objects.
-
-You can inspect the entire metadata object that was stored in the database
-with the following commands by replacing `{accession_id_here}` with the
-specific `accessionId` value:
+#### Get image XML
 
 ```bash
-# Get metadata item (returns it in JSON format)
-curl -H "Cookie: $session_cookie" \
-     -X GET $API_URL/v1/objects/$schema_type/{accession_id_here} | jq
-
-# Get metadata item (returns the XML content)
-curl -H "Cookie: $session_cookie" \
-     -X GET $API_URL/v1/objects/$schema_type/{accession_id_here}?format=xml
+curl --request GET "$API_URL/v1/submissions/$SUBMISSION_ID/objects/docs?schemaType=image" \
+     --header "Authorization: Bearer $TOKEN"
 ```
 
-> **Note:** Datacite DOI and REMS information will be filled out in a similar
-manner in the future (after version 2.0.0 of metadata schemas is released)
+**Other available XML files**
 
-### 3. b) Edit already submitted metadata
+For other schema types, replace the schema type in the url parameter (`schemaType=<HERE>`) with any of the available schema types:
+- `annotation`
+- `datacite`
+- `landing_page`
+- `observation`
+- `observer`
+- `organisation`
+- `policy`
+- `bprems`
+- `sample`
+- `staining`
 
-The metadata items added to the submission previously can be replaced
-with a modified XML file, while retaining the same accession ID,
-or deleted entirely. This can be done with the following commands:
+### 4. Update submission metadata
+
+You can update an existing dataset submission by uploading modified XML files with the following command.
+For example, to update the image metadata file:
 
 ```bash
-# Set environment variables accordingly
-export schema_type="bpdataset"
-export file_path="path/to/file/dataset.xml"
-export accession_id="some uuid"
-
-# Replace the metadata item with a specific accession ID
-curl -H "Cookie: $session_cookie" \
-     -F "$schema_type=@$file_path" \
-     -X PUT "$API_URL/v1/objects/$schema_type/$accession_id" \
-     | jq
-
-# Delete the metadata item with a specific accession ID
-curl -H "Cookie: $session_cookie" \
-     -X DELETE "$API_URL/v1/objects/$schema_type/$accession_id"
+curl --request PATCH "$API_URL/v1/submit/Bigpicture/$SUBMISSION_ID" \
+     --header "Authorization: Bearer $TOKEN" \
+     --form "image=@./tests/test_files/xml/bigpicture/update/image.xml;type=text/xml" \
+     --form "annotation=@./tests/test_files/xml/bigpicture/annotation.xml;type=text/xml" \
+     --form "datacite=@./tests/test_files/xml/bigpicture/datacite.xml;type=text/xml" \
+     --form "dataset=@./tests/test_files/xml/bigpicture/dataset.xml;type=text/xml" \
+     --form "landing_page=@./tests/test_files/xml/bigpicture/landing_page.xml;type=text/xml" \
+     --form "observation=@./tests/test_files/xml/bigpicture/observation.xml;type=text/xml" \
+     --form "observer=@./tests/test_files/xml/bigpicture/observer.xml;type=text/xml" \
+     --form "organisation=@./tests/test_files/xml/bigpicture/organisation.xml;type=text/xml" \
+     --form "policy=@./tests/test_files/xml/bigpicture/policy.xml;type=text/xml" \
+     --form "bprems=@./tests/test_files/xml/bigpicture/rems.xml;type=text/xml" \
+     --form "sample=@./tests/test_files/xml/bigpicture/sample.xml;type=text/xml" \
+     --form "staining=@./tests/test_files/xml/bigpicture/staining.xml;type=text/xml" | jq
 ```
 
-To review the metadata items again or the submission object, see the commands used in previous steps.
+**Note:** The submission update API call requires all necessary metadata XML files to be uploaded in the same call even if they have not been altered.
 
-### 4. Adding files to submission
 
-Currently, SD Submit API needs to receive information about the files
-that will be included in the submission. This means gathering and
-sending a JSON blob, which should minimally look like this
-(but more files can be added to the `files` array to send at once):
-
-```json
-{
-    "userId": "submitter's user id",
-    "projectId": "submitter's project id",
-    "files": [
-        {
-            "name": "file_name",
-            "path": "s3://path/to/file_name",
-            "bytes": 100,
-            "encrypted_checksums": [
-                {
-                "type": "sha256",
-                "value": "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
-                }
-            ],
-            "unencrypted_checksums": [
-                {
-                "type": "sha256",
-                "value": "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
-                }
-            ]
-        }
-    ]
-}
-```
-
-It may be easiest to write and store the above as a JSON file locally.
-It can then be sent over with the following command:
+If you need to remove a submission entirely, you can delete it using the submission ID:
 
 ```bash
-# Send information about file(s)
-curl -H "Cookie: $session_cookie" \
-     -X POST "$API_URL/v1/files" \
-     --json @file_payload.json | jq
+curl --request DELETE "$API_URL/v1/submit/Bigpicture/$SUBMISSION_ID" \
+     --header "Authorization: Bearer $TOKEN"
 ```
 
-The list of files will be stored for each project group and it can be viewed with:
-```bash
-# Get list of files in a project
-curl -H "Cookie: $session_cookie" \
-     -X GET "$API_URL/v1/files?projectId=$project_id" | jq
-```
-
-From the above commands, you can gain the accession ID of the file object
-for the next part. The file can then be added to the submission and linked
-with a specific metadata object with the following command:
-
-```bash
-# Add file(s) to the submission
-curl -H "Cookie: $session_cookie" \
-     -X PATCH "$API_URL/v1/submissions/$submission_id/files" \
-     --json '[
-         {
-             "accessionId": "<ENTER FILE ACCESSION ID>",
-             "version": 1,
-             "objectId": {
-                 "accessionId": "<ENTER METADATA ACCESSION ID>",
-                 "schema": "<ENTER SCHEMA NAME>"
-             }
-         }
-     ]' | jq
-```
-
-The list of submission files can then be seen in the submission object.
-All files in the submission should be linked to some metadata objects
-before moving to next steps.
-
-### 5. Begin ingestion of files
-
-> **Note:** This section of the API is yet to be implemented and is currently under development.
-
-Once the user is finished compiling the files and its metadata into the
-same submission, the data ingestion pipeline can be initiated followingly:
-
-```bash
-# Initiate the data ingestion
-curl -H "Cookie: $session_cookie" \
-     -X POST "$API_URL/v1/submissions/$submission_id/ingest" | jq
-```
-
-After this, SD Submit service will continuously poll the
-[Admin API](https://github.com/neicnordic/sensitive-data-archive/blob/main/sda/cmd/api/api.md)
-in the background and update the status of each file linked to the submission.
-To proceed to the next part, the file ingestion needs to be finalized in the
-pipeline and statuses need to be marked as `completed` in the submission object.
-This can be checked by getting the submission object.
-
-### 6. Announce the completed submission
-
-```bash
-# Announce the submission to be published
-curl -H "Cookie: $session_cookie" \
-     -X PATCH "$API_URL/v1/announce/$submission_id" | jq
-```
-
-After this, the dataset described in the submission object will be registered
-to DataCite, made accessible via the REMS service and discoverable by
-Bigpicture Imaging Beacon discovery service. The submission object can still be
-viewed via the API but it can no longer be edited with previously covered commands.
+**Warning:** This action is permanent and cannot be undone. Make sure you have the correct submission ID before executing this command.

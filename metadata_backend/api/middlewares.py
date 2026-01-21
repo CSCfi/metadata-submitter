@@ -105,6 +105,8 @@ async def verify_authorization(
         try:
             # Verify the API key.
             user_id = await access_service.validate_api_key(api_key)
+            if user_id is None:
+                raise Exception("Provided API key is invalid.")
             return user_id, user_id  # User name is not stored for API keys.
         except Exception as e:
             raise web.HTTPUnauthorized(reason=f"Authorization failed: {e}") from e
@@ -148,10 +150,10 @@ async def authorization(req: web.Request, handler: Handler) -> web.StreamRespons
                 api_key_or_jwt_token = parts[1]
 
                 try:
-                    jwt.decode(api_key_or_jwt_token, options={"verify_signature": False})
+                    jwt.get_unverified_header(api_key_or_jwt_token)  # detect if token is a JWT
                     jwt_token = api_key_or_jwt_token
                     LOG.debug("Found JWT Authorization token in Authorization header")
-                except Exception:
+                except Exception:  # if not a JWT, treat as API key
                     api_key = api_key_or_jwt_token
                     LOG.debug("Found API key in Authorization header")
 

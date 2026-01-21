@@ -108,7 +108,7 @@ class FilesAPIHandler(RESTAPIHandler):
         if not has_access:
             reason = f"Bucket {bucket} is not accessible in project {project_id}."
             LOG.error(reason)
-            raise web.HTTPBadRequest()
+            raise web.HTTPBadRequest(reason=reason)
 
         LOG.info("Bucket policy for bucket %s in project %s exists.", bucket, project_id)
         return web.Response(status=200)

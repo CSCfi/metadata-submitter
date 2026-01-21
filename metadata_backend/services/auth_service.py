@@ -5,7 +5,7 @@ from typing import Any
 
 import ujson
 from aiohttp import ClientResponse, web
-from aiohttp.web import Request, Response
+from aiohttp.web import Request
 from idpyoidc.client.rp_handler import RPHandler
 from idpyoidc.exception import OidcMsgError
 from yarl import URL
@@ -60,17 +60,18 @@ class AuthServiceHandler(ServiceHandler):
                     "response_types": self.auth_method.split(" "),
                     "scope": self.scope.split(" "),
                 },
+                # needed for DPoP
+                # "key_conf": {"private_path": "path/to/jwks.json", "key_defs": []},
                 "add_ons": {
-                    # Re-activate this once we have implemented support on AAI side
-                    # "dpop": {
-                    #     "function": "idpyoidc.client.oauth2.add_on.dpop.add_support",
-                    #     "kwargs": {
-                    #         "signing_algorithms": [
-                    #             "ES256",
-                    #             "ES512",
-                    #         ]
-                    #     },
-                    # },
+                    "dpop": {
+                        "function": "idpyoidc.client.oauth2.add_on.dpop.add_support",
+                        "kwargs": {
+                            "dpop_signing_alg_values_supported": [
+                                "ES256",
+                                "ES512",
+                            ],
+                        },
+                    },
                     "pkce": {
                         "function": "idpyoidc.client.oauth2.add_on.pkce.add_support",
                         "kwargs": {
@@ -82,11 +83,11 @@ class AuthServiceHandler(ServiceHandler):
             },
         }
 
-    async def login(self) -> web.HTTPSeeOther:
+    async def get_oidc_auth_url(self) -> str:
         """Redirect user to AAI login.
 
         :raises: HTTPInternalServerError if OIDC configuration init failed
-        :returns: HTTPSeeOther redirect to AAI
+        :returns: OIDC Authorization URL
         """
         LOG.debug("Start login")
 
@@ -99,26 +100,17 @@ class AuthServiceHandler(ServiceHandler):
             LOG.exception("OIDC authorization request failed with: %r", e)
             raise web.HTTPInternalServerError(reason="OIDC authorization request failed.")
 
-        # Redirect user to AAI
-        response = web.HTTPSeeOther(rph_session_url)
-        response.headers["Location"] = rph_session_url
-        return response
+        return str(rph_session_url)
 
-    async def callback(self, req: Request) -> Response:
-        """Handle the OIDC callback and redirect the user with a JWT token in the URL fragment.
+    async def callback(self, req: Request) -> tuple[str, dict[str, Any]]:
+        """Handle the OIDC callback and return application-specific JWT.
 
-        This function completes the OpenID Connect (OIDC) authorization code flow. It exchanges
-        the authorization code for tokens (ID token, access token), retrieves user information
-        from the identity provider, creates an application-specific JWT, and then redirects
-        the user to the frontend application with the JWT token appended in the URL fragment.
-
-        The token is included as a URL fragment so that it is only accessible to client-side
-        scripts and not sent to the server in future requests.
+        This function completes the OpenID Connect (OIDC) authorization code flow with DPoP.
+        It exchanges the authorization code for DPoP-bound tokens, retrieves user information
+        and creates an application-specific JWT.
 
         :param req: A HTTP request instance with callback parameters
-
-        # Returns:
-            A redirect response to the frontend app with the JWT token included in the URL fragment.
+        :returns: JWT token as a string
         """
 
         # Response from AAI must have the query params `state` and `code`
@@ -154,49 +146,61 @@ class AuthServiceHandler(ServiceHandler):
             LOG.exception("OIDC Callback failed with: %r", e)
             raise web.HTTPUnauthorized(reason="Invalid OIDC callback.")
 
-        # Generate a JWT token.
-        jwt_token = await AuthService.create_jwt_token_from_userinfo(session["userinfo"])
+        # Generate a JWT token for application authentication
+        jwt = await AuthService.create_jwt_token_from_userinfo(session["userinfo"])
+        return jwt, session["userinfo"]
 
+    async def initiate_web_session(self, jwt_token: str, userinfo: dict[str, Any]) -> web.HTTPSeeOther:
+        """
+        Initiate web session by setting JWT token in secure cookie.
+
+        :param jwt_token: The JWT token to be set in the cookie
+        :param userinfo: The user information dictionary
+        :return: HTTPSeeOther redirect to the home page
+        """
         LOG.info("OIDC redirect to %r", f"{self.redirect}/home")
 
         response = web.HTTPSeeOther(f"{self.redirect}/home")
         secure_cookie = os.environ.get("OIDC_SECURE_COOKIE", "").upper() != "FALSE"
+
+        # Set the application JWT token
         response.set_cookie(
             name="access_token",
             value=jwt_token,
             httponly=True,
             secure=secure_cookie,
-            samesite="Strict",  # or "Lax" depending on your needs
+            samesite="Strict",
             path="/",
             max_age=int(JWT_EXPIRATION.total_seconds()),
         )
-        # Set access token cookie for Pouta access
-        pouta_access_token = session["userinfo"].get("pouta_access_token", "").strip()
+        # TODO(improve): Remove pouta_access_token from session cookies.
+        # Instead fetch it from /userinfo whenever needed.
+        pouta_access_token = userinfo.get("pouta_access_token", "").strip()
         response.set_cookie(
             name="pouta_access_token",
             value=pouta_access_token,
             httponly=True,
             secure=secure_cookie,
-            samesite="Strict",  # or "Lax" depending on your needs
+            samesite="Strict",
             path="/",
             max_age=int(JWT_EXPIRATION.total_seconds()),
         )
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
         response.headers["Pragma"] = "no-Cache"
         response.headers["Expires"] = "0"
-        # done like this otherwise it will not redirect properly
         response.headers["Location"] = "/home" if self.redirect == self.domain else f"{self.redirect}/home"
         return response
 
     async def logout(self) -> web.HTTPSeeOther:
-        """Log the user out by clearing cookie.
+        """Log the user out by clearing all cookies.
 
         :returns: HTTPSeeOther redirect to login page
         """
         response = web.HTTPSeeOther(f"{self.redirect}/")
         response.del_cookie("access_token", path="/")
+        response.del_cookie("pouta_access_token", path="/")
         response.headers["Location"] = "/" if self.redirect == self.domain else f"{self.redirect}/"
-        LOG.debug("Logged out user.")
+        LOG.debug("Logged out user and cleared all cookies.")
         return response
 
     @staticmethod

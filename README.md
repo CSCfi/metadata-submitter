@@ -11,6 +11,7 @@ here: [metadata-submitter-frontend](https://github.com/CSCfi/metadata-submitter-
 
 SD Submit API integrates with the following external services:
 
+- OIDC Client of an OpenID Provider
 - PostgreSQL database
 - CSC LDAP service
 - Keystone (OpenStack Identity API) ([docs](https://docs.openstack.org/api-ref/identity/v3/))
@@ -30,6 +31,7 @@ flowchart LR
     end
     subgraph External services
         direction LR
+        API -->|User authentication| OIDC(OIDC Client)
         API -->|All database operations| Postgres(PostgreSQL DB)
         API -->|User project listing| LDAP(LDAP Service)
         API -->|EC2 credential handling| Keystone(Keystone) --> OS(Object storage)
@@ -37,6 +39,7 @@ flowchart LR
         API -->|DOI creation for Bigpicture| DataCiteAPI(DataCite API) --> DataCite
         API -->|DOI creation for SD| PID(PID API) --> DataCite(DataCite)
         API -->|Discovery metadata mapping| Metax(Metax API) --> Fairdata-Etsin(FairData Etsin)
+        API -->|Organization identifier fetching| ROR(ROR API)
         API -->|Dataset access registeration| REMS(REMS API) --> Apply(SD Apply/REMS)
         API -->|Bigpicture file ingestion| Admin(Admin API) --> SDA(NEIC SDA)
         API -->|Bigpicture metadata| Beacon(Imaging Beacon API) --> BP-Discovery(Bigpicture Discovery)
@@ -233,8 +236,8 @@ pytest tests/integration
 
 Two infrequently updated resource files used by Metax are stored in
 metadata_backend/resource/metax directory:
-- geo_locations,json
-- languages.json
+- `geo_locations.json`
+- `languages.json`
 
 These files can be refreshed by running:
 

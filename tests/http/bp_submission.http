@@ -1,0 +1,109 @@
+# https://github.com/Huachao/vscode-restclient
+# https://jsonpath.com/
+
+# Get secrets from Vault for local deployment:
+# make get_env
+
+# Run this to launch the API service locally:
+# docker compose --env-file tests/integration/.env --profile dev up --build -d
+
+@api_url = http://localhost:5431
+@auth_url = http://localhost:8000
+@auth_email = mock_user@test.what
+
+@submission_id = {{submission_id_req.response.body.submissionId}}
+@user_id = {{user_data_req.response.body.user_id}}
+@bearer_token = {{token_req.response.body.*}}
+
+# Authentication
+
+### Get login URL for OIDC Authentication
+curl {{api_url}}/login
+
+### Paste login url here with mock authentication
+# @name token_req
+curl '{{auth_url}}/authorize?...'
+
+### Optional: Generate an API key for further requests
+### Create API key
+# @name token_req
+curl -X POST {{api_url}}/v1/api/keys \
+     -H 'Authorization: Bearer {{bearer_token}}' \
+     -d '{"key_id": "test api key"}'
+
+### Get API keys
+curl {{api_url}}/v1/api/keys \
+     -H 'Authorization: Bearer {{bearer_token}}' \
+
+### Delete API key
+curl -X DELETE {{api_url}}/v1/api/keys \
+     -H 'Authorization: Bearer {{bearer_token}}' \
+     -d '{"key_id": "test api key"}'
+
+
+### Get user data
+# @name user_data_req
+curl {{api_url}}/v1/users
+     -H 'Authorization: Bearer {{bearer_token}}'
+
+### List all submissions
+curl {{api_url}}/v1/submissions?projectId={{user_id}}
+     -H 'Authorization: Bearer {{bearer_token}}'
+
+
+# Process Bigpicture submission
+
+### Create new submission (copy-paste to terminal because -F flags are not supported in REST Client)
+# @name submission_id_req
+curl -X POST '{{api_url}}/v1/submit/Bigpicture' \
+     -H 'Authorization: Bearer {{bearer_token}}' \
+     -F "annotation=@./tests/test_files/xml/bigpicture/annotation.xml;type=text/xml" \
+     -F "datacite=@./tests/test_files/xml/bigpicture/datacite.xml;type=text/xml" \
+     -F "dataset=@./tests/test_files/xml/bigpicture/dataset.xml;type=text/xml" \
+     -F "image=@./tests/test_files/xml/bigpicture/image.xml;type=text/xml" \
+     -F "landing_page=@./tests/test_files/xml/bigpicture/landing_page.xml;type=text/xml" \
+     -F "observation=@./tests/test_files/xml/bigpicture/observation.xml;type=text/xml" \
+     -F "observer=@./tests/test_files/xml/bigpicture/observer.xml;type=text/xml" \
+     -F "organisation=@./tests/test_files/xml/bigpicture/organisation.xml;type=text/xml" \
+     -F "policy=@./tests/test_files/xml/bigpicture/policy.xml;type=text/xml" \
+     -F "bprems=@./tests/test_files/xml/bigpicture/rems.xml;type=text/xml" \
+     -F "sample=@./tests/test_files/xml/bigpicture/sample.xml;type=text/xml" \
+     -F "staining=@./tests/test_files/xml/bigpicture/staining.xml;type=text/xml" | jq
+
+# @submission_id =
+
+### Get submission by ID
+curl {{api_url}}/v1/submissions/{{submission_id}}
+     -H 'Authorization: Bearer {{bearer_token}}'
+
+### List metadata objects in the submission
+curl {{api_url}}/v1/submissions/{{submission_id}}/objects
+     -H 'Authorization: Bearer {{bearer_token}}'
+
+### Get dataset xml file in the submission
+curl {{api_url}}/v1/submissions/{{submission_id}}/objects/docs?schemaType=dataset
+     -H 'Authorization: Bearer {{bearer_token}}'
+
+### Get image xml file in the submission
+curl {{api_url}}/v1/submissions/{{submission_id}}/objects/docs?schemaType=image
+     -H 'Authorization: Bearer {{bearer_token}}'
+
+### Update image xml file in the submission
+curl -X PATCH {{api_url}}/v1/submit/Bigpicture/{{submission_id}} \
+     -H 'Authorization: Bearer {{bearer_token}}' \
+     -F "annotation=@./tests/test_files/xml/bigpicture/annotation.xml;type=text/xml" \
+     -F "datacite=@./tests/test_files/xml/bigpicture/datacite.xml;type=text/xml" \
+     -F "dataset=@./tests/test_files/xml/bigpicture/dataset.xml;type=text/xml" \
+     -F "image=@./tests/test_files/xml/bigpicture/update/image.xml;type=text/xml" \
+     -F "landing_page=@./tests/test_files/xml/bigpicture/landing_page.xml;type=text/xml" \
+     -F "observation=@./tests/test_files/xml/bigpicture/observation.xml;type=text/xml" \
+     -F "observer=@./tests/test_files/xml/bigpicture/observer.xml;type=text/xml" \
+     -F "organisation=@./tests/test_files/xml/bigpicture/organisation.xml;type=text/xml" \
+     -F "policy=@./tests/test_files/xml/bigpicture/policy.xml;type=text/xml" \
+     -F "bprems=@./tests/test_files/xml/bigpicture/rems.xml;type=text/xml" \
+     -F "sample=@./tests/test_files/xml/bigpicture/sample.xml;type=text/xml" \
+     -F "staining=@./tests/test_files/xml/bigpicture/staining.xml;type=text/xml" | jq
+
+### Delete submission
+curl -X DELETE {{api_url}}/v1/submit/Bigpicture/{{submission_id}} \
+     -H 'Authorization: Bearer {{bearer_token}}'

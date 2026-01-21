@@ -154,22 +154,27 @@ class AuthService:
         hashed_api_key = self._hash_api_key(api_key, salt)
 
         # Save the hashed API key and salt (not the original API key)
-
-        await self.__repository.add_api_key(
-            ApiKeyEntity(
-                key_id=generated_key_id,
-                user_id=user_id,
-                user_key_id=key_id,
-                api_key=hashed_api_key,
-                salt=salt,
-                created_at=datetime.now(timezone.utc),
+        try:
+            await self.__repository.add_api_key(
+                ApiKeyEntity(
+                    key_id=generated_key_id,
+                    user_id=user_id,
+                    user_key_id=key_id,
+                    api_key=hashed_api_key,
+                    salt=salt,
+                    created_at=datetime.now(timezone.utc),
+                )
             )
-        )
+        except Exception as exc:
+            msg = str(exc).lower()
+            if "duplicate key value violates unique constraint" in msg:
+                raise web.HTTPBadRequest(reason="API key already exists with this key id.") from exc
+            raise web.HTTPInternalServerError(reason="Failed to create API key.") from exc
 
         # Return the plain text API key prefixed with the API key id.
         return f"{generated_key_id}.{api_key}"
 
-    async def validate_api_key(self, api_key: str) -> str:
+    async def validate_api_key(self, api_key: str) -> str | None:
         """
         Validate the provided API key by comparing it with the stored hash.
 
@@ -219,7 +224,4 @@ class AuthService:
             list: A list of API keys associated with the user.
         """
 
-        return [
-            ApiKey(key_id=key.user_key_id, created_at=key.created_at)
-            for key in await self.__repository.get_api_keys(user_id)
-        ]
+        return await self.__repository.get_api_keys(user_id)

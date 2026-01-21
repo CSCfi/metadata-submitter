@@ -1,5 +1,7 @@
 """Key API handler."""
 
+import json
+
 from aiohttp import web
 from aiohttp.web import Request, Response
 
@@ -26,11 +28,14 @@ class KeyAPIHandler(RESTAPIHandler):
         user_id = get_authorized_user_id(req)
 
         # Create and store the new API key.
-        data = await req.json()
+        try:
+            data = await req.json()
+        except json.JSONDecodeError:
+            raise web.HTTPBadRequest(reason="Invalid JSON payload.")
 
         api_key = await self._services.auth.create_api_key(user_id, ApiKey(**data).key_id)
 
-        return web.Response(text=api_key, content_type="text/plain")
+        return web.Response(text=f"\n{api_key}\n\n", content_type="text/plain")
 
     async def delete_api_key(self, req: Request) -> Response:
         """
