@@ -10,7 +10,7 @@ from metadata_backend.server import get_auth_routes
 from metadata_backend.services.auth_service import AuthServiceHandler
 
 
-async def test_auth(aiohttp_client, monkeypatch):
+async def test_auth(aiohttp_client, dpop_test_jwks, monkeypatch):
     # Mock OIDC_URL.
     mock_oidc_url = "http://mock/oidc"
     mock_auth_url = "http://mock/auth"

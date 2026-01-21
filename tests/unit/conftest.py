@@ -2,8 +2,10 @@
 
 import asyncio
 import atexit
+import json
 import os
 import tempfile
+from pathlib import Path
 from typing import AsyncGenerator
 
 import pytest
@@ -36,6 +38,7 @@ from metadata_backend.database.postgres.services.file import FileService
 from metadata_backend.database.postgres.services.object import ObjectService
 from metadata_backend.database.postgres.services.registration import RegistrationService
 from metadata_backend.database.postgres.services.submission import SubmissionService
+from metadata_backend.services.auth_service import DPoPHandler
 
 _engine: AsyncEngine | None = None
 _session_factory: SessionFactory | None = None
@@ -177,3 +180,19 @@ def file_service() -> FileService:
 @pytest.fixture
 def registration_service() -> RegistrationService:
     return RegistrationService(_registration_repository)
+
+
+# DPoP test fixture.
+
+
+@pytest.fixture
+def dpop_test_jwks(tmp_path: Path, monkeypatch) -> Path:
+    """Create a test JWKS file for DPoP handler."""
+    jwks_file_path = Path(__file__).parent.parent / "test_files" / "jwks.json"
+    test_jwks = json.loads(jwks_file_path.read_text())
+
+    jwks_file = tmp_path / "jwks.json"
+    jwks_file.write_text(json.dumps(test_jwks))
+    monkeypatch.setattr(DPoPHandler, "PRIVATE_JWK_PATH", jwks_file)
+
+    return jwks_file

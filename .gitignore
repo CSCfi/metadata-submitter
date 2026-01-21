@@ -127,3 +127,8 @@ private
 static
 # ignore pyspelling dictionary
 *.dic
+
+# OpenSpec generated files
+AGENTS.md
+openspec/
+.github/prompts/

@@ -15,6 +15,7 @@ COPY .python-version .
 # Copy project files
 COPY README.md .
 COPY metadata_backend ./metadata_backend
+COPY private/private_jwks.json ./private/private_jwks.json
 
 # Install dependencies and create virtual environment
 RUN uv sync --dev

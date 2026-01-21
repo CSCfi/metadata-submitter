@@ -106,8 +106,10 @@ async def authorize(req: web.Request) -> web.Response:
     return web.HTTPSeeOther(url)
 
 
-async def token(_: web.Request) -> web.Response:
+async def token(req: web.Request) -> web.Response:
     """OIDC /token endpoint."""
+    import uuid
+
     # idpyoidc is strict about iat, exp, ttl, so we can't hard code them
     iat = int(time())
     ttl = 3600
@@ -142,7 +144,15 @@ async def token(_: web.Request) -> web.Response:
 
     LOG.info(data)
 
-    return web.json_response(data)
+    response = web.json_response(data)
+
+    # include DPoP-Nonce in response if DPoP header present
+    if "DPoP" in req.headers:
+        # Generate fresh nonce for next request
+        response.headers["DPoP-Nonce"] = str(uuid.uuid4())
+        LOG.info("Added DPoP-Nonce to token response")
+
+    return response
 
 
 async def jwk_response(_: web.Request) -> web.Response:
@@ -156,8 +166,10 @@ async def jwk_response(_: web.Request) -> web.Response:
     return web.json_response(data)
 
 
-async def userinfo(_: web.Request) -> web.Response:
+async def userinfo(req: web.Request) -> web.Response:
     """OIDC /userinfo endpoint."""
+    import uuid
+
     user_info = {
         "eduPersonAffiliation": "member;staff",
         "sub": mock_sub,
@@ -182,7 +194,16 @@ async def userinfo(_: web.Request) -> web.Response:
 
     LOG.info(user_info)
 
-    return web.json_response(user_info)
+    response = web.json_response(user_info)
+
+    # include DPoP-Nonce in response if DPoP header present
+    auth_header = req.headers.get("Authorization", "")
+    if auth_header.startswith("DPoP "):
+        # Valid DPoP-bound access token, include nonce for next request
+        response.headers["DPoP-Nonce"] = str(uuid.uuid4())
+        LOG.info("Added DPoP-Nonce to userinfo response")
+
+    return response
 
 
 async def oidc_config(_: web.Request) -> web.Response:
