@@ -1,9 +1,8 @@
 """Repository for the api_key table."""
 
-from typing import Sequence
-
 from sqlalchemy import delete, select
 
+from ....api.models.models import ApiKey
 from ..models import ApiKeyEntity
 from ..repository import SessionFactory, transaction
 
@@ -46,7 +45,7 @@ class ApiKeyRepository:
             row = result.scalar_one_or_none()
             return row
 
-    async def get_api_keys(self, user_id: str) -> Sequence[ApiKeyEntity]:
+    async def get_api_keys(self, user_id: str) -> list[ApiKey]:
         """
         Retrieve all API key rows for a given user with the API key ids, hashes and salt masked.
 
@@ -60,12 +59,11 @@ class ApiKeyRepository:
             stmt = select(ApiKeyEntity).where(ApiKeyEntity.user_id == user_id)
             result = await session.execute(stmt)
             rows = result.scalars().all()
-            session.expunge_all()
+
+            api_keys = []
             for row in rows:
-                row.key_id = ""
-                row.api_key = ""
-                row.salt = ""
-            return rows
+                api_keys.append(ApiKey(key_id=row.user_key_id, created_at=row.created_at))
+            return api_keys
 
     async def delete_api_key(self, user_id: str, user_key_id: str) -> None:
         """
