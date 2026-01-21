@@ -77,7 +77,7 @@ dev = [
     # other
     "aiofiles==24.1.0",
     "authlib==1.6.6",
-    "certifi==2025.11.12",
+    "certifi==2026.1.4",
     "honcho==2.0.0",
     "moto[server]>=5.1.6",
     "aioresponses>=0.7.8",
