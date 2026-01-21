@@ -27,7 +27,7 @@ dependencies = [
     "defusedxml==0.7.1",
     "gunicorn==23.0.0",
     "metomi-isodatetime==1!3.1.0",
-    "jsonschema==4.25.1",
+    "jsonschema==4.26.0",
     "idpyoidc==5.0.0",
     "pydantic==2.12.5",
     "pynacl==1.6.1",
@@ -36,7 +36,7 @@ dependencies = [
     "requests==2.32.5",
     "ujson==5.11.0",
     "uvloop==0.22.1",
-    "xmlschema==4.2.0",
+    "xmlschema==4.3.1",
     "typing-extensions==4.15.0",
     "pyjwt>=2.10.1",
     "ldap3 @ git+https://github.com/cannatag/ldap3.git@refs/pull/983/head",
@@ -64,11 +64,11 @@ dependencies = [
 dev = [
     # mypy
     "mypy>=1.15.0",
-    "types-requests==2.32.4.20250913",
+    "types-requests==2.32.4.20260107",
     "types-ujson==5.10.0.20250822",
     "types-python-dateutil>=2.9.0.20241206",
     # ruff
-    "ruff==0.14.10",
+    "ruff==0.14.13",
     # pytest
     "pytest==8.4.2",
     "pytest-asyncio==1.3.0",
@@ -94,11 +94,11 @@ Source = "https://github.com/CSCfi/metadata_submitter"
 verify = [
     # mypy
     "mypy>=1.15.0",
-    "types-requests==2.32.4.20250913",
+    "types-requests==2.32.4.20260107",
     "types-ujson==5.10.0.20250822",
     "types-python-dateutil>=2.9.0.20241206",
     # ruff
-    "ruff==0.14.10",
+    "ruff==0.14.13",
     # vulture
     "vulture>=2.14"
 ]
@@ -112,7 +112,7 @@ test = [
 
 docs = [
     "sphinx>=1.4",
-    "sphinx_rtd_theme==3.0.2",
+    "sphinx_rtd_theme==3.1.0",
 ]
 
 [tool.hatch.version]
