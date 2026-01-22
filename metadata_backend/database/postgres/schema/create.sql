@@ -8,9 +8,7 @@ CREATE TABLE api_keys (
 	created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
 	PRIMARY KEY (key_id, user_key_id),
 	UNIQUE (user_id, user_key_id)
-)
-
-
+);
 
 CREATE TABLE submissions (
 	submission_id VARCHAR(128) NOT NULL,
@@ -29,13 +27,11 @@ CREATE TABLE submissions (
 	document JSONB NOT NULL,
 	PRIMARY KEY (submission_id),
 	CONSTRAINT ck_workflow CHECK (workflow IN ('SD', 'FEGA', 'Bigpicture'))
-)
-
-
-CREATE INDEX ix_submissions_modified ON submissions (modified)
-CREATE INDEX ix_submissions_is_ingested ON submissions (is_ingested)
-CREATE INDEX ix_submissions_is_published ON submissions (is_published)
-CREATE INDEX ix_submissions_created ON submissions (created)
+);
+CREATE INDEX ix_submissions_modified ON submissions (modified);
+CREATE INDEX ix_submissions_created ON submissions (created);
+CREATE INDEX ix_submissions_is_published ON submissions (is_published);
+CREATE INDEX ix_submissions_is_ingested ON submissions (is_ingested);
 
 CREATE TABLE objects (
 	object_id VARCHAR(128) NOT NULL,
@@ -51,12 +47,10 @@ CREATE TABLE objects (
 	modified TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
 	PRIMARY KEY (object_id),
 	FOREIGN KEY(submission_id) REFERENCES submissions (submission_id) ON DELETE CASCADE
-)
-
-
-CREATE INDEX ix_objects_modified ON objects (modified)
-CREATE INDEX ix_objects_submission_id ON objects (submission_id)
-CREATE INDEX ix_objects_created ON objects (created)
+);
+CREATE INDEX ix_objects_created ON objects (created);
+CREATE INDEX ix_objects_submission_id ON objects (submission_id);
+CREATE INDEX ix_objects_modified ON objects (modified);
 
 CREATE TABLE files (
 	file_id VARCHAR(128) NOT NULL,
@@ -80,14 +74,12 @@ CREATE TABLE files (
 	CONSTRAINT ck_ingest_error_type CHECK (ingest_error_type IN ('user_error', 'transient_error', 'permanent_error')),
 	FOREIGN KEY(submission_id) REFERENCES submissions (submission_id) ON DELETE CASCADE,
 	FOREIGN KEY(object_id) REFERENCES objects (object_id) ON DELETE CASCADE
-)
-
-
-CREATE INDEX ix_files_modified ON files (modified)
-CREATE INDEX ix_files_object_id ON files (object_id)
-CREATE INDEX ix_files_submission_id ON files (submission_id)
-CREATE INDEX ix_files_created ON files (created)
-CREATE INDEX ix_files_ingest_status ON files (ingest_status)
+);
+CREATE INDEX ix_files_modified ON files (modified);
+CREATE INDEX ix_files_object_id ON files (object_id);
+CREATE INDEX ix_files_created ON files (created);
+CREATE INDEX ix_files_ingest_status ON files (ingest_status);
+CREATE INDEX ix_files_submission_id ON files (submission_id);
 
 CREATE TABLE registrations (
 	submission_id VARCHAR(128) NOT NULL,
@@ -106,12 +98,10 @@ CREATE TABLE registrations (
 	PRIMARY KEY (submission_id),
 	FOREIGN KEY(submission_id) REFERENCES submissions (submission_id) ON DELETE CASCADE,
 	FOREIGN KEY(object_id) REFERENCES objects (object_id) ON DELETE CASCADE
-)
-
-
-CREATE INDEX ix_registrations_created ON registrations (created)
-CREATE INDEX ix_registrations_modified ON registrations (modified)
-CREATE UNIQUE INDEX ix_registrations_object_id ON registrations (object_id)
-COMMENT ON COLUMN registrations.doi IS 'Digital Object identifier'
-COMMENT ON COLUMN registrations.metax_id IS 'Metax identifier'
-COMMENT ON COLUMN registrations.datacite_url IS 'Datacite discovery URL'
+);
+CREATE INDEX ix_registrations_modified ON registrations (modified);
+CREATE INDEX ix_registrations_created ON registrations (created);
+CREATE UNIQUE INDEX ix_registrations_object_id ON registrations (object_id);
+COMMENT ON COLUMN registrations.doi IS 'Digital Object identifier';
+COMMENT ON COLUMN registrations.metax_id IS 'Metax identifier';
+COMMENT ON COLUMN registrations.datacite_url IS 'Datacite discovery URL';

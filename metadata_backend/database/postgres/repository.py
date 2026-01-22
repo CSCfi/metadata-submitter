@@ -1,6 +1,7 @@
 """Postgres session."""
 
 import os
+import re
 import sqlite3
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
@@ -80,7 +81,7 @@ def save_schema(db_url: str = "postgresql+psycopg2://") -> None:
     def _compile_sql(_expr, _, *__, **___):  # type: ignore
         sql = str(_expr.compile(dialect=engine.dialect))
         print(sql)
-        sqls.append(sql)
+        sqls.append(re.sub(r"[ \t]+$", "", sql, flags=re.MULTILINE).rstrip() + ";")
 
     engine = create_mock_engine(db_url, _compile_sql)
     Base.metadata.create_all(engine, checkfirst=False)

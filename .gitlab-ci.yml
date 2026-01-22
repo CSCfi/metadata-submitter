@@ -70,9 +70,14 @@ integration-test:
     # List statuses of the containers of the current CI job
     - docker compose -f docker-compose.yml --env-file tests/integration/.env --profile ci ps
     # Run integration tests inside the sd-submit-api container
-    - docker compose --env-file tests/integration/.env --profile ci exec sd-submit-api-csc pytest tests/integration
+    - docker compose --env-file tests/integration/.env --profile ci exec sd-submit-api-csc pytest tests/integration || export TEST_FAILED=1
   after_script:
-    # Shut down containers and remove volumes after the tests finish
+    - |
+      if [ "$TEST_FAILED" = "1" ]; then
+        echo "Tests failed, printing all docker-compose logs:"
+        docker compose --env-file tests/integration/.env --profile ci logs
+      fi
+    # Shut down containers after the tests finish.
     - docker compose --profile ci down -v
 
 # Docker image build, scan and push pipeline
