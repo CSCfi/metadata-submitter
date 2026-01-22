@@ -9,6 +9,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- Use different databases for CSC and NBIS integration tests.
 - Improved OIDC related tests.
 - Renamed environment variables (database, discovery URLs, OIDC, admin polling) and switched to lazy loading via configuration models.
 - Refactored handler architecture (API and service handlers), unified service injection, and reorganized classes into appropriate packages.
@@ -125,6 +126,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- semicolons to create.sql file.
 - database health check.
 - REMS integration tests.
 - Integration testing for FileProviderService using Allas test service
