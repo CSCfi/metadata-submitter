@@ -1,7 +1,9 @@
 services:
+  # Allow running integration tests outside the docker network.
   sd-submit-api-csc:
     ports:
       - "5430:5430"
+  # Allow running integration tests outside the docker network.
   sd-submit-api-nbis:
     ports:
       - "5431:5431"
@@ -13,6 +15,11 @@ services:
   mockkeystone:
     ports:
       - "5001:5001"
-  postgres:
+  # Allow connecting to the database outside the docker network.
+  postgres-csc:
     ports:
       - "5432:5432"
+  # Allow connecting to the database outside the docker network.
+  postgres-nbis:
+    ports:
+      - "5433:5432"
