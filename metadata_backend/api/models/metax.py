@@ -10,6 +10,7 @@ from pydantic import (
     field_validator,
     model_validator,
 )
+from pydantic_string_url import AnyUrl
 
 # Metax V3 API: https://metax.fairdata.fi/v3/swagger/
 # Metax dataset: https://metax.fairdata.fi/v3/docs/user-guide/datasets-api/
@@ -192,13 +193,25 @@ def convert_to_dict(value: str | dict[str, str]) -> dict[str, str]:
 
 class FieldOfScience(BaseModel):
     id: str = Field(..., description="The ID for the Field of Science. ")
-    url: str = Field(..., description=" The URL for the Field of Science.")
+    url: AnyUrl = Field(..., description=" The URL for the Field of Science.")
     pref_label: dict[str, str] = Field(..., description="Mapping of language codes to labels.")
 
     @property
     def code(self) -> str:
         """
         Return the code extracted from the URL.
+
         Example: 'http://www.yso.fi/onto/okm-tieteenala/ta999' -> 'ta999'
+
+        :return: the code extracted from the URL.
         """
         return self.url.rstrip("/").split("/")[-1]
+
+    @property
+    def label(self) -> str:
+        """
+        Return the English, Finnish or the first label.
+
+        :return: the English, Finnish or the first label.
+        """
+        return self.pref_label.get("en") or self.pref_label.get("fi") or next(iter(self.pref_label.values()))

@@ -1,36 +1,20 @@
 ## Bigpicture Submission Workflow with SD Submit API
 
-SD Submit is a service that will support several use-cases including
-the submission of Bigpicture datasets. The project currently includes
-an API solution developed and maintained in this repository, which
-enables programmatic submission of these datasets.
+SD Submit API supports the submission of Bigpicture datasets.
 
-Each step is explained below in this markdown document with
-instructions on how to execute them via the command line.
+This document explains the main dataset submission steps and how to
+execute them from the command line. SD Submit for BigPicture currently
+does not provide a UI or a dedicated CLI, so HTTP requests must be issued using a tool
+such as [cURL](https://curl.se/).
 
-### Further context
-
-There are many tools for convenient creation of HTTP requests to a web
-service e.g. [Postman](https://www.postman.com/) or [REST Client Extension
-for Visual Studio Code](https://github.com/Huachao/vscode-restclient),
-which could be used for the purpose of programmatic submissions. In fact,
-this repository also contains [this document](../tests/http/publication_bp.http)
-for executing all of the same API calls with the REST Client extension,
-which are listed below in this markdown document.
-
-However, these instructions aim to assist with using the SD Submit API
-for programmatic submissions specifically via the command line. The project
-currently does not come with a built-in CLI so HTTP requests need to be
-handled with a tool such as [cURL](https://curl.se/). Hence, this markdown
-document lists the specific `curl` commands required for the dataset submission
-process and briefly explains what each of them achieve. For more detailed
-API specifications that include examples of JSON responses for any of the
-HTTP requests listed below, see the project [OpenAPI specifications](openapi.yml).
+The document lists the required curl commands for the submission process and briefly
+describes the purpose of each one. Detailed API specifications, including example JSON
+responses for all referenced HTTP requests, are available in the OpenAPI specification
+[OpenAPI specifications](openapi.yml).
 
 > **Note:** `curl` commands below include the additional `jq` command to
-prettify the JSON response in the terminal. Thus, the `| jq` part can be
-omitted from each command if it's not installed or needed in general.
-
+> prettify the JSON response in the terminal. The `| jq` part can be
+> omitted from each command if it's not installed or needed in general.
 
 ### 1. Authenticate to the SD Submit API
 

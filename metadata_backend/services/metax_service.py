@@ -7,7 +7,7 @@ from aiocache import SimpleMemoryCache, cached
 from aiohttp import ClientResponse
 from yarl import URL
 
-from ..api.models.metax import DraftMetax, FieldOfScience
+from ..api.models.metax import DraftMetax, FieldOfScience, MetaxFields
 from ..api.models.submission import SubmissionMetadata
 from ..api.services.metax import MetaxMapper, MetaxService
 from ..api.services.ror import RorService
@@ -83,8 +83,8 @@ class MetaxServiceHandler(MetaxService, ServiceHandler):
         metax_mapper = MetaxMapper(self, ror_service)
 
         metax_data: dict[str, Any] = await self._get(metax_id)
-        # Map submission's Datacite metadata to Metax's fields
-        mapped_metax_data = await metax_mapper.map_metadata(metax_data, metadata)
+        # Map DataCite metadata to Metax metadata.
+        mapped_metax_data = await metax_mapper.map_metadata(MetaxFields(**metax_data), metadata)
         await self._patch(metax_id, mapped_metax_data.model_dump())
 
     async def update_dataset_description(self, metax_id: str, description: str) -> None:

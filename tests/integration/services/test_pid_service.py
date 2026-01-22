@@ -4,6 +4,7 @@ from pathlib import Path
 
 from metadata_backend.api.models.models import Registration
 from metadata_backend.api.models.submission import Submission, SubmissionWorkflow
+from metadata_backend.services.metax_service import MetaxServiceHandler
 
 SD_SUBMISSION = Path(__file__).parent.parent.parent / "test_files" / "submission" / "submission.json"
 
@@ -13,7 +14,7 @@ async def test_publish_csd_pid(client, secret_env):
 
     from metadata_backend.services.pid_service import PIDServiceHandler
 
-    service = PIDServiceHandler()
+    service = PIDServiceHandler(MetaxServiceHandler())
 
     # Submission with DataCite metadata.
     project_id = f"test_{uuid.uuid4()}"
@@ -35,7 +36,7 @@ async def test_publish_csd_pid(client, secret_env):
 
     # Add DataCite metadata and publish DOI.
     await service.publish(
-        registration, submission.metadata, discovery_url, require_okm_field_of_science=False, publish=False
+        registration, submission.metadata, discovery_url, require_field_of_science=False, publish=False
     )
 
     # Get published DataCite metadata.

@@ -78,18 +78,8 @@ _mock_rems_licenses = {
 _mock_rems_resources: dict[int, RemsResource] = {}  # key: resource id
 _mock_rems_catalogue_items: dict[int, RemsCatalogueItem] = {}  # key: catalogue id
 
-_mock_rems_last_resource_id = 0
-_mock_rems_last_catalogue_id = 0
-
-
-def mock_rems_last_resource_id() -> int:
-    """Get the most recently assigned resource id."""
-    return _mock_rems_last_resource_id
-
-
-def mock_rems_last_catalogue_id() -> int:
-    """Get the most recently assigned catalogue id."""
-    return _mock_rems_last_catalogue_id
+mock_rems_resource_id = 1
+mock_rems_catalogue_id = 1
 
 
 async def _mock_rems_get_workflow(organization_id: str | None, workflow_id: int) -> RemsWorkflow:
@@ -115,28 +105,24 @@ async def _mock_rems_get_resources(doi: str | None = None) -> list[RemsResource]
 async def _mock_rems_create_resource(
     organization_id: str | None, workflow_id: int, license_ids: list[int] | None, doi: str
 ) -> int:
-    global _mock_rems_last_resource_id
-    _mock_rems_last_resource_id += 1
-    _mock_rems_resources[_mock_rems_last_resource_id] = RemsResource(
-        id=_mock_rems_last_resource_id,
+    _mock_rems_resources[mock_rems_resource_id] = RemsResource(
+        id=mock_rems_resource_id,
         resid=doi,
         organization=_mock_rems_organisations[organization_id],
         licenses=[_mock_rems_licenses[license_id] for license_id in license_ids if license_id in _mock_rems_licenses],
         archived=False,
         enabled=False,
     )
-    return _mock_rems_last_resource_id
+    return mock_rems_resource_id
 
 
 async def _mock_rems_create_catalogue_item(
     organization_id: str, workflow_id: int, resource_id: int, title: str, discovery_url: str
 ) -> int:
-    global _mock_rems_last_catalogue_id
-    _mock_rems_last_catalogue_id += 1
     resource = _mock_rems_resources[resource_id]
     localization = RemsCatalogueItemLocalization(title=title, discovery_url=discovery_url)
-    _mock_rems_catalogue_items[_mock_rems_last_catalogue_id] = RemsCatalogueItem(
-        id=_mock_rems_last_catalogue_id,
+    _mock_rems_catalogue_items[mock_rems_catalogue_id] = RemsCatalogueItem(
+        id=mock_rems_catalogue_id,
         resource_id=resource.id,
         resid=resource.resid,
         organization=_mock_rems_organisations[organization_id],
@@ -149,7 +135,7 @@ async def _mock_rems_create_catalogue_item(
         enabled=False,
         expired=False,
     )
-    return _mock_rems_last_catalogue_id
+    return mock_rems_catalogue_id
 
 
 def patch_rems_get_discovery_url(url_prefix: str = "test_discovery"):
