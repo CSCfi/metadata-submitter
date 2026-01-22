@@ -9,6 +9,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- Simplified publish handling and removed previous publish configuration.
+- Create Datacite, CSC PID and Metax service handers only when the deployment type requires it.
 - Use different databases for CSC and NBIS integration tests.
 - Improved OIDC related tests.
 - Renamed environment variables (database, discovery URLs, OIDC, admin polling) and switched to lazy loading via configuration models.
@@ -109,6 +111,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Fixed
 
+- Metax mapping did not use ROR organisation identifiers or preferred labels as keywords.
+- Improved Metax and Datacite mapping for field of science.
 - Auth healtcheck.
 - Metax healtcheck.
 - (users) Submission registration endpoint now returns 404 when publish has not been called.
