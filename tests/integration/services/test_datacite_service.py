@@ -12,8 +12,9 @@ async def test_datacite_service(client, secret_env):
     """Test publish DataCite metadata using test service."""
 
     from metadata_backend.services.datacite_service import DataciteServiceHandler
+    from metadata_backend.services.metax_service import MetaxServiceHandler
 
-    service = DataciteServiceHandler()
+    service = DataciteServiceHandler(MetaxServiceHandler())
 
     # Submission with DataCite metadata.
     project_id = f"test_{uuid.uuid4()}"
@@ -36,7 +37,7 @@ async def test_datacite_service(client, secret_env):
 
         # Add DataCite metadata and publish DOI.
         data = await service.publish(
-            registration, submission.metadata, discovery_url, require_okm_field_of_science=False, publish=False
+            registration, submission.metadata, discovery_url, require_field_of_science=False, publish=False
         )
 
         # Get published DataCite metadata.

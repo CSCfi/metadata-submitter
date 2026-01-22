@@ -6,6 +6,7 @@ from typing import override
 
 from aiocache import SimpleMemoryCache, cached
 from aiohttp import ClientResponse
+from pydantic_string_url import AnyUrl
 from yarl import URL
 
 from ..api.services.ror import RorService
@@ -32,12 +33,12 @@ class RorServiceHandler(RorService, ServiceHandler):
 
     @override
     @cached(ttl=int(timedelta(weeks=1).total_seconds()), cache=SimpleMemoryCache)  # type: ignore
-    async def is_ror_organisation(self, organisation: str) -> str | None:
+    async def get_organisation(self, organisation: str) -> tuple[AnyUrl, str] | None:
         """
-        Check if the ROR organisation exists and return the preferred name or None.
+        Get the ROR organisation if it exists and return the ROR identifier and preferred name.
 
         :param organisation: the organisation name
-        :return: The preferred name or None
+        :return: The ROR identifier and preferred name, or None.
         """
 
         # https://ror.readme.io/docs/rest-api
@@ -57,7 +58,7 @@ class RorServiceHandler(RorService, ServiceHandler):
             item = items[0]
             for name in item.get("names", []):
                 if "ror_display" in name.get("types", []):
-                    return str(name.get("value"))
+                    return AnyUrl(item.get("id")), str(name.get("value"))
         else:
             # Multiple matches or no matches. If multiple matches
             # then match preferred name and return it. If no matches
@@ -75,7 +76,7 @@ class RorServiceHandler(RorService, ServiceHandler):
                     if "ror_display" in name.get("types", []):
                         value = str(name.get("value"))
                         if _normalize(value) == normalized_organisation:
-                            matched_organisations.append(value)
+                            matched_organisations.append((AnyUrl(item.get("id")), value))
 
             if len(matched_organisations) == 1:
                 return matched_organisations[0]

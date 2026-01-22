@@ -17,20 +17,21 @@ class RemsServiceHandler(ServiceHandler):
     def __init__(self) -> None:
         """REMS service."""
 
-        self._config = rems_config()
+        config = rems_config()
 
         super().__init__(
             service_name="rems",
-            base_url=URL(self._config.REMS_URL) / "api",
+            base_url=URL(config.REMS_URL) / "api",
             http_client_headers={
-                "x-rems-api-key": self._config.REMS_KEY,
-                "x-rems-user-id": self._config.REMS_USER,
+                "x-rems-api-key": config.REMS_KEY,
+                "x-rems-user-id": config.REMS_USER,
                 "accept": "application/json",
             },
-            healthcheck_url=URL(self._config.REMS_URL) / "api" / "health",
+            healthcheck_url=URL(config.REMS_URL) / "api" / "health",
         )
 
-    def get_discovery_url(self, id: str) -> str:
+    @staticmethod
+    def get_discovery_url(id: str) -> str:
         """
         Get REMS data discovery URL.
 
@@ -38,9 +39,10 @@ class RemsServiceHandler(ServiceHandler):
         :returns: The REMS data discovery URL.
         """
 
-        return f"{self._config.REMS_DISCOVERY_URL.rstrip('/')}/{id}"
+        return f"{rems_config().REMS_DISCOVERY_URL.rstrip('/')}/{id}"
 
-    def get_application_url(self, catalogue_id: str) -> str:
+    @staticmethod
+    def get_application_url(catalogue_id: str) -> str:
         """
         Get REMS data access application URL.
 
@@ -48,7 +50,7 @@ class RemsServiceHandler(ServiceHandler):
         :returns: The REMS data access application URL.
         """
 
-        return f"{self._config.REMS_URL.rstrip('/')}/application?items={quote(catalogue_id)}"
+        return f"{rems_config().REMS_URL.rstrip('/')}/application?items={quote(catalogue_id)}"
 
     async def get_workflows(self) -> list[RemsWorkflow]:
         """

@@ -3,15 +3,20 @@
 from abc import ABC, abstractmethod
 from typing import Any, cast
 
-from ...api.services.publish import format_subject_okm_field_of_science
+from pydantic_string_url import AnyUrl
+
 from ..exceptions import UserException
 from ..json import to_json_dict
-from ..models.datacite import AlternateIdentifier, DataCiteMetadata, Description, Title
+from ..models.datacite import AlternateIdentifier, DataCiteMetadata, Description, Subject, Title
 from ..models.models import Registration
+from .metax import MetaxService
 
 
 class DataciteService(ABC):
     """Datacite Service."""
+
+    def __init__(self, metax_service: MetaxService | None):
+        self._metax_service = metax_service
 
     @abstractmethod
     async def create_draft_doi(self) -> str:
@@ -34,7 +39,7 @@ class DataciteService(ABC):
         datacite: DataCiteMetadata,
         discovery_url: str,
         *,
-        require_okm_field_of_science: bool = False,
+        require_field_of_science: bool = False,
         publish: bool = True,
     ) -> dict[str, Any]:
         """Publish a draft DOI with DataCite metadata.
@@ -42,7 +47,7 @@ class DataciteService(ABC):
         :param registration: The registration.
         :param datacite: The DataCite metadata
         :param discovery_url: The discovery URL
-        :param require_okm_field_of_science: Require OKM field of science
+        :param require_field_of_science: Require field of science.
         :param publish: If True then publish the data. If false do not change the status.
         :return: The request body.
         """
@@ -75,13 +80,30 @@ class DataciteService(ABC):
             },
         }
 
-        if require_okm_field_of_science:
+        if require_field_of_science:
             if datacite.subjects is None:
-                raise UserException("Datacite's subject is required.")
-            format_subject_okm_field_of_science(datacite.subjects)
+                raise UserException("Missing DataCite subjects.")
+            await self.map_metax_field_of_science(datacite.subjects)
 
         cast(dict[str, Any], data["data"]["attributes"]).update(to_json_dict(datacite))
 
         await self._publish(registration.doi, data)
 
         return data
+
+    async def map_metax_field_of_science(self, subjects: list[Subject] | None) -> None:
+        """
+        Map DataCite subject to Metax field of science.
+
+        :param subjects: DataCite subjects.
+        """
+
+        if self._metax_service is not None:
+            if subjects:
+                for subject in subjects:
+                    field_of_science = await self._metax_service.get_field_of_science(subject)
+                    if field_of_science:
+                        subject.subjectScheme = "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus"
+                        subject.schemeUri = AnyUrl("http://www.yso.fi/onto/okm-tieteenala/conceptscheme")
+                        subject.valueUri = field_of_science.url
+                        subject.classificationCode = field_of_science.code

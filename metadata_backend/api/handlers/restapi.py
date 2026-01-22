@@ -52,9 +52,9 @@ class RESTAPIServiceHandlers(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    datacite: DataciteServiceHandler
-    pid: PIDServiceHandler
-    metax: MetaxServiceHandler
+    datacite: DataciteServiceHandler | None
+    pid: PIDServiceHandler | None
+    metax: MetaxServiceHandler | None
     ror: RorServiceHandler
     rems: RemsServiceHandler
     keystone: KeystoneServiceHandler

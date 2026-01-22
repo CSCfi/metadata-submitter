@@ -122,16 +122,22 @@ async def init() -> web.Application:
         server.on_cleanup.append(lambda _: handler.close())
         return handler
 
-    metax_handler = _create_handler(MetaxServiceHandler())
-    datacite_handler = _create_handler(DataciteServiceHandler())
-    pid_handler = _create_handler(PIDServiceHandler())
+    metax_handler = None
+    datacite_handler = None
+    pid_handler = None
+    admin_handler = None
+
+    if config.DEPLOYMENT == DEPLOYMENT_CSC:
+        metax_handler = _create_handler(MetaxServiceHandler())
+        pid_handler = _create_handler(PIDServiceHandler(metax_handler))
+
+    if config.DEPLOYMENT == DEPLOYMENT_NBIS:
+        datacite_handler = _create_handler(DataciteServiceHandler(metax_handler))
+        admin_handler = _create_handler(AdminServiceHandler())
+
     ror_handler = _create_handler(RorServiceHandler())
     rems_handler = _create_handler(RemsServiceHandler())
     auth_handler = _create_handler(AuthServiceHandler())
-    if config.DEPLOYMENT == DEPLOYMENT_NBIS:
-        admin_handler = _create_handler(AdminServiceHandler())
-    else:
-        admin_handler = None
     keystone_handler = _create_handler(KeystoneServiceHandler())
 
     # Create API handlers.

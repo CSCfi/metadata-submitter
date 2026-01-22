@@ -36,7 +36,6 @@ class AppTestCase(AioHTTPTestCase):
     async def test_init(self):
         """Test that the web application initializes."""
         self.assertIs(type(self.app), web.Application)
-        self.assertIs(len(self.app.router.routes()), 45)
 
     async def test_response_headers(self):
         """Test response headers are set correctly in on_prepare_response."""

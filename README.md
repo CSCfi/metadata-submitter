@@ -74,10 +74,12 @@ pre-commit install
 ```
 
 The project is managed by [`uv`](https://docs.astral.sh/uv/) (Python package and project manager),
-which creates a virtual Python environment in `.venv` directory using the version defined in the [`.python-version`](.python-version).
+which creates a virtual Python environment in `.venv` directory using the version defined in the [
+`.python-version`](.python-version).
 `uv` installs the dependencies in `uv.lock` file that are specified in the `pyproject.toml` file.
 
 Whenever initiating a local development environment, it is a good idea to run the following commands:
+
 ```bash
 uv self update  # update uv
 uv sync --dev  # sync all python dependencies
@@ -108,7 +110,8 @@ Server can then be found from `http://localhost:5430`.
 
 > **If you also need to initiate the graphical UI for developing the API**, check
 > out [metadata-submitter-frontend](https://github.com/CSCfi/metadata-submitter-frontend/) repository and follow its
-> development instructions. You will then also need to set the `REDIRECT_URL` environment variable to the UI address (e.g.
+> development instructions. You will then also need to set the `REDIRECT_URL` environment variable to the UI address (
+> e.g.
 > add `REDIRECT_URL=http://localhost:3000` into the `.env` file) and relaunch the development environment as specified
 > above.
 
@@ -117,7 +120,8 @@ _**Python virtual environment using a Procfile**_, which is described here below
 
 ### Developing with Python virtual environment
 
-Use `uv` to create and activate the virtual environment for development and testing as [instructed above](#initialise-the-project-for-development-and-testing).
+Use `uv` to create and activate the virtual environment for development and testing
+as [instructed above](#initialise-the-project-for-development-and-testing).
 
 Then copy `.env` file and set up the environment variables.
 The example file has hostnames for development with Docker network (via `docker compose`).
@@ -189,6 +193,7 @@ For local testing, see [above instructions](#initialise-the-project-for-developm
 for installing `uv` to create a virtual environment.
 
 Install all testing dependencies in the virtual environment by running the following commands:
+
 ```bash
 uv pip install ".[verify,test,docs]"
 source .venv/bin/activate  # activate uv virtual env
@@ -228,14 +233,12 @@ pytest tests/integration
 
 </details>
 
-## 🚀 Deployment
+## Resources
 
 <details><summary>Click to expand</summary>
 
-### Resources
+Two resource files used by Metax are stored in metadata_backend/resource/metax directory:
 
-Two infrequently updated resource files used by Metax are stored in
-metadata_backend/resource/metax directory:
 - `geo_locations.json`
 - `languages.json`
 
@@ -244,6 +247,13 @@ These files can be refreshed by running:
 ```bash
 uv run metadata_backend/scripts/fetch_metax.py
 ```
+
+</details>
+
+
+## 🚀 Deployment
+
+<details><summary>Click to expand</summary>
 
 ### Dockerfile
 

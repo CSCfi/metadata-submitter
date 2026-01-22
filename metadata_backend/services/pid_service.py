@@ -6,6 +6,7 @@ from aiohttp import ClientResponse
 from yarl import URL
 
 from ..api.services.datacite import DataciteService
+from ..api.services.metax import MetaxService
 from ..conf.pid import csc_pid_config
 from ..helpers.logger import LOG
 from .service_handler import ServiceHandler
@@ -14,12 +15,14 @@ from .service_handler import ServiceHandler
 class PIDServiceHandler(DataciteService, ServiceHandler):
     """CSC PID service."""
 
-    def __init__(self) -> None:
+    def __init__(self, metax_service: MetaxService | None) -> None:
         """CSC PID service."""
 
         self._config = csc_pid_config()
 
-        super().__init__(
+        DataciteService.__init__(self, metax_service)
+        ServiceHandler.__init__(
+            self,
             service_name="pid",
             base_url=URL(self._config.CSC_PID_URL),
             healthcheck_url=URL(self._config.CSC_PID_URL) / "q" / "health" / "live",

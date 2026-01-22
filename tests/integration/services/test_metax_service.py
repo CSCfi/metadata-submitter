@@ -20,7 +20,7 @@ async def test_metax_service(client, secret_env):
 
     metax_service = MetaxServiceHandler()
     ror_service = RorServiceHandler()
-    pid_service = PIDServiceHandler()
+    pid_service = PIDServiceHandler(metax_service)
 
     # Submission with DataCite metadata
     project_id = f"test_{uuid.uuid4()}"
@@ -49,7 +49,7 @@ async def test_metax_service(client, secret_env):
     # Add DataCite metadata and publish DOI
     # Datacite's subject (Metax's field_of_science) is required for SD submission
     await pid_service.publish(
-        registration, submission.metadata, metax_discovery_url, require_okm_field_of_science=True, publish=False
+        registration, submission.metadata, metax_discovery_url, require_field_of_science=True, publish=False
     )
 
     # Update Metax dataset

@@ -7,6 +7,7 @@ from aiohttp import BasicAuth, ClientTimeout
 from yarl import URL
 
 from ..api.services.datacite import DataciteService
+from ..api.services.metax import MetaxService
 from ..conf.datacite import datacite_config
 from ..helpers.logger import LOG
 from .service_handler import ServiceHandler
@@ -17,12 +18,14 @@ class DataciteServiceHandler(DataciteService, ServiceHandler):
 
     service_name = "Datacite"
 
-    def __init__(self) -> None:
+    def __init__(self, metax_service: MetaxService | None) -> None:
         """Datacite Service."""
 
         self._config = datacite_config()
 
-        super().__init__(
+        DataciteService.__init__(self, metax_service)
+        ServiceHandler.__init__(
+            self,
             service_name="datacite",
             base_url=URL(self._config.DATACITE_API),
             auth=BasicAuth(login=self._config.DATACITE_USER, password=self._config.DATACITE_KEY),

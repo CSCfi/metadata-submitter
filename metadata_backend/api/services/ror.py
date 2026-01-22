@@ -2,15 +2,17 @@
 
 from abc import ABC, abstractmethod
 
+from pydantic_string_url import AnyUrl
+
 
 class RorService(ABC):
     """ROR service."""
 
     @abstractmethod
-    async def is_ror_organisation(self, organisation: str) -> str | None:
+    async def get_organisation(self, organisation: str) -> tuple[AnyUrl, str] | None:
         """
-        Check if the ROR organisation exists and return the preferred name or None.
+        Get the ROR organisation if it exists and return the ROR identifier and preferred name.
 
         :param organisation: the organisation name
-        :return: The preferred name or None
+        :return: The ROR identifier and preferred name, or None.
         """
