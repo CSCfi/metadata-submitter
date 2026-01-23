@@ -8,6 +8,7 @@ import pytest
 
 from metadata_backend.api.json import to_json_dict
 from metadata_backend.api.models.datacite import Subject
+from metadata_backend.api.models.models import Registration
 from metadata_backend.api.models.submission import Rems, SubmissionMetadata, SubmissionWorkflow
 from metadata_backend.api.services.file import FileProviderService
 from metadata_backend.conf.conf import API_PREFIX
@@ -170,15 +171,14 @@ class PublishAPIHandlerTestCaseSD(HandlersTestCase):
             mock_metax_update_dataset_metadata.assert_awaited_once()
             mock_metax_update_dataset_description.assert_awaited_once_with(
                 metax_id,
-                f"{submission_description}\n\nSD Apply's Application link: "
+                f"{submission_description}\n\nSD Apply Application link: "
                 f"{RemsServiceHandler.get_application_url(str(mock_rems_catalogue_id))}",
             )
 
             mock_metax_publish_dataset.assert_awaited_once_with(metax_id, doi)
 
             # Assert Rems.
-            mock_rems_create_resource.assert_awaited_once_with(rems.organizationId, rems.workflowId, rems.licenses, doi)
-
+            mock_rems_create_resource.assert_awaited_once_with(rems.organizationId, rems.licenses, doi)
             mock_rems_create_catalogue_item.assert_awaited_once_with(
                 rems.organizationId,
                 rems.workflowId,
@@ -208,7 +208,7 @@ class PublishAPIHandlerTestCaseBP(HandlersTestCase):
         self.object_repository = object_repository
         self.file_repository = file_repository
 
-    async def test_publish_submission_bp(self):
+    async def test_publish_submission_nbis(self):
         """Test publishing of BP submission."""
 
         submission_metadata = self.submission_metadata
@@ -295,7 +295,21 @@ class PublishAPIHandlerTestCaseBP(HandlersTestCase):
             # TODO(improve): BP beacon service not implement
 
             # Assert Rems.
-            mock_rems_create_resource.assert_awaited_once_with(rems.organizationId, rems.workflowId, rems.licenses, doi)
+            mock_rems_create_resource.assert_awaited_once_with(rems.organizationId, rems.licenses, doi)
             mock_rems_create_catalogue_item.assert_awaited_once_with(
                 rems.organizationId, rems.workflowId, 1, dataset_title, RemsServiceHandler().get_discovery_url(doi)
             )
+
+            # Assert registrations.
+            response = await self.client.get(f"{API_PREFIX}/submissions/{submission_id}/registrations")
+            data = await response.json()
+            assert response.status == 200
+            registration = Registration.model_validate(data)
+            # Check DOI
+            assert registration.doi == doi
+            # Check that metax ID does not exist
+            assert registration.metaxId is None
+            # Check REMS
+            assert registration.remsResourceId is not None
+            assert registration.remsCatalogueId is not None
+            assert registration.remsUrl is not None

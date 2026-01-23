@@ -112,7 +112,9 @@ async def test_add_and_get_submission(
         )
 
         # Test that submission name must be unique within a project.
-        with pytest.raises(UserException, match=f"Submission with name {name} already exists in project {project_id}"):
+        with pytest.raises(
+            UserException, match=f"Submission with name '{name}' already exists in project '{project_id}'"
+        ):
             await submission_service.add_submission(submission)
 
 

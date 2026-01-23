@@ -82,7 +82,7 @@ class MetaxServiceHandler(MetaxService, ServiceHandler):
 
         metax_mapper = MetaxMapper(self, ror_service)
 
-        metax_data: dict[str, Any] = await self._get(metax_id)
+        metax_data: dict[str, Any] = await self.get_dataset(metax_id)
         # Map DataCite metadata to Metax metadata.
         mapped_metax_data = await metax_mapper.map_metadata(MetaxFields(**metax_data), metadata)
         await self._patch(metax_id, mapped_metax_data.model_dump())
@@ -133,11 +133,11 @@ class MetaxServiceHandler(MetaxService, ServiceHandler):
 
         return dataset
 
-    async def _get(self, metax_id: str) -> dict[str, Any]:
-        """Get call to Metax REST API.
+    async def get_dataset(self, metax_id: str) -> dict[str, Any]:
+        """Get Metax dataset.
 
         :param metax_id: Metax ID
-        :returns: Metax dataset with Metax ID
+        :returns: The Metax dataset
         """
         resp: dict[str, Any] = await self._request(method="GET", path=f"/datasets/{metax_id}")
         if "not found" in resp.get("detail", "").lower():

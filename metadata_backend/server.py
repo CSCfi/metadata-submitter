@@ -123,22 +123,24 @@ async def init() -> web.Application:
         return handler
 
     metax_handler = None
+    ror_handler = None
     datacite_handler = None
     pid_handler = None
     admin_handler = None
+    keystone_handler = None
 
     if config.DEPLOYMENT == DEPLOYMENT_CSC:
         metax_handler = _create_handler(MetaxServiceHandler())
+        ror_handler = _create_handler(RorServiceHandler())
         pid_handler = _create_handler(PIDServiceHandler(metax_handler))
+        keystone_handler = _create_handler(KeystoneServiceHandler())
 
     if config.DEPLOYMENT == DEPLOYMENT_NBIS:
         datacite_handler = _create_handler(DataciteServiceHandler(metax_handler))
         admin_handler = _create_handler(AdminServiceHandler())
 
-    ror_handler = _create_handler(RorServiceHandler())
     rems_handler = _create_handler(RemsServiceHandler())
     auth_handler = _create_handler(AuthServiceHandler())
-    keystone_handler = _create_handler(KeystoneServiceHandler())
 
     # Create API handlers.
     services = RESTAPIServices(
@@ -191,7 +193,7 @@ async def init() -> web.Application:
         web.post("/submissions", _submission.post_submission),  # TODO(improve): deprecate endpoint
         web.get("/submissions/{submissionId}", _submission.get_submission),
         web.get("/submissions/{submissionId}/files", _submission.get_submission_files),
-        web.get("/submissions/{submissionId}/registrations", _submission.get_submission_registrations),
+        web.get("/submissions/{submissionId}/registrations", _submission.get_registrations),
         web.patch("/submissions/{submissionId}", _submission.patch_submission),  # TODO(improve): deprecate endpoint
         web.delete("/submissions/{submissionId}", _submission.delete_submission),  # TODO(improve): deprecate endpoint
         web.post("/submissions/{submissionId}/ingest", _submission.post_data_ingestion),

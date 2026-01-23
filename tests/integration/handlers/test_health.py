@@ -2,10 +2,8 @@
 
 import logging
 
-import pytest
-
 from metadata_backend.api.models.health import Health, ServiceHealth
-from tests.integration.conf import base_url
+from tests.integration.conf import base_url, nbis_base_url
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
@@ -39,18 +37,18 @@ class TestPublicEndpoints:
             assert "datacite" not in health.services
             assert health.services["pid"] == Health.UP
             assert health.services["metax"] == Health.UP
+            assert health.services["ror"] == Health.UP
             assert health.services["rems"] == Health.UP
             assert health.services["auth"] == Health.UP
             assert health.services["keystone"] == Health.UP
             assert health.services["database"] == Health.UP
 
-    @pytest.mark.skip(reason="Missing NBIS deployment")
-    async def test_healthcheck_bp(self, client, monkeypatch):
+    async def test_healthcheck_nbis(self, client, monkeypatch):
         """Test healthcheck endpoint for NBIS deployment."""
 
         monkeypatch.setenv("DEPLOYMENT", "NBIS")
 
-        async with client.get(f"{base_url}/health") as resp:
+        async with client.get(f"{nbis_base_url}/health") as resp:
             assert resp.status == 200
             result = await resp.json()
             health = ServiceHealth.model_validate(result)
@@ -72,7 +70,8 @@ class TestPublicEndpoints:
             assert health.services["datacite"] == Health.UP
             assert "pid" not in health.services
             assert "metax" not in health.services
+            assert "ror" not in health.services
             assert health.services["rems"] == Health.UP
             assert health.services["auth"] == Health.UP
-            assert health.services["keystone"] == Health.UP
+            assert "keystone" not in health.services
             assert health.services["database"] == Health.UP

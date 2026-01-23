@@ -184,11 +184,22 @@ class XmlObjectConfig(BaseModel):
             return None
 
         if schema_type is not None:
-            return get_set_path(schema_type)
+            set_path = get_set_path(schema_type)
+            if set_path is None:
+                raise ValueError(
+                    f"Invalid schema type: {schema_type}. "
+                    f"Valid schema types: {[p.schema_type for p in self.schema_paths]}"
+                )
+            return set_path
 
-        for o in self.object_paths:
-            if o.object_type == object_type:
-                return get_set_path(o.schema_type)
+        if object_type is not None:
+            for o in self.object_paths:
+                if o.object_type == object_type:
+                    return get_set_path(o.schema_type)
+
+            raise ValueError(
+                f"Invalid object type: {object_type}. Valid object types: {[o.object_type for o in self.object_paths]}"
+            )
 
         return None
 

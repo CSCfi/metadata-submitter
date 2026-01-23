@@ -45,10 +45,8 @@ class Object(StrictBaseModel):
     modified: datetime | None = None
 
 
-class Objects(StrictBaseModel):
-    """List of metadata objects."""
-
-    objects: list[Object]
+class Objects(RootModel[list[Object]]):
+    """List of objects."""
 
 
 class File(StrictBaseModel):

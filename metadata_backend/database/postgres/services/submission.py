@@ -169,7 +169,7 @@ class SubmissionService:
         # Check that the submission name does not already exist in the project.
         if await self.is_submission_by_name(submission.projectId, submission.name):
             raise UserException(
-                f"Submission with name {submission.name} already exists in project {submission.projectId}"
+                f"Submission with name '{submission.name}' already exists in project '{submission.projectId}'"
             )
 
         entity = self.convert_to_new_entity(submission)

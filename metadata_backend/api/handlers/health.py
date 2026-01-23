@@ -43,6 +43,7 @@ class HealthAPIHandler(RESTAPIHandler):
             self._handlers.datacite,
             self._handlers.pid,
             self._handlers.metax,
+            self._handlers.ror,
             self._handlers.rems,
             self._handlers.auth,
             self._handlers.keystone,

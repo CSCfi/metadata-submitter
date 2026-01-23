@@ -102,9 +102,7 @@ async def _mock_rems_get_resources(doi: str | None = None) -> list[RemsResource]
     return list(_mock_rems_resources.values())
 
 
-async def _mock_rems_create_resource(
-    organization_id: str | None, workflow_id: int, license_ids: list[int] | None, doi: str
-) -> int:
+async def _mock_rems_create_resource(organization_id: str | None, license_ids: list[int] | None, doi: str) -> int:
     _mock_rems_resources[mock_rems_resource_id] = RemsResource(
         id=mock_rems_resource_id,
         resid=doi,

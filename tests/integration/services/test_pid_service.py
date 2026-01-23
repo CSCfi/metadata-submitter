@@ -1,12 +1,10 @@
 import json
 import uuid
-from pathlib import Path
 
 from metadata_backend.api.models.models import Registration
 from metadata_backend.api.models.submission import Submission, SubmissionWorkflow
 from metadata_backend.services.metax_service import MetaxServiceHandler
-
-SD_SUBMISSION = Path(__file__).parent.parent.parent / "test_files" / "submission" / "submission.json"
+from tests.integration.conf import SD_SUBMISSION
 
 
 async def test_publish_csd_pid(client, secret_env):

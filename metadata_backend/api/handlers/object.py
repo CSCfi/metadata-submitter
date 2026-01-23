@@ -272,7 +272,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         # Get objects.
         objects = await object_service.get_objects(submission_id, object_types)
 
-        return web.json_response(data=to_json_dict(Objects(objects=objects)))
+        return web.json_response(data=to_json_dict(Objects(objects)))
 
     async def get_objects(self, req: Request) -> web.StreamResponse:
         """
@@ -357,19 +357,27 @@ class ObjectAPIHandler(RESTAPIHandler):
         if req.content_type == "multipart/form-data":
             reader = await req.multipart()
             objects = []
+
             async for part in reader:
                 part = cast(BodyPartReader, part)
                 if part.filename:
-                    objects.append(
-                        ObjectSubmission(filename=part.filename, document=(await part.read()).decode("utf-8"))
-                    )
+                    content = await part.read()
+                    try:
+                        document = content.decode("utf-8")
+                    except UnicodeDecodeError:
+                        raise web.HTTPBadRequest(text=f"Could not decode file '{part.filename}' as UTF-8")
+
+                    objects.append(ObjectSubmission(filename=part.filename, document=document))
+
+            if not objects:
+                raise UserException("No files in the multipart request")
+
             return objects
 
         if workflow == SubmissionWorkflow.SD:
             return [ObjectSubmission(filename="submission.json", document=await req.text())]
 
-        # TODO(improve): add a more meaningful error message
-        raise web.HTTPBadRequest()
+        raise UserException("Invalid submission payload")
 
     async def _get_object_submission_service(self, workflow: SubmissionWorkflow) -> ObjectSubmissionService:
         """

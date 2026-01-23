@@ -110,10 +110,14 @@ class PublishAPIHandler(RESTAPIHandler):
         :param rems: The rems data
         :param registration: The registration
         """
+
+        # Check that the workflow exists and get the organisation id.
+        workflow = await self._handlers.rems.get_workflow(rems.organizationId, rems.workflowId)
+
         try:
             if not registration.remsResourceId:
                 resource_id = await self._handlers.rems.create_resource(
-                    rems.organizationId, rems.workflowId, rems.licenses, registration.doi
+                    workflow.organization.id, rems.licenses, registration.doi
                 )
                 await self._services.registration.update_rems_resource_id(registration.submissionId, str(resource_id))
                 registration.remsResourceId = str(resource_id)
@@ -123,7 +127,7 @@ class PublishAPIHandler(RESTAPIHandler):
             if not registration.remsCatalogueId:
                 catalogue_id = str(
                     await self._handlers.rems.create_catalogue_item(
-                        rems.organizationId,
+                        workflow.organization.id,
                         rems.workflowId,
                         resource_id,
                         registration.title,
@@ -140,7 +144,7 @@ class PublishAPIHandler(RESTAPIHandler):
 
                 # Add rems URL to Metax description.
                 if registration.metaxId:
-                    new_description = registration.description + f"\n\nSD Apply's Application link: {rems_url}"
+                    new_description = registration.description + f"\n\nSD Apply Application link: {rems_url}"
                     await self._handlers.metax.update_dataset_description(registration.metaxId, new_description)
 
                 await self._services.registration.update_rems_url(registration.submissionId, rems_url)
