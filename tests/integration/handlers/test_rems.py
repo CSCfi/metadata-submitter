@@ -9,10 +9,10 @@ LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
 
 
-async def test_rems(client_logged_in, secret_env):
+async def test_rems(sd_client, secret_env):
     """Test REMS handler."""
 
-    async with client_logged_in.get(f"{rems_url}?") as resp:
+    async with sd_client.get(f"{rems_url}?") as resp:
         result = await resp.json()
         organisations = [Organization.model_validate(o) for o in result]
 

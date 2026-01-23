@@ -7,7 +7,7 @@ from collections import defaultdict
 from pathlib import Path
 from xml.etree import ElementTree
 
-from metadata_backend.api.models.models import Files, Objects
+from metadata_backend.api.models.models import Files, Object, Objects
 from metadata_backend.api.models.submission import Submission, SubmissionWorkflow
 from metadata_backend.api.processors.xml.bigpicture import (
     BP_ANNOTATION_OBJECT_TYPE,
@@ -89,7 +89,7 @@ class ObjectAPIHandlerTestCase(HandlersTestCase):
 
             # Assert rems.
             assert submission.rems.workflowId == 1
-            assert submission.rems.organizationId == "CSC"
+            assert submission.rems.organizationId is None  # Optional
 
             # Assert datacite.
             assert_datacite(submission.metadata, saved=True)
@@ -419,8 +419,8 @@ class ObjectAPIHandlerTestCase(HandlersTestCase):
 
     @staticmethod
     async def _assert_bp_rems(submission):
-        assert submission.rems.workflowId == 11
-        assert submission.rems.organizationId == "12"
+        assert submission.rems.workflowId == 1
+        assert submission.rems.organizationId == "nbn"
 
     async def _assert_bp_metadata_objects(self, expected_submission, object_types, sample_object_types, xml_config):
         project_id = expected_submission.projectId
@@ -586,12 +586,12 @@ class ObjectAPIHandlerTestCase(HandlersTestCase):
                 files, "test.json", "SHA256", "8c3a51adf8f8b1b7a2625d7ac9c12a08dcf9e6a10e87a1f8a215e67f87e7d2a4", None
             )
 
-    async def _list_metadata_objects(self, project_id, is_submission_name, submission_id_or_name):
+    async def _list_metadata_objects(self, project_id, is_submission_name, submission_id_or_name) -> list[Object]:
         if is_submission_name:
             objects_url = f"{API_PREFIX}/submissions/{submission_id_or_name}/objects?projectId={project_id}"
         else:
             objects_url = f"{API_PREFIX}/submissions/{submission_id_or_name}/objects"
         response = await self.client.get(objects_url)
         assert response.status == 200
-        objects = Objects.model_validate(await response.json()).objects
+        objects = Objects.model_validate(await response.json()).root
         return objects

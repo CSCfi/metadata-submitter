@@ -9,9 +9,9 @@ LOG.setLevel(logging.DEBUG)
 # TODO(improve): consider reintroducing these tests after mock Keystone
 # and mock AAI have been replaced with test services.
 
-# async def test_list_buckets(client_logged_in, s3_manager):
+# async def test_list_buckets(sd_client, s3_manager):
 #     """Test listing buckets in a project."""
-#     response = await client_logged_in.get(f"{files_url}?projectId={project_id}")
+#     response = await sd_client.get(f"{files_url}?projectId={project_id}")
 #     assert response.status == 404
 #     resp = await response.json()
 #     assert resp["detail"] == "No buckets found."
@@ -19,23 +19,23 @@ LOG.setLevel(logging.DEBUG)
 #     await s3_manager.add_bucket("bucket1")
 #     await s3_manager.add_bucket("bucket2")
 
-#     response = await client_logged_in.get(f"{files_url}?projectId={project_id}")
+#     response = await sd_client.get(f"{files_url}?projectId={project_id}")
 #     assert response.status == 200
 #     buckets = await response.json()
 #     assert isinstance(buckets, list)
 #     assert set(buckets) == {"bucket1", "bucket2"}
 
 #     await s3_manager.add_bucket("bucket3")
-#     response = await client_logged_in.get(f"{files_url}?projectId={project_id}")
+#     response = await sd_client.get(f"{files_url}?projectId={project_id}")
 #     assert response.status == 200
 #     buckets = await response.json()
 #     assert set(buckets) == {"bucket1", "bucket2", "bucket3"}
 
 
-# async def test_list_files_in_bucket(client_logged_in, project_id, s3_manager):
+# async def test_list_files_in_bucket(sd_client, project_id, s3_manager):
 #     """Test listing files in a specific bucket."""
 #     bucket_name = "bucket1"
-#     response = await client_logged_in.get(f"{files_url}/{bucket_name}/files?projectId={project_id}")
+#     response = await sd_client.get(f"{files_url}/{bucket_name}/files?projectId={project_id}")
 #     assert response.status == 400
 #     resp = await response.json()
 #     assert resp["detail"] == f"Bucket '{bucket_name}' has not been made accessible to SD Submit."
@@ -45,7 +45,7 @@ LOG.setLevel(logging.DEBUG)
 #     await s3_manager.add_file_to_bucket(bucket_name, "file2.txt")
 #     await s3_manager.set_bucket_policy(bucket_name, project_id)
 
-#     response = await client_logged_in.get(f"{files_url}/{bucket_name}/files?projectId={project_id}")
+#     response = await sd_client.get(f"{files_url}/{bucket_name}/files?projectId={project_id}")
 #     assert response.status == 200
 #     files = await response.json()
 #     LOG.debug(response.reason)
@@ -55,25 +55,25 @@ LOG.setLevel(logging.DEBUG)
 #     assert files[1]["path"] == f"S3://{bucket_name}/file2.txt"
 
 
-# async def test_grant_access_to_bucket(client_logged_in, s3_manager):
+# async def test_grant_access_to_bucket(sd_client, s3_manager):
 #     """Test creating and reading bucket policies of a bucket in a project."""
 #     bucket_name = "bucket1"
-#     response = await client_logged_in.put(f"{files_url}/{bucket_name}?projectId={project_id}")
+#     response = await sd_client.put(f"{files_url}/{bucket_name}?projectId={project_id}")
 #     assert response.status == 400
 #     resp = await response.json()
 #     assert resp["detail"] == "The specified bucket does not exist"
 
 #     await s3_manager.add_bucket(bucket_name)
-#     response = await client_logged_in.head(f"{files_url}/{bucket_name}?projectId={project_id}")
+#     response = await sd_client.head(f"{files_url}/{bucket_name}?projectId={project_id}")
 #     assert response.status == 400
 
-#     response = await client_logged_in.put(f"{files_url}/{bucket_name}?projectId={project_id}")
+#     response = await sd_client.put(f"{files_url}/{bucket_name}?projectId={project_id}")
 #     assert response.status == 200
-#     response = await client_logged_in.head(f"{files_url}/{bucket_name}?projectId={project_id}")
+#     response = await sd_client.head(f"{files_url}/{bucket_name}?projectId={project_id}")
 #     assert response.status == 200
 
 #     # Granting again should be idempotent
-#     response = await client_logged_in.put(f"{files_url}/{bucket_name}?projectId={project_id}")
+#     response = await sd_client.put(f"{files_url}/{bucket_name}?projectId={project_id}")
 #     assert response.status == 200
-#     response = await client_logged_in.head(f"{files_url}/{bucket_name}?projectId={project_id}")
+#     response = await sd_client.head(f"{files_url}/{bucket_name}?projectId={project_id}")
 #     assert response.status == 200

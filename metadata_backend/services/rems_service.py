@@ -150,26 +150,21 @@ class RemsServiceHandler(ServiceHandler):
         response = await self._request(method="GET", path=f"/catalogue-items/{catalogue_id}")
         return RemsCatalogueItem.model_validate(response)
 
-    async def create_resource(
-        self, organization_id: str | None, workflow_id: int, license_ids: list[int] | None, doi: str
-    ) -> int:
+    async def create_resource(self, organization_id: str, license_ids: list[int] | None, doi: str) -> int:
         """Create a REMS resource.
 
         :param organization_id: The REMS organization id.
-        :param workflow_id: The REMS workflow id.
         :param license_ids: The REMS license ids.
         :returns: The REMS resource id.
         :param doi: The dataset DOI.
         """
 
-        # Check that the workflow exists.
-        workflow = await self.get_workflow(organization_id, workflow_id)
-
         data = {
             "resid": doi,
-            "organization": {"organization/id": workflow.organization.id},
+            "organization": {"organization/id": organization_id},
             "licenses": license_ids or [],
         }
+
         response = await self._request(method="POST", path="/resources/create", json_data=data)
         return int(response["id"])
 
@@ -185,6 +180,7 @@ class RemsServiceHandler(ServiceHandler):
         :param discovery_url: The REMS catalogue item discovery url.
         :returns: The REMS catalogue item id.
         """
+
         data = {
             "resid": resource_id,
             "wfid": workflow_id,

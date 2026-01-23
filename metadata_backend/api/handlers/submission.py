@@ -321,8 +321,10 @@ class SubmissionAPIHandler(RESTAPIHandler):
         submission_service = self._services.submission
         project_service = self._services.project
 
+        unsafe = req.query.get("unsafe", "").lower() == "true"
+
         # Check that the submission can be modified by the user.
-        await self.check_submission_modifiable(req, submission_id, submission_service, project_service)
+        await self.check_submission_modifiable(req, submission_id, submission_service, project_service, unsafe=unsafe)
 
         await submission_service.delete_submission(submission_id)  # Metadata objects and files are deleted as well.
 
@@ -353,11 +355,11 @@ class SubmissionAPIHandler(RESTAPIHandler):
             content_type="application/json",
         )
 
-    async def get_submission_registrations(self, req: Request) -> Response:
-        """Get registrations from a submission.
+    async def get_registrations(self, req: Request) -> Response:
+        """Get submission registrations.
 
         :param req: GET request
-        :returns: HTTP No Content response
+        :returns: The submission registrations.
         """
         submission_id = req.match_info["submissionId"]
 
@@ -373,7 +375,7 @@ class SubmissionAPIHandler(RESTAPIHandler):
         if not registration:
             return web.Response(status=404)
 
-        return web.json_response([to_json_dict(registration)])
+        return web.json_response(to_json_dict(registration))
 
     async def post_data_ingestion(self, req: Request) -> web.HTTPNoContent:
         """Start the data ingestion.

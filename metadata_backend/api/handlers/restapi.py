@@ -55,9 +55,9 @@ class RESTAPIServiceHandlers(BaseModel):
     datacite: DataciteServiceHandler | None
     pid: PIDServiceHandler | None
     metax: MetaxServiceHandler | None
-    ror: RorServiceHandler
+    ror: RorServiceHandler | None
     rems: RemsServiceHandler
-    keystone: KeystoneServiceHandler
+    keystone: KeystoneServiceHandler | None
     auth: AuthServiceHandler
     admin: AdminServiceHandler | None = None
     database: HealthHandler

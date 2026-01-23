@@ -1,0 +1,18 @@
+<DATASET_SET>
+    <DATASET alias="1">
+        <TITLE>updated_test_title</TITLE>
+        <SHORT_NAME>test_short_name</SHORT_NAME>
+        <DESCRIPTION>updated_test_description</DESCRIPTION>
+        <VERSION>1</VERSION>
+        <METADATA_STANDARD>2.0.0</METADATA_STANDARD>
+        <IMAGE_REF alias="1"/>
+        <ANNOTATION_REF alias="1"/>
+        <OBSERVATION_REF alias="1"/>
+        <ATTRIBUTES>
+            <STRING_ATTRIBUTE>
+                <TAG>test</TAG>
+                <VALUE>test approval</VALUE>
+            </STRING_ATTRIBUTE>
+        </ATTRIBUTES>
+    </DATASET>
+</DATASET_SET>

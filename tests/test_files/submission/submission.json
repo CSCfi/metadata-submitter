@@ -4,7 +4,6 @@
   "description": "TestDescription",
   "rems": {
     "workflowId": 1,
-    "organizationId": "CSC",
     "licenses": [
       1
     ]
