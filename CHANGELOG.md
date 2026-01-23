@@ -9,6 +9,9 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- Exclude unused environmental variables when initialising CSC and NBIS services.
+- Create ROR service handler only for the CSC deployment and added ROR to service health check.
+- Improved multipart /submit request error messages.
 - Simplified publish handling and removed previous publish configuration.
 - Create Datacite, CSC PID and Metax service handers only when the deployment type requires it.
 - Use different databases for CSC and NBIS integration tests.
@@ -111,6 +114,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Fixed
 
+- Resolving REMS organisation from workflow for resource and catalogue item.
 - Metax mapping did not use ROR organisation identifiers or preferred labels as keywords.
 - Improved Metax and Datacite mapping for field of science.
 - Auth healtcheck.
