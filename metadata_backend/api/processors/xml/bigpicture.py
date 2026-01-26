@@ -13,7 +13,7 @@ BP_XML_SCHEMA_DIR = Path(__file__).parent.parent.parent.parent / "schemas" / "xm
 BP_ANNOTATION_SCHEMA = "annotation"
 BP_DATASET_SCHEMA = "dataset"
 BP_IMAGE_SCHEMA = "image"
-BP_LANDING_PAGE_SCHEMA = "landingpage"
+BP_LANDING_PAGE_SCHEMA = "landing_page"
 BP_OBSERVATION_SCHEMA = "observation"
 BP_OBSERVER_SCHEMA = "observer"
 BP_ORGANISATION_SCHEMA = "organisation"
@@ -68,7 +68,7 @@ BP_STAINING_SET_PATH = "/STAINING_SET"
 
 
 def _get_xml_object_type_bp(root_path: str) -> str:
-    return root_path.lstrip(".").lstrip("/").replace("_", "").lower()
+    return root_path.lstrip(".").lstrip("/").lower()
 
 
 BP_ANNOTATION_OBJECT_TYPE = _get_xml_object_type_bp(BP_ANNOTATION_PATH)
