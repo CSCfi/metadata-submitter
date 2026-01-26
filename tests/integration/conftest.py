@@ -130,9 +130,8 @@ async def sd_submission_update(sd_client: aiohttp.ClientSession, project_id: str
             async with sd_client.patch(
                 f"{submit_url}/{workflow.value}/{submission_id}?projectId={project_id}", json=submission_dict
             ) as resp:
-                data = await resp.json()
                 assert resp.status == 200
-                return Submission.model_validate(data)
+                return await get_submission(sd_client, submission_id)
         else:
             async with sd_client.patch(f"{submissions_url}/{submission_id}", json=submission_dict) as resp:
                 data = await resp.json()
@@ -257,16 +256,15 @@ async def bp_submission_update(
     """Update BigPicture NBIS submission using the /submit endpoint."""
     workflow = SubmissionWorkflow.BP
 
-    async def _create(submission_id: str) -> Submission:  # noqa
+    async def _update(submission_id: str) -> Submission:  # noqa
         submission_name, data = bp_submission_update_data()
 
         # Patch submission.
         async with nbis_client.patch(f"{submit_url}/{workflow.value}/{submission_id}", data=data) as resp:
-            data = await resp.json()
             assert resp.status == 200
-            return Submission.model_validate(data)
+            return await get_submission(nbis_client, submission_id)
 
-    return _create
+    return _update
 
 
 @pytest.fixture
@@ -334,7 +332,7 @@ async def nbis_client(mock_auth) -> AsyncGenerator[aiohttp.ClientSession]:
             assert resp.status == 200
 
             # Extract the JWT token from the response.
-            access_token = await resp.text()
+            access_token = (await resp.text()).strip()
 
         # Add the JWT token in the cookie.
         client.cookie_jar.update_cookies({"access_token": access_token}, response_url=URL(nbis_base_url))

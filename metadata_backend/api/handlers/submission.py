@@ -131,7 +131,10 @@ class SubmissionAPIHandler(RESTAPIHandler):
         :returns: Submissions owned by the project.
         """
         user_id = get_authorized_user_id(req)
-        project_id = self.get_mandatory_param(req, "projectId")
+
+        project_id = req.query.get("projectId")
+        if not project_id:
+            project_id = await self._services.project.get_project_id(user_id)
 
         project_service = self._services.project
         submission_service = self._services.submission
