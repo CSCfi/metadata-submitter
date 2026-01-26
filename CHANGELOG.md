@@ -9,6 +9,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- (users) GET /submissions endpoint no longer requires project_id if the user has only a single project (e.g. in the NBIS deployments).
+- (users) PATCH /submit no longer returns the submission.json document.
 - Exclude unused environmental variables when initialising CSC and NBIS services.
 - Create ROR service handler only for the CSC deployment and added ROR to service health check.
 - Improved multipart /submit request error messages.
