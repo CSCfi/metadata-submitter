@@ -41,7 +41,7 @@ Use curl -L command to get the JWT session token (or simply paste the login url 
 curl -L "..."
 ```
 
-A JWT will be printed in the browser window. Copy it and use it for suqsequent API calls in the authorization header:
+A JWT will be printed in the terminal or browser window. Copy it and use it for suqsequent API calls in the authorization header:
 
 ```bash
 # Set the JWT as env variable
@@ -115,6 +115,15 @@ The output will display all metadata accession IDs:
 
 ```bash
 curl --request GET "$API_URL/v1/submissions/$SUBMISSION_ID/objects" \
+     --header "Authorization: Bearer $TOKEN" | jq
+```
+
+#### List all submissions
+
+You can retrieve a list of all submissions you have made:
+
+```bash
+curl --request GET "$API_URL/v1/submissions" \
      --header "Authorization: Bearer $TOKEN" | jq
 ```
 
