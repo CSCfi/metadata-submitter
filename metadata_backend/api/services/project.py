@@ -11,7 +11,7 @@ from ldap3 import Connection, Server
 
 from ...conf.ldap import csc_ldap_config
 from ...helpers.logger import LOG
-from ..exceptions import SystemException
+from ..exceptions import SystemException, UserException
 from ..models.models import Project
 
 CSC_LDAP_DN = "ou=idm,dc=csc,dc=fi"
@@ -69,6 +69,22 @@ class ProjectService(ABC):
         Returns:
             The user's projects.
         """
+
+    async def get_project_id(self, user_id: str) -> str:
+        """
+        Returns a single project id associated with the user. Raises an UserException if
+        the user is not associated with a single project.
+
+        :param user_id: The user id
+        :returns: The project id.
+        """
+        projects: list[Project] = await self.get_user_projects(user_id)
+        if len(projects) != 1:
+            raise UserException(
+                f"A project_id must be provided because this user is associated with {len(projects)} projects."
+            )
+
+        return projects[0].project_id
 
 
 class LdapProjectService(ProjectService):

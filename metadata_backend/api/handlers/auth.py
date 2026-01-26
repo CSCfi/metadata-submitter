@@ -88,4 +88,4 @@ class AuthAPIHandler:
         """
 
         jwt, _ = await self._service_handler.callback(req)
-        return web.Response(text=jwt)
+        return web.Response(text=f"\n{jwt}\n\n")

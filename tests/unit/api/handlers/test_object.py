@@ -5,6 +5,7 @@ import json
 import uuid
 from collections import defaultdict
 from pathlib import Path
+from typing import Any
 from xml.etree import ElementTree
 
 from metadata_backend.api.models.models import Files, Object, Objects
@@ -99,10 +100,9 @@ class ObjectAPIHandlerTestCase(HandlersTestCase):
             assert response.status == 200
             assert submission == Submission.model_validate(await response.json())
 
-            async def _assert_update(_response):
-                assert _response.status == 200
+            async def _assert_update(_data: dict[str, Any]):
                 assert submission.model_dump(exclude={"lastModified", "bucket"}) == Submission.model_validate(
-                    await _response.json()
+                    _data
                 ).model_dump(exclude={"lastModified", "bucket"})
 
             async def _assert_not_allowed(_response):
@@ -122,23 +122,36 @@ class ObjectAPIHandlerTestCase(HandlersTestCase):
             response = await self.client.patch(
                 f"{API_PREFIX}/submit/{workflow}/{submission_id}?projectId={project_id}", data=file_data
             )
-            await _assert_update(response)
+            assert response.status == 200
+
+            response = await self.client.get(f"{API_PREFIX}/submissions/{submission_id}")
+            assert response.status == 200
+            await _assert_update(await response.json())
 
             # Test update of submission title and description only.
             submission.title = "UpdatedTestTitle2"
             submission.description = "UpdatedTestDescription2"
+
             response = await self.client.patch(
                 f"{API_PREFIX}/submit/{workflow}/{submission_id}?projectId={project_id}",
                 json={"title": submission.title, "description": submission.description},
             )
-            await _assert_update(response)
+            assert response.status == 200
+
+            response = await self.client.get(f"{API_PREFIX}/submissions/{submission_id}")
+            assert response.status == 200
+            await _assert_update(await response.json())
 
             # Test set submission bucket.
             response = await self.client.patch(
                 f"{API_PREFIX}/submit/{workflow}/{submission_id}?projectId={project_id}",
                 json={"bucket": f"bucket_{uuid.uuid4()}"},
             )
-            await _assert_update(response)
+            assert response.status == 200
+
+            response = await self.client.get(f"{API_PREFIX}/submissions/{submission_id}")
+            assert response.status == 200
+            await _assert_update(await response.json())
 
             # Test update of submission bucket (not allowed).
             response = await self.client.patch(
@@ -291,6 +304,9 @@ class ObjectAPIHandlerTestCase(HandlersTestCase):
                     data=file_data,
                 )
                 assert response.status == 200
+
+                response = await self.client.get(f"{API_PREFIX}/submissions/{submission_id}")
+                assert response.status == 200
                 submission = Submission.model_validate(await response.json())
 
                 # Assert submission document.
@@ -340,7 +356,10 @@ class ObjectAPIHandlerTestCase(HandlersTestCase):
                     data=file_data,
                 )
                 assert response.status == 200
-                submission = Submission.model_validate(await response.json())
+
+                response = await self.client.get(f"{API_PREFIX}/submissions/{submission_id}")
+                assert response.status == 200
+                assert submission == Submission.model_validate(await response.json())
 
                 # Assert submission document.
                 await self._assert_bp_submission(submission, submission_id, submission_name)

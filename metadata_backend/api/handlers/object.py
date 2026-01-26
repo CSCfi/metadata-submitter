@@ -9,7 +9,7 @@ from aiohttp.web import Request, Response
 from ...database.postgres.services.submission import UnknownSubmissionUserException
 from ..exceptions import SystemException, UserException
 from ..json import to_json_dict
-from ..models.models import Objects, Project
+from ..models.models import Objects
 from ..models.submission import SubmissionWorkflow
 from ..processors.xml.bigpicture import BP_FULL_SUBMISSION_XML_OBJECT_CONFIG
 from ..processors.xml.fega import FEGA_FULL_SUBMISSION_XML_OBJECT_CONFIG
@@ -53,22 +53,6 @@ SUBMISSION_CONFIG = SubmissionConfig()
 class ObjectAPIHandler(RESTAPIHandler):
     """Object API handler."""
 
-    async def _get_project_id(self, user_id: str) -> str:
-        """
-        Returns a single project id associated with the user. Raises an UserException if
-        the user is not associated with a single project.
-
-        :param user_id: The user id
-        :returns: The project id.
-        """
-        projects: list[Project] = await self._services.project.get_user_projects(user_id)
-        if len(projects) != 1:
-            raise UserException(
-                f"A project_id must be provided because this user is associated with {len(projects)} projects."
-            )
-
-        return projects[0].project_id
-
     async def add_submission(self, req: Request) -> Response:
         """
         Create a submission given workflow specific documents and return the submission document.
@@ -83,7 +67,7 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         project_id = req.query.get("projectId")
         if not project_id:
-            project_id = await self._get_project_id(user_id)
+            project_id = await self._services.project.get_project_id(user_id)
 
         workflow = SubmissionWorkflow(workflow_name)
         if workflow not in SUBMISSION_CONFIG.add_submission_workflows:
@@ -115,8 +99,7 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         project_id = req.query.get("projectId")
         if not project_id:
-            project_id = await self._get_project_id(user_id)
-
+            project_id = await self._services.project.get_project_id(user_id)
         unsafe = req.query.get("unsafe", "").lower() == "true"
 
         workflow = SubmissionWorkflow(workflow_name)
@@ -157,7 +140,7 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         project_id = req.query.get("projectId")
         if not project_id:
-            project_id = await self._get_project_id(user_id)
+            project_id = await self._services.project.get_project_id(user_id)
 
         # Verify workflow.
         workflow = SubmissionWorkflow(workflow_name)
@@ -195,7 +178,7 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         project_id = req.query.get("projectId")
         if not project_id:
-            project_id = await self._get_project_id(user_id)
+            project_id = await self._services.project.get_project_id(user_id)
 
         unsafe = req.query.get("unsafe", "").lower() == "true"
 
@@ -221,9 +204,9 @@ class ObjectAPIHandler(RESTAPIHandler):
         # Update submission.
         objects = await ObjectAPIHandler._get_object_submission_files(req, workflow)
         object_submission_service = await self._get_object_submission_service(workflow)
-        submission = await object_submission_service.update(user_id, project_id, submission_id, objects)
+        await object_submission_service.update(user_id, project_id, submission_id, objects)
 
-        return web.json_response(to_json_dict(submission))
+        return web.Response(status=200)
 
     async def list_objects(self, req: Request) -> Response:
         """
