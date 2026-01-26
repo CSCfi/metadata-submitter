@@ -150,13 +150,12 @@ curl --request GET "$API_URL/v1/submissions/$SUBMISSION_ID/objects/docs?schemaTy
 
 For other schema types, replace the schema type in the url parameter (`schemaType=<HERE>`) with any of the available schema types:
 - `annotation`
-- `datacite`
-- `landing_page`
+- `landingpage`
 - `observation`
 - `observer`
 - `organisation`
 - `policy`
-- `bprems`
+- `rems`
 - `sample`
 - `staining`
 
