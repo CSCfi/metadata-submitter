@@ -29,10 +29,16 @@ export API_URL="http://localhost:5431"
 ```
 
 Authenticate to the API via an OIDC Client.
-Get the login url with below command and open it in a web browser:
+Get the login url with below command:
 
 ```bash
 curl --request GET $API_URL/login
+```
+
+Use curl -L command to get the JWT session token (or simply paste the login url in a web browser):
+
+```bash
+curl -L "..."
 ```
 
 A JWT will be printed in the browser window. Copy it and use it for suqsequent API calls in the authorization header:
