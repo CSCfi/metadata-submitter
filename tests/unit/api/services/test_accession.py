@@ -43,7 +43,7 @@ def test_generate_bp_accession_format():
     assert_bp_accession_format(center_id, "annotation", BP_ANNOTATION_OBJECT_TYPE)
     assert_bp_accession_format(center_id, "dataset", BP_DATASET_OBJECT_TYPE)
     assert_bp_accession_format(center_id, "image", BP_IMAGE_OBJECT_TYPE)
-    assert_bp_accession_format(center_id, "landingpage", BP_LANDING_PAGE_OBJECT_TYPE)
+    assert_bp_accession_format(center_id, "landing_page", BP_LANDING_PAGE_OBJECT_TYPE)
     assert_bp_accession_format(center_id, "observation", BP_OBSERVATION_OBJECT_TYPE)
     assert_bp_accession_format(center_id, "observer", BP_OBSERVER_OBJECT_TYPE)
     assert_bp_accession_format(center_id, "organisation", BP_ORGANISATION_OBJECT_TYPE)

@@ -2,10 +2,10 @@
 # https://jsonpath.com/
 
 # Get secrets from Vault for local deployment:
-# make get_env
+# make get_env_demo
 
 # Run this to launch the API service locally:
-# docker compose --env-file tests/integration/.env --profile dev up --build -d
+# docker compose --profile dev demo --build -d
 
 @api_url = http://localhost:5431
 @auth_url = http://localhost:8000
