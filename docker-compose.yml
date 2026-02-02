@@ -7,6 +7,7 @@ services:
     image: cscfi/metadata-submitter-dev
     profiles:
       - ci
+      - ci_ui
       - dev
     command: [ "uv", "run", "metadata_submitter" ]
     depends_on:
@@ -111,6 +112,7 @@ services:
     hostname: mockauth
     profiles:
       - ci
+      - ci_ui
       - dev
       - demo
     depends_on:
@@ -158,12 +160,14 @@ services:
     hostname: mockldap
     profiles:
       - ci
+      - ci_ui
       - dev
   mockkeystone:
     image: ghcr.io/cscfi/docker-keystone-swift:latest
     hostname: mockkeystone
     profiles:
       - ci
+      - ci_ui
       - dev
       - demo
     healthcheck:
@@ -177,6 +181,7 @@ services:
     hostname: postgres-csc
     profiles:
       - ci
+      - ci_ui
       - dev
     environment:
       - POSTGRES_DB=metadata_submitter
