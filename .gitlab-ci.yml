@@ -37,6 +37,16 @@ unit-test:
     - docker-exec
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      changes:
+        paths:
+          - "metadata-backend/**/*"
+          - "tests/**/*"
+          - ".gitlab-ci.yml"
+          - ".pre-commit-config.yaml"
+          - "pyproject.toml"
+          - "tox.ini"
+          - "uv.lock"
+        compare_to: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
   image: $BUILD_IMAGE
   script:
@@ -54,6 +64,17 @@ integration-test:
     - sds
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      changes:
+        paths:
+          - "dockerfiles/**/*"
+          - "metadata-backend/**/*"
+          - "tests/**/*"
+          - ".gitlab-ci.yml"
+          - "docker-compose.yml"
+          - "Makefile"
+          - "pyproject.toml"
+          - "uv.lock"
+        compare_to: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
   image: $BUILD_IMAGE
   variables:
