@@ -183,10 +183,10 @@ integration-test:
       fi
     - docker rmi "$ARTIFACTORY_SERVER/sds/sd-submit-api:${IMAGE_TAG}" || true
 
-release-job:
-  extends: .automated-release
-  release:
-    description: $(cat release_changes.md)
+# release-job:
+#   extends: .automated-release
+#   release:
+#     description: $(cat release_changes.md)
 
 # This is a manual dry-run for developers to run in the merge request
 update-versions-dryrun:
@@ -199,3 +199,7 @@ update-versions:
   extends: .update-versions
   variables:
     UPDATE_VERSION_FILES_LIST: "docs/conf.py;docs/openapi.yml;metadata_backend/__init__.py"
+
+generate-changelog:
+  variables:
+    TRACKED_BRANCHES: "test-release-pipeline"
