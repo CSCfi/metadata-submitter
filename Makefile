@@ -33,8 +33,10 @@ get_env: ## Get secrets needed for integration tests from vault
 		exit 1; \
 	fi
 
-	# Create empty .env.secret file.
+	# Create empty .env.secret and private_jwks.json file.
+	@mkdir -p private
 	> tests/integration/.env.secret
+	> private/private_jwks.json
 
 	# Create .tests/integration/.env file.
 	cp tests/integration/.env.example tests/integration/.env
@@ -70,7 +72,8 @@ get_env: ## Get secrets needed for integration tests from vault
     $(call write_integration_test_secret,REMS_URL,sd-submit/secrets,rems_url) \
     $(call write_integration_test_secret,REMS_USER,sd-submit/secrets,rems_user) \
     $(call write_integration_test_secret,REMS_KEY,sd-submit/secrets,rems_key) \
-    $(call write_integration_test_secret,REMS_DISCOVERY_URL,sd-submit/secrets,rems_discovery_url)
+    $(call write_integration_test_secret,REMS_DISCOVERY_URL,sd-submit/secrets,rems_discovery_url) \
+	vault kv get --field=oidc_jwks secret/sd-submit/secrets >> private/private_jwks.json;
 
 	$(call write_line,### VAULT SECRETS END ###)
 
@@ -82,6 +85,10 @@ get_ci_env: ## Get secrets needed for CI tests from vault
 		echo "VAULT_ADDR environment variable needs to be set. Aborting."; \
 		exit 1; \
 	fi
+
+	# Copy test JWKS file to private directory.
+	@mkdir -p private
+	cp tests/test_files/jwks.json private/private_jwks.json
 
 	# Create .tests/integration/.env file.
 	cp tests/integration/.env.example tests/integration/.env
