@@ -200,6 +200,7 @@ update-versions:
   variables:
     UPDATE_VERSION_FILES_LIST: "docs/conf.py;docs/openapi.yml;metadata_backend/__init__.py"
 
+# Override tracked branches
 generate-changelog:
   variables:
     TRACKED_BRANCHES: "test-release-pipeline"
