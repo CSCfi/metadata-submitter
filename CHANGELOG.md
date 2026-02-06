@@ -7,8 +7,11 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ## [Unreleased]
 
+## [2026.2.0] - 2026-02-06
+
 ### Changed
 
+- Authorization flow uses RFC 9449 DPoP mechanism
 - (users) GET /submissions endpoint no longer requires project_id if the user has only a single project (e.g. in the NBIS deployments).
 - (users) PATCH /submit no longer returns the submission.json document.
 - Exclude unused environmental variables when initialising CSC and NBIS services.
@@ -136,6 +139,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- DPoPHandler to assist with implementing DPoP mechanism since `idpyoidc` library hasn't implemented it properly
 - semicolons to create.sql file.
 - database health check.
 - REMS integration tests.
@@ -765,7 +769,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 - Files are also validated during submission process.
 
 
-[Unreleased]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2025.4.0...HEAD
+[Unreleased]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.2.0...HEAD
+[2026.2.0]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2025.4.0...2026.2.0
 [2025.4.0]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/-/compare/2024.1.0...2025.4.0
 [2024.01.1]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/-/compare/v0.13.1...2024.01.0
 [0.13.1]: https://github.com/CSCfi/metadata-submitter/compare/v0.13.0...v0.13.1
