@@ -8,11 +8,10 @@ from typing import Sequence
 
 from pydantic import BaseModel, ValidationError
 
-from ....database.postgres.repository import SessionFactory, transaction
 from ....database.postgres.services.file import FileService
 from ....database.postgres.services.object import ObjectService
 from ....database.postgres.services.submission import SubmissionService
-from ...exceptions import SystemException, UserErrors, UserException
+from ...exceptions import SystemException, UserException, UserExceptions
 from ...json import to_json_dict
 from ...models.models import File
 from ...models.submission import Submission, SubmissionWorkflow
@@ -88,7 +87,6 @@ class ObjectSubmissionService(ABC):
         submission_service: SubmissionService,
         object_service: ObjectService,
         file_service: FileService,
-        session_factory: SessionFactory,
         workflow: SubmissionWorkflow,
         supports_updates: bool,
         supports_references: bool,
@@ -100,7 +98,6 @@ class ObjectSubmissionService(ABC):
         :param submission_service: The Postgres submission service.
         :param object_service: The Postgres object service.
         :param file_service: The Postgres file service.
-        :param session_factory: The SQLAlchemy session factory.
         :param workflow: The submission workflow.
         :param supports_updates: Are metadata object updates supported.
         :param supports_references: Are references to previously submitted metadata objects are supported.
@@ -110,7 +107,6 @@ class ObjectSubmissionService(ABC):
         self._submission_service = submission_service
         self._object_service = object_service
         self._file_service = file_service
-        self._session_factory = session_factory
         self._workflow = workflow
         self._supports_updates = supports_updates
         self._supports_references = supports_references
@@ -156,7 +152,7 @@ class ObjectSubmissionService(ABC):
                             )
 
                 if errors:
-                    raise UserErrors(errors)
+                    raise UserExceptions(errors)
 
             if processor:
                 # Assign metadata object accessions.
@@ -180,37 +176,33 @@ class ObjectSubmissionService(ABC):
             # Prepare submission files.
             files = self.prepare_files(submission_id)
 
-            # Create and save submission and metadata objects within one transaction.
-            async with transaction(self._session_factory):
-                # Add submission.
-                saved_submission_id = await self._submission_service.add_submission(
-                    submission, submission_id=submission_id
-                )
-                if saved_submission_id != submission_id:
-                    raise SystemException("Failed to save generated submission id")
+            # Create and save submission and metadata objects.
 
-                # Get saved submission.
-                submission = Submission.model_validate(
-                    await self._submission_service.get_submission_by_id(submission_id)
-                )
+            # Add submission.
+            saved_submission_id = await self._submission_service.add_submission(submission, submission_id=submission_id)
+            if saved_submission_id != submission_id:
+                raise SystemException("Failed to save generated submission id")
 
-                if processor:
-                    # Add metadata objects.
-                    for identifier in object_identifiers:
-                        object_processor = await self._get_object_processor(identifier, processor)
+            # Get saved submission.
+            submission = Submission.model_validate(await self._submission_service.get_submission_by_id(submission_id))
 
-                        await self._add_object(project_id, submission_id, identifier, object_processor)
+            if processor:
+                # Add metadata objects.
+                for identifier in object_identifiers:
+                    object_processor = await self._get_object_processor(identifier, processor)
 
-                # Save files.
-                for file in files:
-                    await self._file_service.add_file(file, self._workflow)
+                    await self._add_object(project_id, submission_id, identifier, object_processor)
+
+            # Save files.
+            for file in files:
+                await self._file_service.add_file(file, self._workflow)
 
         except ValidationError as e:
             # Preserve Pydantic validation error.
             raise e
         except Exception as e:
             errors.append(str(e))
-            raise UserErrors(errors) from e
+            raise UserExceptions(errors) from e
 
         return submission
 
@@ -329,7 +321,7 @@ class ObjectSubmissionService(ABC):
                                 )
 
                 if errors:
-                    raise UserErrors(errors)
+                    raise UserExceptions(errors)
 
             if processor:
                 # Assign metadata object accessions.
@@ -348,43 +340,40 @@ class ObjectSubmissionService(ABC):
             # Prepare submission files.
             files = self.prepare_files(submission_id)
 
-            # Create and save submission and metadata objects within one transaction.
-            async with transaction(self._session_factory):
-                # Update submission.
-                await self._submission_service.update_submission(submission_id, to_json_dict(submission))
+            # Create and save submission and metadata objects.
+            # Update submission.
+            await self._submission_service.update_submission(submission_id, to_json_dict(submission))
 
-                # Get saved submission.
-                submission = Submission.model_validate(
-                    await self._submission_service.get_submission_by_id(submission_id)
-                )
+            # Get saved submission.
+            submission = Submission.model_validate(await self._submission_service.get_submission_by_id(submission_id))
 
-                if processor:
-                    # Add new metadata objects.
-                    for identifier in new_object_identifiers:
-                        object_processor = await self._get_object_processor(identifier, processor)
-                        await self._add_object(project_id, submission_id, identifier, object_processor)
+            if processor:
+                # Add new metadata objects.
+                for identifier in new_object_identifiers:
+                    object_processor = await self._get_object_processor(identifier, processor)
+                    await self._add_object(project_id, submission_id, identifier, object_processor)
 
-                    # Update existing metadata objects.
-                    for identifier in updated_object_identifiers:
-                        object_processor = await self._get_object_processor(identifier, processor)
-                        await self._update_object(identifier, object_processor)
+                # Update existing metadata objects.
+                for identifier in updated_object_identifiers:
+                    object_processor = await self._get_object_processor(identifier, processor)
+                    await self._update_object(identifier, object_processor)
 
-                    # Delete removed metadata objects.
-                    for obj in deleted_objects:
-                        await self._object_service.delete_object_by_id(obj.objectId)
+                # Delete removed metadata objects.
+                for obj in deleted_objects:
+                    await self._object_service.delete_object_by_id(obj.objectId)
 
-                # Replace files.
-                async for file in self._file_service.get_files(submission_id=submission_id):
-                    await self._file_service.delete_file_by_id(file.fileId)
-                for file in files:
-                    await self._file_service.add_file(file, self._workflow)
+            # Replace files.
+            async for file in self._file_service.get_files(submission_id=submission_id):
+                await self._file_service.delete_file_by_id(file.fileId)
+            for file in files:
+                await self._file_service.add_file(file, self._workflow)
 
         except ValidationError as e:
             # Preserve Pydantic validation error.
             raise e
         except Exception as e:
             errors.append(str(e))
-            raise UserErrors(errors) from e
+            raise UserExceptions(errors) from e
 
         return submission
 

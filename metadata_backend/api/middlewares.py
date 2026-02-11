@@ -1,206 +1,181 @@
-"""Middleware methods for server."""
-
-from http import HTTPStatus
-from typing import Awaitable, Callable
+from contextvars import ContextVar
+from http.cookies import SimpleCookie
+from typing import Any, MutableMapping
 
 import jwt
-import ujson
-from aiohttp import web
-from aiohttp.web import AppKey
-from pydantic import ValidationError
-from yarl import URL
+from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.datastructures import Headers
+from starlette.types import ASGIApp, Receive, Scope, Send
 
+from ..api.exceptions import SystemException, UnauthorizedUserException
+from ..api.models.models import User
+from ..api.services.auth import AuthService
+from ..conf.conf import API_PREFIX
 from ..helpers.logger import LOG
-from .exceptions import NotFoundUserException, SystemException, UserErrors, UserException
-from .services.auth import AuthService
+from .models.app import app_state
 
-AUTHORIZATION_COOKIE = "access_token"
-
-HTTP_ERROR_MESSAGE = "HTTP %r request to %r raised an HTTP %d exception."
-HTTP_ERROR_MESSAGE_BUG = "HTTP %r request to %r raised an HTTP %d exception. This IS a bug."
-
-AUTH_SERVICE: AppKey[AuthService] = AppKey("auth_service")
-
-Handler = Callable[[web.Request], Awaitable[web.StreamResponse]]
+AUTH_COOKIE = "access_token"
 
 
-@web.middleware
-async def http_error_handler(req: web.Request, handler: Handler) -> web.StreamResponse:
-    """Middleware for handling exceptions received from the API methods.
-
-    :param req: A request instance
-    :param handler: A request handler
-    :raises: Reformatted HTTP Exceptions
-    :returns: Successful requests unaffected
+class SessionMiddleware:
     """
-    c_type = "application/problem+json"
-    try:
-        response = await handler(req)
-        return response
-    except web.HTTPRedirection:
-        # Catches 300s
-        raise
-    except web.HTTPError as error:
-        # Catch 400s and 500s
-        LOG.exception(HTTP_ERROR_MESSAGE, req.method, req.path, error.status)
-        problem = _json_problem(error, req.url)
-        LOG.debug("Response payload is %r", problem)
-        if error.status in {400, 401, 403, 404, 405, 415, 422, 502, 504}:
-            error.content_type = c_type
-            error.text = problem
-            raise error
-        LOG.exception(HTTP_ERROR_MESSAGE_BUG, req.method, req.path, error.status)
-        raise web.HTTPInternalServerError(text=problem, content_type=c_type)
-    except NotFoundUserException as e:
-        not_found_exception = web.HTTPNotFound(reason=e.message, content_type=c_type)
-        not_found_exception.text = _json_problem(not_found_exception, req.url)
-        raise not_found_exception from e
-    except UserException as e:
-        user_exception = web.HTTPBadRequest(reason=e.message, content_type=c_type)
-        problem = _json_problem(user_exception, req.url)
-        user_exception.text = problem
-        raise user_exception from e
-    except SystemException as e:
-        system_exception = web.HTTPInternalServerError(reason=e.message, content_type=c_type)
-        system_exception.text = _json_problem(system_exception, req.url)
-        raise system_exception from e
-    except UserErrors as e:
-        validation_exception = web.HTTPBadRequest(reason="User error", content_type=c_type)
-        validation_exception.text = _json_problem(validation_exception, req.url, errors=e.messages)
-        raise validation_exception from e
-    except ValidationError as e:
-        reason = "; ".join(f"{'.'.join(map(str, err['loc']))}: {err['msg']}" for err in e.errors())
-        validation_exception = web.HTTPBadRequest(reason=reason, content_type=c_type)
-        validation_exception.text = _json_problem(validation_exception, req.url)
-        raise validation_exception from e
-    except Exception as exc:
-        # We don't expect any other errors, so we log it and return a nice message instead of letting server crash
-        LOG.exception("HTTP %r request to %r raised an unexpected exception. This IS a bug.", req.method, req.path)
-        exception = web.HTTPInternalServerError(
-            reason=f"Server ran into an unexpected error: {str(exc)}", content_type=c_type
-        )
-        exception.text = _json_problem(exception, req.url)
-        raise exception from exc
+    Assigns database sessions to API requests and puts them in a task- and request-specific
+    context variable.
+
+    Starts the database transaction before the request processing begins, and ends it after
+    the request processing is completed but before the response is sent back.
+
+    Repositories retrieve the session from the task- and request-specific context variable
+    to use the database. The repositories should not begin, commit or rollback the transaction.
+    """
+
+    def __init__(self, app: ASGIApp, session_context: ContextVar[AsyncSession]):
+        self.app = app
+        self.session_context = session_context
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        path = scope.get("path", "")
+
+        # Only intercept HTTP requests.
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+        # Only intercept API requests.
+        elif not path.startswith(API_PREFIX):
+            await self.app(scope, receive, send)
+        else:
+            method = scope["method"]
+
+            # Runs before response is processed by the route.
+            if self.session_context.get() is not None:
+                LOG.error("Session middleware context already set: method: %s, path: %s", method, path)
+                raise SystemException("Session context is already set")
+
+            session_factory = app_state(self.app).session_factory
+
+            if session_factory is None:
+                raise SystemException("Missing session factory")
+
+            async with session_factory() as session:
+                async with session.begin():
+                    token = self.session_context.set(session)
+                    try:
+                        await self.app(scope, receive, send)
+                    finally:
+                        # Runs before response is returned by the route.
+                        self.session_context.reset(token)
+
+
+class AuthMiddleware:
+    """Authenticate API requests."""
+
+    def __init__(self, app: ASGIApp, auth_service: AuthService):
+        self.app = app
+        self.auth_service = auth_service
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        path = scope.get("path", "")
+
+        # Only intercept HTTP requests.
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+        # Only intercept API requests.
+        elif not path.startswith(API_PREFIX):
+            await self.app(scope, receive, send)
+        else:
+            method = scope["method"]
+
+            # Runs before response is processed by the route.
+
+            # Before request is processed by the route.
+            LOG.debug("Authenticating request: method: %s, path: %s", method, path)
+
+            # Extract JWT token or API key.
+            jwt_token, api_key = await extract_jwt_token_and_api_key(method, path, scope)
+
+            # Authorize user.
+            user = await verify_authorization(method, path, self.auth_service, jwt_token, api_key)
+
+            # Save user in the request state.
+            state = scope.setdefault("state", {})
+            state["user"] = user
+
+            await self.app(scope, receive, send)
+
+
+async def extract_jwt_token_and_api_key(method: str, path: str, scope: MutableMapping[str, Any]) -> tuple[str, str]:
+    headers = Headers(scope=scope)
+    cookies = {}
+    if headers.get("cookie"):
+        c = SimpleCookie()
+        c.load(headers.get("cookie"))
+        cookies = {k: v.value for k, v in c.items()}
+
+    # Extract JWT token from the Secure HttpOnly cookie.
+    jwt_token = cookies.get(AUTH_COOKIE)
+    if jwt_token:
+        LOG.debug("JWT Authorization token in cookie: method:, %s path: %s", method, path)
+
+    # Extract JWT token or API key from the Authorization header.
+    api_key = None
+    if not jwt_token:
+        auth_header = headers.get("authorization")
+        if auth_header:
+            parts = auth_header.split()
+            if len(parts) == 2 and parts[0].lower() == "bearer":
+                api_key_or_jwt_token = parts[1]
+                try:
+                    # Check if token is a JWT
+                    jwt.get_unverified_header(api_key_or_jwt_token)
+                    jwt_token = api_key_or_jwt_token
+                    LOG.debug(
+                        "JWT Authorization token in Authorization header: method:, %s path: %s",
+                        method,
+                        path,
+                    )
+                except Exception:
+                    # Not a JWT -> treat as API key
+                    api_key = api_key_or_jwt_token
+                    LOG.debug("API key in Authorization header: method:, %s path: %s", method, path)
+
+    return jwt_token, api_key
 
 
 async def verify_authorization(
-    access_service: AuthService, jwt_token: str | None, api_key: str | None
-) -> tuple[str, str]:
+    method: str,
+    path: str,
+    auth_service: AuthService,
+    jwt_token: str | None = None,
+    api_key: str | None = None,
+) -> User:
     """
-    Verify the jwt authorization token and returns the authorized user id.
+    Verify the jwt authorization token and returns the authorized user.
 
-    :param access_service: service to validate JWT tokens and API keys.
+    :param method: The HTTP method.
+    :param path: The request path.
+    :param auth_service: service to validate JWT tokens and API keys.
     :param jwt_token: The JWT token.
     :param api_key: The API key.
-    :returns: Authorized user id and user name.
+    :returns: The authorized user.
     """
 
     if jwt_token:
         try:
             # Verify the JWT token.
-            return access_service.validate_jwt_token(jwt_token)
-        except Exception as e:
-            raise web.HTTPUnauthorized(reason=f"Authorization failed: {e}") from e
+            user_id, user_name = auth_service.validate_jwt_token(jwt_token)
+            return User(user_id=user_id, user_name=user_name)
+        except Exception:
+            LOG.warning("App middleware JWT authorization failed: method:, %s path: %s", method, path)
+            raise UnauthorizedUserException("Authorization failed")
     elif api_key:
         try:
             # Verify the API key.
-            user_id = await access_service.validate_api_key(api_key)
+            user_id = await auth_service.validate_api_key(api_key)
             if user_id is None:
-                raise Exception("Provided API key is invalid.")
-            return user_id, user_id  # User name is not stored for API keys.
-        except Exception as e:
-            raise web.HTTPUnauthorized(reason=f"Authorization failed: {e}") from e
-
+                LOG.warning("App middleware API key authorization failed: method:, %s path: %s", method, path)
+                raise UnauthorizedUserException("Authorization failed")
+            return User(user_id=user_id, user_name=user_id)
+        except Exception:
+            LOG.warning("App middleware API key authorization failed: method:, %s path: %s", method, path)
+            raise UnauthorizedUserException("Authorization failed")
     else:
-        raise web.HTTPUnauthorized(reason="Missing JWT access token or API key")
-
-
-@web.middleware
-async def authorization(req: web.Request, handler: Handler) -> web.StreamResponse:
-    """
-    Middleware to check for a valid authorization token (JWT cookie or API key).
-
-    Priority:
-    1. JWT token: Secure HttpOnly cookie.
-    2. API key: Authorization header with Bearer token.
-
-    :param req: An aiohttp request
-    :param handler: A request handler
-    """
-
-    if req.path.endswith("/health"):
-        # No authorization required for health endpoint.
-        return await handler(req)
-
-    LOG.debug("Authorizing request")
-
-    # Extract JWT token from the Secure HttpOnly cookie.
-    jwt_token = req.cookies.get(AUTHORIZATION_COOKIE)
-
-    if jwt_token is not None:
-        LOG.debug("Found JWT Authorization token in cookie")
-
-    #  Extract JWT token or API key from the Authorization header.
-    api_key = None
-    if not jwt_token:
-        auth_header = req.headers.get("Authorization")
-        if auth_header:
-            parts = auth_header.split()
-            if len(parts) == 2 and parts[0].lower() == "bearer":
-                api_key_or_jwt_token = parts[1]
-
-                try:
-                    jwt.get_unverified_header(api_key_or_jwt_token)  # detect if token is a JWT
-                    jwt_token = api_key_or_jwt_token
-                    LOG.debug("Found JWT Authorization token in Authorization header")
-                except Exception:  # if not a JWT, treat as API key
-                    api_key = api_key_or_jwt_token
-                    LOG.debug("Found API key in Authorization header")
-
-    auth_service: AuthService = req.app[AUTH_SERVICE]
-
-    req["user_id"], req["user_name"] = await verify_authorization(auth_service, jwt_token, api_key)
-
-    LOG.debug("Successfully authorized request")
-
-    return await handler(req)
-
-
-def _json_problem(
-    exception: web.HTTPError, url: URL, _type: str = "about:blank", errors: list[str] | None = None
-) -> str:
-    """Convert an HTTP exception into a problem detailed JSON object.
-
-    The problem details are in accordance with RFC 7807.
-    (https://tools.ietf.org/html/rfc7807)
-
-    :param exception: an HTTPError exception
-    :param url: Request URL that caused the exception
-    :param _type: Url to a document describing the error
-    :returns: Problem detail JSON object as a string
-    """
-    _problem = {
-        # Replace type value with an URL to
-        # a custom error document when one exists
-        "type": _type,
-        "title": HTTPStatus(exception.status).phrase,
-        "detail": exception.reason,
-        "status": exception.status,
-        "instance": url.path,
-    }
-    # we require the additional members to be sent as dict
-    # so that we can easily append them to pre-formatted response
-    if exception.text != exception.reason and exception.content_type == "application/json":
-        # we use the content to append to extend application/problem+json
-        # response, with additional members
-        # typecasting necessary for mypy
-        _problem.update(ujson.loads(str(exception.text)))
-
-    if errors:
-        _problem["errors"] = errors
-
-    body = ujson.dumps(
-        _problem,
-        escape_forward_slashes=False,
-    )
-    return body
+        raise UnauthorizedUserException("Authorization failed")

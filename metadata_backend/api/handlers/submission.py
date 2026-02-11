@@ -1,25 +1,42 @@
 """Submission API handler."""
 
-import json
-from asyncio import sleep
-from datetime import datetime
+from datetime import date, datetime, time
 from math import ceil
+from typing import Annotated, Any
 
-from aiohttp import web
-from aiohttp.web import Request, Response
-from multidict import CIMultiDict
+from fastapi import Body, HTTPException, Query, Request, Response, status
+from fastapi.responses import JSONResponse
 
-from ...conf.admin import admin_config
+from ...api.dependencies import SubmissionIdPathParam, UserDependency
 from ...conf.deployment import deployment_config
-from ...database.postgres.models import IngestStatus
 from ...database.postgres.services.submission import SubmissionService
 from ...helpers.logger import LOG
 from ..exceptions import UserException
 from ..json import to_json_dict
-from ..models.submission import Submission, SubmissionWorkflow
+from ..models.models import File, Registration, SubmissionId
+from ..models.submission import PaginatedSubmissions, PaginatedSubmissionsPage, Submission, SubmissionWorkflow
 from ..services.project import ProjectService
-from .auth import get_authorized_user_id
 from .restapi import RESTAPIHandler
+
+SubmissionDocumentBody = Annotated[Submission, Body(description="Submission document")]
+SubmissionDocumentFragmentBody = Annotated[dict[str, Any], Body(description="Submission document")]
+ProjectIdQueryParam = Annotated[str | None, Query(alias="projectId", description="The project ID")]
+SubmissionNameFilterQueryParam = Annotated[str | None, Query(description="Submission name")]
+PublishedFilterQueryParam = Annotated[bool | None, Query(escription="Submission published status")]
+CreatedDateStartFilterQueryParam = Annotated[
+    date | None, Query(description="Submissions created on or after this date (YYYY-MM-DD)")
+]
+CreatedDateEndFilterQueryParam = Annotated[
+    date | None, Query(description="Submissions created on or before this date (YYYY-MM-DD)")
+]
+ModifiedDateStartFilterQueryParam = Annotated[
+    date | None, Query(description="Submissions modified on or after this date (YYYY-MM-DD)")
+]
+ModifiedDatedEndFilterQueryParam = Annotated[
+    date | None, Query(description="Submissions modified on or before this date (YYYY-MM-DD)")
+]
+PageQueryParam = Annotated[int, Query(ge=1, description="Page number starting from 1")]
+PageSizeQueryParam = Annotated[int, Query(ge=1, le=100, alias="per_page", description="Number of submissions per page")]
 
 
 class SubmissionAPIHandler(RESTAPIHandler):
@@ -27,7 +44,7 @@ class SubmissionAPIHandler(RESTAPIHandler):
 
     @staticmethod
     async def check_submission_retrievable(
-        req: Request,
+        user_id: str,
         submission_id: str,
         submission_service: SubmissionService,
         project_service: ProjectService,
@@ -39,7 +56,7 @@ class SubmissionAPIHandler(RESTAPIHandler):
         """
         Check the that user is allowed to retrieve the submission.
 
-        :param req: The aiohttp request.
+        :param user_id: The user id.
         :param submission_id: The submission id.
         :param submission_service: The submission service.
         :param project_service: The project service.
@@ -56,7 +73,6 @@ class SubmissionAPIHandler(RESTAPIHandler):
             await submission_service.check_submission_by_id(submission_id)
 
         # Check that the user owns the submission.
-        user_id = get_authorized_user_id(req)
         actual_project_id = await submission_service.get_project_id(submission_id)
         await project_service.verify_user_project(user_id, actual_project_id)
 
@@ -75,7 +91,7 @@ class SubmissionAPIHandler(RESTAPIHandler):
 
     @staticmethod
     async def check_submission_modifiable(
-        req: Request,
+        user_id: str,
         submission_id: str,
         submission_service: SubmissionService,
         project_service: ProjectService,
@@ -88,7 +104,7 @@ class SubmissionAPIHandler(RESTAPIHandler):
         """
         Check the that user is allowed to modify the submission.
 
-        :param req: The aiohttp request.
+        :param user_id: The user id.
         :param submission_id: The submission id.
         :param submission_service: The submission service.
         :param project_service: The project service.
@@ -100,7 +116,7 @@ class SubmissionAPIHandler(RESTAPIHandler):
         """
         if deployment_config().ALLOW_UNSAFE and unsafe:
             return await SubmissionAPIHandler.check_submission_retrievable(
-                req,
+                user_id,
                 submission_id,
                 submission_service,
                 project_service,
@@ -110,7 +126,7 @@ class SubmissionAPIHandler(RESTAPIHandler):
             )
 
         submission_id = await SubmissionAPIHandler.check_submission_retrievable(
-            req,
+            user_id,
             submission_id,
             submission_service,
             project_service,
@@ -124,15 +140,24 @@ class SubmissionAPIHandler(RESTAPIHandler):
 
         return submission_id
 
-    async def get_submissions(self, req: Request) -> Response:
-        """Get submissions owned by the project with pagination values. Optionally filter by submission name.
+    async def list_submissions(
+        self,
+        request: Request,
+        user: UserDependency,
+        page: PageQueryParam = 1,
+        page_size: PageSizeQueryParam = 5,
+        project_id: ProjectIdQueryParam = None,
+        name: SubmissionNameFilterQueryParam = None,
+        published: PublishedFilterQueryParam = None,
+        date_created_start: CreatedDateStartFilterQueryParam = None,
+        date_created_end: CreatedDateEndFilterQueryParam = None,
+        date_modified_start: ModifiedDateStartFilterQueryParam = None,
+        date_modified_end: ModifiedDatedEndFilterQueryParam = None,
+    ) -> JSONResponse:
+        """List and paginate submissions."""
 
-        :param req: GET Request
-        :returns: Submissions owned by the project.
-        """
-        user_id = get_authorized_user_id(req)
+        user_id = user.user_id
 
-        project_id = req.query.get("projectId")
         if not project_id:
             project_id = await self._services.project.get_project_id(user_id)
 
@@ -142,113 +167,69 @@ class SubmissionAPIHandler(RESTAPIHandler):
         # Check that user is affiliated with the project.
         await project_service.verify_user_project(user_id, project_id)
 
-        page = self._get_page_param(req, "page", 1)
-        page_size = self._get_page_param(req, "per_page", 5)
-
-        def param_to_bool(param_name: str) -> bool | None:
-            param_value = req.query.get(param_name)
-            if param_value:
-                if param_value.lower() not in {"true", "false"}:
-                    raise web.HTTPBadRequest(reason=f"'{param_name}' parameter must be either 'true' or 'false'")
-                return param_value.lower() == "true"
-            return None
-
-        def param_to_date(param_name: str) -> datetime | None:
-            param_value = req.query.get(param_name)
-            date_format = "%Y-%m-%d"
-            try:
-                return datetime.strptime(param_value, date_format) if param_value else None
-            except ValueError:
-                raise web.HTTPBadRequest(
-                    reason=f"'{param_name}' parameter must be formated as {date_format}"
-                ) from ValueError
-
         submissions, total_submissions = await submission_service.get_submissions(
             project_id,
-            name=req.query.get("name"),
-            is_published=param_to_bool("published"),
-            created_start=param_to_date("date_created_start"),
-            created_end=param_to_date("date_created_end"),
-            modified_start=param_to_date("date_modified_start"),
-            modified_end=param_to_date("date_modified_end"),
+            name=name,
+            is_published=published,
+            created_start=datetime.combine(date_created_start, time.min) if date_created_start else None,
+            created_end=datetime.combine(date_created_end, time.max) if date_created_end else None,
+            modified_start=datetime.combine(date_modified_start, time.min) if date_modified_start else None,
+            modified_end=datetime.combine(date_modified_end, time.max) if date_modified_end else None,
             page=page,
             page_size=page_size,
         )
 
-        result = {
-            "page": {
-                "page": page,
-                "size": page_size,
-                "totalPages": ceil(total_submissions / page_size),
-                "totalSubmissions": total_submissions,
-            },
-            **to_json_dict(submissions),
-        }
-
-        url = f"{req.scheme}://{req.host}{req.path}"
-        link_headers = self._pagination_header_links(url, page, page_size, total_submissions)
-        LOG.debug("Pagination header links: %r", link_headers)
-        LOG.info(
-            "Querying for project: %r submissions resulted in %d submissions.",
-            project_id,
-            total_submissions,
+        result = PaginatedSubmissions(
+            page=PaginatedSubmissionsPage(
+                page=page,
+                size=page_size,
+                totalPages=ceil(total_submissions / page_size),
+                totalSubmissions=total_submissions,
+            ),
+            submissions=submissions.submissions,
         )
 
-        return web.json_response(result, status=200, headers=link_headers)
+        url = f"{request.url.scheme}://{request.url.hostname}{request.url.path}"
+
+        return JSONResponse(
+            content=to_json_dict(result), headers=self._link_header(url, page, page_size, total_submissions)
+        )
 
     @staticmethod
-    def _get_page_param(req: Request, name: str, default: int) -> int:
-        """Get pagination query parameter.
+    def _link_header(url: str, page: int, page_size: int, total_submissions: int) -> dict[str, str] | None:
+        """Create RFC 5988 Link header.
 
-        :param req: HTTP request
-        :param name: name of the query parameter
-        :param default: Default value in case query parameter is missing
-        :returns: pagination parameter value
-        """
-        try:
-            param = int(req.query.get(name, str(default)))
-        except ValueError as e:
-            reason = f"The '{name}' query parameter must be a number: '{req.query.get(name)}'"
-            LOG.exception(reason)
-            raise web.HTTPBadRequest(reason=reason) from e
-        if param < 1:
-            reason = f"The '{name}' query parameter must be greater than 0: '{req.query.get(name)}'"
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-        return param
-
-    @staticmethod
-    def _pagination_header_links(url: str, page: int, size: int, total_objects: int) -> CIMultiDict[str]:
-        """Create link header for pagination.
-
-        :param url: base url for request
+        :param url: request url
         :param page: current page
-        :param size: results per page
-        :param total_objects: total objects to compute the total pages
+        :param page_size: page size
+        :param total_submissions: total number of submissions
         :returns: JSON with query results
         """
-        total_pages = ceil(total_objects / size)
-        prev_link = f'<{url}?page={page - 1}&per_page={size}>; rel="prev", ' if page > 1 else ""
-        next_link = f'<{url}?page={page + 1}&per_page={size}>; rel="next", ' if page < total_pages else ""
-        last_link = f'<{url}?page={total_pages}&per_page={size}>; rel="last"' if page < total_pages else ""
-        comma = ", " if 1 < page < total_pages else ""
-        first_link = f'<{url}?page=1&per_page={size}>; rel="first"{comma}' if page > 1 else ""
-        links = f"{prev_link}{next_link}{first_link}{last_link}"
-        link_headers = CIMultiDict(Link=f"{links}")
-        LOG.debug("Link headers created")
-        return link_headers
 
-    async def post_submission(self, req: Request) -> Response:
-        """Create new submission.
+        if total_submissions == 0:
+            return None
 
-        :param req: POST request
-        :returns: JSON response containing submission ID for created submission
-        """
-        user_id = get_authorized_user_id(req)
+        total_pages = ceil(total_submissions / page_size)
+        links = []
+
+        links.append(f'<{url}?page=1&per_page={page_size}>; rel="first"')
+
+        if page > 1:
+            links.append(f'<{url}?page={page - 1}&per_page={page_size}>; rel="prev"')
+
+        if page < total_pages:
+            links.append(f'<{url}?page={page + 1}&per_page={page_size}>; rel="next"')
+
+        links.append(f'<{url}?page={total_pages}&per_page={page_size}>; rel="last"')
+
+        return {"Link": ", ".join(links)} if links else {}
+
+    async def create_submission(self, user: UserDependency, submission: SubmissionDocumentBody) -> SubmissionId:
+        """Create a new submission given a submission document, and return the submission id."""
+
+        user_id = user.user_id
         project_service = self._services.project
         submission_service = self._services.submission
-
-        submission = Submission.model_validate(await self.get_json_dict(req))
 
         # Check that user is affiliated with the project.
         await project_service.verify_user_project(user_id, submission.projectId)
@@ -256,246 +237,226 @@ class SubmissionAPIHandler(RESTAPIHandler):
         # Check if the name of the submission is unique within the project
         existing_submission = await submission_service.get_submission_by_name(submission.projectId, submission.name)
         if existing_submission:
-            reason = f"Submission with name '{submission.name}' already exists in project {submission.projectId}"
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
+            detail = f"Submission with name '{submission.name}' already exists in project {submission.projectId}"
+            LOG.error(detail)
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
 
         submission_id = await submission_service.add_submission(submission)
+        return SubmissionId(submissionId=submission_id)
 
-        url = f"{req.scheme}://{req.host}{req.path}"
-        location_headers = CIMultiDict(Location=f"{url}/{submission_id}")
-        LOG.info("POST new submission with ID: %r was successful.", submission_id)
-        return web.json_response(
-            {"submissionId": submission_id},
-            status=201,
-            headers=location_headers,
-        )
+    async def get_submission(
+        self,
+        user: UserDependency,
+        submission_id: SubmissionIdPathParam,
+    ) -> Submission:
+        """Returns the submission document given a submission id."""
 
-    async def get_submission(self, req: Request) -> Response:
-        """Get one submission object by its submission id.
-
-        :param req: GET request
-        :raises: HTTPNotFound if submission not owned by user
-        :returns: JSON response containing submission object
-        """
-        submission_id = req.match_info["submissionId"]
         submission_service = self._services.submission
         project_service = self._services.project
 
         # Check that the submission can be retrieved by the user.
-        await self.check_submission_retrievable(req, submission_id, submission_service, project_service)
+        await self.check_submission_retrievable(user.user_id, submission_id, submission_service, project_service)
 
         submission = await submission_service.get_submission_by_id(submission_id)
+        return submission
 
-        LOG.info("GET submission with ID: %r was successful.", submission_id)
-        return web.json_response(to_json_dict(submission))
+    async def update_submission(
+        self,
+        user: UserDependency,
+        submission_id: SubmissionIdPathParam,
+        submission: SubmissionDocumentFragmentBody,
+    ) -> SubmissionId:
+        """Update a submission document given the submission id, and return the submission id."""
 
-    async def patch_submission(self, req: Request) -> Response:
-        """
-        Update submission document.
-
-        Changes are merged to the existing submission document.
-
-        :param req: PATCH request
-        :returns: JSON response containing submission ID for updated submission
-        """
-        submission_id = req.match_info["submissionId"]
         submission_service = self._services.submission
         project_service = self._services.project
 
         # Check that the submission can be modified by the user.
-        await self.check_submission_modifiable(req, submission_id, submission_service, project_service)
+        await self.check_submission_modifiable(user.user_id, submission_id, submission_service, project_service)
 
         # Merge the completely or partially updated submission document to the existing one.
-        data = await self.get_json_dict(req)
-        await submission_service.update_submission(submission_id, data)
+        await submission_service.update_submission(submission_id, submission)
 
-        LOG.info("PATCH submission with ID: %r was successful.", submission_id)
-        return web.json_response({"submissionId": submission_id})
+        return SubmissionId(submissionId=submission_id)
 
-    async def delete_submission(self, req: Request) -> web.HTTPNoContent:
-        """Delete object submission from database.
+    async def delete_submission(
+        self,
+        request: Request,
+        user: UserDependency,
+        submission_id: SubmissionIdPathParam,
+    ) -> Response:
+        """Delete a submission given the submission id."""
 
-        :param req: DELETE request
-        :returns: HTTP No Content response
-        """
-
-        submission_id = req.match_info["submissionId"]
         submission_service = self._services.submission
         project_service = self._services.project
 
-        unsafe = req.query.get("unsafe", "").lower() == "true"
+        # Hidden parameter.
+        unsafe = request.query_params.get("unsafe", "").lower() == "true"
 
         # Check that the submission can be modified by the user.
-        await self.check_submission_modifiable(req, submission_id, submission_service, project_service, unsafe=unsafe)
+        await self.check_submission_modifiable(
+            user.user_id, submission_id, submission_service, project_service, unsafe=unsafe
+        )
 
         await submission_service.delete_submission(submission_id)  # Metadata objects and files are deleted as well.
 
-        LOG.info("DELETE submission with ID: %r was successful.", submission_id)
-        return web.HTTPNoContent()
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
 
-    async def get_submission_files(self, req: Request) -> Response:
-        """Get files from a submission.
-
-        :param req: GET request
-        :returns: HTTP No Content response
-        """
-        submission_id = req.match_info["submissionId"]
+    async def get_submission_files(
+        self,
+        user: UserDependency,
+        submission_id: SubmissionIdPathParam,
+    ) -> list[File]:
+        """Returns data files associated with the submission."""
 
         submission_service = self._services.submission
         project_service = self._services.project
         file_service = self._services.file
 
         # Check that the submission can be retrieved by the user.
-        await self.check_submission_retrievable(req, submission_id, submission_service, project_service)
+        await self.check_submission_retrievable(user.user_id, submission_id, submission_service, project_service)
 
         files = [file async for file in file_service.get_files(submission_id=submission_id)]
+        return files
 
-        LOG.info("GET files for submission with ID: %r was successful.", submission_id)
-        return web.Response(
-            body=json.dumps([to_json_dict(f) for f in files]),
-            status=200,
-            content_type="application/json",
-        )
-
-    async def get_registrations(self, req: Request) -> Response:
-        """Get submission registrations.
-
-        :param req: GET request
-        :returns: The submission registrations.
-        """
-        submission_id = req.match_info["submissionId"]
+    async def get_registrations(
+        self,
+        user: UserDependency,
+        submission_id: SubmissionIdPathParam,
+    ) -> Registration:
+        """Returns REMS and other registrations associated with the submission."""
 
         submission_service = self._services.submission
         project_service = self._services.project
         registration_service = self._services.registration
 
         # Check that the submission can be retrieved by the user.
-        await self.check_submission_retrievable(req, submission_id, submission_service, project_service)
+        await self.check_submission_retrievable(user.user_id, submission_id, submission_service, project_service)
 
         registration = await registration_service.get_registration(submission_id)
 
         if not registration:
-            return web.Response(status=404)
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Registration not found")
+        return registration
 
-        return web.json_response(to_json_dict(registration))
+    # TODO(improve): implement NeIC SDA data ingestion
+    # async def post_data_ingestion(self, req: Request) -> Response:
+    #     """Start the data ingestion.
+    #
+    #     :param req: HTTP request
+    #     """
+    #     user_id = get_authorized_user_id(req)
+    #
+    #     submission_id = req.match_info["submissionId"]
+    #
+    #     submission_service = self._services.submission
+    #     project_service = self._services.project
+    #     file_service = self._services.file
+    #
+    #     # Check that the submission can be modified by the user.
+    #     await self.check_submission_modifiable(req, submission_id, submission_service, project_service)
+    #
+    #     workflow = await submission_service.get_workflow(submission_id)
+    #     if workflow == SubmissionWorkflow.SD:
+    #         # Use submission id as the dataset id for CSC submissions.
+    #         dataset_id = submission_id
+    #     else:
+    #         raise NotImplementedError(f"Ingest is not implemented for {workflow} submissions.")
+    #
+    #     polling_file_data = {}
+    #     file_ids = []
+    #     async for file in file_service.get_files(submission_id=submission_id):
+    #         # Trigger file ingestion
+    #         await self._handlers.admin.ingest_file(
+    #             req,
+    #             {
+    #                 "user": user_id,
+    #                 "submissionId": submission_id,
+    #                 "filepath": file.path,
+    #                 "accessionId": file.fileId,
+    #             },
+    #         )
+    #         polling_file_data[file.path] = file.fileId
+    #         file_ids.append(file.fileId)
+    #
+    #     LOG.info("Polling for status 'verified' in submission with ID: %r", submission_id)
+    #     await self.start_file_polling(
+    #         req, polling_file_data, {"user": user_id, "submissionId": submission_id}, IngestStatus.VERIFIED
+    #     )
+    #     LOG.info("Polling for status 'ready' in submission with ID: %r", submission_id)
+    #     await self.start_file_polling(
+    #         req, polling_file_data, {"user": user_id, "submissionId": submission_id}, IngestStatus.READY
+    #     )
+    #
+    #     await self._handlers.admin.create_dataset(
+    #         req,
+    #         {
+    #             "user": user_id,
+    #             "fileIds": file_ids,
+    #             "datasetId": dataset_id,
+    #         },
+    #     )
+    #
+    #     await self._handlers.admin.release_dataset(req, dataset_id)
+    #
+    #     LOG.info("Ingesting files for submission with ID: %r was successful.", submission_id)
+    #
+    #     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
-    async def post_data_ingestion(self, req: Request) -> web.HTTPNoContent:
-        """Start the data ingestion.
-
-        :param req: HTTP request
-        """
-        user_id = get_authorized_user_id(req)
-
-        submission_id = req.match_info["submissionId"]
-
-        submission_service = self._services.submission
-        project_service = self._services.project
-        file_service = self._services.file
-
-        # Check that the submission can be modified by the user.
-        await self.check_submission_modifiable(req, submission_id, submission_service, project_service)
-
-        workflow = await submission_service.get_workflow(submission_id)
-        if workflow == SubmissionWorkflow.SD:
-            # Use submission id as the dataset id for CSC submissions.
-            dataset_id = submission_id
-        else:
-            raise NotImplementedError(f"Ingest is not implemented for {workflow} submissions.")
-
-        polling_file_data = {}
-        file_ids = []
-        async for file in file_service.get_files(submission_id=submission_id):
-            # Trigger file ingestion
-            await self._handlers.admin.ingest_file(
-                req,
-                {
-                    "user": user_id,
-                    "submissionId": submission_id,
-                    "filepath": file.path,
-                    "accessionId": file.fileId,
-                },
-            )
-            polling_file_data[file.path] = file.fileId
-            file_ids.append(file.fileId)
-
-        LOG.info("Polling for status 'verified' in submission with ID: %r", submission_id)
-        await self.start_file_polling(
-            req, polling_file_data, {"user": user_id, "submissionId": submission_id}, IngestStatus.VERIFIED
-        )
-        LOG.info("Polling for status 'ready' in submission with ID: %r", submission_id)
-        await self.start_file_polling(
-            req, polling_file_data, {"user": user_id, "submissionId": submission_id}, IngestStatus.READY
-        )
-
-        await self._handlers.admin.create_dataset(
-            req,
-            {
-                "user": user_id,
-                "fileIds": file_ids,
-                "datasetId": dataset_id,
-            },
-        )
-
-        await self._handlers.admin.release_dataset(req, dataset_id)
-
-        LOG.info("Ingesting files for submission with ID: %r was successful.", submission_id)
-
-        return web.HTTPNoContent()
-
-    async def start_file_polling(
-        self, req: Request, files: dict[str, str], data: dict[str, str], ingest_status: IngestStatus
-    ) -> None:
-        """Regularly poll files to see if they have required status.
-
-        :param req: HTTP request
-        :param files: List of files to be polled
-        :param data: Includes 'user' and 'submissionId'
-        :param ingest_status: The expected file ingestion status
-        """
-        status_found = {f: False for f in files.keys()}
-
-        file_service = self._services.file
-
-        while True:
-            inbox_files = await self._handlers.admin.get_user_files(req, data["user"])
-            for inbox_file in inbox_files:
-                if "inboxPath" not in inbox_file or "fileStatus" not in inbox_file:
-                    reason = "'inboxPath' or 'fileStatus' are missing from file data."
-                    LOG.error(reason)
-                    raise web.HTTPBadRequest(reason=reason)
-
-                inbox_path = inbox_file["inboxPath"]
-
-                if not status_found.get(inbox_path, True):
-                    if inbox_file["fileStatus"] == ingest_status.value:
-                        # The file status is the expected file status.
-                        status_found[inbox_path] = True
-                        file_id = files[inbox_path]
-                        await file_service.update_ingest_status(file_id, ingest_status)
-                        if ingest_status == IngestStatus.VERIFIED:
-                            await self._handlers.admin.post_accession_id(
-                                req,
-                                {
-                                    "user": data["user"],
-                                    "filepath": inbox_path,
-                                    "accessionId": file_id,
-                                },
-                            )
-                    elif inbox_file["fileStatus"] == IngestStatus.ERROR.value:
-                        # The file status is ERROR.
-                        file_id = files[inbox_path]
-                        await file_service.update_ingest_status(file_id, IngestStatus.ERROR)
-                        reason = f"File {inbox_path} in submission {data['submissionId']} has status 'error'"
-                        LOG.exception(reason)
-                        raise web.HTTPInternalServerError(reason=reason)
-
-            success = all(status_found.values())
-            if success:
-                break
-
-            num_waiting = sum((not x for x in status_found.values()))
-            LOG.debug(
-                "%d files were not yet %s for submission %s", num_waiting, ingest_status.value, data["submissionId"]
-            )
-            await sleep(admin_config().ADMIN_POLLING_INTERVAL)
+    # async def start_file_polling(
+    #         self, req: Request, files: dict[str, str], data: dict[str, str], ingest_status: IngestStatus
+    # ) -> None:
+    #     """Regularly poll files to see if they have required status.
+    #
+    #     :param req: HTTP request
+    #     :param files: List of files to be polled
+    #     :param data: Includes 'user' and 'submissionId'
+    #     :param ingest_status: The expected file ingestion status
+    #     """
+    #     status_found = {f: False for f in files.keys()}
+    #
+    #     file_service = self._services.file
+    #
+    #     while True:
+    #         inbox_files = await self._handlers.admin.get_user_files(req, data["user"])
+    #         for inbox_file in inbox_files:
+    #             if "inboxPath" not in inbox_file or "fileStatus" not in inbox_file:
+    #                 reason = "'inboxPath' or 'fileStatus' are missing from file data."
+    #                 LOG.error(reason)
+    #                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=reason)
+    #
+    #             inbox_path = inbox_file["inboxPath"]
+    #
+    #             if not status_found.get(inbox_path, True):
+    #                 if inbox_file["fileStatus"] == ingest_status.value:
+    #                     # The file status is the expected file status.
+    #                     status_found[inbox_path] = True
+    #                     file_id = files[inbox_path]
+    #                     await file_service.update_ingest_status(file_id, ingest_status)
+    #                     if ingest_status == IngestStatus.VERIFIED:
+    #                         await self._handlers.admin.post_accession_id(
+    #                             req,
+    #                             {
+    #                                 "user": data["user"],
+    #                                 "filepath": inbox_path,
+    #                                 "accessionId": file_id,
+    #                             },
+    #                         )
+    #                 elif inbox_file["fileStatus"] == IngestStatus.ERROR.value:
+    #                     # The file status is ERROR.
+    #                     file_id = files[inbox_path]
+    #                     await file_service.update_ingest_status(file_id, IngestStatus.ERROR)
+    #                     reason = f"File {inbox_path} in submission {data['submissionId']} has status 'error'"
+    #                     LOG.exception(reason)
+    #                     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=reason)
+    #
+    #
+    #         success = all(status_found.values())
+    #         if success:
+    #             break
+    #
+    #         num_waiting = sum((not x for x in status_found.values()))
+    #         LOG.debug(
+    #             "%d files were not yet %s for submission %s", num_waiting, ingest_status.value, data["submissionId"]
+    #         )
+    #         await sleep(admin_config().ADMIN_POLLING_INTERVAL)

@@ -1,14 +1,15 @@
 """REMS service."""
 
-import json
+from typing import Any
 from urllib.parse import quote
 
+import httpx
 from yarl import URL
 
 from ..api.exceptions import UserException
 from ..api.models.rems import RemsCatalogueItem, RemsLicense, RemsResource, RemsWorkflow
 from ..conf.rems import rems_config
-from .service_handler import ServiceClientError, ServiceHandler
+from .service_handler import ServiceHandler
 
 
 class RemsServiceHandler(ServiceHandler):
@@ -59,7 +60,7 @@ class RemsServiceHandler(ServiceHandler):
         :returns: The list of active REMS workflows.
         """
 
-        response = await self._request(
+        response: dict[str, Any] = await self._request(
             method="GET", path="/workflows", params={"disabled": "false", "archived": "false"}
         )
         return [RemsWorkflow.model_validate(workflow) for workflow in response]
@@ -74,11 +75,13 @@ class RemsServiceHandler(ServiceHandler):
         """
 
         try:
-            response = await self._request(
-                method="GET", path=f"/workflows/{workflow_id}", params={"disabled": "false", "archived": "false"}
+            response: dict[str, Any] = await self._request(
+                method="GET",
+                path=f"/workflows/{workflow_id}",
+                params={"disabled": "false", "archived": "false"},
             )
-        except ServiceClientError as ex:
-            if ex.status_code == 404:
+        except httpx.HTTPStatusError as ex:
+            if ex.response.status_code == 404:
                 raise UserException(f"Unknown REMS workflow '{workflow_id}''")
             raise ex
 
@@ -97,10 +100,9 @@ class RemsServiceHandler(ServiceHandler):
         :returns: The list of active REMS licenses.
         """
 
-        response = await self._request(
+        response: dict[str, Any] = await self._request(
             method="GET", path="/licenses", params={"disabled": "false", "archived": "false"}
         )
-        print(json.dumps(response))
         return [RemsLicense.model_validate(license) for license in response]
 
     async def get_license(self, organization_id: str | None, license_id: int) -> RemsWorkflow:
@@ -113,11 +115,13 @@ class RemsServiceHandler(ServiceHandler):
         """
 
         try:
-            response = await self._request(
-                method="GET", path=f"/licenses/{license_id}", params={"disabled": "false", "archived": "false"}
+            response: dict[str, Any] = await self._request(
+                method="GET",
+                path=f"/licenses/{license_id}",
+                params={"disabled": "false", "archived": "false"},
             )
-        except ServiceClientError as ex:
-            if ex.status_code == 404:
+        except httpx.HTTPStatusError as ex:
+            if ex.response.status_code == 404:
                 raise UserException(f"Unknown REMS license '{license_id}''")
             raise ex
         license = RemsWorkflow.model_validate(response)
@@ -136,7 +140,7 @@ class RemsServiceHandler(ServiceHandler):
         params = {"disabled": "false", "archived": "false"}
         if doi is not None:
             params["resid"] = doi
-        response = await self._request(method="GET", path="/resources", params=params)
+        response: dict[str, Any] = await self._request(method="GET", path="/resources", params=params)
         return [RemsResource.model_validate(resource) for resource in response]
 
     async def get_catalogue_item(self, catalogue_id: int) -> RemsCatalogueItem:
@@ -147,7 +151,7 @@ class RemsServiceHandler(ServiceHandler):
         :returns: The REMS catalogue item.
         """
 
-        response = await self._request(method="GET", path=f"/catalogue-items/{catalogue_id}")
+        response: dict[str, Any] = await self._request(method="GET", path=f"/catalogue-items/{catalogue_id}")
         return RemsCatalogueItem.model_validate(response)
 
     async def create_resource(self, organization_id: str, license_ids: list[int] | None, doi: str) -> int:
@@ -165,7 +169,7 @@ class RemsServiceHandler(ServiceHandler):
             "licenses": license_ids or [],
         }
 
-        response = await self._request(method="POST", path="/resources/create", json_data=data)
+        response: dict[str, Any] = await self._request(method="POST", path="/resources/create", json_data=data)
         return int(response["id"])
 
     async def create_catalogue_item(
@@ -192,5 +196,5 @@ class RemsServiceHandler(ServiceHandler):
                 }
             },
         }
-        created = await self._request(method="POST", path="/catalogue-items/create", json_data=data)
+        created: dict[str, Any] = await self._request(method="POST", path="/catalogue-items/create", json_data=data)
         return int(created["id"])

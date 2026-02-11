@@ -3,8 +3,8 @@
 from datetime import timedelta
 from typing import Any, override
 
+import httpx
 from aiocache import SimpleMemoryCache, cached
-from aiohttp import ClientResponse
 from yarl import URL
 
 from ..api.models.metax import DraftMetax, FieldOfScience, MetaxFields
@@ -117,7 +117,7 @@ class MetaxServiceHandler(MetaxService, ServiceHandler):
 
         :param metax_id: Metax ID
         """
-        resp = await self._request(method="DELETE", path=f"/datasets/{metax_id}")
+        resp: dict[str, Any] = await self._request(method="DELETE", path=f"/datasets/{metax_id}")
         if resp.get("detail", "No Dataset matches the given query."):
             raise ValueError(f"Invalid Metax ID: {metax_id}")
         LOG.debug("Deleted dataset with Metax ID: %s from Metax service", metax_id)
@@ -174,7 +174,7 @@ class MetaxServiceHandler(MetaxService, ServiceHandler):
         return resp
 
     @staticmethod
-    async def healthcheck_callback(response: ClientResponse) -> bool:
-        content = await response.json()
+    async def healthcheck_callback(response: httpx.Response) -> bool:
+        content = response.json()
         results = content.get("results", [])
         return len(results) == 1 and results[0].get("id") is not None

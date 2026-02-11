@@ -1,21 +1,28 @@
 """REMS API handler."""
 
-from aiohttp import web
+from typing import Annotated
 
-from ..json import to_json_dict
-from ..models.rems import OrganizationsMap, RemsLicense, RemsWorkflow
+from fastapi import Query
+
+from ..models.rems import Organization, OrganizationsMap, RemsLicense, RemsWorkflow
 from ..services.rems import RemsOrganisationsService
 from .restapi import RESTAPIHandler
+
+RemsLanguageQueryParam = Annotated[str, Query(description="REMS language code (e.g. 'en', 'fi', 'sv')")]
+RemsOrganisationIdFilterQueryParam = Annotated[
+    str | None, Query(alias="organisation", description="REMS organisation ID")
+]
 
 
 class RemsAPIHandler(RESTAPIHandler):
     """REMS API handler."""
 
-    async def get_organisations(self, request: web.Request) -> web.Response:
-        """Get organisations with workflows and licenses."""
-
-        language = request.query.get("language", "en")
-        organisation_id = request.query.get("organisation")
+    async def get_organisations(
+        self,
+        language: RemsLanguageQueryParam = "en",
+        organisation_id: RemsOrganisationIdFilterQueryParam = None,
+    ) -> list[Organization]:
+        """Get REMS organisations with workflows and licenses."""
 
         workflows: list[RemsWorkflow] = await self._handlers.rems.get_workflows()
         licenses: list[RemsLicense] = await self._handlers.rems.get_licenses()
@@ -23,4 +30,4 @@ class RemsAPIHandler(RESTAPIHandler):
         organizations: OrganizationsMap = await RemsOrganisationsService.get_organisations(
             workflows, licenses, language, organisation_id
         )
-        return web.json_response(data=[to_json_dict(o) for o in organizations.values()])
+        return list(organizations.values())

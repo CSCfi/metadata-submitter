@@ -9,14 +9,16 @@ from functools import partial
 from pathlib import Path
 from typing import Any
 
+import httpx
 import jwt
 import ujson
-from aiohttp import ClientResponse, web
-from aiohttp.web import Request
+from fastapi import HTTPException
+from fastapi.responses import RedirectResponse
 from idpyoidc.client.exception import OidcServiceError
 from idpyoidc.client.rp_handler import RPHandler
 from idpyoidc.exception import OidcMsgError
 from requests import Session
+from starlette import status
 from yarl import URL
 
 from ..api.services.auth import JWT_EXPIRATION, AuthService
@@ -104,39 +106,32 @@ class AuthServiceHandler(ServiceHandler):
             # This can be caused if config is improperly configured, and
             # idpyoidc is unable to fetch oidc configuration from the given URL
             LOG.exception("OIDC authorization request failed with: %r", e)
-            raise web.HTTPInternalServerError(reason="OIDC authorization request failed.")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
         return str(rph_session_url)
 
-    async def callback(self, req: Request) -> tuple[str, dict[str, Any]]:
+    async def callback(self, state: str, code: str) -> tuple[str, dict[str, Any]]:
         """Handle the OIDC callback and return application-specific JWT.
 
         This function completes the OpenID Connect (OIDC) authorization code flow with DPoP.
         It exchanges the authorization code for DPoP-bound tokens, retrieves user information
         and creates an application-specific JWT.
 
-        :param req: A HTTP request instance with callback parameters
+        :param state: The OIDC Authorization Code flow `state` parameter.
+        :param code: The OIDC Authorization Code flow `code` parameter.
         :returns: JWT token as a string and userinfo dictionary
         """
 
-        # Response from AAI must have the query params `state` and `code`
-        if "state" in req.query and "code" in req.query:
-            params = {"state": req.query["state"], "code": req.query["code"]}
-        else:
-            reason = f"AAI response is missing mandatory params, received: {req.query}"
-            LOG.error(reason)
-            raise web.HTTPUnauthorized(reason=reason)
-
         # Verify oidc_state and retrieve auth session
         try:
-            session_info = self.rph.get_session_information(params["state"])
-        except KeyError as e:
+            session_info = self.rph.get_session_information(state)
+        except KeyError:
             # This exception is raised if the RPHandler doesn't have the supplied "state"
-            LOG.exception("Session not initialised, failed with: %r", e)
-            raise web.HTTPUnauthorized(reason="Bad user session.")
+            LOG.exception("OIDC session not initialised")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
         # Place authorization_code to session for finalize step
-        session_info["code"] = params["code"]
+        session_info["code"] = code
 
         # Setup HTTP interception for DPoP before RPHandler.finalize()
         self.dpop.setup_http_interception()
@@ -147,25 +142,25 @@ class AuthServiceHandler(ServiceHandler):
             session = self.rph.finalize(self.iss, session_info)
         except KeyError as e:
             LOG.exception("Issuer: %s not found, failed with: %r.", session_info["iss"], e)
-            raise web.HTTPBadRequest(reason="Token issuer not found.")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
         except (OidcMsgError, OidcServiceError) as e:
             # Check if this is a "use_dpop_nonce" error
             if "use_dpop_nonce" in str(e):
                 LOG.debug("Received use_dpop_nonce error, retrying token request with server nonce")
                 try:
                     # Remove the failed state from rph to allow retry
-                    session_state = self.rph.get_session_information(params["state"])
-                    session_state["code"] = params["code"]
+                    session_state = self.rph.get_session_information(state)
+                    session_state["code"] = code
 
                     # Retry finalize with fresh session info and new nonce from DPoP-Nonce header
                     session = self.rph.finalize(self.iss, session_state)
                 except (OidcMsgError, OidcServiceError) as retry_error:
                     LOG.exception("OIDC Callback failed on retry with: %r", retry_error)
-                    raise web.HTTPUnauthorized(reason="Invalid OIDC callback.")
+                    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
             else:
                 # This exception is raised if RPHandler encounters other errors with OIDC flow:
                 LOG.exception("OIDC Callback failed with: %r", e)
-                raise web.HTTPUnauthorized(reason="Invalid OIDC callback.")
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
         finally:
             # Clean up HTTP interception
             self.dpop.teardown_http_interception()
@@ -174,7 +169,7 @@ class AuthServiceHandler(ServiceHandler):
         jwt_token = await AuthService.create_jwt_token_from_userinfo(session["userinfo"])
         return jwt_token, session["userinfo"]
 
-    async def initiate_web_session(self, jwt_token: str, userinfo: dict[str, Any]) -> web.HTTPSeeOther:
+    async def initiate_web_session(self, jwt_token: str, userinfo: dict[str, Any]) -> RedirectResponse:
         """
         Initiate web session by setting JWT token in secure cookie.
 
@@ -184,16 +179,18 @@ class AuthServiceHandler(ServiceHandler):
         """
         LOG.info("OIDC redirect to %r", f"{self.redirect}/home")
 
-        response = web.HTTPSeeOther(f"{self.redirect}/home")
+        redirect_url = "/home" if self.redirect == self.domain else f"{self.redirect}/home"
+        response = RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
+
         secure_cookie = os.environ.get("OIDC_SECURE_COOKIE", "").upper() != "FALSE"
 
         # Set the application JWT token
         response.set_cookie(
-            name="access_token",
+            key="access_token",
             value=jwt_token,
             httponly=True,
             secure=secure_cookie,
-            samesite="Strict",
+            samesite="strict",
             path="/",
             max_age=int(JWT_EXPIRATION.total_seconds()),
         )
@@ -201,37 +198,39 @@ class AuthServiceHandler(ServiceHandler):
         # Instead fetch it from /userinfo whenever needed.
         pouta_access_token = userinfo.get("pouta_access_token", "").strip()
         response.set_cookie(
-            name="pouta_access_token",
+            key="pouta_access_token",
             value=pouta_access_token,
             httponly=True,
             secure=secure_cookie,
-            samesite="Strict",
+            samesite="strict",
             path="/",
             max_age=int(JWT_EXPIRATION.total_seconds()),
         )
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
         response.headers["Pragma"] = "no-Cache"
         response.headers["Expires"] = "0"
-        response.headers["Location"] = "/home" if self.redirect == self.domain else f"{self.redirect}/home"
         return response
 
-    async def logout(self) -> web.HTTPSeeOther:
-        """Log the user out by clearing all cookies.
-
-        :returns: HTTPSeeOther redirect to login page
+    async def logout(self) -> RedirectResponse:
         """
-        response = web.HTTPSeeOther(f"{self.redirect}/")
-        response.del_cookie("access_token", path="/")
-        response.del_cookie("pouta_access_token", path="/")
-        response.headers["Location"] = "/" if self.redirect == self.domain else f"{self.redirect}/"
+        Logout the user by clearing all cookies.
+
+        :returns: Redirect response to login page.
+        """
+
+        redirect_url = "/" if self.redirect == self.domain else f"{self.redirect}/"
+        response = RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
+
+        # Delete cookies
+        response.delete_cookie("access_token", path="/")
+        response.delete_cookie("pouta_access_token", path="/")
+
         LOG.debug("Logged out user and cleared all cookies.")
         return response
 
     @staticmethod
-    async def healthcheck_callback(response: ClientResponse) -> bool:
-        text_content = await response.text()
-        content = ujson.loads(text_content)
-        return "userinfo_endpoint" in content
+    async def healthcheck_callback(response: httpx.Response) -> bool:
+        return "userinfo_endpoint" in response.json()
 
 
 class DPoPHandler:

@@ -3,140 +3,92 @@
 import uuid
 from datetime import date
 from typing import Any
-from unittest.mock import AsyncMock, patch
 
-from aiohttp import web
-from aiohttp.test_utils import AioHTTPTestCase
+from fastapi.testclient import TestClient
 
-from metadata_backend.api.models.models import Project
-from metadata_backend.api.services.project import ProjectService
 from metadata_backend.conf.conf import API_PREFIX
-from metadata_backend.server import init
+from tests.unit.patches.user import patch_verify_authorization, patch_verify_user_project
 
-
-class HandlersTestCase(AioHTTPTestCase):
-    """API endpoint class test cases."""
-
-    API_PREFIX = API_PREFIX
-
-    async def get_application(self) -> web.Application:
-        """Retrieve web Application for test."""
-        server = await init()
-        return server
-
-    async def setUpAsync(self) -> None:
-        """Configure default values for testing and other modules.
-
-        Patches used modules and sets default return values for their
-        methods. Also sets up reusable test variables for different test
-        methods.
-        """
-        self.app = await self.get_application()
-        self.server = await self.get_server(self.app)
-        self.client = await self.get_client(self.server)
-
-        self.project_id = "1001"
-
-        # Mock user authorisation.
-        self.patch_verify_authorization = patch(
-            "metadata_backend.api.middlewares.verify_authorization",
-            new=AsyncMock(return_value=("mock-userid", "mock-username")),
-        )
-
-        # Mock project verification.
-        self.patch_verify_user_project = patch.object(
-            ProjectService, "verify_user_project", new=AsyncMock(return_value=True)
-        )
-
-        # Mock get projects.
-        self.patch_get_user_projects = patch.object(
-            ProjectService, "get_user_projects", new=AsyncMock(return_value=[Project(project_id=self.project_id)])
-        )
-
-        await self.client.start_server()
-
-        self.submission_metadata = {
-            "publicationYear": date.today().year,
-            "creators": [
+SUBMISSION_METADATA = {
+    "publicationYear": date.today().year,
+    "creators": [
+        {
+            "givenName": "Test",
+            "familyName": "Creator",
+            "affiliation": [
                 {
-                    "givenName": "Test",
-                    "familyName": "Creator",
-                    "affiliation": [
-                        {
-                            "name": "affiliation place",
-                            "schemeUri": "https://ror.org",
-                            "affiliationIdentifier": "https://ror.org/test1",
-                            "affiliationIdentifierScheme": "ROR",
-                        }
-                    ],
+                    "name": "affiliation place",
+                    "schemeUri": "https://ror.org",
+                    "affiliationIdentifier": "https://ror.org/test1",
+                    "affiliationIdentifierScheme": "ROR",
                 }
             ],
-            "subjects": [{"subject": "999 - Other"}],
-            "keywords": "test,keyword",
-            "publisher": {"name": "University Health Care System"},
         }
+    ],
+    "subjects": [{"subject": "999 - Other"}],
+    "keywords": "test,keyword",
+    "publisher": {"name": "University Health Care System"},
+}
 
-    async def tearDownAsync(self):
-        """Cleanup mocked stuff."""
-        await self.client.close()
 
-    async def post_submission(
-        self,
-        name: str | None = None,
-        title: str | None = None,
-        description: str | None = None,
-        project_id: str | None = None,
-        workflow: str = "SD",
-        *,
-        submission: dict[str, Any] | None = None,
-    ) -> str | tuple[str, dict[str, Any]]:
-        """Post a submission."""
+async def post_submission(
+    client: TestClient,
+    name: str | None = None,
+    title: str | None = None,
+    description: str | None = None,
+    project_id: str | None = None,
+    workflow: str = "SD",
+    *,
+    submission: dict[str, Any] | None = None,
+) -> str | tuple[str, dict[str, Any]]:
+    """Post a submission."""
 
-        is_submission = submission is not None
+    is_submission = submission is not None
 
-        if name is None:
-            name = f"name_{uuid.uuid4()}"
-        if title is None:
-            title = f"title_{uuid.uuid4()}"
-        if description is None:
-            description = f"description_{uuid.uuid4()}"
-        if project_id is None:
-            project_id = f"project_{uuid.uuid4()}"
+    if name is None:
+        name = f"name_{uuid.uuid4()}"
+    if title is None:
+        title = f"title_{uuid.uuid4()}"
+    if description is None:
+        description = f"description_{uuid.uuid4()}"
+    if project_id is None:
+        project_id = f"project_{uuid.uuid4()}"
 
-        with (
-            self.patch_verify_authorization,
-            self.patch_verify_user_project,
-        ):
-            if not is_submission:
-                submission = {
-                    "name": name,
-                    "title": title,
-                    "description": description,
-                    "projectId": project_id,
-                    "workflow": workflow,
-                }
-            else:
-                submission["name"] = name
-                submission["title"] = title
-                submission["description"] = description
-                submission["projectId"] = project_id
-                submission["workflow"] = workflow
+    with (
+        patch_verify_authorization,
+        patch_verify_user_project,
+    ):
+        if not is_submission:
+            submission = {
+                "name": name,
+                "title": title,
+                "description": description,
+                "projectId": project_id,
+                "workflow": workflow,
+            }
+        else:
+            submission["name"] = name
+            submission["title"] = title
+            submission["description"] = description
+            submission["projectId"] = project_id
+            submission["workflow"] = workflow
 
-            response = await self.client.post(f"{API_PREFIX}/submissions", json=submission)
-            response.raise_for_status()
+        response = client.post(f"{API_PREFIX}/submissions", json=submission)
+        response.raise_for_status()
 
-            submission_id = (await response.json())["submissionId"]
+        submission_id = response.json()["submissionId"]
 
-            if is_submission:
-                return submission_id, submission
-            return submission_id
+        if is_submission:
+            return submission_id, submission
+        return submission_id
 
-    async def get_submission(self, submission_id) -> dict[str, Any]:
-        """Get a submission."""
-        with (
-            self.patch_verify_user_project,
-            self.patch_verify_authorization,
-        ):
-            response = await self.client.get(f"{API_PREFIX}/submissions/{submission_id}")
-            response.raise_for_status()
-            return await response.json()
+
+async def get_submission(client: TestClient, submission_id) -> dict[str, Any]:
+    """Get a submission."""
+    with (
+        patch_verify_user_project,
+        patch_verify_authorization,
+    ):
+        response = client.get(f"{API_PREFIX}/submissions/{submission_id}")
+        response.raise_for_status()
+        return response.json()

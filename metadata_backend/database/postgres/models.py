@@ -31,6 +31,11 @@ from sqlalchemy.sql.type_api import TypeEngine, UserDefinedType
 from ...api.models.models import CHECKSUM_METHOD_TYPES
 from ...api.models.submission import SubmissionWorkflow
 
+SUBMISSIONS_TABLE = "submissions"
+OBJECTS_TABLE = "objects"
+FILES_TABLE = "files"
+REGISTRATIONS_TABLE = "registrations"
+
 
 class TypeJSON(TypeDecorator[dict[str, Any]]):
     """
@@ -53,7 +58,7 @@ class TypeJSON(TypeDecorator[dict[str, Any]]):
 class PostgresXML(UserDefinedType[str]):
     """Use PostgreSQL XMLType."""
 
-    def get_col_spec(self, **kwargs: object) -> str:
+    def get_col_spec(self, **_kwargs: object) -> str:
         """Override."""
         return "XML"
 
@@ -129,7 +134,7 @@ class ApiKeyEntity(Base):
 class SubmissionEntity(Base):
     """Table for submissions."""
 
-    __tablename__ = "submissions"
+    __tablename__ = SUBMISSIONS_TABLE
     __table_args__ = (
         CheckConstraint(
             f"workflow IN ({', '.join(repr(e.value) for e in SubmissionWorkflow)})",
@@ -190,7 +195,7 @@ def set_date_ingested(target: SubmissionEntity, value: bool, old_value: bool, _:
 class ObjectEntity(Base):
     """Table for submitted metadata objects."""
 
-    __tablename__ = "objects"
+    __tablename__ = OBJECTS_TABLE
 
     object_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     name: Mapped[str] = mapped_column(String, nullable=True)  # User provided name for the object
@@ -226,7 +231,7 @@ class ObjectEntity(Base):
     submission: Mapped[Relationship[SubmissionEntity]] = relationship(
         SubmissionEntity,
         backref=backref(
-            "objects",
+            OBJECTS_TABLE,
             cascade="all, delete-orphan",  # tell ORM that database does on delete cascade
             passive_deletes=True,  # tell ORM that database does on delete cascade
             single_parent=True,
@@ -256,7 +261,7 @@ class IngestErrorType(enum.Enum):
 class FileEntity(Base):
     """Table for submitted files."""
 
-    __tablename__ = "files"
+    __tablename__ = FILES_TABLE
     __table_args__ = (
         UniqueConstraint("submission_id", "path"),
         CheckConstraint(
@@ -314,7 +319,7 @@ class FileEntity(Base):
     submission: Mapped[Relationship[SubmissionEntity]] = relationship(
         SubmissionEntity,
         backref=backref(
-            "files",
+            FILES_TABLE,
             cascade="all, delete-orphan",  # tell ORM that database does on delete cascade
             passive_deletes=True,  # tell ORM that database does on delete cascade
             single_parent=True,
@@ -325,7 +330,7 @@ class FileEntity(Base):
     object: Mapped[Relationship[ObjectEntity]] = relationship(
         ObjectEntity,
         backref=backref(
-            "files",
+            FILES_TABLE,
             cascade="all, delete-orphan",  # tell ORM that database does on delete cascade
             passive_deletes=True,  # tell ORM that database does on delete cascade
             single_parent=True,
@@ -337,7 +342,7 @@ class FileEntity(Base):
 class RegistrationEntity(Base):
     """Table for registrations."""
 
-    __tablename__ = "registrations"
+    __tablename__ = REGISTRATIONS_TABLE
 
     submission_id: Mapped[str] = mapped_column(
         String(128), ForeignKey("submissions.submission_id", ondelete="CASCADE"), primary_key=True
@@ -375,7 +380,7 @@ class RegistrationEntity(Base):
     submission: Mapped[Relationship[SubmissionEntity]] = relationship(
         SubmissionEntity,
         backref=backref(
-            "registrations",
+            REGISTRATIONS_TABLE,
             cascade="all, delete-orphan",  # tell ORM that database does on delete cascade
             passive_deletes=True,  # tell ORM that database does on delete cascade
             single_parent=True,
@@ -386,7 +391,7 @@ class RegistrationEntity(Base):
     object: Mapped[Relationship[ObjectEntity]] = relationship(
         ObjectEntity,
         backref=backref(
-            "registrations",
+            REGISTRATIONS_TABLE,
             cascade="all, delete-orphan",  # tell ORM that database does on delete cascade
             passive_deletes=True,  # tell ORM that database does on delete cascade
             single_parent=True,

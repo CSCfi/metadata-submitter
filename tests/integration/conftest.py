@@ -4,6 +4,7 @@ Setting scope to `class` means that tests should be grouped in classes
 to share functionality of the `class` scoped fixtures.
 """
 
+import io
 import logging
 import os
 import re
@@ -18,7 +19,7 @@ import pytest
 from dotenv import dotenv_values
 from yarl import URL
 
-from metadata_backend.api.json import to_json
+from metadata_backend.api.json import to_json, to_json_dict
 from metadata_backend.api.models.submission import Submission, SubmissionWorkflow
 from tests.integration.conf import (
     TEST_FILES_ROOT,
@@ -67,6 +68,12 @@ class SubmissionUpdateCallableSD(Protocol):
     ) -> Awaitable[Submission]: ...
 
 
+def sd_submit_multipart_data(submission: Submission | dict[str, Any]) -> dict[str, io.BytesIO]:
+    content = io.BytesIO(to_json(submission).encode("utf-8"))
+    content.seek(0)
+    return {"submission.json": content}
+
+
 @pytest.fixture
 async def sd_submission(sd_client: aiohttp.ClientSession, project_id: str) -> SubmissionCallableSD:
     """
@@ -97,18 +104,18 @@ async def sd_submission(sd_client: aiohttp.ClientSession, project_id: str) -> Su
         async with sd_client.delete(
             f"{submit_url}/{workflow.value}/{submission.name}?projectId={submission.projectId}&unsafe=true",
         ) as resp:
+            data = resp.content
             assert resp.status == 204
 
         # Post submission.
         if submit_endpoint:
-            async with sd_client.post(
-                f"{submit_url}/{workflow.value}?projectId={project_id}", data=to_json(submission)
-            ) as resp:
+            data = sd_submit_multipart_data(submission)
+            async with sd_client.post(f"{submit_url}/{workflow.value}?projectId={project_id}", data=data) as resp:
                 data = await resp.json()
                 assert resp.status == 200
                 return Submission.model_validate(data)
         else:
-            async with sd_client.post(f"{submissions_url}", data=to_json(submission)) as resp:
+            async with sd_client.post(f"{submissions_url}", json=to_json_dict(submission)) as resp:
                 data = await resp.json()
                 assert resp.status == 201
                 submission_id = data["submissionId"]
@@ -127,8 +134,9 @@ async def sd_submission_update(sd_client: aiohttp.ClientSession, project_id: str
     ) -> Submission:
         # Patch submission.
         if submit_endpoint:
+            data = sd_submit_multipart_data(submission_dict)
             async with sd_client.patch(
-                f"{submit_url}/{workflow.value}/{submission_id}?projectId={project_id}", json=submission_dict
+                f"{submit_url}/{workflow.value}/{submission_id}?projectId={project_id}", data=data
             ) as resp:
                 assert resp.status == 200
                 return await get_submission(sd_client, submission_id)
@@ -152,7 +160,7 @@ class SubmissionUpdateCallableBigPicture(Protocol):
     def __call__(self, submission_id: str) -> Awaitable[Submission]: ...
 
 
-def bp_submission_data() -> tuple[str, dict[str, BufferedReader]]:
+def bp_submit_multipart_data() -> tuple[str, dict[str, io.BytesIO]]:
     """Get the BP submission name and XML data for multipart upload."""
 
     submission_dir = TEST_FILES_ROOT / "xml" / "bigpicture"
@@ -232,7 +240,7 @@ async def bp_submission(nbis_client: aiohttp.ClientSession, project_id: str) -> 
     workflow = SubmissionWorkflow.BP
 
     async def _create() -> Submission:  # noqa
-        submission_name, data = bp_submission_data()
+        submission_name, data = bp_submit_multipart_data()
 
         # Delete submission if it exists (requires ALLOW_UNSAFE=TRUE).
         async with nbis_client.delete(
@@ -289,7 +297,7 @@ async def client() -> AsyncGenerator[aiohttp.ClientSession]:
 
 @pytest.fixture
 async def sd_client(mock_auth) -> AsyncGenerator[aiohttp.ClientSession]:
-    """Create SD submission client using the OIDC standard authentication flow."""
+    """Create CSC submission client using the OIDC standard authentication flow."""
 
     async with aiohttp.ClientSession(base_url=f"{base_url}/") as client:
         # Start OIDC authentication.

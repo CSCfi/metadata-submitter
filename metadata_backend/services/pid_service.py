@@ -2,7 +2,7 @@
 
 from typing import Any, override
 
-from aiohttp import ClientResponse
+import httpx
 from yarl import URL
 
 from ..api.services.datacite import DataciteService
@@ -65,16 +65,12 @@ class PIDServiceHandler(DataciteService, ServiceHandler):
         :return: The discovery URL
         """
 
-        response = await self._request(method="GET", headers=self._headers, path=f"/get/v1/pid/{doi}")
-
-        if not isinstance(response, str):
-            raise SystemError(f"Invalid DOI response: {response}")
-
-        return response
+        url: str = await self._request(method="GET", headers=self._headers, path=f"/get/v1/pid/{doi}")
+        return url
 
     # No delete endpoint
 
     @staticmethod
-    async def healthcheck_callback(response: ClientResponse) -> bool:
-        content = await response.json()
+    async def healthcheck_callback(response: httpx.Response) -> bool:
+        content = response.json()
         return "status" in content and content["status"] == "UP"

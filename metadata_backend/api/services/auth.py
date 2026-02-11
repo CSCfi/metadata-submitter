@@ -8,7 +8,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import jwt
-from aiohttp import web
+from fastapi import HTTPException
+from starlette import status
 
 from ...conf.oidc import oidc_config
 from ...database.postgres.models import ApiKeyEntity
@@ -50,7 +51,7 @@ class AuthService:
         else:
             reason = "Authenticated user is missing required claims."
             LOG.error(reason)
-            raise web.HTTPUnauthorized(reason="reason")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
         # Extract user name, fallback to user_id if not available.
         given_name = userinfo.get("given_name", "").strip()
@@ -168,8 +169,13 @@ class AuthService:
         except Exception as exc:
             msg = str(exc).lower()
             if "duplicate key value violates unique constraint" in msg:
-                raise web.HTTPBadRequest(reason="API key already exists with this key id.") from exc
-            raise web.HTTPInternalServerError(reason="Failed to create API key.") from exc
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST, detail="API key already exists with this key id."
+                ) from exc
+
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create API key."
+            ) from exc
 
         # Return the plain text API key prefixed with the API key id.
         return f"{generated_key_id}.{api_key}"

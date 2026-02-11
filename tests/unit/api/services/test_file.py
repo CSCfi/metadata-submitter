@@ -3,9 +3,9 @@ import socket
 import pytest
 import ujson
 from aiobotocore import session
-from aiohttp import web
 from moto.server import ThreadedMotoServer
 
+from metadata_backend.api.exceptions import UserException
 from metadata_backend.api.services.file import S3AllasFileProviderService
 from metadata_backend.conf.s3 import s3_config
 from metadata_backend.services.keystone_service import KeystoneServiceHandler
@@ -57,7 +57,7 @@ async def test_verify_user_file_exists(s3_endpoint):
     # Bucket and file does not exist.
     size = await service._verify_user_file(bucket, file)
     assert size is None
-    with pytest.raises(web.HTTPBadRequest):
+    with pytest.raises(UserException):
         await service.verify_user_file(bucket, file)
 
     async with session.client("s3", endpoint_url=s3_endpoint) as s3:
@@ -67,7 +67,7 @@ async def test_verify_user_file_exists(s3_endpoint):
         # File does not exist.
         size = await service._verify_user_file(bucket, file)
         assert size is None
-        with pytest.raises(web.HTTPBadRequest):
+        with pytest.raises(UserException):
             await service.verify_user_file(bucket, file)
 
         # Create file.
@@ -89,7 +89,7 @@ async def test_list_buckets_and_files(s3_endpoint):
 
     async with session.client("s3", endpoint_url=s3_endpoint) as s3:
         # No buckets yet
-        with pytest.raises(web.HTTPNotFound):
+        with pytest.raises(UserException):
             await service.list_buckets(creds)
 
         # Create bucket
@@ -101,7 +101,7 @@ async def test_list_buckets_and_files(s3_endpoint):
 
         # No files in bucket yet
         await service.update_bucket_policy(bucket, creds)
-        with pytest.raises(web.HTTPNotFound):
+        with pytest.raises(UserException):
             await service.list_files_in_bucket(bucket)
 
         # Add a file
@@ -119,8 +119,8 @@ async def test_update_and_verify_bucket_policy(s3_endpoint):
     session = service._session
 
     async with session.client("s3", endpoint_url=s3_endpoint) as s3:
-        # Cannot assign to non-existant bucket
-        with pytest.raises(web.HTTPBadRequest):
+        # Cannot assign to non-existent bucket
+        with pytest.raises(UserException):
             resp = await service.update_bucket_policy(bucket, creds)
             await resp.json()
             assert resp.status == 400

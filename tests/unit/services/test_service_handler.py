@@ -1,7 +1,7 @@
 """Test service handler."""
 
 import pytest
-from aioresponses import aioresponses
+import respx
 from yarl import URL
 
 from metadata_backend.api.models.health import Health
@@ -17,8 +17,8 @@ async def test_health_ok():
         service_name="mock", base_url=URL("http://example.com"), healthcheck_url=URL("http://example.com/health")
     )
 
-    with aioresponses() as mocked:
-        mocked.get("http://example.com/health", status=200)
+    with respx.mock as mock:
+        mock.get("http://example.com/health").respond(status_code=200)
         result = await service.get_health()
         assert result == Health.UP
 
@@ -28,8 +28,8 @@ async def test_health_down():
         service_name="mock", base_url=URL("http://example.com"), healthcheck_url=URL("http://example.com/health")
     )
 
-    with aioresponses() as mocked:
-        mocked.get("http://example.com/health", status=500)
+    with respx.mock as mock:
+        mock.get("http://example.com/health").respond(status_code=500)
         result = await service.get_health()
         assert result == Health.DOWN
 
@@ -46,7 +46,7 @@ async def test_health_callback_failure():
         healthcheck_callback=callback,
     )
 
-    with aioresponses() as mocked:
-        mocked.get("http://example.com/health", status=200)
+    with respx.mock as mock:
+        mock.get("http://example.com/health").respond(status_code=200)
         result = await service.get_health()
         assert result == Health.DOWN

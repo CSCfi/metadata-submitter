@@ -3,7 +3,7 @@
 import json
 from typing import Any, override
 
-from aiohttp import BasicAuth, ClientTimeout
+import httpx
 from yarl import URL
 
 from ..api.services.datacite import DataciteService
@@ -28,8 +28,7 @@ class DataciteServiceHandler(DataciteService, ServiceHandler):
             self,
             service_name="datacite",
             base_url=URL(self._config.DATACITE_API),
-            auth=BasicAuth(login=self._config.DATACITE_USER, password=self._config.DATACITE_KEY),
-            http_client_timeout=ClientTimeout(total=2 * 60),  # 2 minutes timeout
+            auth=httpx.BasicAuth(username=self._config.DATACITE_USER, password=self._config.DATACITE_KEY),
             http_client_headers={"Content-Type": "application/vnd.api+json"},
             healthcheck_url=URL(self._config.DATACITE_API) / "heartbeat",
         )
@@ -43,7 +42,7 @@ class DataciteServiceHandler(DataciteService, ServiceHandler):
 
         data = {"data": {"type": "dois", "attributes": {"prefix": self._config.DATACITE_DOI_PREFIX}}}
 
-        response = await self._request(method="POST", path="/dois", json_data=data)
+        response: dict[str, Any] = await self._request(method="POST", path="/dois", json_data=data)
 
         try:
             doi: str = response["data"]["attributes"]["doi"]
@@ -67,13 +66,9 @@ class DataciteServiceHandler(DataciteService, ServiceHandler):
     async def get(self, doi: str) -> dict[str, Any]:
         """Retrieve DataCite metadata."""
 
-        data = await self._request(
+        data: dict[str, Any] = await self._request(
             method="GET", path=f"/dois/{doi}", params={"publisher": "true", "affiliation": "true"}
         )
-
-        if not isinstance(data, dict):
-            raise SystemError(f"Invalid DOI response: {data}")
-
         return data
 
     async def delete(self, doi: str) -> None:

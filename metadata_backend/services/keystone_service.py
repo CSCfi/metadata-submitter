@@ -1,9 +1,12 @@
 """Keystone service."""
 
-from aiohttp import ClientResponse, web
+from typing import Any
+
+import httpx
 from pydantic import BaseModel
 from yarl import URL
 
+from ..api.exceptions import ForbiddenUserException, NotFoundUserException, SystemException
 from ..conf.keystone import keystone_config
 from ..helpers.logger import LOG
 from .service_handler import ServiceHandler
@@ -48,19 +51,19 @@ class KeystoneServiceHandler(ServiceHandler):
         :returns: The ProjectEntry containing scoped token and metadata.
         """
         # First fetch an unscoped user token from Keystone API using the keystone access token
-        async with self._client.request(
+        resp = await self._client.request(
             method="GET",
             url=f"{self.base_url}/v3/OS-FEDERATION/identity_providers/oauth2_authentication/protocols/openid/auth",
             headers={"Authorization": f"Bearer {access_token}"},
-        ) as resp:
-            if resp.status >= 400:
-                raise web.HTTPForbidden(reason="Could not log in using the provided AAI token.")
-            unscoped: str = resp.headers["X-Subject-Token"]
+        )
+        if resp.status_code >= 400:
+            raise ForbiddenUserException("Could not log in using the provided AAI token.")
+        unscoped: str = resp.headers["X-Subject-Token"]
 
         # Get project availability from the unscoped user token
-        output_projects = await self._request(
+        output_projects: dict[str, Any] = await self._request(
             method="GET",
-            url=f"{self.base_url}/v3/OS-FEDERATION/projects",
+            url=URL(f"{self.base_url}/v3/OS-FEDERATION/projects"),
             headers={
                 "X-Auth-Token": unscoped,
             },
@@ -73,10 +76,10 @@ class KeystoneServiceHandler(ServiceHandler):
                 project_id, project_name = item["id"], item["name"]
                 break
         if not project_id and not project_name:
-            raise web.HTTPNotFound(reason=f"Project '{project}' not found for user in Keystone.")
+            raise NotFoundUserException(f"Project '{project}' not found for user in Keystone.")
 
         # Retrieve the scoped token from the Keystone API
-        async with self._client.request(
+        resp = await self._client.request(
             method="POST",
             url=f"{self.base_url}/v3/auth/tokens",
             json={
@@ -92,16 +95,16 @@ class KeystoneServiceHandler(ServiceHandler):
                     "scope": {"project": {"id": project_id}},
                 }
             },
-        ) as resp:
-            ret = await resp.json()
+        )
+        ret = resp.json()
 
-            # Get the scoped token
-            scoped: str = resp.headers["X-Subject-Token"]
-            # Use the first available public endpoint
-            endpoint = [
-                list(filter(lambda i: i["interface"] == "public", i["endpoints"]))[0]
-                for i in filter(lambda i: i["type"] == "object-store", ret["token"]["catalog"])
-            ][0]
+        # Get the scoped token
+        scoped: str = resp.headers["X-Subject-Token"]
+        # Use the first available public endpoint
+        endpoint = [
+            list(filter(lambda i: i["interface"] == "public", i["endpoints"]))[0]
+            for i in filter(lambda i: i["type"] == "object-store", ret["token"]["catalog"])
+        ][0]
 
         # Append the scoped project with metadata
         project_entry = self.ProjectEntry(
@@ -121,9 +124,9 @@ class KeystoneServiceHandler(ServiceHandler):
         :returns: The EC2 credentials containing access and secret keys.
         """
         try:
-            resp = await self._request(
+            resp: dict[str, Any] = await self._request(
                 method="POST",
-                url=f"{self.base_url}/v3/users/{project.uid}/credentials/OS-EC2",
+                url=URL(f"{self.base_url}/v3/users/{project.uid}/credentials/OS-EC2"),
                 json_data={
                     "tenant_id": project.id,
                 },
@@ -138,7 +141,7 @@ class KeystoneServiceHandler(ServiceHandler):
             return credentials
         except KeyError as e:
             LOG.exception("Missing required credential fields: %r", e)
-            raise web.HTTPServerError(reason="Invalid credential response format.")
+            raise SystemException("Invalid credential response format.")
 
     async def delete_ec2_from_project(self, project: ProjectEntry, credentials: EC2Credentials) -> int:
         """Delete the existing ec2 credential using scoped project from entry.
@@ -146,24 +149,24 @@ class KeystoneServiceHandler(ServiceHandler):
         :param project: The project entry containing token.
         :param credentials: The EC2 credentials containing access and secret keys.
         :returns: The HTTP status code from Keystone on success.
-        :raises: Appropriate web.HTTP* errors on failure.
+        :raises: Appropriate errors on failure.
         """
-        async with self._client.request(
+        resp = await self._client.request(
             method="DELETE",
             url=f"{self.base_url}/v3/users/{project.uid}/credentials/OS-EC2/{credentials.access}",
             json={"tenant_id": project.id},
             headers={"X-Auth-Token": project.token},
-        ) as resp:
-            LOG.debug(
-                "Successfully deleted EC2 credentials for user %s (project %s). Status: %s",
-                project.uid,
-                project.id,
-                resp.status,
-            )
-            return int(resp.status)  # 204 on success
+        )
+        LOG.debug(
+            "Successfully deleted EC2 credentials for user %s (project %s). Status: %s",
+            project.uid,
+            project.id,
+            resp.status_code,
+        )
+        return int(resp.status_code)  # 204 on success
 
     @staticmethod
-    async def healthcheck_callback(response: ClientResponse) -> bool:
-        content = await response.json()
+    async def healthcheck_callback(response: httpx.Response) -> bool:
+        content = response.json()
         version = content.get("version") or {}
         return (version.get("status") or "") == "stable"

@@ -6,8 +6,9 @@ from typing import override
 from urllib.parse import urlparse
 
 from aiocache import SimpleMemoryCache, cached
-from aiohttp import web
+from fastapi import HTTPException
 from ldap3 import Connection, Server
+from starlette import status
 
 from ...conf.ldap import csc_ldap_config
 from ...helpers.logger import LOG
@@ -33,7 +34,10 @@ class ProjectService(ABC):
             project_id: The project ID.
         """
         if not await self._verify_user_project(user_id, project_id):
-            raise web.HTTPUnauthorized(reason=f"User {user_id} is not affiliated with project {project_id}.")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"User {user_id} is not affiliated with project {project_id}.",
+            )
 
     @cached(ttl=3600, cache=SimpleMemoryCache)  # type: ignore
     async def get_user_projects(self, user_id: str) -> list[Project]:

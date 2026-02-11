@@ -1,69 +1,35 @@
 """Key API handler."""
 
-import json
+from typing import Annotated
 
-from aiohttp import web
-from aiohttp.web import Request, Response
+from fastapi import Body, Response, status
+from fastapi.responses import PlainTextResponse
 
+from ..dependencies import UserDependency
 from ..models.models import ApiKey
-from .auth import get_authorized_user_id
 from .restapi import RESTAPIHandler
+
+ApiKeyBody = Annotated[ApiKey, Body(description="API key")]
 
 
 class KeyAPIHandler(RESTAPIHandler):
     """Key API handler."""
 
-    async def post_api_key(self, req: Request) -> Response:
-        """
-        Create and return a new API key for the authenticated user.
-
-        The user must provide the key_id in the request json body.
-
-        Args:
-            req: The aiohttp request.
-
-        Returns:
-            Text response containing the new API key.
-        """
-        user_id = get_authorized_user_id(req)
+    async def create_api_key(self, user: UserDependency, key: ApiKeyBody) -> PlainTextResponse:
+        """Create a new API key."""
 
         # Create and store the new API key.
-        try:
-            data = await req.json()
-        except json.JSONDecodeError:
-            raise web.HTTPBadRequest(reason="Invalid JSON payload.")
+        api_key = await self._services.auth.create_api_key(user.user_id, key.key_id)
+        return PlainTextResponse(content=f"\n{api_key}\n\n")
 
-        api_key = await self._services.auth.create_api_key(user_id, ApiKey(**data).key_id)
-
-        return web.Response(text=f"\n{api_key}\n\n", content_type="text/plain")
-
-    async def delete_api_key(self, req: Request) -> Response:
-        """
-        Revoke an API key for the authenticated user.
-
-        The user must provide the key_id in the request json body.
-
-        Args:
-            req: The aiohttp request.
-        """
-        user_id = get_authorized_user_id(req)
+    async def delete_api_key(self, key: ApiKeyBody, user: UserDependency) -> Response:
+        """Delete an API key."""
 
         # Remove and remove the API key.
-        data = await req.json()
+        await self._services.auth.revoke_api_key(user.user_id, key.key_id)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
 
-        await self._services.auth.revoke_api_key(user_id, ApiKey(**data).key_id)
+    async def get_api_keys(self, user: UserDependency) -> list[ApiKey]:
+        """List API keys owner by the user."""
 
-        return web.Response(status=204)
-
-    async def get_api_keys(self, req: Request) -> Response:
-        """
-        List all API keys for the authenticated user.
-
-        Returns:
-            JSON response containing the API keys.
-        """
-        user_id = get_authorized_user_id(req)
-
-        body = [k.model_dump(mode="json") for k in await self._services.auth.list_api_keys(user_id)]
-
-        return web.json_response(body)
+        return await self._services.auth.list_api_keys(user.user_id)

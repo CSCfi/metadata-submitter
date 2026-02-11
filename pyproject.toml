@@ -58,6 +58,10 @@ dependencies = [
     "aiocache>=0.12.3",
     "python-dotenv>=1.2.1",
     "rdflib>=7.5.0",
+    "fastapi>=0.128.0",
+    "uvicorn>=0.40.0",
+    "httpx>=0.28.1",
+    "python-multipart>=0.0.22",
 ]
 
 [dependency-groups]
@@ -80,8 +84,8 @@ dev = [
     "certifi==2026.1.4",
     "honcho==2.0.0",
     "moto[server]>=5.1.6",
-    "aioresponses>=0.7.8",
     "pytest-aiohttp>=1.1.0",
+    "respx>=0.22.0",
 ]
 
 [project.scripts]

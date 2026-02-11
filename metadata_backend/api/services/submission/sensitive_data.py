@@ -3,7 +3,6 @@
 import json
 from typing import override
 
-from ....database.postgres.repository import SessionFactory
 from ....database.postgres.services.file import FileService
 from ....database.postgres.services.object import ObjectService
 from ....database.postgres.services.submission import SubmissionService
@@ -30,7 +29,6 @@ class SensitiveDataObjectSubmissionService(ObjectSubmissionService):
         submission_service: SubmissionService,
         object_service: ObjectService,
         file_service: FileService,
-        session_factory: SessionFactory,
     ) -> None:
         """
         Service for processing SD submissions.
@@ -39,7 +37,6 @@ class SensitiveDataObjectSubmissionService(ObjectSubmissionService):
         :param submission_service: The Postgres submission service.
         :param object_service: The Postgres object service.
         :param file_service: The Postgres file service.
-        :param session_factory: The SQLAlchemy session factory.
         """
 
         self._submission_document: str | None = None
@@ -49,7 +46,6 @@ class SensitiveDataObjectSubmissionService(ObjectSubmissionService):
             submission_service=submission_service,
             object_service=object_service,
             file_service=file_service,
-            session_factory=session_factory,
             workflow=SubmissionWorkflow.SD,
             supports_updates=True,
             supports_references=False,

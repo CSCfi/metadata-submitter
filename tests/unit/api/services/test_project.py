@@ -5,7 +5,8 @@ import os
 from unittest.mock import MagicMock, patch
 
 import pytest
-from aiohttp import web
+from fastapi import HTTPException
+from starlette import status
 
 from metadata_backend.api.models.models import Project
 from metadata_backend.api.services.project import CscProjectService, NbisProjectService
@@ -50,8 +51,9 @@ async def test_verify_user_projects_csc() -> None:
         await service.verify_user_project("test_user", "test_project")
 
         assert not await service._verify_user_project("test_user", "invalid_project")
-        with pytest.raises(web.HTTPUnauthorized):
+        with pytest.raises(HTTPException) as exc_info:
             await service.verify_user_project("test_user", "-1")
+        assert exc_info.value.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 async def test_get_user_projects_nbis() -> None:
@@ -70,5 +72,6 @@ async def test_verify_user_projects_nbis() -> None:
     await service.verify_user_project("test_user2", "test_user2")
 
     assert not await service._verify_user_project("test_user1", "test_user2")
-    with pytest.raises(web.HTTPUnauthorized):
+    with pytest.raises(HTTPException) as exc_info:
         await service.verify_user_project("test_user1", "test_user2")
+    assert exc_info.value.status_code == status.HTTP_401_UNAUTHORIZED

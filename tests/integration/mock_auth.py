@@ -206,7 +206,7 @@ async def userinfo(req: web.Request) -> web.Response:
     return response
 
 
-async def oidc_config(_: web.Request) -> web.Response:
+async def mock_oidc_config(_: web.Request) -> web.Response:
     """OIDC standard OIDC configuration endpoint."""
     oidc_config_json = {
         "issuer": mock_auth_url_docker,
@@ -331,7 +331,7 @@ async def init() -> web.Application:
     app.router.add_post("/token", token)
     app.router.add_get("/keyset", jwk_response)
     app.router.add_get("/userinfo", userinfo)
-    app.router.add_get("/.well-known/openid-configuration", oidc_config)
+    app.router.add_get("/.well-known/openid-configuration", mock_oidc_config)
 
     global pouta_token
     connection_count = 10
