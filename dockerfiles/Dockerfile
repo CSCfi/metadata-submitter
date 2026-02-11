@@ -12,13 +12,9 @@ COPY .python-version .
 # Copy project files
 COPY README.md .
 COPY metadata_backend ./metadata_backend
-COPY scripts ./scripts
 
 # Install dependencies and create virtual environment
 RUN uv sync
-
-# Generate OpenAPI docs.
-RUN uv run scripts/swagger/generate.sh
 
 #=======================
 FROM ghcr.io/astral-sh/uv:python3.14-trixie

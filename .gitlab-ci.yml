@@ -192,10 +192,10 @@ release-job:
 update-versions-dryrun:
   extends: .update-versions-dryrun
   variables:
-    UPDATE_VERSION_FILES_LIST: "docs/conf.py;docs/openapi.yml;metadata_backend/__init__.py"
+    UPDATE_VERSION_FILES_LIST: "docs/conf.py;metadata_backend/__init__.py"
 
 # This job updates the versions
 update-versions:
   extends: .update-versions
   variables:
-    UPDATE_VERSION_FILES_LIST: "docs/conf.py;docs/openapi.yml;metadata_backend/__init__.py"
+    UPDATE_VERSION_FILES_LIST: "docs/conf.py;metadata_backend/__init__.py"
