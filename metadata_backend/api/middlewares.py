@@ -5,9 +5,12 @@ from typing import Any, MutableMapping
 import jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.datastructures import Headers
+from starlette.requests import Request
+from starlette.responses import Response
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from ..api.exceptions import SystemException, UnauthorizedUserException
+from ..api.errors import problem_response
+from ..api.exceptions import AppException, SystemException, UnauthorizedUserException
 from ..api.models.models import User
 from ..api.services.auth import AuthService
 from ..conf.conf import API_PREFIX
@@ -60,6 +63,8 @@ class SessionMiddleware:
                     token = self.session_context.set(session)
                     try:
                         await self.app(scope, receive, send)
+                    except Exception as exc:
+                        await _send_error_response(scope, receive, send, exc)
                     finally:
                         # Runs before response is returned by the route.
                         self.session_context.reset(token)
@@ -89,17 +94,31 @@ class AuthMiddleware:
             # Before request is processed by the route.
             LOG.debug("Authenticating request: method: %s, path: %s", method, path)
 
-            # Extract JWT token or API key.
-            jwt_token, api_key = await extract_jwt_token_and_api_key(method, path, scope)
+            try:
+                # Extract JWT token or API key.
+                jwt_token, api_key = await extract_jwt_token_and_api_key(method, path, scope)
 
-            # Authorize user.
-            user = await verify_authorization(method, path, self.auth_service, jwt_token, api_key)
+                # Authorize user.
+                user = await verify_authorization(method, path, self.auth_service, jwt_token, api_key)
 
-            # Save user in the request state.
-            state = scope.setdefault("state", {})
-            state["user"] = user
+                # Save user in the request state.
+                state = scope.setdefault("state", {})
+                state["user"] = user
 
-            await self.app(scope, receive, send)
+                await self.app(scope, receive, send)
+            except Exception as exc:
+                await _send_error_response(scope, receive, send, exc)
+
+
+async def _send_error_response(scope: Scope, receive: Receive, send: Send, exc: Exception) -> None:
+    """Send error response for middleware exceptions."""
+    request = Request(scope, receive)
+    if isinstance(exc, AppException):
+        response: Response = problem_response(request, exc.status_code, str(exc))
+    else:
+        LOG.error("Unexpected middleware exception: %s", exc)
+        response = problem_response(request, 500, "Unexpected error")
+    await response(scope, receive, send)
 
 
 async def extract_jwt_token_and_api_key(method: str, path: str, scope: MutableMapping[str, Any]) -> tuple[str, str]:

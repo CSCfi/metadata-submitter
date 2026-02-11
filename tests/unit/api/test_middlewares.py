@@ -6,7 +6,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.types import Receive, Send
 
-from metadata_backend.api.middlewares import SessionMiddleware
+from metadata_backend.api.middlewares import AuthMiddleware, SessionMiddleware
 from tests.integration.conf import API_PREFIX
 
 mock_session_context: ContextVar[AsyncSession | None] = ContextVar("mock_session_context", default=None)
@@ -72,3 +72,41 @@ async def test_session_middleware_non_api_route(session_factory):
     await middleware(scope, Mock(spec=Receive), Mock(spec=Send))
     assert mock_asgi_app_called
     assert mock_session_context.get() is None
+
+
+async def test_auth_middleware_missing_authorization_returns_401():
+    """Test auth middleware returns 401 when authorization is missing."""
+    mock_asgi_app_called = False
+
+    mock_app = MagicMock()
+
+    async def _call(_scope, _receive, _send):
+        nonlocal mock_asgi_app_called
+        mock_asgi_app_called = True
+
+    mock_app.side_effect = _call
+
+    auth_service = MagicMock()
+    middleware = AuthMiddleware(mock_app, auth_service)
+
+    scope = {
+        "type": "http",
+        "method": "GET",
+        "path": f"{API_PREFIX}/test",
+        "headers": [],
+    }
+
+    async def _receive():
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    sent_messages = []
+
+    async def _send(message):
+        sent_messages.append(message)
+
+    await middleware(scope, _receive, _send)
+
+    assert not mock_asgi_app_called
+    assert sent_messages
+    assert sent_messages[0]["type"] == "http.response.start"
+    assert sent_messages[0]["status"] == 401
