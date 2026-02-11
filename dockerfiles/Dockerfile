@@ -13,7 +13,6 @@ COPY .python-version .
 COPY README.md .
 COPY metadata_backend ./metadata_backend
 COPY scripts ./scripts
-COPY docs/openapi.yml ./docs/openapi.yml
 
 # Install dependencies and create virtual environment
 RUN uv sync
