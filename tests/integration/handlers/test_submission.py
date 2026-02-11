@@ -3,7 +3,7 @@
 import logging
 import uuid
 
-from metadata_backend.api.json import to_json
+from metadata_backend.api.json import to_json_dict
 from tests.integration.helpers import (
     get_docs,
     get_objects,
@@ -24,7 +24,7 @@ async def test_sd_submission(sd_client, sd_submission, sd_submission_update):
     submission_id = submission.submissionId
 
     # Create another submission with the same name fails.
-    async with sd_client.post(f"{submissions_url}", data=to_json(submission)) as resp:
+    async with sd_client.post(f"{submissions_url}", json=to_json_dict(submission)) as resp:
         res = await resp.json()
         assert resp.status == 400
         assert (

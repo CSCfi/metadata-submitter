@@ -3,17 +3,18 @@
 import hashlib
 import json
 from base64 import urlsafe_b64encode
+from http.cookies import SimpleCookie
 from unittest.mock import MagicMock
 
 import jwt as pyjwt
-from aiohttp import web
+from fastapi.responses import RedirectResponse
 from requests import Session
 
 from metadata_backend.api.services.auth import AuthService
 from metadata_backend.services.auth_service import AuthServiceHandler, DPoPHandler
 
 
-async def test_auth(dpop_test_jwks, monkeypatch):
+async def test_auth(csc_client, dpop_test_jwks, monkeypatch):
     """Test OIDC authentication flow."""
 
     mock_oidc_url = "http://mock/oidc"
@@ -38,14 +39,13 @@ async def test_auth(dpop_test_jwks, monkeypatch):
     resp = await handler.get_oidc_auth_url()
     assert resp == mock_auth_url
 
-    req = MagicMock()
-    req.query = {"state": mock_state, "code": mock_code}
-
     # Test callback.
-    jwt, userinfo = await handler.callback(req)
+    jwt, userinfo = await handler.callback(mock_state, mock_code)
     resp = await handler.initiate_web_session(jwt, userinfo)
-    assert isinstance(resp, web.HTTPSeeOther)
-    jwt_token = resp.cookies["access_token"].value
+    assert isinstance(resp, RedirectResponse)
+    cookie = SimpleCookie()
+    cookie.load(resp.headers.get("set-cookie"))
+    jwt_token = cookie["access_token"].value
     assert jwt_token == jwt
 
     user_id, user_name = AuthService.validate_jwt_token(jwt_token)

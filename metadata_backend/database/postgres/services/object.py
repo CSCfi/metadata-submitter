@@ -9,7 +9,6 @@ from ....api.models.models import Object
 from ....api.models.submission import SubmissionWorkflow
 from ..models import ObjectEntity
 from ..repositories.object import ObjectRepository
-from ..repository import transaction
 
 
 class UnknownObjectException(NotFoundUserException):
@@ -268,9 +267,8 @@ class ObjectService:
         :param object_type: The metadata object type(s).
         :return: An asynchronous iterator of dictionaries representing the metadata object JSON documents.
         """
-        async with transaction(self.repository._session_factory):
-            async for obj in self.repository.get_objects(submission_id, object_type):
-                yield self.convert_from_entity(obj)
+        async for obj in self.repository.get_objects(submission_id, object_type):
+            yield self.convert_from_entity(obj)
 
     async def get_xml_document(self, object_id: str) -> str:
         """

@@ -1,8 +1,8 @@
 repos:
   - repo: meta
     hooks:
-    - id: check-hooks-apply
-    - id: check-useless-excludes
+      - id: check-hooks-apply
+      - id: check-useless-excludes
 
   # Make sure uv.lock file is up to date even if pyproject.toml was changed via pre-commit.
   # https://docs.astral.sh/uv/guides/integration/pre-commit/
@@ -16,42 +16,36 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
-    - id: no-commit-to-branch
-      args: [--branch, main, --branch, master]
-    - id: check-ast
-    - id: check-docstring-first
-    - id: check-case-conflict
-    - id: check-merge-conflict
-    - id: end-of-file-fixer
-    - id: trailing-whitespace
-    - id: check-json
-      files: ^metadata_backend
-    - id: pretty-format-json
-      files: ^metadata_backend
-      args:
-      - --autofix
-      - --indent=4
-      - --no-ensure-ascii
-      - --no-sort-keys
-    - id: check-yaml
-    - id: check-xml
-
-  - repo: https://github.com/python-openapi/openapi-spec-validator
-    rev: 0.7.1
-    hooks:
-    - id: openapi-spec-validator
-      files: docs/openapi.yml
+      - id: no-commit-to-branch
+        args: [ --branch, main, --branch, master ]
+      - id: check-ast
+      - id: check-docstring-first
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-json
+        files: ^metadata_backend
+      - id: pretty-format-json
+        files: ^metadata_backend
+        args:
+          - --autofix
+          - --indent=4
+          - --no-ensure-ascii
+          - --no-sort-keys
+      - id: check-yaml
+      - id: check-xml
 
   - repo: local
     hooks:
-    - id: verify
-      name: verify
-      entry: tox --skip-env 'pytest'
-      language: system
-      pass_filenames: false
+      - id: verify
+        name: verify
+        entry: tox --skip-env 'pytest'
+        language: system
+        pass_filenames: false
 
-    - id: test
-      name: test
-      entry: tox -e pytest
-      language: system
-      pass_filenames: false
+      - id: test
+        name: test
+        entry: tox -e pytest
+        language: system
+        pass_filenames: false

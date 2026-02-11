@@ -5,12 +5,12 @@ from abc import ABC, abstractmethod
 import aioboto3
 import botocore.exceptions
 import ujson
-from aiohttp import web
 from pydantic import BaseModel, RootModel
 
 from ...conf.s3 import s3_config
 from ...helpers.logger import LOG
 from ...services.keystone_service import KeystoneServiceHandler
+from ..exceptions import SystemException, UserException
 
 
 class FileProviderService(ABC):
@@ -39,17 +39,17 @@ class FileProviderService(ABC):
         if not await self._verify_bucket_policy(bucket):
             reason = f"Bucket '{bucket}' has not been made accessible to SD Submit."
             LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
+            raise UserException(reason)
 
         size = await self._verify_user_file(bucket, file)
         if size is None:
             reason = f"File '{file}' does not exist in bucket '{bucket}'."
             LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
+            raise UserException(reason)
         if size == 0:
             reason = f"File '{file}' is empty."
             LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
+            raise UserException(reason)
         return size
 
     async def list_buckets(self, credentials: KeystoneServiceHandler.EC2Credentials) -> list[str]:
@@ -67,7 +67,7 @@ class FileProviderService(ABC):
         if not buckets:
             reason = "No buckets found."
             LOG.error(reason)
-            raise web.HTTPNotFound(reason=reason)
+            raise UserException(reason)
 
         return buckets
 
@@ -85,13 +85,13 @@ class FileProviderService(ABC):
         if not await self._verify_bucket_policy(bucket):
             reason = f"Bucket '{bucket}' has not been made accessible to SD Submit."
             LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
+            raise UserException(reason)
 
         files = await self._list_files_in_bucket(bucket)
         if not files.root:
             reason = f"No files found in bucket '{bucket}'."
             LOG.error(reason)
-            raise web.HTTPNotFound(reason=reason)
+            raise UserException(reason)
         return files
 
     async def update_bucket_policy(self, bucket: str, creds: KeystoneServiceHandler.EC2Credentials) -> None:
@@ -266,9 +266,15 @@ class S3FileProviderService(FileProviderService, ABC):
                 files = [self.File(path=f"S3://{bucket}/{obj['Key']}", bytes=int(obj["Size"])) for obj in contents]
                 return self.Files(files)
             except botocore.exceptions.ClientError as e:
-                if e.response["ResponseMetadata"]["HTTPStatusCode"] == 404:
-                    raise web.HTTPBadRequest(reason=e.response["Error"]["Message"])
-                raise e
+                err = e.response.get("Error", {})
+                code = err.get("Code")
+                msg = err.get("Message")
+
+                if code == "NoSuchBucket":
+                    raise UserException("Bucket does not exist") from e
+
+                LOG.exception("Failed to list files in bucket: %s — %s", code, msg)
+                raise SystemException("Failed to list files in bucket") from e
 
 
 class S3AllasFileProviderService(S3FileProviderService):
@@ -325,9 +331,15 @@ class S3AllasFileProviderService(S3FileProviderService):
                 Policy=ujson.dumps(policy),
             )
         except botocore.exceptions.ClientError as e:
-            if e.response["ResponseMetadata"]["HTTPStatusCode"] == 404:
-                raise web.HTTPBadRequest(reason=e.response["Error"]["Message"])
-            raise e
+            err = e.response.get("Error", {})
+            code = err.get("Code")
+            msg = err.get("Message")
+
+            if code == "NoSuchBucket":
+                raise UserException("Bucket does not exist") from e
+
+            LOG.exception("Failed to update bucket policy: %s — %s", code, msg)
+            raise SystemException("Failed to update bucket policy") from e
 
     async def _verify_bucket_policy(self, bucket: str) -> bool:
         """Verify that the read access policy has been assigned to a bucket.

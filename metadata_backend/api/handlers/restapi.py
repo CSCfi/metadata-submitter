@@ -1,18 +1,11 @@
 """Base class for HTTP API handlers."""
 
-import json
-from typing import Any
-
-from aiohttp import web
-from aiohttp.web import Request
 from pydantic import BaseModel, ConfigDict
 
-from ...database.postgres.repository import SessionFactory
 from ...database.postgres.services.file import FileService
 from ...database.postgres.services.object import ObjectService
 from ...database.postgres.services.registration import RegistrationService
 from ...database.postgres.services.submission import SubmissionService
-from ...helpers.logger import LOG
 from ...services.admin_service import AdminServiceHandler
 from ...services.auth_service import AuthServiceHandler
 from ...services.datacite_service import DataciteServiceHandler
@@ -32,8 +25,6 @@ class RESTAPIServices(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    # Session factory.
-    session_factory: SessionFactory
     # Database services.
     submission: SubmissionService
     object: ObjectService
@@ -71,39 +62,3 @@ class RESTAPIHandler:
 
         self._services = services
         self._handlers = handlers
-
-    @staticmethod
-    async def get_json_dict(req: Request) -> dict[str, Any]:
-        """Get JSON data from the request body.
-
-        :param req: HTTP request
-        :returns: JSON data from the request body.
-        """
-        try:
-            data = await req.json()
-        except json.decoder.JSONDecodeError as e:
-            reason = f"JSON is not correctly formatted: {e}"
-            LOG.exception(reason)
-            raise web.HTTPBadRequest(reason=reason) from e
-
-        if not isinstance(data, dict):
-            reason = f"Expected JSON object (dict) in request body, got {type(data).__name__}"
-            LOG.warning(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-        return data
-
-    @staticmethod
-    def get_mandatory_param(req: Request, name: str) -> str:
-        """Get mandatory query parameter.
-
-        :param req: HTTP request
-        :param name: name of query parameter
-        :returns: The query parameter value
-        """
-        param = req.query.get(name)
-        if param is None:
-            reason = f"Missing required query parameter '{name}'"
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-        return param

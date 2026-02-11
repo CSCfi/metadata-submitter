@@ -4,7 +4,7 @@ import os
 from abc import ABC, abstractmethod
 from itertools import chain
 from pathlib import Path
-from typing import AsyncIterator, Awaitable, Callable, Iterable, Sequence, cast, override
+from typing import AsyncIterator, Callable, Iterable, Sequence, cast, override
 
 import fsspec
 from lxml import etree
@@ -888,16 +888,15 @@ class XmlDocumentProcessor(XmlProcessor):
         return list(chain.from_iterable(processor.get_references_without_ids() for processor in self.xml_processors))
 
     @staticmethod
-    async def write_xml_document(
+    async def iter_xml_document(
         config: XmlObjectConfig,
         xmls: AsyncIterator[str] | str,
-        writer: Callable[[bytes], Awaitable[None]],
         *,
         object_type: str | None = None,
         schema_type: str | None = None,
-    ) -> None:
+    ) -> AsyncIterator[bytes]:
         """
-        Stream XML document to an async writer.
+        Async iterate XML documents.
 
         The XML document will start with an XML declaration and the
         XML metadata objects are wrapped inside the set element.
@@ -914,23 +913,25 @@ class XmlDocumentProcessor(XmlProcessor):
             raise ValueError("Either object type or schema type must be defined.")
 
         set_element = config.get_set_path(object_type=object_type, schema_type=schema_type).lstrip(".").lstrip("/")
-        await writer(b"<?xml version='1.0' encoding='UTF-8'?>\n")
-        await writer(f"<{set_element}>\n".encode("utf-8"))
 
-        async def _write_indented(xml_: str) -> None:
+        # XML declaration
+        yield b"<?xml version='1.0' encoding='UTF-8'?>\n"
+        yield f"<{set_element}>\n".encode("utf-8")
+
+        def indent(xml_: str) -> bytes:
             # Indent with two spaces.
             indented = "\n".join("  " + line for line in xml_.splitlines())
             if not indented.endswith("\n"):
                 indented += "\n"
-            await writer(indented.encode("utf-8"))
+            return indented.encode("utf-8")
 
         if isinstance(xmls, str):
-            await _write_indented(xmls)
-        if isinstance(xmls, AsyncIterator):
+            yield indent(xmls)
+        else:
             async for xml in xmls:
-                await _write_indented(xml)
+                yield indent(xml)
 
-        await writer(f"</{set_element}>\n".encode("utf-8"))
+        yield f"</{set_element}>\n".encode("utf-8")
 
 
 class XmlDocumentsProcessor(XmlProcessor, DocumentsProcessor):

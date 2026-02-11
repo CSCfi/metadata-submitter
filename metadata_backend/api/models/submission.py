@@ -104,3 +104,19 @@ class Submissions(StrictBaseModel):
     """Submission documents."""
 
     submissions: list[Submission]
+
+
+class PaginatedSubmissionsPage(StrictBaseModel):
+    """Paginated submission documents page."""
+
+    page: int
+    size: int
+    totalPages: int
+    totalSubmissions: int
+
+
+class PaginatedSubmissions(StrictBaseModel):
+    """Paginated submission documents."""
+
+    page: PaginatedSubmissionsPage
+    submissions: list[Submission]

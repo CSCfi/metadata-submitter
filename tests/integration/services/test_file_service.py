@@ -4,8 +4,8 @@ import os
 import uuid
 
 import pytest
-from aiohttp import web
 
+from metadata_backend.api.exceptions import UserException
 from tests.integration.conf import mock_keystone_url
 
 
@@ -51,13 +51,13 @@ async def test_file_provider_service(client, secret_env, s3_manager, monkeypatch
         policy_exists = await service.verify_bucket_policy(test_bucket)
         assert policy_exists is False
 
-        with pytest.raises(web.HTTPBadRequest) as e:
+        with pytest.raises(UserException) as e:
             files = await service.list_files_in_bucket(test_bucket)
-        assert str(e.value.reason) == f"Bucket '{test_bucket}' has not been made accessible to SD Submit."
+        assert str(e.value) == f"Bucket '{test_bucket}' has not been made accessible to SD Submit."
 
-        with pytest.raises(web.HTTPBadRequest) as e:
+        with pytest.raises(UserException) as e:
             await service.verify_user_file(test_bucket, test_file_1)
-        assert str(e.value.reason) == f"Bucket '{test_bucket}' has not been made accessible to SD Submit."
+        assert str(e.value) == f"Bucket '{test_bucket}' has not been made accessible to SD Submit."
 
         # Update bucket policy to grant read access
         await service.update_bucket_policy(test_bucket, test_user_creds)
@@ -65,9 +65,9 @@ async def test_file_provider_service(client, secret_env, s3_manager, monkeypatch
         assert policy_exists is True
 
         # List files before and after adding files to the bucket
-        with pytest.raises(web.HTTPNotFound) as e:
+        with pytest.raises(UserException) as e:
             files = await service.list_files_in_bucket(test_bucket)
-        assert str(e.value.reason) == f"No files found in bucket '{test_bucket}'."
+        assert str(e.value) == f"No files found in bucket '{test_bucket}'."
 
         await s3_manager.add_file_to_bucket(test_bucket, test_file_1)
         await s3_manager.add_file_to_bucket(test_bucket, test_file_2)
@@ -79,9 +79,9 @@ async def test_file_provider_service(client, secret_env, s3_manager, monkeypatch
         assert files.root[1].path.startswith(f"S3://{test_bucket}/{test_file_2}")
 
         # Verify specific user files
-        with pytest.raises(web.HTTPBadRequest) as exc_info:
+        with pytest.raises(UserException) as exc_info:
             await service.verify_user_file(test_bucket, "nonexistent.txt")
-        assert str(exc_info.value.reason) == f"File 'nonexistent.txt' does not exist in bucket '{test_bucket}'."
+        assert str(exc_info.value) == f"File 'nonexistent.txt' does not exist in bucket '{test_bucket}'."
 
         verified_size = await service.verify_user_file(test_bucket, test_file_1)
         assert verified_size == 100

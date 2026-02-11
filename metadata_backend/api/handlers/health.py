@@ -2,9 +2,6 @@
 
 import asyncio
 
-from aiohttp import web
-from aiohttp.web import Request, Response
-
 from ...helpers.logger import LOG
 from ...services.service_handler import HealthHandler
 from ..models.health import Health, ServiceHealth
@@ -32,13 +29,10 @@ class HealthAPIHandler(RESTAPIHandler):
             )
             return handler.service_name, Health.ERROR
 
-    async def get_health_status(self, _: Request) -> Response:
+    async def get_health_status(self) -> ServiceHealth:
         """
-        Get service health using service handler's healthcheck URLs.
-
-        :returns: The service health.
+        Get service health.
         """
-
         handlers: list[HealthHandler] = [
             self._handlers.datacite,
             self._handlers.pid,
@@ -70,6 +64,4 @@ class HealthAPIHandler(RESTAPIHandler):
         else:
             status = Health.UP
 
-        service_health = ServiceHealth(status=status, services=services)
-
-        return web.json_response(service_health.model_dump(), status=200)
+        return ServiceHealth(status=status, services=services)

@@ -1,56 +1,38 @@
 """Tests for server module."""
 
-import tempfile
-import unittest
-from pathlib import Path
-from typing import override
 from unittest.mock import Mock, patch
 
-from aiohttp import web
-from aiohttp.test_utils import AioHTTPTestCase
-
-from metadata_backend.server import init, main
+from metadata_backend.conf.conf import DEPLOYMENT_CSC, DEPLOYMENT_NBIS
+from metadata_backend.server import main
 
 
-class TestBasicFunctionsApp(unittest.TestCase):
-    """Test basic functions from web app."""
-
-    @patch("metadata_backend.server.web", new_callable=Mock)
-    @patch("metadata_backend.server.init", new_callable=Mock)
-    def test_main(self, mock_init, mock_webapp):
-        """Should start the webapp."""
-        mock_webapp.run_app = Mock()
+def test_main_csc(monkeypatch):
+    """Test web server main for CSC deployment."""
+    monkeypatch.setenv("DEPLOYMENT", DEPLOYMENT_CSC)
+    with (
+        patch("metadata_backend.server.create_app", return_value=Mock()) as mock_create_app,
+        patch("metadata_backend.server.uvicorn.run") as mock_uvicorn_run,
+    ):
         main()
-        mock_init.assert_called_once()
-        mock_webapp.run_app.assert_called_once()
+        mock_create_app.assert_called_once()
+        mock_uvicorn_run.assert_called_once()
+        args, kwargs = mock_uvicorn_run.call_args
+        assert args[0] is mock_create_app.return_value
+        assert kwargs["host"] == "0.0.0.0"
+        assert kwargs["port"] == 5430
 
 
-class AppTestCase(AioHTTPTestCase):
-    """Async tests for web app."""
-
-    @override
-    async def get_application(self):
-        """Create web Application."""
-        return await init()
-
-    async def test_init(self):
-        """Test that the web application initializes."""
-        self.assertIs(type(self.app), web.Application)
-
-    async def test_response_headers(self):
-        """Test response headers are set correctly in on_prepare_response."""
-        resp = await self.client.request("GET", "/")
-        self.assertEqual(resp.headers.get("Server", ""), "metadata")
-
-    async def test_swagger_route_is_set(self):
-        """Test correct routes are set when swagger folder exists."""
-        swagger_static = "metadata_backend.server.swagger_static_path"
-        with tempfile.TemporaryDirectory() as tempdir:
-            temppath = Path(tempdir)
-            Path(temppath / "swagger").mkdir()
-            open(temppath / "swagger" / "index.html", "w").write("<html></html>")
-            with patch(swagger_static, temppath / "swagger" / "index.html"):
-                server = await self.get_application()
-                routes = str([x for x in server.router.routes()])
-                self.assertIn("/swagger", routes)
-                self.assertIn("PlainResource  /swagger", routes)
+def test_main_nbis(monkeypatch):
+    monkeypatch.setenv("DEPLOYMENT", DEPLOYMENT_NBIS)
+    """Test web server main for NBIS deployment."""
+    with (
+        patch("metadata_backend.server.create_app", return_value=Mock()) as mock_create_app,
+        patch("metadata_backend.server.uvicorn.run") as mock_uvicorn_run,
+    ):
+        main()
+        mock_create_app.assert_called_once()
+        mock_uvicorn_run.assert_called_once()
+        args, kwargs = mock_uvicorn_run.call_args
+        assert args[0] is mock_create_app.return_value
+        assert kwargs["host"] == "0.0.0.0"
+        assert kwargs["port"] == 5431

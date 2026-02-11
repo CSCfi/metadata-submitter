@@ -1,42 +1,18 @@
 """Base class for service handlers that connect to external services."""
 
 import asyncio
-import atexit
 from abc import ABC, abstractmethod
 from typing import Any, Awaitable, Callable, Optional, override
 
-from aiohttp import BasicAuth, ClientConnectorError, ClientResponse, ClientSession, ClientTimeout
-from aiohttp.web import HTTPError, HTTPGatewayTimeout, HTTPInternalServerError
+import httpx
 from yarl import URL
 
+from ..api.exceptions import ServiceHandlerSystemException
 from ..api.models.health import Health
 from ..helpers.logger import LOG
-from .retry import retry
 
-
-class ServiceServerError(HTTPError):
-    """Service server errors should produce a 502 Bad Gateway response."""
-
-    status_code = 502
-
-
-class ServiceClientError(HTTPError):
-    """Service client errors should be raised unmodified."""
-
-    def __init__(
-        self,
-        status_code: int,
-        # difficult to pinpoint type
-        **kwargs: Any,  # noqa: ANN401
-    ) -> None:
-        """Class to raise for http client errors.
-
-        HTTPError doesn't have a setter for status_code, so this allows setting it.
-
-        :param status_code: Set the status code here
-        """
-        self.status_code = status_code
-        HTTPError.__init__(self, **kwargs)
+RETRY_MAX_COUNT = 3
+RETRY_DELAY = 1
 
 
 class HealthHandler(ABC):
@@ -63,19 +39,21 @@ class HealthHandler(ABC):
 class ServiceHandler(HealthHandler):
     """Base class for service handlers that connect to external services."""
 
-    _http_client: Optional[ClientSession] = None
+    # Shared HTTP client for health checks. AsyncClient is initialized lazily
+    # to ensure it is tied to the correct FastAPI worker event loop.
+    _health_http_client: httpx.AsyncClient | None = None
+    _health_http_client_lock = asyncio.Lock()  # prevent async race conditions when creating client
 
     def __init__(
         self,
         service_name: str,
         base_url: URL,
         *,
-        auth: Optional[BasicAuth] = None,
-        http_client_timeout: Optional[ClientTimeout] = None,
-        http_client_headers: Optional[dict[str, Any]] = None,
+        auth: httpx.BasicAuth | None = None,
+        http_client_timeout: int | None = None,
+        http_client_headers: dict[str, Any] | None = None,
         healthcheck_url: URL,
-        healthcheck_timeout: int = 10,
-        healthcheck_callback: Callable[[ClientResponse], Awaitable[bool]] | None = None,
+        healthcheck_callback: Callable[[httpx.Response], Awaitable[bool]] | None = None,
     ) -> None:
         """Base class for external service integrations."""
 
@@ -83,39 +61,60 @@ class ServiceHandler(HealthHandler):
 
         self.base_url = base_url
         self.auth = auth
+        # Service handler specific HTTP client. AsyncClient is initialized lazily
+        # to ensure it is tied to the correct FastAPI worker event loop.
+        self._http_client: httpx.AsyncClient | None = None
         self.connection_check_url = base_url
         self.http_client_timeout = http_client_timeout
         self.http_client_headers = http_client_headers
         self.healthcheck_url = healthcheck_url
-        self.healthcheck_timeout = healthcheck_timeout
         self.healthcheck_callback = healthcheck_callback
 
     @property
-    def _client(self) -> ClientSession:
-        """Singleton http client, customized for the service."""
-        if self._http_client is None or self._http_client.closed:
-            self._http_client = ClientSession(
+    def _client(self) -> httpx.AsyncClient:
+        """
+        Service handler HTTP client.
+
+        The AsyncClient is initialized lazily to ensure it is tied to the correct
+        FastAPI worker event loop.
+        """
+        if self._http_client is None:
+            self._http_client = httpx.AsyncClient(
                 auth=self.auth,
                 timeout=self.http_client_timeout,
                 headers=self.http_client_headers,
+                follow_redirects=True,
             )
-
-            # Automatically close.
-            atexit.register(lambda: asyncio.run(self.close()))
 
         return self._http_client
 
     async def close(self) -> None:
-        """Close http client."""
+        """Close service handler HTTP client."""
         if self._http_client is not None:
-            await self._http_client.close()
+            await self._http_client.aclose()
 
-    @staticmethod
-    def _process_error(error: str) -> str:
-        """Override in subclass and return formatted error message."""
-        return error
+    @classmethod
+    async def _health_client(cls) -> httpx.AsyncClient:
+        """
+        Shared health check HTTP client.
 
-    @retry(total_tries=5)
+        The AsyncClient is initialized lazily to ensure it is tied to the correct
+        FastAPI worker event loop.
+        """
+
+        if cls._health_http_client is None:
+            # Lock to prevent race conditions from several service handlers.
+            async with cls._health_http_client_lock:
+                if cls._health_http_client is None:
+                    cls._health_http_client = httpx.AsyncClient(timeout=10)
+        return cls._health_http_client
+
+    @classmethod
+    async def close_health_client(cls) -> None:
+        """Close health check HTTP client."""
+        if cls._health_http_client is not None:
+            await cls._health_http_client.aclose()
+
     async def _request(
         self,
         *,
@@ -126,7 +125,7 @@ class ServiceHandler(HealthHandler):
         json_data: Optional[dict[str, Any] | list[dict[str, Any]]] = None,
         timeout: int = 10,
         headers: Optional[dict[str, Any]] = None,
-    ) -> dict[str, Any] | list[dict[str, Any]] | str:
+    ) -> Any:
         """Request to service REST API.
 
         :param method: HTTP method
@@ -153,58 +152,46 @@ class ServiceHandler(HealthHandler):
             if path:
                 url = url / path
         try:
-            async with self._client.request(
-                auth=self.auth,
-                method=method,
-                url=url,
-                params=params,
-                json=json_data,
-                timeout=ClientTimeout(total=timeout),
-                headers=headers,
-            ) as response:
-                if not response.ok:
-                    content = await response.text()
-                    log_msg = (
-                        f"{method} request to: {self.service_name}, path {url} returned: "
-                        f"{response.status} and content: {content}"
+            attempt = 0
+            while True:
+                response = await self._client.request(
+                    auth=self.auth,
+                    method=method,
+                    url=str(url),
+                    params=params,
+                    json=json_data,
+                    timeout=timeout,
+                    headers=headers,
+                )
+                if response.is_success:
+                    # Successful request.
+                    content = (
+                        response.json()
+                        if response.headers.get("Content-Type", "").startswith("application/json")
+                        else response.text
                     )
-                    if content:
-                        content = self._process_error(content)
-                    LOG.error(log_msg)
-                    raise self.make_exception(reason=content, status=response.status)
+                    return content
 
-                if response.content_type.endswith("json"):
-                    content = await response.json()
+                if attempt < RETRY_MAX_COUNT:
+                    # Failed request with retry attempts remaining.
+                    attempt += 1
+                    await asyncio.sleep(RETRY_DELAY)
                 else:
-                    content = await response.text()
-
-            return content
-
-        except TimeoutError as exc:
-            LOG.exception("%s request to %s %r timed out.", method, self.service_name, url)
-            raise HTTPGatewayTimeout(reason=f"{self.service_name} error: Could not reach service provider.") from exc
-        except HTTPError:
-            # These are expected
-            raise
+                    # Failed request with no retry attempts remaining.
+                    content = response.text
+                    LOG.error(
+                        f"Service handler {method} request to {self.service_name} path {url} returned: "
+                        f"{response.status_code} and content: {content}"
+                    )
+                    raise ServiceHandlerSystemException(self.service_name)
+        except ServiceHandlerSystemException as exc:
+            raise exc
         except Exception as exc:
-            LOG.exception("%s request to %s %r raised an unexpected exception.", method, self.service_name, url)
-            message = f"{self.service_name} error 502: Unexpected issue when connecting to service provider."
-            raise ServiceServerError(text=message, reason=message) from exc
-
-    def make_exception(self, reason: str, status: int) -> HTTPError:
-        """Create a Client or Server exception, according to status code.
-
-        :param reason: Error message
-        :param status: HTTP status code
-        :returns: ServiceServerError or ServiceClientError or HTTPInternalServerError on invalid input
-        """
-        if status < 400:
-            LOG.error("HTTP status code must be an error code, received <400: %s.", status)
-            return HTTPInternalServerError(reason="Server encountered an unexpected situation.")
-        reason = f"{self.service_name} error: {reason}"
-        if status >= 500:
-            return ServiceServerError(text=reason, reason=reason)
-        return ServiceClientError(text=reason, reason=reason, status_code=status)
+            LOG.exception(
+                f"Service handler {method} request to {self.service_name} path {url} raised an "
+                f"unexpected exception: {str(exc)}"
+            )
+            raise ServiceHandlerSystemException(self.service_name, exc)
 
     @override
     async def get_health(self) -> Health:
@@ -214,32 +201,47 @@ class ServiceHandler(HealthHandler):
         :returns: The service handler health.
         """
         try:
-            async with self._client.get(
-                self.healthcheck_url, timeout=ClientTimeout(total=self.healthcheck_timeout)
-            ) as resp:
-                if resp.status != 200:
-                    LOG.error("Health check failed for service '%s', url=%s", self.service_name, self.healthcheck_url)
-                    return Health.DOWN
+            health_client = await self._health_client()
+            resp = await health_client.get(str(self.healthcheck_url))
 
-                if self.healthcheck_callback and not await self.healthcheck_callback(resp):
-                    LOG.error(
-                        "Health check callback failed for service '%s', url=%s", self.service_name, self.healthcheck_url
-                    )
-                    return Health.DOWN
+            if resp.status_code != 200:
+                LOG.error(
+                    "Health check failed for service '%s', url=%s",
+                    self.service_name,
+                    self.healthcheck_url,
+                )
+                return Health.DOWN
 
-                return Health.UP
-        except asyncio.TimeoutError:
+            if self.healthcheck_callback and not await self.healthcheck_callback(resp):
+                LOG.error(
+                    "Health check callback failed for service '%s', url=%s",
+                    self.service_name,
+                    self.healthcheck_url,
+                )
+                return Health.DOWN
+
+            return Health.UP
+
+        except httpx.TimeoutException:
             LOG.warning(
                 "Health check timed out for service '%s', url=%s",
                 self.service_name,
                 self.healthcheck_url,
             )
             return Health.DEGRADED
-        except ClientConnectorError:
-            LOG.error("Health check failed for service '%s', url=%s", self.service_name, self.healthcheck_url)
+
+        except httpx.ConnectError:
+            LOG.error(
+                "Health check failed for service '%s', url=%s",
+                self.service_name,
+                self.healthcheck_url,
+            )
             return Health.DOWN
+
         except Exception:
             LOG.exception(
-                "Unexpected error during health check for service '%s', url=%s", self.service_name, self.healthcheck_url
+                "Unexpected error during health check for service '%s', url=%s",
+                self.service_name,
+                self.healthcheck_url,
             )
             return Health.ERROR

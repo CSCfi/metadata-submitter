@@ -1,63 +1,74 @@
-"""Test API middlewares."""
+from contextvars import ContextVar
+from types import SimpleNamespace
+from unittest.mock import MagicMock, Mock
 
-from unittest.mock import AsyncMock, patch
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.types import Receive, Send
 
-from aiohttp.test_utils import AioHTTPTestCase
+from metadata_backend.api.middlewares import SessionMiddleware
+from tests.integration.conf import API_PREFIX
 
-from metadata_backend.conf.conf import API_PREFIX
-from metadata_backend.server import init
+mock_session_context: ContextVar[AsyncSession | None] = ContextVar("mock_session_context", default=None)
 
 
-class ErrorMiddlewareTestCase(AioHTTPTestCase):
-    """Error handling middleware test cases."""
+async def test_session_middleware_api_route(session_factory):
+    """Test session middleware for API routes."""
+    assert mock_session_context.get() is None
 
-    async def get_application(self):
-        """Retrieve web Application for test."""
-        return await init()
+    mock_asgi_app_called = False
 
-    async def setUpAsync(self):
-        """Configure default values for testing and other modules.
+    mock_app = MagicMock()
+    mock_app.state = SimpleNamespace()
+    mock_app.state.session_factory = session_factory
 
-        This patches used modules and sets default return values for their
-        methods. Also sets up reusable test variables for different test
-        methods.
-        """
-        self.app = await self.get_application()
-        self.server = await self.get_server(self.app)
-        self.client = await self.get_client(self.server)
+    async def _call(_scope, _receive, _send):
+        nonlocal mock_asgi_app_called
+        mock_asgi_app_called = True
+        session = mock_session_context.get()
+        assert session is not None
+        result = await session.execute(text("SELECT 1"))
+        assert result.scalar_one() == 1
 
-        self.patch_verify_authorization = patch(
-            "metadata_backend.api.middlewares.verify_authorization",
-            new=AsyncMock(return_value=("mock-userid", "mock-username")),
-        )
+    mock_app.side_effect = _call
 
-        await self.client.start_server()
+    middleware = SessionMiddleware(mock_app, mock_session_context)
 
-    async def test_not_found_problem_response(self):
-        """Test that the middleware returns not found with problem JSON."""
-        with self.patch_verify_authorization:
-            # Test submission not found.
-            response = await self.client.get(f"{API_PREFIX}/submissions/invalid", json={})
-            data = await response.json()
-            assert response.status == 404
-            assert response.content_type == "application/problem+json"
-            assert data["title"] == "Not Found"
-            assert data["detail"] == "Submission 'invalid' not found."
-            assert data["instance"] == "/v1/submissions/invalid"
+    scope = {
+        "type": "http",
+        "method": "GET",
+        "app": mock_app,
+        "path": f"{API_PREFIX}/test",
+    }
 
-            # Test URL not found.
-            response = await self.client.get(f"{API_PREFIX}/bad_url")
-            data = await response.json()
-            assert response.status == 404
-            assert response.content_type == "application/problem+json"
-            assert data["title"] == "Not Found"
+    await middleware(scope, Mock(spec=Receive), Mock(spec=Send))
+    assert mock_asgi_app_called
+    assert mock_session_context.get() is None
 
-    async def test_bad_request_problem_response(self):
-        """Test that the middleware returns bad request with problem JSON."""
-        with self.patch_verify_authorization:
-            # Test invalid submission.json.
-            response = await self.client.post(f"{API_PREFIX}/submissions", json={})
-            data = await response.json()
-            assert response.status == 400
-            assert response.content_type == "application/problem+json"
-            assert data["title"] == "Bad Request"
+
+async def test_session_middleware_non_api_route(session_factory):
+    """Test session middleware for non-API routes."""
+    mock_asgi_app_called = False
+
+    mock_app = MagicMock()
+    mock_app.state = SimpleNamespace()
+    mock_app.state.session_factory = session_factory
+
+    async def _call(_scope, _receive, _send):
+        nonlocal mock_asgi_app_called
+        mock_asgi_app_called = True
+
+    mock_app.side_effect = _call
+
+    middleware = SessionMiddleware(mock_app, mock_session_context)
+
+    scope = {
+        "type": "http",
+        "method": "GET",
+        "app": mock_app,
+        "path": "/test",
+    }
+
+    await middleware(scope, Mock(spec=Receive), Mock(spec=Send))
+    assert mock_asgi_app_called
+    assert mock_session_context.get() is None

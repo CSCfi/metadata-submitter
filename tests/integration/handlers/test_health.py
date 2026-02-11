@@ -3,7 +3,6 @@
 import logging
 
 from metadata_backend.api.models.health import Health, ServiceHealth
-from tests.integration.conf import base_url, nbis_base_url
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
@@ -12,10 +11,10 @@ LOG.setLevel(logging.DEBUG)
 class TestPublicEndpoints:
     """Test health handler."""
 
-    async def test_healthcheck_csc(self, client, monkeypatch):
+    async def test_healthcheck_csc(self, sd_client, monkeypatch):
         """Test healthcheck endpoint for CSC deployment."""
 
-        async with client.get(f"{base_url}/health") as resp:
+        async with sd_client.get("/health") as resp:
             assert resp.status == 200
             result = await resp.json()
             health = ServiceHealth.model_validate(result)
@@ -43,12 +42,12 @@ class TestPublicEndpoints:
             assert health.services["keystone"] == Health.UP
             assert health.services["database"] == Health.UP
 
-    async def test_healthcheck_nbis(self, client, monkeypatch):
+    async def test_healthcheck_nbis(self, nbis_client, monkeypatch):
         """Test healthcheck endpoint for NBIS deployment."""
 
         monkeypatch.setenv("DEPLOYMENT", "NBIS")
 
-        async with client.get(f"{nbis_base_url}/health") as resp:
+        async with nbis_client.get("/health") as resp:
             assert resp.status == 200
             result = await resp.json()
             health = ServiceHealth.model_validate(result)

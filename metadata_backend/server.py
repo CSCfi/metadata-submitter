@@ -2,12 +2,23 @@
 
 import asyncio
 import logging
-from typing import TypeVar
+from contextlib import asynccontextmanager
+from enum import Enum
+from typing import Any, AsyncGenerator, Final, TypeVar, override
 
+import uvicorn
 import uvloop
-from aiohttp import web
-from aiohttp.web_routedef import AbstractRouteDef
+from fastapi import APIRouter, FastAPI, status
+from fastapi.encoders import jsonable_encoder
+from fastapi.openapi.utils import get_openapi
+from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.routing import APIRoute
+from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.types import ASGIApp
 
+from . import __version__
+from .api.errors import register_exception_handlers
 from .api.handlers.auth import AuthAPIHandler
 from .api.handlers.files import FilesAPIHandler
 from .api.handlers.health import HealthAPIHandler
@@ -16,10 +27,11 @@ from .api.handlers.object import ObjectAPIHandler
 from .api.handlers.publish import PublishAPIHandler
 from .api.handlers.rems import RemsAPIHandler
 from .api.handlers.restapi import RESTAPIServiceHandlers, RESTAPIServices
-from .api.handlers.static import html_handler_factory
 from .api.handlers.submission import SubmissionAPIHandler
 from .api.handlers.user import UserAPIHandler
-from .api.middlewares import AUTH_SERVICE, authorization, http_error_handler
+from .api.middlewares import AuthMiddleware, SessionMiddleware
+from .api.models.app import app_state
+from .api.models.submission import PaginatedSubmissions
 from .api.services.auth import AuthService
 from .api.services.file import S3AllasFileProviderService
 from .api.services.project import CscProjectService, NbisProjectService, ProjectService
@@ -27,15 +39,19 @@ from .conf.conf import (
     API_PREFIX,
     DEPLOYMENT_CSC,
     DEPLOYMENT_NBIS,
-    swagger_static_path,
 )
 from .conf.deployment import deployment_config
+from .conf.oidc import oidc_config
 from .database.postgres.repositories.api_key import ApiKeyRepository
 from .database.postgres.repositories.file import FileRepository
 from .database.postgres.repositories.object import ObjectRepository
 from .database.postgres.repositories.registration import RegistrationRepository
 from .database.postgres.repositories.submission import SubmissionRepository
-from .database.postgres.repository import create_engine, create_session_factory
+from .database.postgres.repository import (
+    _session_context,
+    create_engine,
+    create_session_factory,
+)
 from .database.postgres.services.file import FileService
 from .database.postgres.services.object import ObjectService
 from .database.postgres.services.registration import RegistrationService
@@ -56,47 +72,92 @@ asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 ServiceHandlerType = TypeVar("ServiceHandlerType", bound=ServiceHandler)
 
+GET: Final[list[str]] = ["GET"]
+POST: Final[list[str]] = ["POST"]
+PATCH: Final[list[str]] = ["PATCH"]
+HEAD: Final[list[str]] = ["HEAD"]
+DELETE: Final[list[str]] = ["DELETE"]
 
-async def init() -> web.Application:
+
+class ExcludeNoneJSONResponse(JSONResponse):
+    """Exclude None fields in JSON response."""
+
+    @override
+    def render(self, content: Any) -> bytes:
+        content = jsonable_encoder(content, exclude_none=True)
+        return super().render(content)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """
-    Create the web application.
+    Manages the FastAPI worker lifespan.
 
-    :returns: The created web application.
+    Called once per worker when the FastAPI application starts. Responsible for creating
+    and disposing resources that can't be created outside the workers event loop. If
+    multiple workers are used then they run in separate OS processes. The database engine
+    and connection pool must be created here.
     """
-    middlewares = [http_error_handler, authorization]
 
-    api = web.Application(middlewares=middlewares)  # type: ignore
-    server = web.Application()
+    state = app_state(app)
 
-    # Override server header for security reasons.
-    async def override_server_header(_: web.Request, response: web.StreamResponse) -> None:
-        response.headers["Server"] = "metadata"
+    # Create database engine.
+    engine = await create_engine()
 
-    api.on_response_prepare.append(override_server_header)
-    server.on_response_prepare.append(override_server_header)
+    # Create database session factory.
+    state.session_factory = create_session_factory(engine)
+
+    yield
+
+    # Dispose database engine.
+    await engine.dispose()
+
+    # CLose health check client.
+    await ServiceHandler.close_health_client()
+
+
+def create_app(session: AsyncSession | None = None) -> ASGIApp:
+    """
+    Create FastAPI application with all routes, middlewares, and services.
+
+    :param session: AsyncSession used for unit tests.
+    """
+
+    config = deployment_config()
+
+    title = f"SD Submit API ({config.DEPLOYMENT})"
+    version = __version__
+    description = (
+        f"Please <a href='{oidc_config().BASE_URL.rstrip('/')}/login'>login</a> "
+        f"or provide a JWT or API key bearer token to use the Submission endpoints."
+    )
+
+    app = FastAPI(
+        title=title,
+        version=version,
+        description=description,
+        lifespan=lifespan,
+        default_response_class=ExcludeNoneJSONResponse,
+    )
+
+    state = app_state(app)
+
+    # Register exception handlers to format errors as RFC 7807 formatted problem JSON.
+    register_exception_handlers(app)
 
     # Initialise logging.
     logging.getLogger("sqlalchemy").setLevel(logging.WARNING)
     logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
     logging.getLogger("sqlalchemy.pool").setLevel(logging.WARNING)
-
-    # Create database engine.
-    engine = await create_engine()
-
-    async def dispose_engine(_: web.Application) -> None:
-        await engine.dispose()
-
-    server.on_cleanup.append(dispose_engine)
-
-    # Create database session factory.
-    session_factory = create_session_factory(engine)
+    # logging.getLogger("sqlalchemy.engine").setLevel(logging.DEBUG)
+    # logging.getLogger("sqlalchemy.pool").setLevel(logging.DEBUG)
 
     # Create database repositories.
-    submission_repository = SubmissionRepository(session_factory)
-    object_repository = ObjectRepository(session_factory)
-    registration_repository = RegistrationRepository(session_factory)
-    file_repository = FileRepository(session_factory)
-    api_key_repository = ApiKeyRepository(session_factory)
+    submission_repository = SubmissionRepository()
+    object_repository = ObjectRepository()
+    registration_repository = RegistrationRepository()
+    file_repository = FileRepository()
+    api_key_repository = ApiKeyRepository()
 
     # Create database services.
     submission_service = SubmissionService(submission_repository, registration_repository)
@@ -108,7 +169,6 @@ async def init() -> web.Application:
     # Create project service.
     project_service: ProjectService | None = None
 
-    config = deployment_config()
     if config.DEPLOYMENT == DEPLOYMENT_NBIS:
         project_service = NbisProjectService()
     elif config.DEPLOYMENT == DEPLOYMENT_CSC:
@@ -119,7 +179,10 @@ async def init() -> web.Application:
 
     # Create service handlers.
     def _create_handler(handler: ServiceHandlerType) -> ServiceHandlerType:
-        server.on_cleanup.append(lambda _: handler.close())
+        async def _shutdown() -> None:
+            await handler.close()
+
+        app.add_event_handler("shutdown", _shutdown)
         return handler
 
     metax_handler = None
@@ -142,9 +205,8 @@ async def init() -> web.Application:
     rems_handler = _create_handler(RemsServiceHandler())
     auth_handler = _create_handler(AuthServiceHandler())
 
-    # Create API handlers.
+    # Provide services for FastAPI routes.
     services = RESTAPIServices(
-        session_factory=session_factory,
         # Database services.
         submission=submission_service,
         object=object_service,
@@ -156,6 +218,7 @@ async def init() -> web.Application:
         file_provider=file_provider_service,
     )
 
+    # Provide service handlers for FastAPI routes.
     handlers = RESTAPIServiceHandlers(
         datacite=datacite_handler,
         pid=pid_handler,
@@ -165,7 +228,7 @@ async def init() -> web.Application:
         keystone=keystone_handler,
         auth=auth_handler,
         admin=admin_handler,
-        database=DatabaseHealthHandler(engine),
+        database=DatabaseHealthHandler(lambda: state.session_factory),
     )
 
     _object = ObjectAPIHandler(services, handlers)
@@ -176,89 +239,225 @@ async def init() -> web.Application:
     _health = HealthAPIHandler(services, handlers)
     _key = KeyAPIHandler(services, handlers)
     _user = UserAPIHandler(services, handlers)
-
-    # Make AccessService available to authorization middleware.
-    api[AUTH_SERVICE] = auth_service
-
-    # Configure API routes.
-    api_routes = [
-        web.post("/submit/{workflow}", _object.add_submission),
-        web.patch("/submit/{workflow}/{submissionId}", _object.update_submission),
-        web.delete("/submit/{workflow}/{submissionId}", _object.delete_submission),
-        web.head("/submit/{workflow}/{submissionId}", _object.is_submission),
-        web.get("/submissions/{submissionId}/objects", _object.list_objects),
-        web.get("/submissions/{submissionId}/objects/docs", _object.get_objects),
-        # Submissions requests.
-        web.get("/submissions", _submission.get_submissions),
-        web.post("/submissions", _submission.post_submission),  # TODO(improve): deprecate endpoint
-        web.get("/submissions/{submissionId}", _submission.get_submission),
-        web.get("/submissions/{submissionId}/files", _submission.get_submission_files),
-        web.get("/submissions/{submissionId}/registrations", _submission.get_registrations),
-        web.patch("/submissions/{submissionId}", _submission.patch_submission),  # TODO(improve): deprecate endpoint
-        web.delete("/submissions/{submissionId}", _submission.delete_submission),  # TODO(improve): deprecate endpoint
-        web.post("/submissions/{submissionId}/ingest", _submission.post_data_ingestion),
-        # User requests.
-        web.get("/users", _user.get_user),
-        # Publish requests.
-        web.patch("/publish/{submissionId}", _publish_submission.publish_submission),
-        # Key requests.
-        web.post("/api/keys", _key.post_api_key),
-        web.delete("/api/keys", _key.delete_api_key),
-        web.get("/api/keys", _key.get_api_keys),
-        # File requests.
-        web.get("/buckets", _file.get_project_buckets),
-        web.get("/buckets/{bucket}/files", _file.get_files_in_bucket),
-        web.put("/buckets/{bucket}", _file.grant_access_to_bucket),
-        web.head("/buckets/{bucket}", _file.check_bucket_access),
-        # REMS.
-        web.get("/rems", _rems.get_organisations),
-    ]
-
-    api.add_routes(api_routes)
-    server.add_subapp(API_PREFIX, api)
-    LOG.info("API configurations and routes loaded")
-
     _auth = AuthAPIHandler(auth_handler)
-    auth_routes = get_auth_routes(_auth, config.DEPLOYMENT)
-    server.add_routes(auth_routes)
-    LOG.info("AAI routes loaded")
 
-    health_routes = [
-        web.get("/health", _health.get_health_status),
-    ]
-    server.add_routes(health_routes)
-    LOG.info("Health routes loaded")
+    # API router (authorization required).
+    #
 
-    if swagger_static_path.exists():
-        swagger_handler = html_handler_factory(swagger_static_path)
-        server.router.add_get("/swagger", swagger_handler)
-        LOG.info("Swagger routes loaded")
+    api_router = APIRouter(prefix=API_PREFIX)
 
-    return server
+    openapi_multipart = {
+        "requestBody": {
+            "content": {"multipart/form-data": {"schema": {"type": "object"}}},
+            "required": True,
+        }
+    }
+
+    submission_tag: list[str | Enum] = ["Submission"]
+    key_tag: list[str | Enum] = ["Key"]
+    bucket_tag: list[str | Enum] = ["Bucket"]
+    rems_tag: list[str | Enum] = ["Rems"]
+    user_tag: list[str | Enum] = ["User"]
+
+    # Submit routes.
+    api_router.add_api_route(
+        "/submit/{workflow}", _object.add_submission, methods=POST, tags=submission_tag, openapi_extra=openapi_multipart
+    )
+    api_router.add_api_route(
+        "/submit/{workflow}/{submissionId}",
+        _object.update_submission,
+        methods=PATCH,
+        tags=submission_tag,
+        openapi_extra=openapi_multipart,
+    )
+    api_router.add_api_route(
+        "/submit/{workflow}/{submissionId}",
+        _object.delete_submission,
+        methods=DELETE,
+        tags=submission_tag,
+    )
+    api_router.add_api_route(
+        "/submit/{workflow}/{submissionId}",
+        _object.is_submission,
+        methods=HEAD,
+        tags=submission_tag,
+        summary="Check if submission exists",
+    )
+    # Submissions routes.
+    api_router.add_api_route(
+        "/submissions/{submissionId}/objects", _object.list_objects, methods=GET, tags=submission_tag
+    )
+    api_router.add_api_route(
+        "/submissions/{submissionId}/objects/docs", _object.get_objects, methods=GET, tags=submission_tag
+    )
+    api_router.add_api_route(
+        "/submissions",
+        _submission.list_submissions,
+        methods=GET,
+        response_model=PaginatedSubmissions,
+        tags=submission_tag,
+    )
+    api_router.add_api_route(
+        "/submissions",
+        _submission.create_submission,
+        methods=POST,
+        status_code=status.HTTP_201_CREATED,
+        tags=submission_tag,
+    )
+    api_router.add_api_route(
+        "/submissions/{submissionId}", _submission.get_submission, methods=GET, tags=submission_tag
+    )
+    api_router.add_api_route(
+        "/submissions/{submissionId}/files", _submission.get_submission_files, methods=GET, tags=submission_tag
+    )
+    api_router.add_api_route(
+        "/submissions/{submissionId}/registrations", _submission.get_registrations, methods=GET, tags=submission_tag
+    )
+    api_router.add_api_route(
+        "/submissions/{submissionId}", _submission.update_submission, methods=PATCH, tags=submission_tag
+    )  # TODO(improve): consider deprecating endpoint
+    api_router.add_api_route(
+        "/submissions/{submissionId}",
+        _submission.delete_submission,
+        methods=DELETE,
+        tags=submission_tag,
+    )  # TODO(improve): consider deprecating endpoint
+
+    # User routes.
+    api_router.add_api_route("/users", _user.get_user, methods=GET, tags=user_tag, summary="Get user information")
+
+    # Publish routes.
+    api_router.add_api_route(
+        "/publish/{submissionId}", _publish_submission.publish_submission, methods=PATCH, tags=submission_tag
+    )
+
+    # Key routes.
+    api_router.add_api_route("/api/keys", _key.create_api_key, methods=POST, tags=key_tag)
+    api_router.add_api_route("/api/keys", _key.delete_api_key, methods=DELETE, tags=key_tag)
+    api_router.add_api_route("/api/keys", _key.get_api_keys, methods=GET, tags=key_tag)
+
+    # File routes.
+    api_router.add_api_route("/buckets", _file.get_project_buckets, methods=GET, tags=bucket_tag)
+    api_router.add_api_route("/buckets/{bucket}/files", _file.get_files_in_bucket, methods=GET, tags=bucket_tag)
+    api_router.add_api_route("/buckets/{bucket}", _file.grant_access_to_bucket, methods=["PUT"], tags=bucket_tag)
+    api_router.add_api_route("/buckets/{bucket}", _file.check_bucket_access, methods=HEAD, tags=bucket_tag)
+
+    # REMS routes.
+    api_router.add_api_route("/rems", _rems.get_organisations, methods=GET, tags=rems_tag)
+
+    # Auth router (authorization not required).
+    #
+
+    auth_router = APIRouter(tags=["Authentication"])
+    for route in get_auth_routes(_auth, config.DEPLOYMENT):
+        auth_router.add_api_route(route.path, route.endpoint, methods=route.methods)
+
+    # Health router (authorization not required).
+    #
+
+    health_router = APIRouter(tags=["Health"])
+    health_router.add_api_route("/health", _health.get_health_status, methods=GET)
+
+    # OpenAPI router (authorization not required).
+    #
+
+    openapi_router = APIRouter()
+
+    # OpenAPI redirect.
+    @openapi_router.get("/", include_in_schema=False)
+    async def redirect_to_docs() -> RedirectResponse:
+        return RedirectResponse(url="/docs", status_code=status.HTTP_302_FOUND)
+
+    # Add routers.
+
+    app.include_router(api_router)
+    app.include_router(auth_router)
+    app.include_router(health_router)
+    app.include_router(openapi_router)
+
+    LOG.info("FastAPI application initialized with all routes.")
+
+    # Add OIDC security scheme to API router endpoints.
+
+    def custom_openapi() -> dict[str, Any]:
+        """Add OIDC security scheme to API router endpoints."""
+        if app.openapi_schema:
+            # Return cached schema.
+            return app.openapi_schema
+
+        # Generate default schema.
+        openapi_schema = get_openapi(
+            title=title,
+            version=version,
+            description=description,
+            routes=app.routes,
+        )
+
+        # Add security scheme.
+        openapi_schema["components"]["securitySchemes"] = {
+            "bearerAuth": {
+                "type": "http",
+                "scheme": "bearer",
+            }
+        }
+
+        # Apply security scheme to API routes.
+        for _route in api_router.routes:
+            if isinstance(_route, APIRoute):
+                path = _route.path
+                methods: list[str] = list(_route.methods) or []
+                for method in methods:
+                    method = method.lower()
+                    if path in openapi_schema["paths"] and method in openapi_schema["paths"][path]:
+                        openapi_schema["paths"][path][method]["security"] = [{"oidc": []}]
+
+        app.openapi_schema = openapi_schema
+        return app.openapi_schema
+
+    app.openapi = custom_openapi  # type: ignore[method-assign]
+
+    # ASGI middleware is used to handle authentication and sessions,
+    # before any FastAPI/Starlette route is processed.
+    asgi_app: ASGIApp = app
+    if not session:
+        # Create SQLAlchemy sessions with ASGI middleware.
+        asgi_app = SessionMiddleware(asgi_app, _session_context)
+    # Authenticate users with ASGI middleware.
+    asgi_app = AuthMiddleware(asgi_app, auth_service)
+    return asgi_app
 
 
-def get_auth_routes(_auth: AuthAPIHandler, deployment: str) -> list[AbstractRouteDef]:
+class DeploymentRoute(BaseModel):
+    """Deployment specific route."""
+
+    path: str
+    methods: list[str]
+    endpoint: Any
+
+
+def get_auth_routes(_auth: AuthAPIHandler, deployment: str) -> list[DeploymentRoute]:
     """Get the authentication routes depending on deployment configuration."""
-    routes: list[AbstractRouteDef] = [
-        web.get("/aai", _auth.login),  # TODO(improve): deprecate endpoint
-        web.get("/login", _auth.login),
-        web.get("/callback", _auth.callback),
-        web.get("/logout", _auth.logout),
+    routes = [
+        DeploymentRoute(path="/aai", endpoint=_auth.login, methods=GET),
+        DeploymentRoute(path="/login", endpoint=_auth.login, methods=GET),
+        DeploymentRoute(path="/callback", endpoint=_auth.callback, methods=GET),
+        DeploymentRoute(path="/logout", endpoint=_auth.logout, methods=GET),
     ]
     if deployment == DEPLOYMENT_NBIS:
         routes = [
-            web.get("/login", _auth.login_cli),
-            web.get("/callback", _auth.callback_cli),
+            DeploymentRoute(path="/login", endpoint=_auth.login_cli, methods=GET),
+            DeploymentRoute(path="/callback", endpoint=_auth.callback_cli, methods=GET),
         ]
     return routes
 
 
 def main() -> None:
-    """Launch the server."""
+    """Launch the FastAPI server."""
     config = deployment_config()
     host = "0.0.0.0"  # nosec
     port = 5430 if config.DEPLOYMENT == DEPLOYMENT_CSC else 5431
-    web.run_app(init(), host=host, port=port, shutdown_timeout=0)
+
+    uvicorn.run(create_app(), host=host, port=port)
 
 
 if __name__ == "__main__":

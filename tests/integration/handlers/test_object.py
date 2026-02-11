@@ -3,9 +3,8 @@
 import logging
 import uuid
 
-from metadata_backend.api.json import to_json
 from tests.integration.conf import submit_url
-from tests.integration.conftest import bp_submission_data
+from tests.integration.conftest import bp_submit_multipart_data, sd_submit_multipart_data
 from tests.integration.helpers import (
     get_submission,
     submissions_url,
@@ -23,9 +22,8 @@ async def test_sd_submission(sd_client, sd_submission, sd_submission_update, pro
     submission_id = submission.submissionId
 
     # Create another submission with the same name fails.
-    async with sd_client.post(
-        f"{submit_url}/{submission.workflow.value}?projectId={project_id}", data=to_json(submission)
-    ) as resp:
+    data = sd_submit_multipart_data(submission)
+    async with sd_client.post(f"{submit_url}/{submission.workflow.value}?projectId={project_id}", data=data) as resp:
         res = await resp.json()
         assert resp.status == 400
         assert (
@@ -66,7 +64,7 @@ async def test_nbis_submission(nbis_client, bp_submission, bp_submission_update,
     submission_id = submission.submissionId
 
     # Create another submission with the same name fails.
-    submission_name, data = bp_submission_data()
+    submission_name, data = bp_submit_multipart_data()
     async with nbis_client.post(f"{submit_url}/{submission.workflow.value}", data=data) as resp:
         res = await resp.json()
         assert resp.status == 400

@@ -149,20 +149,6 @@ The development server should now be accessible at `localhost:5430`.
 If it doesn't work right away, check your settings in `.env` and restart the servers manually if you make changes to
 `.env` file.
 
-### OpenAPI Specification docs with Swagger
-
-Swagger UI for viewing the API specs is already available in the production docker image. During development, you can
-enable it by executing: `bash scripts/swagger/generate.sh`.
-
-Restart the server, and the swagger docs will be available at http://localhost:5430/swagger.
-
-**Swagger docs requirements:**
-
-- `bash`
-- `Python 3.14+`
-- `PyYaml` (installed via the development dependencies)
-- `realpath` (default Linux terminal command)
-
 ### Keeping Python requirements up to date
 
 The project Python package dependencies are automatically being kept up to date

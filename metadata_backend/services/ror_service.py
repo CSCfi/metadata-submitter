@@ -2,10 +2,10 @@
 
 import re
 from datetime import timedelta
-from typing import override
+from typing import Any, override
 
+import httpx
 from aiocache import SimpleMemoryCache, cached
-from aiohttp import ClientResponse
 from pydantic_string_url import AnyUrl
 from yarl import URL
 
@@ -49,7 +49,7 @@ class RorServiceHandler(RorService, ServiceHandler):
         params = {
             "query": '"' + organisation + '"'  # Words separated by a space are searched using OR.
         }
-        response = await self._request(method="GET", path="/organizations", params=params)
+        response: dict[str, Any] = await self._request(method="GET", path="/organizations", params=params)
 
         items = response.get("items", [])
 
@@ -84,6 +84,6 @@ class RorServiceHandler(RorService, ServiceHandler):
         return None
 
     @staticmethod
-    async def healthcheck_callback(response: ClientResponse) -> bool:
-        content = await response.text()
+    async def healthcheck_callback(response: httpx.Response) -> bool:
+        content = response.text
         return content == "OK"

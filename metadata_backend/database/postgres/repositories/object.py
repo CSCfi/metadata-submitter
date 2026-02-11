@@ -8,20 +8,11 @@ from metadata_backend.api.models.submission import SubmissionWorkflow
 from metadata_backend.api.services.accession import generate_accession
 
 from ..models import ObjectEntity
-from ..repository import SessionFactory, transaction
+from ..repository import session
 
 
 class ObjectRepository:
     """Repository for the objects table."""
-
-    def __init__(self, session_factory: SessionFactory) -> None:
-        """
-        Initialize the repository with a session factory.
-
-        Args:
-            session_factory: A factory that creates async SQLAlchemy sessions.
-        """
-        self._session_factory = session_factory
 
     async def add_object(self, entity: ObjectEntity, workflow: SubmissionWorkflow) -> str:
         """
@@ -34,14 +25,13 @@ class ObjectRepository:
         Returns:
             The object id used as the primary key value.
         """
-        async with transaction(self._session_factory) as session:
-            # Generate accession.
-            if entity.object_id is None:
-                entity.object_id = generate_accession(workflow, entity.object_type)
+        # Generate accession.
+        if entity.object_id is None:
+            entity.object_id = generate_accession(workflow, entity.object_type)
 
-            session.add(entity)
-            await session.flush()
-            return entity.object_id
+        session().add(entity)
+        await session().flush()
+        return entity.object_id
 
     async def get_object_by_id(self, object_id: str) -> ObjectEntity | None:
         """
@@ -53,10 +43,9 @@ class ObjectRepository:
         Returns:
             The object entity.
         """
-        async with transaction(self._session_factory) as session:
-            stmt = select(ObjectEntity).where(ObjectEntity.object_id == object_id)
-            result = await session.execute(stmt)
-            return result.scalar_one_or_none()
+        stmt = select(ObjectEntity).where(ObjectEntity.object_id == object_id)
+        result = await session().execute(stmt)
+        return result.scalar_one_or_none()
 
     async def get_object_by_name(self, project_id: str, name: str, object_type: str) -> ObjectEntity | None:
         """
@@ -70,14 +59,13 @@ class ObjectRepository:
         Returns:
             The object entity.
         """
-        async with transaction(self._session_factory) as session:
-            stmt = select(ObjectEntity).where(
-                ObjectEntity.name == name,
-                ObjectEntity.project_id == project_id,
-                ObjectEntity.object_type == object_type,
-            )
-            result = await session.execute(stmt)
-            return result.scalar_one_or_none()
+        stmt = select(ObjectEntity).where(
+            ObjectEntity.name == name,
+            ObjectEntity.project_id == project_id,
+            ObjectEntity.object_type == object_type,
+        )
+        result = await session().execute(stmt)
+        return result.scalar_one_or_none()
 
     async def get_object_by_id_or_name(
         self, project_id: str, object_id_or_name: str, object_type: str
@@ -146,10 +134,9 @@ class ObjectRepository:
         else:
             stmt = stmt.order_by(ObjectEntity.created.asc())
 
-        async with transaction(self._session_factory) as session:
-            result = await session.execute(stmt)
-            for row in result.scalars():
-                yield row
+        result = await session().execute(stmt)
+        for row in result.scalars():
+            yield row
 
     async def count_objects(self, submission_id: str, object_type: str | None = None) -> int:
         """
@@ -170,9 +157,8 @@ class ObjectRepository:
 
         stmt = select(func.count()).select_from(ObjectEntity).where(and_(*filters))
 
-        async with transaction(self._session_factory) as session:
-            result = await session.execute(stmt)
-            return result.scalar_one()
+        result = await session().execute(stmt)
+        return result.scalar_one()
 
     async def update_object(
         self, object_id: str, update_callback: Callable[[ObjectEntity], None]
@@ -187,12 +173,11 @@ class ObjectRepository:
         Returns:
             The updated object entity or None if the object id was not found.
         """
-        async with transaction(self._session_factory):
-            obj = await self.get_object_by_id(object_id)
-            if obj is None:
-                return None
-            update_callback(obj)
-            return obj
+        obj = await self.get_object_by_id(object_id)
+        if obj is None:
+            return None
+        update_callback(obj)
+        return obj
 
     async def delete_object_by_id(self, object_id: str) -> bool:
         """
@@ -204,10 +189,9 @@ class ObjectRepository:
         Returns:
             True if the object was deleted, False otherwise.
         """
-        async with transaction(self._session_factory) as session:
-            stmt = delete(ObjectEntity).where(ObjectEntity.object_id == object_id)
-            result = await session.execute(stmt)
-            return result.rowcount > 0  # type: ignore
+        stmt = delete(ObjectEntity).where(ObjectEntity.object_id == object_id)
+        result = await session().execute(stmt)
+        return result.rowcount > 0  # type: ignore
 
     async def delete_object_by_name(self, submission_id: str, name: str) -> bool:
         """
@@ -220,10 +204,9 @@ class ObjectRepository:
         Returns:
             True if the object was deleted, False otherwise.
         """
-        async with transaction(self._session_factory) as session:
-            stmt = delete(ObjectEntity).where(ObjectEntity.submission_id == submission_id, ObjectEntity.name == name)
-            result = await session.execute(stmt)
-            return result.rowcount > 0  # type: ignore
+        stmt = delete(ObjectEntity).where(ObjectEntity.submission_id == submission_id, ObjectEntity.name == name)
+        result = await session().execute(stmt)
+        return result.rowcount > 0  # type: ignore
 
     async def delete_object_by_id_or_name(self, submission_id: str, object_id: str) -> bool:
         """

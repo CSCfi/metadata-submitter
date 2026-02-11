@@ -3,12 +3,13 @@
 import os
 import re
 import sqlite3
-from contextlib import asynccontextmanager
 from contextvars import ContextVar
-from typing import AsyncIterator, TypeVar
+from typing import Callable
 
 from sqlalchemy import create_mock_engine, event, text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
+
+from metadata_backend.api.exceptions import SystemException
 
 from ...conf.database import database_config
 from .models import Base
@@ -58,13 +59,14 @@ async def create_engine(db_url: str | None = None) -> AsyncEngine:
     return engine
 
 
-async def is_healthy(engine: AsyncEngine) -> bool:
-    try:
-        async with engine.connect() as conn:
-            await conn.execute(text("SELECT 1"))
-        return True
-    except Exception:
-        return False
+async def is_healthy(session_factory_provider: Callable[[], SessionFactory]) -> bool:
+    session_factory = session_factory_provider()
+    async with session_factory() as _session:
+        try:
+            await _session.execute(text("SELECT 1"))
+            return True
+        except Exception:
+            return False
 
 
 def save_schema(db_url: str = "postgresql+psycopg2://") -> None:
@@ -126,44 +128,24 @@ def create_session_factory(engine: AsyncEngine) -> SessionFactory:
     Returns:
          Session factory.
     """
-    return async_sessionmaker(engine, expire_on_commit=False)
+    return async_sessionmaker(bind=engine, expire_on_commit=False)
 
 
-TRANSACTION_T = TypeVar("TRANSACTION_T")
-
+# Holds the database AsyncSession for each request in a task-local context variable. The
+# AsyncSession is added and removed from the context variable, and the transaction is managed,
+# by the SessionMiddleware. The transaction is started before the request processing beings,
+# and ended after the request processing is completed but before the response is sent back.
 _session_context: ContextVar[AsyncSession | None] = ContextVar("_session_context", default=None)
 
 
-@asynccontextmanager
-async def transaction(
-    session_factory: SessionFactory, requires_new: bool = False, rollback_new: bool = False
-) -> AsyncIterator[AsyncSession]:
+def session() -> AsyncSession:
     """
-    Transactional SQLAlchemy session.
-
-    Args:
-        session_factory: The session factory.
-        requires_new: Is a new SQLAlchemy transaction required.
-        rollback_new: If a new SQLAlchemy session is created then rollback the transaction.
+    Return an existing task-scoped AsyncSession.
     """
-    if not requires_new:
-        existing_session = _session_context.get()
-
-        if existing_session is not None:
-            # Active session.
-            yield existing_session
-            return
-
-    # Start a new session.
-    async with session_factory() as session:
-        token = _session_context.set(session)
-        try:
-            async with session.begin():
-                yield session
-                if rollback_new:
-                    await session.rollback()
-        finally:
-            _session_context.reset(token)
+    _session = _session_context.get(None)
+    if _session is None:
+        raise SystemException("No active transaction")
+    return _session
 
 
 # python -m metadata_backend.database.postgres.repository

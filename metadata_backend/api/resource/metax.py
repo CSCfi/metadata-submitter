@@ -6,7 +6,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, cast
 
-from aiohttp import ClientSession
+import httpx
 from pydantic import BaseModel, TypeAdapter
 from rdflib import Graph, Literal, Namespace
 
@@ -52,23 +52,23 @@ async def fetch_metax_mapping_languages() -> MetaxMappingLanguages:
         "http://www.lexvo.org/resources/lexvo-iso639-2.tsv",
         "http://www.lexvo.org/resources/lexvo-iso639-1.tsv",
     ]
-    async with ClientSession() as session:
+    async with httpx.AsyncClient() as client:
         for url in lexvo_urls:
-            async with session.get(url) as resp:
-                resp.raise_for_status()
-                lexvo_text = await resp.text()
-                lexvo_list = [lang.split("\t") for lang in lexvo_text.split("\n")]
-                lexvo_dict = {lang[0]: lang[1] for lang in lexvo_list[:-1]}
+            resp = await client.get(url)
+            resp.raise_for_status()
+            lexvo_text = resp.text
+            lexvo_list = [lang.split("\t") for lang in lexvo_text.split("\n")]
+            lexvo_dict = {lang[0]: lang[1] for lang in lexvo_list[:-1]}
 
             # The keys are language codes of 2 and 3 chars, and values are URLs
             iso_langs.update(lexvo_dict)
 
         # Parsing languages and their sub-tags
         iana_url = "https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry"
-        async with session.get(iana_url) as resp:
-            resp.raise_for_status()
-            lang_text = await resp.text()
-            lang_list = [lang.split("\n") for lang in lang_text.split("\n%%\n")]
+        resp = await client.get(iana_url)
+        resp.raise_for_status()
+        lang_text = resp.text
+        lang_list = [lang.split("\n") for lang in lang_text.split("\n%%\n")]
 
     # Filter languages by "type: language" to reduce noise
     # We get keys that are language codes (subtag field), and values are language names (description field)
@@ -105,10 +105,10 @@ async def fetch_metax_mapping_geo_locations() -> MetaxMappingGeoLocations:
     skos = Namespace("http://www.w3.org/2004/02/skos/core#")
     yso_namespace = "http://www.yso.fi/onto/yso"
 
-    async with ClientSession() as session:
-        async with session.get(location_url) as resp:
-            resp.raise_for_status()
-            data = await resp.text()
+    async with httpx.AsyncClient(follow_redirects=True) as client:
+        resp = await client.get(location_url)
+        resp.raise_for_status()
+        data = resp.text
 
     g = Graph()
     await asyncio.to_thread(lambda: g.parse(data=data, format="turtle"))

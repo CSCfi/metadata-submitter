@@ -6,14 +6,18 @@ import json
 import os
 import tempfile
 from pathlib import Path
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Generator
 
 import pytest
+import pytest_asyncio
+from fastapi.testclient import TestClient
 from pydantic import BaseModel
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from metadata_backend.conf.admin import AdminConfig
 from metadata_backend.conf.bigpicture import BigPictureConfig
+from metadata_backend.conf.conf import DEPLOYMENT_CSC, DEPLOYMENT_NBIS
 from metadata_backend.conf.database import DatabaseConfig
 from metadata_backend.conf.datacite import DataciteConfig
 from metadata_backend.conf.keystone import KeystoneConfig
@@ -24,12 +28,14 @@ from metadata_backend.conf.pid import CscPidConfig
 from metadata_backend.conf.rems import RemsConfig
 from metadata_backend.conf.ror import RorConfig
 from metadata_backend.conf.s3 import S3Config
+from metadata_backend.database.postgres.models import FILES_TABLE, OBJECTS_TABLE, REGISTRATIONS_TABLE, SUBMISSIONS_TABLE
 from metadata_backend.database.postgres.repositories.file import FileRepository
 from metadata_backend.database.postgres.repositories.object import ObjectRepository
 from metadata_backend.database.postgres.repositories.registration import RegistrationRepository
 from metadata_backend.database.postgres.repositories.submission import SubmissionRepository
 from metadata_backend.database.postgres.repository import (
     SessionFactory,
+    _session_context,
     create_engine,
     create_session_factory,
     get_sqllite_db_url,
@@ -38,6 +44,7 @@ from metadata_backend.database.postgres.services.file import FileService
 from metadata_backend.database.postgres.services.object import ObjectService
 from metadata_backend.database.postgres.services.registration import RegistrationService
 from metadata_backend.database.postgres.services.submission import SubmissionService
+from metadata_backend.server import create_app
 from metadata_backend.services.auth_service import DPoPHandler
 
 _engine: AsyncEngine | None = None
@@ -108,10 +115,10 @@ async def _session_start():
 
     _engine = await create_engine()
     _session_factory = create_session_factory(_engine)
-    _submission_repository = SubmissionRepository(_session_factory)
-    _object_repository = ObjectRepository(_session_factory)
-    _file_repository = FileRepository(_session_factory)
-    _registration_repository = RegistrationRepository(_session_factory)
+    _submission_repository = SubmissionRepository()
+    _object_repository = ObjectRepository()
+    _file_repository = FileRepository()
+    _registration_repository = RegistrationRepository()
 
 
 async def _session_finish():
@@ -134,6 +141,21 @@ def pytest_sessionfinish(session, exitstatus):
 @pytest.fixture
 async def session_factory() -> AsyncGenerator[SessionFactory, None]:
     yield _session_factory
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def session(session_factory):
+    async with session_factory() as session:
+        async with session.begin():
+            token = _session_context.set(session)
+            try:
+                # Delete existing rows from tables.
+                for table in [REGISTRATIONS_TABLE, FILES_TABLE, OBJECTS_TABLE, SUBMISSIONS_TABLE]:
+                    await session.execute(text(f"DELETE FROM {table}"))
+                yield session
+                await session.rollback()
+            finally:
+                _session_context.reset(token)
 
 
 # Database repository fixtures.
@@ -180,6 +202,22 @@ def file_service() -> FileService:
 @pytest.fixture
 def registration_service() -> RegistrationService:
     return RegistrationService(_registration_repository)
+
+
+@pytest.fixture
+def csc_client(monkeypatch, session) -> Generator[TestClient]:
+    monkeypatch.setenv("DEPLOYMENT", DEPLOYMENT_CSC)
+    app = create_app(session)
+    with TestClient(app) as client:
+        yield client
+
+
+@pytest.fixture
+def nbis_client(monkeypatch, session) -> Generator[TestClient]:
+    monkeypatch.setenv("DEPLOYMENT", DEPLOYMENT_NBIS)
+    app = create_app(session)
+    with TestClient(app) as client:
+        yield client
 
 
 # DPoP test fixture.

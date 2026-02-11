@@ -1,10 +1,11 @@
 """NeIC SDA Admin service."""
 
-from typing import Any, cast
+from typing import Any
 
-from aiohttp import web
+import httpx
 from yarl import URL
 
+from ..api.exceptions import UnauthorizedUserException
 from ..conf.admin import admin_config
 from ..helpers.logger import LOG
 from .service_handler import ServiceHandler
@@ -25,7 +26,7 @@ class AdminServiceHandler(ServiceHandler):
         )
 
     @staticmethod
-    def get_admin_auth_headers(req: web.Request) -> dict[str, str]:
+    def get_admin_auth_headers(req: httpx.Request) -> dict[str, str]:
         """Get authentication headers for Admin API service.
 
         :param req: HTTP request
@@ -35,9 +36,9 @@ class AdminServiceHandler(ServiceHandler):
             return admin_auth_header
         except KeyError as e:
             LOG.exception("Missing Authorization header")
-            raise web.HTTPUnauthorized(reason="User is not authorized") from e
+            raise UnauthorizedUserException("User is not authorized") from e
 
-    async def ingest_file(self, req: web.Request, data: dict[str, str]) -> None:
+    async def ingest_file(self, req: httpx.Request, data: dict[str, str]) -> None:
         """Start the ingestion of a file.
 
         :param req: HTTP request
@@ -49,7 +50,7 @@ class AdminServiceHandler(ServiceHandler):
         await self._request(method="POST", path="/file/ingest", json_data=ingestion_data, headers=admin_auth_headers)
         LOG.info("File in submission %s with path %r is being ingested", data["submissionId"], data["filepath"])
 
-    async def get_user_files(self, req: web.Request, username: str) -> list[dict[str, Any]]:
+    async def get_user_files(self, req: httpx.Request, username: str) -> list[dict[str, Any]]:
         """Return information on all the user's files in inbox.
 
         :param req: HTTP request
@@ -57,11 +58,13 @@ class AdminServiceHandler(ServiceHandler):
         :raises: HTTPInternalServerError if the file ingestion fails
         """
         admin_auth_headers = self.get_admin_auth_headers(req)
-        user_files = await self._request(method="GET", path=f"/users/{username}/files", headers=admin_auth_headers)
+        user_files: list[dict[str, Any]] = await self._request(
+            method="GET", path=f"/users/{username}/files", headers=admin_auth_headers
+        )
         LOG.info("Fetched files from inbox for user %s", username)
-        return cast(list[dict[str, Any]], user_files)
+        return user_files
 
-    async def post_accession_id(self, req: web.Request, data: dict[str, str]) -> None:
+    async def post_accession_id(self, req: httpx.Request, data: dict[str, str]) -> None:
         """Assign accession ID to a file.
 
         :param req: HTTP request
@@ -74,7 +77,7 @@ class AdminServiceHandler(ServiceHandler):
         await self._request(method="POST", path="/file/accession", json_data=accession_data, headers=admin_auth_headers)
         LOG.info("Accession ID %s assigned to file %s", accession_data["accession_id"], accession_data["filepath"])
 
-    async def create_dataset(self, req: web.Request, data: dict[str, str | list[str]]) -> None:
+    async def create_dataset(self, req: httpx.Request, data: dict[str, str | list[str]]) -> None:
         """Create dataset for user.
 
         :param req: HTTP request
@@ -86,7 +89,7 @@ class AdminServiceHandler(ServiceHandler):
         await self._request(method="POST", path="/dataset/create", json_data=dataset_data, headers=admin_auth_headers)
         LOG.info("Dataset %s has been created", dataset_data["dataset_id"])
 
-    async def release_dataset(self, req: web.Request, dataset: str) -> None:
+    async def release_dataset(self, req: httpx.Request, dataset: str) -> None:
         """Create dataset for user.
 
         :param req: HTTP request

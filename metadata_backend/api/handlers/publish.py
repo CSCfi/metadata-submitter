@@ -3,15 +3,14 @@
 import traceback
 from datetime import datetime
 
-from aiohttp import web
-from aiohttp.web import Request, Response
+from fastapi import Request
 
+from ...api.dependencies import SubmissionIdPathParam, UserDependency
 from ...conf.deployment import deployment_config
 from ...helpers.logger import LOG
 from ..exceptions import SystemException, UserException
-from ..json import to_json
 from ..models.datacite import DataCiteMetadata
-from ..models.models import File, Registration
+from ..models.models import File, Registration, SubmissionId
 from ..models.submission import Rems, Submission, SubmissionMetadata, SubmissionWorkflow
 from ..services.datacite import DataciteService
 from .restapi import RESTAPIHandler
@@ -175,28 +174,26 @@ class PublishAPIHandler(RESTAPIHandler):
                 f"Failed to publish submission '{registration.submissionId}' to Metax. Please try again later."
             ) from ex
 
-    async def publish_submission(self, req: Request) -> Response:
-        """Publish submission by validating it and registering it to public discovery services.
+    async def publish_submission(
+        self,
+        req: Request,
+        user: UserDependency,
+        submission_id: SubmissionIdPathParam,
+    ) -> SubmissionId:
+        """Publish submission, ingest data files and register submission in discovery services."""
 
-        # The publish process is designed to fail so that successful registrations are preserved
-        # while failed registrations can be retried by retrying the publish process as many
-        # times as needed. The submitter will only receive a successful response after the
-        validation and all registrations have completed successfully.
-
-        :param req: PATCH request
-        :returns: JSON response containing submission ID
-        """
-
-        submission_id = req.match_info["submissionId"]
         # Hidden parameter to allow submission to be published without files.
-        no_files = req.rel_url.query.get("no_files") == "true"
+        no_files = req.query_params.get("no_files", "").lower() == "true"
+
         submission_service = self._services.submission
         project_service = self._services.project
         file_service = self._services.file
         file_provider_service = self._services.file_provider
 
         # Check that the user can modify this submission.
-        await SubmissionAPIHandler.check_submission_modifiable(req, submission_id, submission_service, project_service)
+        await SubmissionAPIHandler.check_submission_modifiable(
+            user.user_id, submission_id, submission_service, project_service
+        )
 
         workflow = await self._services.submission.get_workflow(submission_id)
 
@@ -250,7 +247,7 @@ class PublishAPIHandler(RESTAPIHandler):
         await submission_service.publish(submission_id)
 
         LOG.info("Publishing submission with ID %r was successful.", submission_id)
-        return web.Response(body=to_json({"submissionId": submission_id}), status=200, content_type="application/json")
+        return SubmissionId(submissionId=submission_id)
 
     async def _register_submission(self, submission: Submission, datacite: DataCiteMetadata, rems: Rems) -> None:
         """

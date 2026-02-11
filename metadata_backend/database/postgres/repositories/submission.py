@@ -10,7 +10,7 @@ from metadata_backend.api.models.submission import Submission
 from metadata_backend.api.services.accession import generate_submission_accession
 
 from ..models import SubmissionEntity
-from ..repository import SessionFactory, transaction
+from ..repository import session
 
 SUB_FIELD_METADATA = "metadata"
 SUB_FIELD_REMS = "rems"
@@ -27,15 +27,6 @@ class SubmissionSort(enum.Enum):
 class SubmissionRepository:
     """Repository for the submissions table."""
 
-    def __init__(self, session_factory: SessionFactory) -> None:
-        """
-        Initialize the repository with a session factory.
-
-        Args:
-            session_factory: A factory that creates async SQLAlchemy sessions.
-        """
-        self._session_factory = session_factory
-
     async def add_submission(self, entity: SubmissionEntity) -> str:
         """
         Add a new submission entity to the database.
@@ -46,17 +37,16 @@ class SubmissionRepository:
         Returns:
             The submission id used as the primary key value.
         """
-        async with transaction(self._session_factory) as session:
-            # Validate submission document.
-            Submission.model_validate(entity.document)
+        # Validate submission document.
+        Submission.model_validate(entity.document)
 
-            # Generate accession.
-            if entity.submission_id is None:
-                entity.submission_id = generate_submission_accession(entity.workflow)
+        # Generate accession.
+        if entity.submission_id is None:
+            entity.submission_id = generate_submission_accession(entity.workflow)
 
-            session.add(entity)
-            await session.flush()
-            return entity.submission_id
+        session().add(entity)
+        await session().flush()
+        return entity.submission_id
 
     async def get_submission_by_id(self, submission_id: str) -> SubmissionEntity | None:
         """
@@ -68,10 +58,10 @@ class SubmissionRepository:
         Returns:
             The submission entity.
         """
-        async with transaction(self._session_factory) as session:
-            stmt = select(SubmissionEntity).where(SubmissionEntity.submission_id == submission_id)
-            result = await session.execute(stmt)
-            return result.scalar_one_or_none()
+        stmt = select(SubmissionEntity).where(SubmissionEntity.submission_id == submission_id)
+        result = await session().execute(stmt)
+
+        return result.scalar_one_or_none()
 
     async def get_submission_by_name(self, project_id: str, name: str) -> SubmissionEntity | None:
         """
@@ -84,12 +74,9 @@ class SubmissionRepository:
         Returns:
             The submission entity.
         """
-        async with transaction(self._session_factory) as session:
-            stmt = select(SubmissionEntity).where(
-                SubmissionEntity.name == name, SubmissionEntity.project_id == project_id
-            )
-            result = await session.execute(stmt)
-            return result.scalar_one_or_none()
+        stmt = select(SubmissionEntity).where(SubmissionEntity.name == name, SubmissionEntity.project_id == project_id)
+        result = await session().execute(stmt)
+        return result.scalar_one_or_none()
 
     async def get_submission_by_id_or_name(self, project_id: str, submission_id: str) -> SubmissionEntity | None:
         """
@@ -178,16 +165,15 @@ class SubmissionRepository:
         if is_paginated:
             stmt = stmt.offset(offset).limit(page_size)
 
-        async with transaction(self._session_factory) as session:
-            result = await session.execute(stmt)
-            submissions = result.scalars().all()
+        result = await session().execute(stmt)
+        submissions = result.scalars().all()
 
-            if is_paginated:
-                total_stmt = select(func.count()).select_from(SubmissionEntity).where(and_(*filters))
-                total_result = await session.execute(total_stmt)
-                total = total_result.scalar_one()
-            else:
-                total = len(submissions)
+        if is_paginated:
+            total_stmt = select(func.count()).select_from(SubmissionEntity).where(and_(*filters))
+            total_result = await session().execute(total_stmt)
+            total = total_result.scalar_one()
+        else:
+            total = len(submissions)
 
         return submissions, total
 
@@ -204,17 +190,16 @@ class SubmissionRepository:
         Returns:
             The updated submission entity or None if the submission id was not found.
         """
-        async with transaction(self._session_factory):
-            submission = await self.get_submission_by_id(submission_id)
+        submission = await self.get_submission_by_id(submission_id)
 
-            if submission is None:
-                return None
-            await update_callback(submission)
+        if submission is None:
+            return None
+        await update_callback(submission)
 
-            # Validate submission document.
-            Submission.model_validate(submission.document)
+        # Validate submission document.
+        Submission.model_validate(submission.document)
 
-            return submission
+        return submission
 
     async def delete_submission_by_id(self, submission_id: str) -> bool:
         """
@@ -226,10 +211,9 @@ class SubmissionRepository:
         Returns:
             True if the submission was deleted, False otherwise.
         """
-        async with transaction(self._session_factory) as session:
-            stmt = delete(SubmissionEntity).where(SubmissionEntity.submission_id == submission_id)
-            result = await session.execute(stmt)
-            return result.rowcount > 0  # type: ignore
+        stmt = delete(SubmissionEntity).where(SubmissionEntity.submission_id == submission_id)
+        result = await session().execute(stmt)
+        return result.rowcount > 0  # type: ignore
 
     async def delete_submission_by_name(self, project_id: str, name: str) -> bool:
         """
@@ -242,12 +226,9 @@ class SubmissionRepository:
         Returns:
             True if the submission was deleted, False otherwise.
         """
-        async with transaction(self._session_factory) as session:
-            stmt = delete(SubmissionEntity).where(
-                SubmissionEntity.project_id == project_id, SubmissionEntity.name == name
-            )
-            result = await session.execute(stmt)
-            return result.rowcount > 0  # type: ignore
+        stmt = delete(SubmissionEntity).where(SubmissionEntity.project_id == project_id, SubmissionEntity.name == name)
+        result = await session().execute(stmt)
+        return result.rowcount > 0  # type: ignore
 
     async def delete_submission_by_id_or_name(self, project_id: str, submission_id: str) -> bool:
         """

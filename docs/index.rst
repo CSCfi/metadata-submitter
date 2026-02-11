@@ -28,19 +28,14 @@ Out of the box the ``metadata-submitter`` offers:
 * dynamic forms based on JSON schemas and workflows;
 * simple wizard for submitting metadata.
 
-A command-line interface for validating any given XML file against a specific XSD Schema has also been implemented
-see :ref:`validate`.
-
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
    Backend <submitter>
    Frontend <frontend>
-   Metadata <metadata>
    Deployment <deploy>
    Testing  <test>
-   Validator CLI Tool <validator>
 
 
 Indices and tables

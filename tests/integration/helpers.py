@@ -1,7 +1,6 @@
 """Helper functions for the integration tests."""
 
 import hashlib
-import json
 import logging
 import os
 from typing import Any
@@ -21,9 +20,9 @@ LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
 
 
-async def patch_submission(sess: aiohttp.ClientSession, submission_id: str, data: dict[str, Any]):
+async def patch_submission(sess: aiohttp.ClientSession, submission_id: str, submission_dict: dict[str, Any]):
     """Change submission document using /submissions endpoint."""
-    async with sess.patch(f"{submissions_url}/{submission_id}", data=json.dumps(data)) as resp:
+    async with sess.patch(f"{submissions_url}/{submission_id}", json=submission_dict) as resp:
         assert resp.status == 200
         ans_patch = await resp.json()
         assert ans_patch["submissionId"] == submission_id, "submission ID error"

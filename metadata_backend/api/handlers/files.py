@@ -1,30 +1,35 @@
 """Files API handler."""
 
-from aiohttp import web
-from aiohttp.web import Request, StreamResponse
+from typing import Annotated
 
+from fastapi import HTTPException, Path, Query, Request, Response, status
+
+from ...api.dependencies import UserDependency
 from ...helpers.logger import LOG
-from ..json import to_json
-from .auth import get_authorized_user_id
+from ..services.file import FileProviderService
 from .restapi import RESTAPIHandler
+
+BucketNamePathParam = Annotated[str, Path(description="The bucket name")]
+ProjectIdQueryParam = Annotated[str, Query(alias="projectId", description="The project ID")]
 
 
 class FilesAPIHandler(RESTAPIHandler):
     """Files API handler."""
 
-    async def get_project_buckets(self, request: Request) -> StreamResponse:
-        """List all buckets in a specific project.
+    async def get_project_buckets(
+        self,
+        request: Request,
+        user: UserDependency,
+        project_id: ProjectIdQueryParam,
+    ) -> list[str]:
+        """List all buckets in a specific project."""
 
-        :param request: GET request
-        :returns: JSON response containing list of buckets
-        """
-        project_id = request.query.get("projectId")
         project_service = self._services.project
         file_service = self._services.file_provider
         keystone_service = self._handlers.keystone
 
         # Check that user is affiliated with the project.
-        user_id = get_authorized_user_id(request)
+        user_id = user.user_id
         await project_service.verify_user_project(user_id, project_id)
 
         # Get temporary user specific project scoped token.
@@ -38,41 +43,42 @@ class FilesAPIHandler(RESTAPIHandler):
 
         # Delete temporary EC2 credentials after use
         await keystone_service.delete_ec2_from_project(project_entry, credentials)
-        return web.json_response(text=to_json(buckets))
+        return buckets
 
-    async def get_files_in_bucket(self, request: Request) -> StreamResponse:
-        """List all files in a specific bucket from the file provider service.
+    async def get_files_in_bucket(
+        self,
+        user: UserDependency,
+        bucket: BucketNamePathParam,
+        project_id: ProjectIdQueryParam,
+    ) -> FileProviderService.Files:
+        """List all files in a specific bucket."""
 
-        :param request: GET request
-        :returns: JSON response containing submission ID for updated submission
-        """
-        project_id = request.query.get("projectId")
-        bucket = request.match_info["bucket"]
         project_service = self._services.project
         file_service = self._services.file_provider
 
         # Check that user is affiliated with the project.
-        user_id = get_authorized_user_id(request)
+        user_id = user.user_id
         await project_service.verify_user_project(user_id, project_id)
 
         files = await file_service.list_files_in_bucket(bucket)
         LOG.info("Retrieved %d files in bucket %s.", len(files.root), bucket)
-        return web.json_response(files.model_dump(mode="json"))
+        return files
 
-    async def grant_access_to_bucket(self, request: Request) -> StreamResponse:
-        """Grant access to a specific bucket in a project.
+    async def grant_access_to_bucket(
+        self,
+        request: Request,
+        user: UserDependency,
+        bucket: BucketNamePathParam,
+        project_id: ProjectIdQueryParam,
+    ) -> Response:
+        """Grant this service access to a specific bucket."""
 
-        :param request: PUT request
-        :returns: JSON response indicating success or failure
-        """
-        project_id = request.query.get("projectId")
-        bucket = request.match_info["bucket"]
         project_service = self._services.project
         file_provider_service = self._services.file_provider
         keystone_handler = self._handlers.keystone
 
         # Check that user is affiliated with the project.
-        user_id = get_authorized_user_id(request)
+        user_id = user.user_id
         await project_service.verify_user_project(user_id, project_id)
 
         # Get temporary user specific project scoped token.
@@ -86,29 +92,30 @@ class FilesAPIHandler(RESTAPIHandler):
 
         # Delete temporary EC2 credentials after use
         await keystone_handler.delete_ec2_from_project(project_entry, credentials)
-        return web.Response(status=200)
+        return Response(status_code=status.HTTP_200_OK)
 
-    async def check_bucket_access(self, request: Request) -> StreamResponse:
-        """Check if a specific bucket in a project is accessible.
+    async def check_bucket_access(
+        self,
+        request: Request,
+        user: UserDependency,
+        bucket: BucketNamePathParam,
+        project_id: ProjectIdQueryParam,
+    ) -> Response:
+        """Check if a specific bucket can be accessed by this service."""
 
-        :param request: HEAD request
-        :returns: Empty response with status 200 if accessible, 404 if not
-        """
-        project_id = request.query.get("projectId")
-        bucket = request.match_info["bucket"]
         project_service = self._services.project
         file_provider_service = self._services.file_provider
 
         # Check that user is affiliated with the project.
-        user_id = get_authorized_user_id(request)
+        user_id = user.user_id
         await project_service.verify_user_project(user_id, project_id)
 
         # Check that the bucket has been assigned the correct policy.
         has_access = await file_provider_service.verify_bucket_policy(bucket)
         if not has_access:
-            reason = f"Bucket {bucket} is not accessible in project {project_id}."
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
+            detail = f"Bucket {bucket} is not accessible in project {project_id}."
+            LOG.error(detail)
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=request)
 
         LOG.info("Bucket policy for bucket %s in project %s exists.", bucket, project_id)
-        return web.Response(status=200)
+        return Response(status_code=status.HTTP_200_OK)

@@ -26,8 +26,14 @@ class User(StrictBaseModel):
     projects: list["Project"] = []
 
 
+class SubmissionId(StrictBaseModel):
+    """Submission id."""
+
+    submissionId: str
+
+
 class Project(StrictBaseModel):
-    """A user project."""
+    """Project."""
 
     project_id: str
 

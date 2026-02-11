@@ -5,20 +5,11 @@ from typing import Callable, Sequence
 from sqlalchemy import select
 
 from ..models import RegistrationEntity
-from ..repository import SessionFactory, transaction
+from ..repository import session
 
 
 class RegistrationRepository:
     """Repository for the registrations table."""
-
-    def __init__(self, session_factory: SessionFactory) -> None:
-        """
-        Initialize the repository with a session factory.
-
-        Args:
-            session_factory: A factory that creates async SQLAlchemy sessions.
-        """
-        self._session_factory = session_factory
 
     async def add_registration(self, entity: RegistrationEntity) -> str:
         """
@@ -30,10 +21,9 @@ class RegistrationRepository:
         Returns:
             The submission id.
         """
-        async with transaction(self._session_factory) as session:
-            session.add(entity)
-            await session.flush()
-            return entity.submission_id
+        session().add(entity)
+        await session().flush()
+        return entity.submission_id
 
     async def get_registration(self, submission_id: str) -> RegistrationEntity | None:
         """
@@ -45,10 +35,9 @@ class RegistrationRepository:
         Returns:
             The registration entity.
         """
-        async with transaction(self._session_factory) as session:
-            stmt = select(RegistrationEntity).where(RegistrationEntity.submission_id == submission_id)
-            result = await session.execute(stmt)
-            return result.scalar_one_or_none()
+        stmt = select(RegistrationEntity).where(RegistrationEntity.submission_id == submission_id)
+        result = await session().execute(stmt)
+        return result.scalar_one_or_none()
 
     async def get_registrations(self, submission_id: str) -> Sequence[RegistrationEntity]:
         """
@@ -60,10 +49,9 @@ class RegistrationRepository:
         Returns:
             The registrations.
         """
-        async with transaction(self._session_factory) as session:
-            stmt = select(RegistrationEntity).where(RegistrationEntity.submission_id == submission_id)
-            result = await session.execute(stmt)
-            return result.scalars().all()
+        stmt = select(RegistrationEntity).where(RegistrationEntity.submission_id == submission_id)
+        result = await session().execute(stmt)
+        return result.scalars().all()
 
     async def update_registration(
         self, submission_id: str, update_callback: Callable[[RegistrationEntity], None]
@@ -78,9 +66,8 @@ class RegistrationRepository:
         Returns:
             The updated registration entity or None if the registration was not found.
         """
-        async with transaction(self._session_factory):
-            registration = await self.get_registration(submission_id)
-            if registration is None:
-                return None
-            update_callback(registration)
-            return registration
+        registration = await self.get_registration(submission_id)
+        if registration is None:
+            return None
+        update_callback(registration)
+        return registration

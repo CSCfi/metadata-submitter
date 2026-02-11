@@ -3,11 +3,11 @@
 import os
 from pathlib import Path
 
+from metadata_backend.conf.conf import API_PREFIX
+
 TEST_FILES_ROOT = Path(__file__).parent.parent / "test_files"
 
 SD_SUBMISSION = TEST_FILES_ROOT / "submission" / "submission.json"
-
-API_PREFIX = "/v1"
 
 mock_auth_url = os.getenv("OIDC_URL", "http://localhost:8000")
 
