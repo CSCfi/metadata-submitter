@@ -10,7 +10,7 @@ such as [cURL](https://curl.se/).
 The document lists the required curl commands for the submission process and briefly
 describes the purpose of each one. Detailed API specifications, including example JSON
 responses for all referenced HTTP requests, are available in the OpenAPI specification
-[OpenAPI specifications](openapi.yml).
+accessible from the root of the installed application.
 
 > **Note:** `curl` commands below include the additional `jq` command to
 > prettify the JSON response in the terminal. The `| jq` part can be
@@ -41,7 +41,8 @@ Use curl -L command to get the JWT session token (or simply paste the login url 
 curl -L "..."
 ```
 
-A JWT will be printed in the terminal or browser window. Copy it and use it for suqsequent API calls in the authorization header:
+A JWT will be printed in the terminal or browser window. Copy it and use it for suqsequent API calls in the
+authorization header:
 
 ```bash
 # Set the JWT as env variable
@@ -69,11 +70,13 @@ export TOKEN="..."
 
 ### 2. Create a new submission entity
 
-Start the submission process by creating a new submission. The submission will require all metadata related to the dataset.
+Start the submission process by creating a new submission. The submission will require all metadata related to the
+dataset.
 
 #### Submit a new Bigpicture dataset with metadata files
 
-Create a new submission by uploading all required metadata XML files with the following command. The command in this document refers to a set of test XML files available in this repository:
+Create a new submission by uploading all required metadata XML files with the following command. The command in this
+document refers to a set of test XML files available in this repository:
 
 ```bash
 export SUBMISSION_ID=$(curl --request POST "$API_URL/v1/submit/Bigpicture" \
@@ -93,7 +96,8 @@ export SUBMISSION_ID=$(curl --request POST "$API_URL/v1/submit/Bigpicture" \
 ```
 
 All XML files are validated and then added to the submission entity.
-The `SUBMISSION_ID` environment variable is automatically extracted from the response to be used in subsequent API calls.
+The `SUBMISSION_ID` environment variable is automatically extracted from the response to be used in subsequent API
+calls.
 
 ### 3. Inspect the submission
 
@@ -148,7 +152,9 @@ curl --request GET "$API_URL/v1/submissions/$SUBMISSION_ID/objects/docs?schemaTy
 
 **Other available XML files**
 
-For other schema types, replace the schema type in the url parameter (`schemaType=<HERE>`) with any of the available schema types:
+For other schema types, replace the schema type in the url parameter (`schemaType=<HERE>`) with any of the available
+schema types:
+
 - `annotation`
 - `landing_page`
 - `observation`
@@ -181,8 +187,8 @@ curl --request PATCH "$API_URL/v1/submit/Bigpicture/$SUBMISSION_ID" \
      --form "staining=@./tests/test_files/xml/bigpicture/staining.xml;type=text/xml" | jq
 ```
 
-**Note:** The submission update API call requires all necessary metadata XML files to be uploaded in the same call even if they have not been altered.
-
+**Note:** The submission update API call requires all necessary metadata XML files to be uploaded in the same call even
+if they have not been altered.
 
 If you need to remove a submission entirely, you can delete it using the submission ID:
 
@@ -191,4 +197,5 @@ curl --request DELETE "$API_URL/v1/submit/Bigpicture/$SUBMISSION_ID" \
      --header "Authorization: Bearer $TOKEN"
 ```
 
-**Warning:** This action is permanent and cannot be undone. Make sure you have the correct submission ID before executing this command.
+**Warning:** This action is permanent and cannot be undone. Make sure you have the correct submission ID before
+executing this command.

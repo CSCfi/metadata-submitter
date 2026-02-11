@@ -47,7 +47,6 @@ We do optimize for readability, and it would be awesome if you go through the co
 - Tools to help you:
   - Tox is configured to run bunch of tests: ruff, mypy, vulture;
   - Tox is also ran in our CI, so please run tox before each push to this repository;
-  - If you like things to happen in an automated manner, you can add pre-commit hook to your git workflow! Hook can be found from [scripts-folder](scripts)
   - [pre-commit-hooks](https://github.com/pre-commit/pre-commit-hooks) are configured under the `.pre-commit-config.yaml` config file.
 
 Thanks,
