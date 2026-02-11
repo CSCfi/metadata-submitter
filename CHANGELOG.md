@@ -7,6 +7,10 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ## [Unreleased]
 
+### Removed
+
+- Previously used methods and mentions of OpenAPI specification generation.
+
 ## [2026.2.0] - 2026-02-06
 
 ### Changed
