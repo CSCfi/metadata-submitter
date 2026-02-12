@@ -11,6 +11,10 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 - Previously used methods and mentions of OpenAPI specification generation.
 
+### Fixed
+
+- (users) Unauthenticated API calls will result in `401 Unauthorized` error response, not `500 Internal Server Error`
+
 ## [2026.2.0] - 2026-02-06
 
 ### Changed
