@@ -9,11 +9,23 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Removed
 
+- (users) Workflow path parameter from submit endpoints.
 - Previously used methods and mentions of OpenAPI specification generation.
 
 ### Fixed
 
 - (users) Unauthenticated API calls will result in `401 Unauthorized` error response, not `500 Internal Server Error`
+
+### Changed
+
+- Workflows are deployment specific
+- OIDC callbacks are hidden from OpenAPI docs.
+- All deployments support both web browser and cli login methods.
+- Make OIDC DPoP enabling configurable.
+
+### Added
+
+- Use mock-oauth2-server for integration tests.
 
 ## [2026.2.0] - 2026-02-06
 
