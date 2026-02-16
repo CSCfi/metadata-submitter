@@ -67,7 +67,6 @@ def prepare_file_data_bp(bp_files, datacite_files, test_datacite) -> list[tuple[
 async def test_submission_sd(csc_client):
     """Test SD submission."""
 
-    workflow = SubmissionWorkflow.SD.value
     project_id = MOCK_PROJECT_ID
 
     with SUBMISSION_JSON.open("rb") as submission_bytes_io:
@@ -79,13 +78,13 @@ async def test_submission_sd(csc_client):
 
     with patch_verify_user_project, patch_verify_authorization:
         # Check that submission does not exists.
-        response = csc_client.head(f"{API_PREFIX}/submit/{workflow}/{submission_name}?projectId={project_id}")
+        response = csc_client.head(f"{API_PREFIX}/submit/{submission_name}?projectId={project_id}")
         assert response.status_code == 404
 
         # Test create submission.
         #
 
-        response = csc_client.post(f"{API_PREFIX}/submit/{workflow}?projectId={project_id}", files=file_data)
+        response = csc_client.post(f"{API_PREFIX}/submit?projectId={project_id}", files=file_data)
         assert response.status_code == 200
         submission = Submission.model_validate(response.json())
 
@@ -125,9 +124,7 @@ async def test_submission_sd(csc_client):
 
         file_data = prepare_file_data_sd(submission_dict)
 
-        response = csc_client.patch(
-            f"{API_PREFIX}/submit/{workflow}/{submission_id}?projectId={project_id}", files=file_data
-        )
+        response = csc_client.patch(f"{API_PREFIX}/submit/{submission_id}?projectId={project_id}", files=file_data)
         assert response.status_code == 200
 
         response = csc_client.get(f"{API_PREFIX}/submissions/{submission_id}")
@@ -140,9 +137,7 @@ async def test_submission_sd(csc_client):
 
         file_data = prepare_file_data_sd({"title": submission.title, "description": submission.description})
 
-        response = csc_client.patch(
-            f"{API_PREFIX}/submit/{workflow}/{submission_id}?projectId={project_id}", files=file_data
-        )
+        response = csc_client.patch(f"{API_PREFIX}/submit/{submission_id}?projectId={project_id}", files=file_data)
         assert response.status_code == 200
 
         response = csc_client.get(f"{API_PREFIX}/submissions/{submission_id}")
@@ -152,9 +147,7 @@ async def test_submission_sd(csc_client):
         # Test set submission bucket.
 
         file_data = prepare_file_data_sd({"bucket": f"bucket_{uuid.uuid4()}"})
-        response = csc_client.patch(
-            f"{API_PREFIX}/submit/{workflow}/{submission_id}?projectId={project_id}", files=file_data
-        )
+        response = csc_client.patch(f"{API_PREFIX}/submit/{submission_id}?projectId={project_id}", files=file_data)
         assert response.status_code == 200
 
         response = csc_client.get(f"{API_PREFIX}/submissions/{submission_id}")
@@ -164,9 +157,7 @@ async def test_submission_sd(csc_client):
         # Test update of submission bucket (not allowed).
 
         file_data = prepare_file_data_sd({"bucket": f"bucket_{uuid.uuid4()}"})
-        response = csc_client.patch(
-            f"{API_PREFIX}/submit/{workflow}/{submission_id}?projectId={project_id}", files=file_data
-        )
+        response = csc_client.patch(f"{API_PREFIX}/submit/{submission_id}?projectId={project_id}", files=file_data)
         await _assert_not_allowed(response)
 
         # Test update of workflow (not allowed).
@@ -176,23 +167,18 @@ async def test_submission_sd(csc_client):
                 "workflow": SubmissionWorkflow.BP.value,
             }
         )
-        response = csc_client.patch(
-            f"{API_PREFIX}/submit/{workflow}/{submission_id}?projectId={project_id}", files=file_data
-        )
+        response = csc_client.patch(f"{API_PREFIX}/submit/{submission_id}?projectId={project_id}", files=file_data)
         await _assert_not_allowed(response)
 
         # Test update of project id (not allowed).
         file_data = prepare_file_data_sd({"projectId": f"project_{uuid.uuid4()}"})
-        response = csc_client.patch(
-            f"{API_PREFIX}/submit/{workflow}/{submission_id}?projectId={project_id}", files=file_data
-        )
+        response = csc_client.patch(f"{API_PREFIX}/submit/{submission_id}?projectId={project_id}", files=file_data)
         await _assert_not_allowed(response)
 
 
 async def test_submission_bp(nbis_client):
     """Test BigPicture submission."""
 
-    workflow = SubmissionWorkflow.BP.value
     project_id = MOCK_PROJECT_ID
     xml_config = BP_FULL_SUBMISSION_XML_OBJECT_CONFIG
 
@@ -272,13 +258,13 @@ async def test_submission_bp(nbis_client):
 
     with patch_get_user_projects, patch_verify_user_project, patch_verify_authorization:
         # Check that submission does not exists.
-        response = nbis_client.head(f"{API_PREFIX}/submit/{workflow}/{submission_name}")
+        response = nbis_client.head(f"{API_PREFIX}/submit/{submission_name}")
         assert response.status_code == 404
 
         # Test create submission.
         #
 
-        response = nbis_client.post(f"{API_PREFIX}/submit/{workflow}", files=file_data)
+        response = nbis_client.post(f"{API_PREFIX}/submit", files=file_data)
         assert response.status_code == 200
         submission = Submission.model_validate(response.json())
         submission_id = submission.submissionId
@@ -307,7 +293,7 @@ async def test_submission_bp(nbis_client):
         # Read XML files.
         file_data = prepare_file_data_bp(bp_files, datacite_files, test_datacite)
 
-        response = nbis_client.patch(f"{API_PREFIX}/submit/{workflow}/{submission_id}", files=file_data)
+        response = nbis_client.patch(f"{API_PREFIX}/submit/{submission_id}", files=file_data)
         assert response.status_code == 200
 
         response = nbis_client.get(f"{API_PREFIX}/submissions/{submission_id}")
@@ -357,7 +343,7 @@ async def test_submission_bp(nbis_client):
         file_data = prepare_file_data_bp(updated_bp_files, datacite_files, test_datacite)
 
         response = nbis_client.patch(
-            f"{API_PREFIX}/submit/{workflow}/{submission_id}",
+            f"{API_PREFIX}/submit/{submission_id}",
             files=file_data,
         )
         assert response.status_code == 200

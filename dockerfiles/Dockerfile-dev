@@ -1,5 +1,5 @@
 #=======================
-FROM ghcr.io/astral-sh/uv:python3.14-bookworm-slim AS appbase
+FROM ghcr.io/astral-sh/uv:python3.14-bookworm-slim AS base
 #=======================
 
 RUN apt-get update \
@@ -24,7 +24,7 @@ RUN uv sync --dev
 ENV PATH="/app/.venv/bin:$PATH"
 
 #=======================
-FROM appbase AS develop
+FROM base AS test
 #=======================
 
 # Copy test files so tests can be run in the dev container

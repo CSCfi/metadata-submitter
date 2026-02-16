@@ -1,0 +1,25 @@
+{
+  "tokenProvider": {
+    "keyProvider": {
+      "algorithm": "RS256"
+    }
+  },
+  "interactiveLogin": false,
+  "tokenCallbacks": [
+    {
+      "issuerId": "issuer",
+      "requestMappings": [
+        {
+          "requestParam": "code",
+          "match": ".*",
+          "claims": {
+            "sub": "mock_user@test.what",
+            "given_name": "Mock",
+            "family_name": "Family",
+            "name": "Mock Family"
+          }
+        }
+      ]
+    }
+  ]
+}

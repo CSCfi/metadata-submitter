@@ -9,7 +9,7 @@ TEST_FILES_ROOT = Path(__file__).parent.parent / "test_files"
 
 SD_SUBMISSION = TEST_FILES_ROOT / "submission" / "submission.json"
 
-mock_auth_url = os.getenv("OIDC_URL", "http://localhost:8000")
+auth_url = os.getenv("OIDC_URL", "http://localhost:8000")
 
 base_url = os.getenv("BASE_URL", "http://localhost:5430")
 nbis_base_url = os.getenv("BASE_URL", "http://localhost:5431")
@@ -24,6 +24,4 @@ mock_s3_url = f"{os.getenv('S3_ENDPOINT', 'http://localhost:8006')}"
 mock_s3_region = f"{os.getenv('S3_REGION', 'us-east-1')}"
 mock_keystone_url = os.getenv("KEYSTONE_ENDPOINT", "http://localhost:5001")
 
-mock_user_given_name = "Mock"
-mock_user_family_name = "Family"
 mock_user = "mock_user@test.what"

@@ -4,7 +4,7 @@ from fastapi import Query, Request
 from fastapi.responses import PlainTextResponse, RedirectResponse
 from starlette import status
 
-from ...services.auth_service import AuthServiceHandler
+from ...services.auth_service import OIDC_PROFILE_CLI, OIDC_PROFILE_WEB, AuthServiceHandler
 
 
 class AuthAPIHandler:
@@ -18,7 +18,8 @@ class AuthAPIHandler:
     async def login(self) -> RedirectResponse:
         """Login using the OIDC Authorization Code flow."""
 
-        auth_url = await self._service_handler.get_oidc_auth_url()
+        auth_url = await self._service_handler.get_oidc_auth_url(OIDC_PROFILE_WEB)
+
         return RedirectResponse(
             url=auth_url,
             status_code=status.HTTP_303_SEE_OTHER,
@@ -42,7 +43,7 @@ class AuthAPIHandler:
     async def login_cli(self, _: Request) -> PlainTextResponse:
         """Login a CLI user using the OIDC Authorization Code flow."""
 
-        auth_url = await self._service_handler.get_oidc_auth_url()
+        auth_url = await self._service_handler.get_oidc_auth_url(OIDC_PROFILE_CLI)
         return PlainTextResponse(content=f"\nComplete the login at:\n{auth_url}\n\n")
 
     async def callback_cli(

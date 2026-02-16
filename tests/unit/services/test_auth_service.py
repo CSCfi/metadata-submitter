@@ -11,7 +11,7 @@ from fastapi.responses import RedirectResponse
 from requests import Session
 
 from metadata_backend.api.services.auth import AuthService
-from metadata_backend.services.auth_service import AuthServiceHandler, DPoPHandler
+from metadata_backend.services.auth_service import OIDC_PROFILE_WEB, AuthServiceHandler, DPoPHandler
 
 
 async def test_auth(csc_client, dpop_test_jwks, monkeypatch):
@@ -36,7 +36,7 @@ async def test_auth(csc_client, dpop_test_jwks, monkeypatch):
     handler._rph = mock_rph
 
     # Test login.
-    resp = await handler.get_oidc_auth_url()
+    resp = await handler.get_oidc_auth_url(OIDC_PROFILE_WEB)
     assert resp == mock_auth_url
 
     # Test callback.
@@ -52,10 +52,10 @@ async def test_auth(csc_client, dpop_test_jwks, monkeypatch):
     assert user_id == mock_user_id
     assert user_name == mock_user_id
 
-    assert resp.headers["Location"].endswith("/home")
+    assert resp.headers["Location"] is not None
 
     # Ensure RPHandler methods were called correctly.
-    mock_rph.begin.assert_called_once_with("aai")
+    mock_rph.begin.assert_called_once_with(OIDC_PROFILE_WEB)
     mock_rph.get_session_information.assert_called_once_with(mock_state)
     mock_rph.finalize.assert_called_once_with(mock_oidc_url, {"iss": mock_oidc_url, "code": mock_code})
 

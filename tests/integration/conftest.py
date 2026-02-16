@@ -11,7 +11,6 @@ import re
 import uuid
 from io import BufferedReader
 from typing import Any, AsyncGenerator, Awaitable, Protocol
-from urllib.parse import urlencode
 from xml.etree import ElementTree
 
 import aiohttp
@@ -23,12 +22,10 @@ from metadata_backend.api.json import to_json, to_json_dict
 from metadata_backend.api.models.submission import Submission, SubmissionWorkflow
 from tests.integration.conf import (
     TEST_FILES_ROOT,
+    auth_url,
     base_url,
-    mock_auth_url,
     mock_s3_region,
     mock_user,
-    mock_user_family_name,
-    mock_user_given_name,
     nbis_base_url,
     submissions_url,
     submit_url,
@@ -102,7 +99,7 @@ async def sd_submission(sd_client: aiohttp.ClientSession, project_id: str) -> Su
         # Delete submission if it exists (requires ALLOW_UNSAFE=TRUE).
         # Delete by name is only supported by the new /submit endpoint.
         async with sd_client.delete(
-            f"{submit_url}/{workflow.value}/{submission.name}?projectId={submission.projectId}&unsafe=true",
+            f"{submit_url}/{submission.name}?projectId={submission.projectId}&unsafe=true",
         ) as resp:
             data = resp.content
             assert resp.status == 204
@@ -110,7 +107,7 @@ async def sd_submission(sd_client: aiohttp.ClientSession, project_id: str) -> Su
         # Post submission.
         if submit_endpoint:
             data = sd_submit_multipart_data(submission)
-            async with sd_client.post(f"{submit_url}/{workflow.value}?projectId={project_id}", data=data) as resp:
+            async with sd_client.post(f"{submit_url}?projectId={project_id}", data=data) as resp:
                 data = await resp.json()
                 assert resp.status == 200
                 return Submission.model_validate(data)
@@ -127,7 +124,6 @@ async def sd_submission(sd_client: aiohttp.ClientSession, project_id: str) -> Su
 @pytest.fixture
 async def sd_submission_update(sd_client: aiohttp.ClientSession, project_id: str) -> SubmissionUpdateCallableSD:
     """Update SD submission using the /submission or /submit endpoint."""
-    workflow = SubmissionWorkflow.SD
 
     async def _update(
         submission_id: str, submission_dict: dict[str, Any], *, submit_endpoint: bool = False
@@ -135,9 +131,7 @@ async def sd_submission_update(sd_client: aiohttp.ClientSession, project_id: str
         # Patch submission.
         if submit_endpoint:
             data = sd_submit_multipart_data(submission_dict)
-            async with sd_client.patch(
-                f"{submit_url}/{workflow.value}/{submission_id}?projectId={project_id}", data=data
-            ) as resp:
+            async with sd_client.patch(f"{submit_url}/{submission_id}?projectId={project_id}", data=data) as resp:
                 assert resp.status == 200
                 return await get_submission(sd_client, submission_id)
         else:
@@ -237,19 +231,18 @@ async def bp_submission(nbis_client: aiohttp.ClientSession, project_id: str) -> 
     Creates a submission using default XMLs. Deletes any existing submission
     with the same name.
     """
-    workflow = SubmissionWorkflow.BP
 
     async def _create() -> Submission:  # noqa
         submission_name, data = bp_submit_multipart_data()
 
         # Delete submission if it exists (requires ALLOW_UNSAFE=TRUE).
         async with nbis_client.delete(
-            f"{submit_url}/{workflow.value}/{submission_name}?&unsafe=true",
+            f"{submit_url}/{submission_name}?&unsafe=true",
         ) as resp:
             assert resp.status == 204
 
         # Post submission.
-        async with nbis_client.post(f"{submit_url}/{workflow.value}", data=data) as resp:
+        async with nbis_client.post(f"{submit_url}", data=data) as resp:
             data = await resp.json()
             assert resp.status == 200
             return Submission.model_validate(data)
@@ -262,30 +255,16 @@ async def bp_submission_update(
     nbis_client: aiohttp.ClientSession, project_id: str
 ) -> SubmissionUpdateCallableBigPicture:
     """Update BigPicture NBIS submission using the /submit endpoint."""
-    workflow = SubmissionWorkflow.BP
 
     async def _update(submission_id: str) -> Submission:  # noqa
         submission_name, data = bp_submission_update_data()
 
         # Patch submission.
-        async with nbis_client.patch(f"{submit_url}/{workflow.value}/{submission_id}", data=data) as resp:
+        async with nbis_client.patch(f"{submit_url}/{submission_id}", data=data) as resp:
             assert resp.status == 200
             return await get_submission(nbis_client, submission_id)
 
     return _update
-
-
-@pytest.fixture
-async def mock_auth():
-    """Configure mock authentication service."""
-
-    async with aiohttp.ClientSession() as client:
-        params = {
-            "sub": mock_user,
-            "family": mock_user_family_name,
-            "given": mock_user_given_name,
-        }
-        await client.get(f"{mock_auth_url}/setmock?{urlencode(params)}")
 
 
 @pytest.fixture(name="client")
@@ -296,25 +275,23 @@ async def client() -> AsyncGenerator[aiohttp.ClientSession]:
 
 
 @pytest.fixture
-async def sd_client(mock_auth) -> AsyncGenerator[aiohttp.ClientSession]:
+async def sd_client() -> AsyncGenerator[aiohttp.ClientSession]:
     """Create CSC submission client using the OIDC standard authentication flow."""
 
     async with aiohttp.ClientSession(base_url=f"{base_url}/") as client:
         # Start OIDC authentication.
         async with client.get("/login", allow_redirects=False) as resp:
             assert resp.status in (302, 303)
-            first_redirect = resp.headers["Location"]
+
+        authorize_redirect = resp.headers["Location"]
 
         # Follow the first redirect to OIDC /authorize.
-        async with client.get(first_redirect, allow_redirects=False) as resp:
+        async with client.get(authorize_redirect, allow_redirects=False) as resp:
             assert resp.status in (302, 303)
-            second_redirect = resp.headers["Location"]
+            callback_redirect = resp.headers["Location"]
 
         # Follow the second redirect to API /callback.
-        async with client.get(second_redirect, allow_redirects=False) as resp:
-            assert resp.status in (302, 303)
-
-            # Extract the JWT token from the cookie.
+        async with client.get(callback_redirect, allow_redirects=False) as resp:
             cookies = resp.cookies
             access_token = cookies.get("access_token").value
 
@@ -325,18 +302,18 @@ async def sd_client(mock_auth) -> AsyncGenerator[aiohttp.ClientSession]:
 
 
 @pytest.fixture
-async def nbis_client(mock_auth) -> AsyncGenerator[aiohttp.ClientSession]:
+async def nbis_client() -> AsyncGenerator[aiohttp.ClientSession]:
     """Create NBIS BigPicture submission client using the OIDC standard authentication flow."""
 
     async with aiohttp.ClientSession(base_url=f"{nbis_base_url}/") as client:
         # Start OIDC authentication.
-        async with client.get("/login", allow_redirects=False) as resp:
+        async with client.get("/login-cli", allow_redirects=False) as resp:
             match = re.search(r"Complete the login at:\s*(\S+)", await resp.text())
-            redirect_url = match.group(1)
+            authorize_redirect = match.group(1)
             assert resp.status == 200
 
         # Follow the redirect to OIDC /authorize.
-        async with client.get(redirect_url) as resp:
+        async with client.get(authorize_redirect) as resp:
             assert resp.status == 200
 
             # Extract the JWT token from the response.
@@ -363,7 +340,7 @@ async def project_id() -> str:
 @pytest.fixture
 async def mock_pouta_token(client) -> str:
     """Return a mock pouta access token for testing Keystone service."""
-    async with client.get(f"{mock_auth_url}/userinfo") as resp:
+    async with client.get(f"{auth_url}/userinfo") as resp:
         userinfo = await resp.json()
         return userinfo["pouta_access_token"]
 

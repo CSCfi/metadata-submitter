@@ -13,7 +13,6 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.routing import APIRoute
-from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.types import ASGIApp
 
@@ -41,7 +40,6 @@ from .conf.conf import (
     DEPLOYMENT_NBIS,
 )
 from .conf.deployment import deployment_config
-from .conf.oidc import oidc_config
 from .database.postgres.repositories.api_key import ApiKeyRepository
 from .database.postgres.repositories.file import FileRepository
 from .database.postgres.repositories.object import ObjectRepository
@@ -127,10 +125,7 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
 
     title = f"SD Submit API ({config.DEPLOYMENT})"
     version = __version__
-    description = (
-        f"Please <a href='{oidc_config().BASE_URL.rstrip('/')}/login'>login</a> "
-        f"or provide a JWT or API key bearer token to use the Submission endpoints."
-    )
+    description = "Please login or provide a JWT or API key bearer token to use the Submission endpoints."
 
     app = FastAPI(
         title=title,
@@ -261,23 +256,23 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
 
     # Submit routes.
     api_router.add_api_route(
-        "/submit/{workflow}", _object.add_submission, methods=POST, tags=submission_tag, openapi_extra=openapi_multipart
+        "/submit", _object.add_submission, methods=POST, tags=submission_tag, openapi_extra=openapi_multipart
     )
     api_router.add_api_route(
-        "/submit/{workflow}/{submissionId}",
+        "/submit/{submissionId}",
         _object.update_submission,
         methods=PATCH,
         tags=submission_tag,
         openapi_extra=openapi_multipart,
     )
     api_router.add_api_route(
-        "/submit/{workflow}/{submissionId}",
+        "/submit/{submissionId}",
         _object.delete_submission,
         methods=DELETE,
         tags=submission_tag,
     )
     api_router.add_api_route(
-        "/submit/{workflow}/{submissionId}",
+        "/submit/{submissionId}",
         _object.is_submission,
         methods=HEAD,
         tags=submission_tag,
@@ -349,8 +344,13 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
     #
 
     auth_router = APIRouter(tags=["Authentication"])
-    for route in get_auth_routes(_auth, config.DEPLOYMENT):
-        auth_router.add_api_route(route.path, route.endpoint, methods=route.methods)
+    # TODO(improve): deprecate /aai endpoint
+    auth_router.add_api_route(path="/aai", endpoint=_auth.login, methods=GET, include_in_schema=False)
+    auth_router.add_api_route(path="/login", endpoint=_auth.login, methods=GET)
+    auth_router.add_api_route(path="/login-cli", endpoint=_auth.login_cli, methods=GET)
+    auth_router.add_api_route(path="/callback", endpoint=_auth.callback, methods=GET, include_in_schema=False)
+    auth_router.add_api_route(path="/callback-cli", endpoint=_auth.callback_cli, methods=GET, include_in_schema=False)
+    auth_router.add_api_route(path="/logout", endpoint=_auth.logout, methods=GET)
 
     # Health router (authorization not required).
     #
@@ -425,30 +425,6 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
     # Authenticate users with ASGI middleware.
     asgi_app = AuthMiddleware(asgi_app, auth_service)
     return asgi_app
-
-
-class DeploymentRoute(BaseModel):
-    """Deployment specific route."""
-
-    path: str
-    methods: list[str]
-    endpoint: Any
-
-
-def get_auth_routes(_auth: AuthAPIHandler, deployment: str) -> list[DeploymentRoute]:
-    """Get the authentication routes depending on deployment configuration."""
-    routes = [
-        DeploymentRoute(path="/aai", endpoint=_auth.login, methods=GET),
-        DeploymentRoute(path="/login", endpoint=_auth.login, methods=GET),
-        DeploymentRoute(path="/callback", endpoint=_auth.callback, methods=GET),
-        DeploymentRoute(path="/logout", endpoint=_auth.logout, methods=GET),
-    ]
-    if deployment == DEPLOYMENT_NBIS:
-        routes = [
-            DeploymentRoute(path="/login", endpoint=_auth.login_cli, methods=GET),
-            DeploymentRoute(path="/callback", endpoint=_auth.callback_cli, methods=GET),
-        ]
-    return routes
 
 
 def main() -> None:

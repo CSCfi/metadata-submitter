@@ -404,13 +404,14 @@ async def init() -> web.Application:
 
     global decryption_key
     connection_count = 10
-    async with ClientSession() as session:
+    async with ClientSession():
         while connection_count > 0:
             connection_count = connection_count - 1
             try:
-                async with session.get(mock_auth_url + "/keyset") as resp:
-                    data = await resp.json()
-                    decryption_key = data["keys"][0]
+                pass
+                # async with session.get(mock_auth_url + "/keyset") as resp:
+                #     data = await resp.json()
+                #     decryption_key = data["keys"][0]
             except client_exceptions.ClientConnectorError:
                 LOG.warning("Failed to connect to mockauth, trying again")
                 time.sleep(2)

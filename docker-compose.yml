@@ -3,7 +3,7 @@ services:
     build:
       dockerfile: ./dockerfiles/Dockerfile-dev
       context: .
-      target: develop
+      target: test
     image: cscfi/metadata-submitter-dev
     profiles:
       - ci
@@ -20,14 +20,15 @@ services:
       retries: 10
       start_period: 30s
     environment:
-      - "BASE_URL=${BASE_URL}"
       - "DEPLOYMENT=CSC"
       - "OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET}"
       - "OIDC_CLIENT_ID=${OIDC_CLIENT_ID}"
       - "OIDC_URL=${OIDC_URL}"
-      - "OIDC_URL_TEST=${OIDC_URL_TEST}"
+      - "BASE_URL=http://localhost:5430"
+      - "OIDC_REDIRECT_URL=${OIDC_REDIRECT_URL}"
       - "OIDC_SECURE_COOKIE=${OIDC_SECURE_COOKIE}"
-      - "REDIRECT_URL=${REDIRECT_URL}"
+      - "OIDC_VERIFY_ID_TOKEN=False"
+      - "OIDC_DPOP=True"
       - "LOG_LEVEL=${LOG_LEVEL}"
       - "CSC_PID_URL=${CSC_PID_URL:?CSC_PID_URL must be defined}"
       - "CSC_PID_KEY=${CSC_PID_KEY:?CSC_PID_KEY must be defined}"
@@ -54,7 +55,7 @@ services:
     build:
       dockerfile: ./dockerfiles/Dockerfile-dev
       context: .
-      target: develop
+      target: test
     image: cscfi/metadata-submitter-dev
     profiles:
       - ci
@@ -71,14 +72,15 @@ services:
       retries: 10
       start_period: 30s
     environment:
-      - "BASE_URL=http://localhost:5431"
       - "DEPLOYMENT=NBIS"
       - "OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET}"
       - "OIDC_CLIENT_ID=${OIDC_CLIENT_ID}"
       - "OIDC_URL=${OIDC_URL}"
-      - "OIDC_URL_TEST=${OIDC_URL_TEST}"
+      - "BASE_URL=http://localhost:5431"
+      - "OIDC_REDIRECT_URL=${OIDC_REDIRECT_URL}"
       - "OIDC_SECURE_COOKIE=${OIDC_SECURE_COOKIE}"
-      - "REDIRECT_URL=${REDIRECT_URL}"
+      - "OIDC_DPOP=False"
+      - "OIDC_VERIFY_ID_TOKEN=False"
       - "LOG_LEVEL=${LOG_LEVEL}"
       - "DATACITE_API=${DATACITE_API:?DATACITE_API must be defined}"
       - "DATACITE_USER=${DATACITE_USER:?DATACITE_USER must be defined}"
@@ -98,16 +100,22 @@ services:
       - "S3_ENDPOINT=${S3_ENDPOINT}"
       - "ADMIN_URL=${ADMIN_URL}"
       - "ALLOW_UNSAFE=${ALLOW_UNSAFE}"
+  mock-oauth2:
+    image: ghcr.io/navikt/mock-oauth2-server:latest
+    environment:
+      JSON_CONFIG_PATH: /config/mock-auth.json
+      PORT: 8001
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ./tests/integration/mock-auth.json:/config/mock-auth.json:ro
   mockauth:
     build:
       dockerfile: ./dockerfiles/Dockerfile-dev
       context: .
-      target: appbase
+      target: base
     image: cscfi/metadata-submitter-dev
     environment:
       - "LOG_LEVEL=${LOG_LEVEL}"
-      - "OIDC_URL=${OIDC_URL}"
-      - "OIDC_URL_TEST=${OIDC_URL}"
       - "KEYSTONE_ENDPOINT=${KEYSTONE_ENDPOINT}"
     hostname: mockauth
     profiles:
@@ -116,6 +124,8 @@ services:
       - dev
       - demo
     depends_on:
+      mock-oauth2:
+        condition: service_started
       mockkeystone:
         condition: service_healthy
     healthcheck:
@@ -126,12 +136,12 @@ services:
       start_period: 10s
     volumes:
       - ./tests/integration/mock_auth.py:/mock_auth.py
-    entrypoint: [ "python", "/mock_auth.py", "0.0.0.0", "8000" ]
+    entrypoint: [ "uv", "run", "/mock_auth.py" ]
   mockadmin:
     build:
       dockerfile: ./dockerfiles/Dockerfile-dev
       context: .
-      target: appbase
+      target: base
     image: cscfi/metadata-submitter-dev
     environment:
       - "LOG_LEVEL=${LOG_LEVEL}"

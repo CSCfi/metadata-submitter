@@ -23,7 +23,7 @@ async def test_sd_submission(sd_client, sd_submission, sd_submission_update, pro
 
     # Create another submission with the same name fails.
     data = sd_submit_multipart_data(submission)
-    async with sd_client.post(f"{submit_url}/{submission.workflow.value}?projectId={project_id}", data=data) as resp:
+    async with sd_client.post(f"{submit_url}?projectId={project_id}", data=data) as resp:
         res = await resp.json()
         assert resp.status == 400
         assert (
@@ -46,9 +46,7 @@ async def test_sd_submission(sd_client, sd_submission, sd_submission_update, pro
     assert updated_submission.title == updated_title
 
     # Delete submission.
-    async with sd_client.delete(
-        f"{submit_url}/{submission.workflow.value}/{submission_id}?projectId={project_id}"
-    ) as resp:
+    async with sd_client.delete(f"{submit_url}/{submission_id}?projectId={project_id}") as resp:
         assert resp.status == 204
 
     # Get submission using /submissions endpoint.
@@ -65,7 +63,7 @@ async def test_nbis_submission(nbis_client, bp_submission, bp_submission_update,
 
     # Create another submission with the same name fails.
     submission_name, data = bp_submit_multipart_data()
-    async with nbis_client.post(f"{submit_url}/{submission.workflow.value}", data=data) as resp:
+    async with nbis_client.post(f"{submit_url}", data=data) as resp:
         res = await resp.json()
         assert resp.status == 400
         assert (
@@ -88,7 +86,7 @@ async def test_nbis_submission(nbis_client, bp_submission, bp_submission_update,
     assert updated_submission.description == "updated_test_description"
 
     # Delete submission.
-    async with nbis_client.delete(f"{submit_url}/{submission.workflow.value}/{submission_id}") as resp:
+    async with nbis_client.delete(f"{submit_url}/{submission_id}") as resp:
         assert resp.status == 204
 
     # Get submission using /submissions endpoint.
