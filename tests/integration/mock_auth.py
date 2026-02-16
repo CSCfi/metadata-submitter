@@ -1,355 +1,338 @@
-"""Mock OAUTH2 aiohttp.web server."""
+"""
+Reverse proxy for mock-oauth2. Modifies /userinfo responses to
+inject pouta access tokens, and all responses to change issue URLs.
+Supports DPoP and acts as a DPoP termination point, validating DPoP
+proofs and forwarding requests upstream as standard Bearer token requests.
+"""
 
+import base64
+import contextlib
+import hashlib
+import json
 import logging
-import urllib
+import time
 from os import getenv
-from time import sleep, time
+from urllib.parse import urlparse, urlunparse
 
-from aiohttp import ClientSession, web
-from authlib.jose import RSAKey, jwt
+import httpx
+import jwt
+import uvicorn
+from fastapi import FastAPI, Request, Response
+from fastapi.responses import JSONResponse
 
-FORMAT = "[%(asctime)s][%(levelname)-8s](L:%(lineno)s) %(funcName)s: %(message)s"
-logging.basicConfig(format=FORMAT, datefmt="%Y-%m-%d %H:%M:%S")
+LOG = logging.getLogger("proxy")
+logging.basicConfig(level=getenv("LOG_LEVEL", "INFO"))
 
-LOG = logging.getLogger("server")
-LOG.setLevel(getenv("LOG_LEVEL", "INFO"))
+MOCK_PROXY_URL = "http://mockauth:8000"
+MOCK_PROXIED_URL = "http://mock-oauth2:8001/issuer"
+MOCK_KEYSTONE_URL = getenv("KEYSTONE_ENDPOINT")
 
+MOCK_KEYSTONE_USERNAME = "swift"
+MOCK_KEYSTONE_PASSWORD = "veryfast"
 
-def generate_token() -> tuple:
-    """Generate RSA Key pair to be used to sign token and the JWT Token itself."""
-    key = RSAKey.generate_key(is_private=True)
-    # we set no `exp` and other claims as they are optional in a real scenario these should be set
-    # See available claims here: https://www.iana.org/assignments/jwt/jwt.xhtml
-    # the important claim is the "authorities"
-    public_jwk = key.as_dict(is_private=False)
-    private_jwk = dict(key)
-
-    return (public_jwk, private_jwk)
+DPoP_REPLAY_CACHE = set()
+DPoP_SKEW = 60
 
 
-nonce: str | None = None
-jwk_pair = generate_token()
+def validate_and_terminate_dpop(request: Request, headers: dict):
+    """
+    Validates DPoP proof and converts Authorization header to Bearer.
+    Removes DPoP header before forwarding upstream.
+    """
 
-# Default user is required for frontend testing.
-DEFAULT_MOCK_SUB = "admin_user@test.what"
-DEFAULT_MOCK_GIVEN_NAME = "Admin Mock"
-DEFAULT_MOCK_FAMILY_NAME = "Admin Family"
+    auth = headers.get("authorization")
 
-mock_sub: str = DEFAULT_MOCK_SUB
-mock_given_name: str = DEFAULT_MOCK_GIVEN_NAME
-mock_family_name: str = DEFAULT_MOCK_FAMILY_NAME
+    if not auth or not auth.lower().startswith("dpop "):
+        # Not a DPoP request.
+        return
 
-mock_auth_url_docker = getenv("OIDC_URL", "http://mockauth:8000")  # called from inside docker-network
-mock_auth_url_local = getenv("OIDC_URL_TEST", "http://localhost:8000")  # called from local machine
-mock_keystone_url_docker = getenv("KEYSTONE_ENDPOINT", "http://mockkeystone:5001")
+    LOG.info("DPoP authorization header")
 
-username: str = "swift"
-password: str = "veryfast"
-project: str = "service"
-pouta_token: str = ""
+    dpop_proof = headers.get("dpop")
+    if not dpop_proof:
+        raise RuntimeError("Missing DPoP proof")
 
-header = {
-    "jku": f"{mock_auth_url_docker}/jwk",
-    "kid": "rsa1",
-    "alg": "RS256",
-    "typ": "JWT",
-}
+    access_token = auth.split(" ", 1)[1]
+
+    LOG.info("Decoding DPoP proof without verification")
+
+    try:
+        claims = jwt.decode(dpop_proof, options={"verify_signature": False})
+    except jwt.InvalidTokenError as e:
+        raise RuntimeError(f"Invalid DPoP proof: {e}")
+
+    LOG.info("Validating DPoP claims")
+
+    # Validate DPoP claims
+    if claims.get("htm") != request.method:
+        raise RuntimeError("DPoP htm mismatch")
+    if claims.get("htu") != str(request.url):
+        raise RuntimeError("DPoP htu mismatch")
+
+    def _b64url_sha256(_value: str) -> str:
+        _digest = hashlib.sha256(_value.encode()).digest()
+        return base64.urlsafe_b64encode(_digest).rstrip(b"=").decode()
+
+    if claims.get("ath") != _b64url_sha256(access_token):
+        raise RuntimeError("DPoP ath mismatch")
+
+    LOG.info("Validating DPoP replay protection")
+
+    jti = claims.get("jti")
+    if not jti:
+        raise RuntimeError("Missing jti in DPoP")
+
+    if jti in DPoP_REPLAY_CACHE:
+        raise RuntimeError("DPoP replay detected")
+
+    DPoP_REPLAY_CACHE.add(jti)
+
+    LOG.info("Validating DPoP issued-at time")
+
+    iat = claims.get("iat")
+    if not iat or abs(time.time() - iat) > DPoP_SKEW:
+        raise RuntimeError("DPoP iat outside allowed skew")
+
+    LOG.info("Terminating DPoP request")
+
+    # Terminate DPoP by converting to Bearer token and removing dpop header.
+    headers["authorization"] = f"Bearer {access_token}"
+    headers.pop("dpop", None)
+
+    LOG.info("DPoP proof validated and terminated")
+
+
+async def log_request(request: Request):
+    body = None
+    try:
+        body = await request.json()
+    except Exception:
+        try:
+            raw = await request.body()
+            body = raw.decode(errors="ignore") if raw else None
+        except Exception as ex:
+            LOG.error(f"Failed to decode request body: {str(ex)}")
+
+    LOG.info("================ Proxied request ================>")
+    LOG.info(f"Method: {request.method}")
+    LOG.info(f"URL: {request.url}")
+    LOG.info("Headers:")
+    for k, v in request.headers.items():
+        LOG.info(f"  {k}: {v}")
+    if body:
+        LOG.info(f"Body: {json.dumps(body)}")
+    LOG.info("<================ Proxied request ================")
+
+
+async def log_response(resp: httpx.Response):
+    try:
+        body = resp.json()
+    except Exception:
+        body = resp.text
+
+    LOG.info("================ Proxied response ================>")
+    LOG.info(f"Status code: {resp.status_code}")
+    LOG.info("Headers:")
+    for k, v in resp.headers.items():
+        LOG.info(f"  {k}: {v}")
+    if body:
+        if isinstance(body, dict):
+            LOG.info(f"Body: {json.dumps(body, indent=2)}")
+        else:
+            LOG.info(f"Body: {body}")
+    LOG.info("<================ Proxied response ================")
+
+
+def rewrite_issuer_urls(body: dict) -> dict:
+    """Rewrite issuer and all endpoint URLs to point to this proxy, removing '/issuer' from paths."""
+
+    body = body.copy()
+    for key in [
+        "issuer",
+        "authorization_endpoint",
+        "token_endpoint",
+        "userinfo_endpoint",
+        "revocation_endpoint",
+        "end_session_endpoint",
+        "introspection_endpoint",
+        "jwks_uri",
+    ]:
+        if key in body:
+            url = urlparse(body[key])
+            new_path = url.path.replace("/issuer", "")
+            new_url = urlunparse(urlparse(MOCK_PROXY_URL)._replace(path=new_path, query=url.query))
+            body[key] = new_url
+            LOG.info(f"Replaced '{key}' URL: {url} -> {new_url}")
+
+    return body
+
+
+def rewrite_id_token_issuer(body: dict) -> dict:
+    """Rewrite ID token issuer to point to this proxy, removing '/issuer' from paths."""
+
+    if "id_token" not in body:
+        return body
+
+    # Decode without verification.
+    claims = jwt.decode(body["id_token"], options={"verify_signature": False})
+
+    old_iss = claims.get("iss")
+    if old_iss:
+        claims["iss"] = MOCK_PROXY_URL
+        LOG.info(f"Replaced id token issuer: {old_iss} -> {MOCK_PROXY_URL}")
+
+    body["id_token"] = jwt.encode(
+        claims,
+        key="",
+        algorithm="none",
+    )
+
+    return body
 
 
 async def get_pouta_token() -> str:
-    auth_data = {
+    keystone_data = {
         "auth": {
             "identity": {
                 "methods": ["password"],
-                "password": {"user": {"domain": {"id": "default"}, "name": username, "password": password}},
+                "password": {
+                    "user": {
+                        "domain": {"id": "default"},
+                        "name": MOCK_KEYSTONE_USERNAME,
+                        "password": MOCK_KEYSTONE_PASSWORD,
+                    }
+                },
             }
         }
     }
 
-    async with ClientSession() as session:
-        async with session.post(f"{mock_keystone_url_docker}/v3/auth/tokens", json=auth_data) as resp:
-            result = await resp.json()
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            f"{MOCK_KEYSTONE_URL}/v3/auth/tokens",
+            json=keystone_data,
+        )
 
-            if "error" in result:
-                error_message = result["error"]["message"]
-                raise RuntimeError(f"Keystone auth failed: {error_message}")
+    if resp.status_code >= 400:
+        raise RuntimeError(f"Keystone auth failed: {resp.text}")
 
-            return resp.headers["X-Subject-Token"]
+    LOG.info("Fetched pouta access token")
 
-
-async def setmock(req: web.Request) -> web.Response:
-    """Mock OIDC claims."""
-    global mock_sub, mock_family_name, mock_given_name
-    mock_sub = req.query["sub"]
-    mock_family_name = req.query["family"]
-    mock_given_name = req.query["given"]
-
-    LOG.info("%s: %s, %s, %s", mock_auth_url_local, mock_sub, mock_family_name, mock_given_name)
-
-    return web.HTTPOk()
+    return resp.headers["X-Subject-Token"]
 
 
-async def authorize(req: web.Request) -> web.Response:
-    """OIDC /authorize endpoint."""
-    params = {
-        "state": req.query["state"],
-        "code": "code",
+@contextlib.asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Get pouta access token from keystone."""
+
+    app.state.pouta_token = await get_pouta_token()
+
+    yield
+
+
+async def proxy_request(proxied_url: str, request: Request) -> httpx.Response:
+    await log_request(request)
+
+    headers = {k.lower(): v for k, v in request.headers.items()}
+    headers.pop("host", None)
+
+    validate_and_terminate_dpop(request, headers)
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.request(
+            request.method, proxied_url, headers=headers, params=request.query_params, content=await request.body()
+        )
+
+    await log_response(resp)
+
+    return resp
+
+
+app = FastAPI(lifespan=lifespan)
+
+
+@app.api_route("/userinfo", methods=["GET", "POST"])
+async def userinfo(request: Request) -> JSONResponse:
+    """Proxy OAUTH userinfo request to add pouta access token to userinfo."""
+
+    proxied_url = f"{MOCK_PROXIED_URL}/userinfo"
+    resp = await proxy_request(proxied_url, request)
+
+    data = resp.json()
+    data["pouta_access_token"] = request.app.state.pouta_token
+
+    LOG.info(f"Returning userinfo: {json.dumps(data)}")
+
+    return JSONResponse(
+        content=data,
+        status_code=resp.status_code,
+    )
+
+
+@app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+async def proxy(request: Request, path: str):
+    """Proxy other OAUTH requests."""
+
+    proxied_url = f"{MOCK_PROXIED_URL}/{path}"
+
+    LOG.info(f"Auth proxy request {request.method} {request.url} to {proxied_url}/")
+
+    resp = await proxy_request(proxied_url, request)
+
+    LOG.info(f"Auth proxy response status code: {resp.status_code}")
+    LOG.info(f"Auth proxy response content-type: {resp.headers.get('content-type')}")
+
+    updated_content = None
+
+    remove_headers = {
+        # Remove hop‑by‑hop headers as defined in RFC 7230 §6.1.
+        "connection",
+        "keep-alive",
+        "proxy-authenticate",
+        "proxy-authorization",
+        "te",
+        "trailer",
+        "transfer-encoding",
+        "upgrade",
+        # Remove content length header.
+        "content-length",
     }
-    global nonce
-    nonce = req.query["nonce"]
+    headers = {k: v for k, v in resp.headers.items() if k.lower() not in remove_headers}
 
-    callback_url = req.query["redirect_uri"]
-    url = f"{callback_url}?{urllib.parse.urlencode(params)}"
+    try:
+        body = resp.json()
+    except ValueError:
+        try:
+            body = json.loads(resp.text)
+        except json.JSONDecodeError:
+            body = None
 
-    LOG.info(url)
+    if body is not None:
+        try:
+            body = rewrite_issuer_urls(body)
+            body = rewrite_id_token_issuer(body)
+            updated_content = json.dumps(body).encode("utf-8")
+            LOG.info("================ Updated response body ================>")
+            LOG.info(updated_content)
+            LOG.info("<================ Updated response body ================")
+        except Exception as ex:
+            LOG.error(f"Failed to update response body: {str(ex)}")
 
-    return web.HTTPSeeOther(url)
-
-
-async def token(req: web.Request) -> web.Response:
-    """OIDC /token endpoint."""
-    import uuid
-
-    # idpyoidc is strict about iat, exp, ttl, so we can't hard code them
-    iat = int(time())
-    ttl = 3600
-    exp = iat + ttl
-    id_token = {
-        "at_hash": "fSi3VUa5i2o2SgY5gPJZgg",
-        "eduPersonAffiliation": "member;staff",
-        "sub": mock_sub,
-        "displayName": f"{mock_given_name} {mock_family_name}",
-        "iss": mock_auth_url_docker,
-        "schacHomeOrganizationType": "urn:schac:homeOrganizationType:test:other",
-        "given_name": mock_given_name,
-        "nonce": nonce,
-        "aud": "aud2",
-        "acr": f"{mock_auth_url_docker}/LoginHaka",
-        "nsAccountLock": "false",
-        "eduPersonScopedAffiliation": "staff@test.what;member@test.what",
-        "auth_time": iat,
-        "name": f"{mock_given_name} {mock_family_name}",
-        "schacHomeOrganization": "test.what",
-        "exp": exp,
-        "iat": iat,
-        "family_name": mock_family_name,
-        "email": mock_sub,
-    }
-    data = {
-        "access_token": "test",
-        "id_token": jwt.encode(header, id_token, jwk_pair[1]).decode("utf-8"),
-        "token_type": "Bearer",
-        "expires_in": ttl,
-    }
-
-    LOG.info(data)
-
-    response = web.json_response(data)
-
-    # include DPoP-Nonce in response if DPoP header present
-    if "DPoP" in req.headers:
-        # Generate fresh nonce for next request
-        response.headers["DPoP-Nonce"] = str(uuid.uuid4())
-        LOG.info("Added DPoP-Nonce to token response")
-
-    return response
+    return Response(
+        content=updated_content or resp.content,
+        status_code=resp.status_code,
+        headers=headers,
+    )
 
 
-async def jwk_response(_: web.Request) -> web.Response:
-    """Mock JSON Web Key server."""
-    keys = [jwk_pair[0]]
-    keys[0]["kid"] = "rsa1"
-    data = {"keys": keys}
-
-    LOG.info(data)
-
-    return web.json_response(data)
+@app.exception_handler(Exception)
+async def log_exceptions(request: Request, exc: Exception):
+    LOG.exception(f"Auth proxy exception {request.method} {request.url}: {str(exc)}")
+    raise exc
 
 
-async def userinfo(req: web.Request) -> web.Response:
-    """OIDC /userinfo endpoint."""
-    import uuid
-
-    user_info = {
-        "eduPersonAffiliation": "member;staff",
-        "sub": mock_sub,
-        "displayName": f"{mock_given_name} {mock_family_name}",
-        "schacHomeOrganizationType": "urn:schac:homeOrganizationType:test:other",
-        "given_name": mock_given_name,
-        "uid": mock_sub,
-        "nsAccountLock": "false",
-        "eduPersonScopedAffiliation": "staff@test.what;member@test.what",
-        "name": f"{mock_given_name} {mock_family_name}",
-        "schacHomeOrganization": "test.what",
-        "family_name": mock_family_name,
-        "email": mock_sub,
-        "pouta_access_token": pouta_token,
-        "sdSubmitProjects": "1000 2000 3000",
-        "eduperson_entitlement": [
-            "test_namespace:test_root:group1#client",
-            "test_namespace:test_root:group2#client",
-            "test_namespace:test_root:group3#client",
-        ],
-    }
-
-    LOG.info(user_info)
-
-    response = web.json_response(user_info)
-
-    # include DPoP-Nonce in response if DPoP header present
-    auth_header = req.headers.get("Authorization", "")
-    if auth_header.startswith("DPoP "):
-        # Valid DPoP-bound access token, include nonce for next request
-        response.headers["DPoP-Nonce"] = str(uuid.uuid4())
-        LOG.info("Added DPoP-Nonce to userinfo response")
-
-    return response
-
-
-async def mock_oidc_config(_: web.Request) -> web.Response:
-    """OIDC standard OIDC configuration endpoint."""
-    oidc_config_json = {
-        "issuer": mock_auth_url_docker,
-        "authorization_endpoint": f"{mock_auth_url_local}/authorize",
-        "token_endpoint": f"{mock_auth_url_docker}/token",
-        "userinfo_endpoint": f"{mock_auth_url_docker}/userinfo",
-        "jwks_uri": f"{mock_auth_url_docker}/keyset",
-        "response_types_supported": [
-            "code",
-            "id_token",
-            "token id_token",
-            "code id_token",
-            "code token",
-            "code token id_token",
-        ],
-        "subject_types_supported": ["public", "pairwise"],
-        "grant_types_supported": [
-            "authorization_code",
-            "implicit",
-            "refresh_token",
-            "urn:ietf:params:oauth:grant-type:device_code",
-        ],
-        "id_token_encryption_alg_values_supported": [
-            "RSA1_5",
-            "RSA-OAEP",
-            "RSA-OAEP-256",
-            "A128KW",
-            "A192KW",
-            "A256KW",
-            "A128GCMKW",
-            "A192GCMKW",
-            "A256GCMKW",
-        ],
-        "id_token_encryption_enc_values_supported": ["A128CBC-HS256"],
-        "id_token_signing_alg_values_supported": [
-            "RS256",
-            "RS384",
-            "RS512",
-            "HS256",
-            "HS384",
-            "HS512",
-            "ES256",
-        ],
-        "userinfo_encryption_alg_values_supported": [
-            "RSA1_5",
-            "RSA-OAEP",
-            "RSA-OAEP-256",
-            "A128KW",
-            "A192KW",
-            "A256KW",
-            "A128GCMKW",
-            "A192GCMKW",
-            "A256GCMKW",
-        ],
-        "userinfo_encryption_enc_values_supported": ["A128CBC-HS256"],
-        "userinfo_signing_alg_values_supported": [
-            "RS256",
-            "RS384",
-            "RS512",
-            "HS256",
-            "HS384",
-            "HS512",
-            "ES256",
-        ],
-        "dpop_signing_alg_values_supported": [
-            "none",
-            "RS256",
-            "RS384",
-            "RS512",
-            "HS256",
-            "HS384",
-            "HS512",
-            "ES256",
-            "ES384",
-            "ES512",
-        ],
-        "request_object_signing_alg_values_supported": [
-            "none",
-            "RS256",
-            "RS384",
-            "RS512",
-            "HS256",
-            "HS384",
-            "HS512",
-            "ES256",
-            "ES384",
-            "ES512",
-        ],
-        "token_endpoint_auth_methods_supported": [
-            "client_secret_basic",
-            "client_secret_post",
-            "client_secret_jwt",
-            "private_key_jwt",
-        ],
-        "claims_parameter_supported": True,
-        "request_parameter_supported": True,
-        "request_uri_parameter_supported": False,
-        "require_request_uri_registration": False,
-        "display_values_supported": ["page"],
-        "scopes_supported": ["openid"],
-        "response_modes_supported": ["query", "fragment", "form_post"],
-        "claims_supported": [
-            "aud",
-            "iss",
-            "sub",
-            "iat",
-            "exp",
-            "acr",
-            "auth_time",
-            "ga4gh_passport_v1",
-            "remoteUserIdentifier",
-        ],
-    }
-    return web.json_response(oidc_config_json)
-
-
-async def init() -> web.Application:
-    """Start server."""
-    app = web.Application()
-    app.router.add_get("/setmock", setmock)
-    app.router.add_get("/authorize", authorize)
-    app.router.add_post("/token", token)
-    app.router.add_get("/keyset", jwk_response)
-    app.router.add_get("/userinfo", userinfo)
-    app.router.add_get("/.well-known/openid-configuration", mock_oidc_config)
-
-    global pouta_token
-    connection_count = 10
-    async with ClientSession() as session:
-        while connection_count > 0:
-            connection_count = connection_count - 1
-            async with session.get(f"{mock_keystone_url_docker}/v3") as resp:
-                if resp.status >= 400:
-                    LOG.warning("Failed to connect to keystone, trying again")
-                    sleep(2)
-                    continue
-                if resp.status == 200:
-                    LOG.info("Keystone v3 endpoint reachable")
-
-    pouta_token = await get_pouta_token()
-
-    return app
+def main() -> None:
+    uvicorn.run(app, host="0.0.0.0", port=8000)
 
 
 if __name__ == "__main__":
-    web.run_app(init(), port=8000)
+    main()

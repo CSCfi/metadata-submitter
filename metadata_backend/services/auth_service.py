@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 import httpx
+import idpyoidc.message.oidc as oidc
 import jwt
 import ujson
 from fastapi import HTTPException
@@ -17,6 +18,7 @@ from fastapi.responses import RedirectResponse
 from idpyoidc.client.exception import OidcServiceError
 from idpyoidc.client.rp_handler import RPHandler
 from idpyoidc.exception import OidcMsgError
+from jwt import decode as jwt_decode
 from requests import Session
 from starlette import status
 from yarl import URL
@@ -25,6 +27,9 @@ from ..api.services.auth import JWT_EXPIRATION, AuthService
 from ..conf.oidc import oidc_config
 from ..helpers.logger import LOG
 from .service_handler import ServiceHandler
+
+OIDC_PROFILE_WEB = "web"
+OIDC_PROFILE_CLI = "cli"
 
 
 class AuthServiceHandler(ServiceHandler):
@@ -42,24 +47,36 @@ class AuthServiceHandler(ServiceHandler):
             healthcheck_callback=self.healthcheck_callback,
         )
 
-        self.domain = self._config.BASE_URL
-        self.redirect = self._config.REDIRECT_URL
+        self.callback_web_url = self._config.callback_web_url
+        self.callback_cli_url = self._config.callback_cli_url
+        self.redirect_url = self._config.OIDC_REDIRECT_URL
         self.client_id = self._config.OIDC_CLIENT_ID
         self.client_secret = self._config.OIDC_CLIENT_SECRET
-        self.callback_url = self._config.callback_url
         self.oidc_url = self._config.OIDC_URL.rstrip("/") + "/.well-known/openid-configuration"
         self.iss = self._config.OIDC_URL
         self.scope = self._config.OIDC_SCOPE
+        self.verify_id_token = self._config.OIDC_VERIFY_ID_TOKEN
         self.auth_method = "code"
         self._rph: RPHandler | None = None
+
+        if not self._config.OIDC_VERIFY_ID_TOKEN:
+            # Disable ID Token verification during testing.
+            oidc.verify_id_token = lambda _self, **_: jwt_decode(
+                _self.to_dict().get("id_token", ""), options={"verify_signature": False}, algorithms=["none"]
+            )
+
         # Initialize DPoP handler for RFC 9449 support
+        self.use_dpop = self._config.OIDC_DPOP
         self._dpop: DPoPHandler | None = None
 
     @property
-    def dpop(self) -> DPoPHandler:
-        if self._dpop is None:
-            self._dpop = DPoPHandler()
-        return self._dpop
+    def dpop(self) -> DPoPHandler | None:
+        if self.use_dpop:
+            if self._dpop is None:
+                self._dpop = DPoPHandler()
+            return self._dpop
+        else:
+            return None
 
     @property
     def rph(self) -> RPHandler:
@@ -67,48 +84,61 @@ class AuthServiceHandler(ServiceHandler):
             self._rph = RPHandler(self.oidc_url, client_configs=self.get_client_configs())
         return self._rph
 
-    def get_client_configs(self) -> dict[str, dict[str, Any]]:
+    def _client_config(self, callback_url: str) -> dict[str, Any]:
+        """
+
+        Create OIDC client configuration.
+
+        :param callback_url: The callback URL.
+        :return: The OIDC client configuration.
+        """
         return {
-            "aai": {
-                "issuer": self.iss,
-                "client_id": self.client_id,
-                "client_secret": self.client_secret,
-                "client_type": "oidc",
-                "redirect_uris": [self.callback_url],
-                "behaviour": {
-                    "response_types": self.auth_method.split(" "),
-                    "scope": self.scope.split(" "),
-                },
-                "add_ons": {
-                    "pkce": {
-                        "function": "idpyoidc.client.oauth2.add_on.pkce.add_support",
-                        "kwargs": {
-                            "code_challenge_length": 64,
-                            "code_challenge_method": "S256",
-                        },
+            "issuer": self.iss,
+            "client_id": self.client_id,
+            "client_secret": self.client_secret,
+            "client_type": "oidc",
+            "redirect_uris": [callback_url],
+            "behaviour": {
+                "response_types": self.auth_method.split(" "),
+                "scope": self.scope.split(" "),
+            },
+            "add_ons": {
+                "pkce": {
+                    "function": "idpyoidc.client.oauth2.add_on.pkce.add_support",
+                    "kwargs": {
+                        "code_challenge_length": 64,
+                        "code_challenge_method": "S256",
                     },
                 },
             },
         }
 
-    async def get_oidc_auth_url(self) -> str:
-        """Redirect user to AAI login.
+    def get_client_configs(self) -> dict[str, dict[str, Any]]:
+        return {
+            OIDC_PROFILE_WEB: self._client_config(self.callback_web_url),
+            OIDC_PROFILE_CLI: self._client_config(self.callback_cli_url),
+        }
 
-        :raises: HTTPInternalServerError if OIDC configuration init failed
-        :returns: OIDC Authorization URL
+    async def get_oidc_auth_url(self, oidc_profile: str) -> str:
         """
-        LOG.debug("Start login")
+        Get the OIDC authorize URL for the given profile.
+
+        :param oidc_profile: The OIDC profile.
+        :returns: The OIDC authorize URL for the given profile.
+        """
 
         # Generate authentication payload
         try:
-            rph_session_url = self.rph.begin("aai")
+            authorization_url = self.rph.begin(oidc_profile)
         except Exception as e:
             # This can be caused if config is improperly configured, and
             # idpyoidc is unable to fetch oidc configuration from the given URL
             LOG.exception("OIDC authorization request failed with: %r", e)
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
-        return str(rph_session_url)
+        # LOG.debug(f"Create OIDC authorization URL: {authorization_url}")
+
+        return str(authorization_url)
 
     async def callback(self, state: str, code: str) -> tuple[str, dict[str, Any]]:
         """Handle the OIDC callback and return application-specific JWT.
@@ -134,7 +164,8 @@ class AuthServiceHandler(ServiceHandler):
         session_info["code"] = code
 
         # Setup HTTP interception for DPoP before RPHandler.finalize()
-        self.dpop.setup_http_interception()
+        if self.use_dpop:
+            self.dpop.setup_http_interception()
 
         try:
             # finalize requests id_token and access_token with code, validates them and requests userinfo data
@@ -145,7 +176,7 @@ class AuthServiceHandler(ServiceHandler):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
         except (OidcMsgError, OidcServiceError) as e:
             # Check if this is a "use_dpop_nonce" error
-            if "use_dpop_nonce" in str(e):
+            if self.use_dpop and "use_dpop_nonce" in str(e):
                 LOG.debug("Received use_dpop_nonce error, retrying token request with server nonce")
                 try:
                     # Remove the failed state from rph to allow retry
@@ -163,7 +194,8 @@ class AuthServiceHandler(ServiceHandler):
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
         finally:
             # Clean up HTTP interception
-            self.dpop.teardown_http_interception()
+            if self.use_dpop:
+                self.dpop.teardown_http_interception()
 
         # Generate a JWT token for application authentication
         jwt_token = await AuthService.create_jwt_token_from_userinfo(session["userinfo"])
@@ -177,10 +209,9 @@ class AuthServiceHandler(ServiceHandler):
         :param userinfo: The user information dictionary
         :return: HTTPSeeOther redirect to the home page
         """
-        LOG.info("OIDC redirect to %r", f"{self.redirect}/home")
+        LOG.info("OIDC redirect to %r", f"{self.redirect_url}")
 
-        redirect_url = "/home" if self.redirect == self.domain else f"{self.redirect}/home"
-        response = RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
+        response = RedirectResponse(url=self.redirect_url, status_code=status.HTTP_303_SEE_OTHER)
 
         secure_cookie = os.environ.get("OIDC_SECURE_COOKIE", "").upper() != "FALSE"
 
@@ -218,8 +249,7 @@ class AuthServiceHandler(ServiceHandler):
         :returns: Redirect response to login page.
         """
 
-        redirect_url = "/" if self.redirect == self.domain else f"{self.redirect}/"
-        response = RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
+        response = RedirectResponse(url=self.redirect_url, status_code=status.HTTP_303_SEE_OTHER)
 
         # Delete cookies
         response.delete_cookie("access_token", path="/")

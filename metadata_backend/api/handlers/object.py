@@ -1,15 +1,15 @@
 """Object API handler."""
 
-from dataclasses import dataclass
 from typing import Annotated, AsyncGenerator, AsyncIterator, Sequence
 
-from fastapi import HTTPException, Path, Query, Request, Response, status
+from fastapi import HTTPException, Query, Request, Response, status
 from fastapi.responses import StreamingResponse
 from starlette.datastructures import UploadFile as StarletteUploadFile
 
 from ...api.dependencies import (
     SubmissionIdOrNamePathParam,
     UserDependency,
+    WorkflowDependency,
 )
 from ...database.postgres.services.submission import UnknownSubmissionUserException
 from ..exceptions import SystemException, UserException
@@ -25,40 +25,12 @@ from ..services.submission.submission import ObjectSubmission, ObjectSubmissionS
 from .restapi import RESTAPIHandler
 from .submission import SubmissionAPIHandler
 
-WorkflowNamePathParam = Annotated[SubmissionWorkflow, Path(description="The workflow name")]
 ObjectTypeFilterQueryParam = Annotated[str | None, Query(alias="objectType", description="The metadata object type")]
 SchemaTypeFilterQueryParam = Annotated[str | None, Query(alias="schemaType", description="The metadata schema type")]
 ObjectIdFilterQueryParam = Annotated[str | None, Query(alias="objectId", description="The metadata object ID")]
 ObjectNameFilterQueryParam = Annotated[str | None, Query(alias="objectName", description="The metadata object name")]
 
 ProjectIdQueryParam = Annotated[str, Query(alias="projectId", description="The project ID")]
-
-
-@dataclass(frozen=True)
-class SubmissionConfig:
-    """Service configuration for submitting metadata objects."""
-
-    add_submission_workflows: tuple[SubmissionWorkflow, ...] = (
-        SubmissionWorkflow.SD,
-        SubmissionWorkflow.BP,
-    )
-    delete_submission_workflows: tuple[SubmissionWorkflow, ...] = tuple(SubmissionWorkflow)
-    is_submission_workflows: tuple[SubmissionWorkflow, ...] = tuple(SubmissionWorkflow)
-    update_submission_workflows: tuple[SubmissionWorkflow, ...] = (
-        SubmissionWorkflow.SD,
-        SubmissionWorkflow.BP,
-    )
-    list_objects_workflows: tuple[SubmissionWorkflow, ...] = (
-        SubmissionWorkflow.BP,
-        SubmissionWorkflow.FEGA,
-    )
-    get_objects_workflows: tuple[SubmissionWorkflow, ...] = (
-        SubmissionWorkflow.BP,
-        SubmissionWorkflow.FEGA,
-    )
-
-
-SUBMISSION_CONFIG = SubmissionConfig()
 
 
 class ObjectAPIHandler(RESTAPIHandler):
@@ -77,7 +49,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         self,
         request: Request,
         user: UserDependency,
-        workflow: WorkflowNamePathParam,
+        workflow: WorkflowDependency,
         project_id: ProjectIdQueryParam = None,
     ) -> Submission:
         """Create a new submission using workflow specific documents and return the submission document."""
@@ -87,9 +59,6 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         if not project_id:
             project_id = await self._services.project.get_project_id(user_id)
-
-        if workflow not in SUBMISSION_CONFIG.add_submission_workflows:
-            raise UserException(f"Unsupported workflow: {workflow.value}")
 
         # Verify project.
         await project_service.verify_user_project(user_id, project_id)
@@ -107,7 +76,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         self,
         request: Request,
         user: UserDependency,
-        workflow: WorkflowNamePathParam,
+        workflow: WorkflowDependency,
         submission_id: SubmissionIdOrNamePathParam,
         project_id: ProjectIdQueryParam = None,
     ) -> Response:
@@ -122,9 +91,6 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         # Hidden parameter.
         unsafe = request.query_params.get("unsafe", "").lower() == "true"
-
-        if workflow not in SUBMISSION_CONFIG.delete_submission_workflows:
-            raise UserException(f"Unsupported workflow: {workflow.value}")
 
         try:
             # Check that submission is modifiable.
@@ -148,7 +114,7 @@ class ObjectAPIHandler(RESTAPIHandler):
     async def is_submission(
         self,
         user: UserDependency,
-        workflow: WorkflowNamePathParam,
+        workflow: WorkflowDependency,
         submission_id: SubmissionIdOrNamePathParam,
         project_id: ProjectIdQueryParam = None,
     ) -> Response:
@@ -160,10 +126,6 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         if not project_id:
             project_id = await self._services.project.get_project_id(user_id)
-
-        # Verify workflow.
-        if workflow not in SUBMISSION_CONFIG.is_submission_workflows:
-            raise UserException(f"Unsupported workflow: {workflow.value}")
 
         try:
             # Check that submission is retrievable.
@@ -184,7 +146,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         self,
         request: Request,
         user: UserDependency,
-        workflow: WorkflowNamePathParam,
+        workflow: WorkflowDependency,
         submission_id: SubmissionIdOrNamePathParam,
         project_id: ProjectIdQueryParam = None,
     ) -> Response:
@@ -200,9 +162,6 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         # Hidden parameter.
         unsafe = request.query_params.get("unsafe", "").lower() == "true"
-
-        if workflow not in SUBMISSION_CONFIG.update_submission_workflows:
-            raise UserException(f"Unsupported workflow: {workflow.value}")
 
         try:
             # Check that submission is modifiable.
@@ -257,10 +216,6 @@ class ObjectAPIHandler(RESTAPIHandler):
         # Get workflow and project id from the submission.
         workflow = await submission_service.get_workflow(submission_id)
 
-        # Verify workflow.
-        if workflow not in SUBMISSION_CONFIG.list_objects_workflows:
-            raise UserException(f"Unsupported workflow: {workflow.value}")
-
         if workflow == SubmissionWorkflow.BP:
             xml_config = BP_FULL_SUBMISSION_XML_OBJECT_CONFIG
         elif workflow == SubmissionWorkflow.FEGA:
@@ -300,10 +255,6 @@ class ObjectAPIHandler(RESTAPIHandler):
         )
         # Get workflow and project id from the submission.
         workflow = await submission_service.get_workflow(submission_id)
-
-        # Verify workflow.
-        if workflow not in SUBMISSION_CONFIG.get_objects_workflows:
-            raise UserException(f"Unsupported workflow: {workflow.value}")
 
         if workflow == SubmissionWorkflow.BP:
             xml_config = BP_FULL_SUBMISSION_XML_OBJECT_CONFIG

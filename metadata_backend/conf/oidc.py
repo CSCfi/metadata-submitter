@@ -2,7 +2,7 @@
 
 from urllib.parse import urljoin
 
-from pydantic import Field, computed_field
+from pydantic import Field
 from pydantic_settings import BaseSettings
 
 
@@ -11,11 +11,9 @@ class OIDCConfig(BaseSettings):
 
     model_config = {"extra": "allow"}  # Allow creation using the constructor.
 
-    BASE_URL: str = Field(description="Application URL")
+    BASE_URL: str = Field(description="Application base URL. Used when sending callback URL to the OIDC server.")
     OIDC_URL: str = Field(description="OIDC provider URL")
-    REDIRECT_URL: str = Field(
-        description="OIDC redirection URL",
-    )
+    OIDC_REDIRECT_URL: str = Field(description="The URL where the user is redirected in the OIDC callback.")
     OIDC_CLIENT_ID: str = Field(
         description="OIDC client ID",
         validation_alias="OIDC_CLIENT_ID",
@@ -26,18 +24,25 @@ class OIDCConfig(BaseSettings):
     )
     OIDC_SCOPE: str = Field(default="openid profile email", description="OIDC scopes")
     JWT_SECRET: str = Field(description="Secret key used to sign and verify JWT")
+    OIDC_DPOP: bool = Field(
+        default=False, description="Enables DPoP (Demonstration of Proof-of-Possession) for OIDC requests."
+    )
 
-    @computed_field
-    def redirect_url(self) -> str:
-        """Return redirect URL or base URL."""
+    OIDC_VERIFY_ID_TOKEN: bool = Field(
+        default=True, description="Allow unsigned ID tokens. NEVER disable in production."
+    )
 
-        return self.REDIRECT_URL or self.BASE_URL
-
-    @computed_field
-    def callback_url(self) -> str:
-        """Return callback URL based on base URL."""
+    @property
+    def callback_web_url(self) -> str:
+        """Get web callback URL."""
 
         return urljoin(self.BASE_URL, "callback")
+
+    @property
+    def callback_cli_url(self) -> str:
+        """Get CLI callback URL."""
+
+        return urljoin(self.BASE_URL, "callback-cli")
 
 
 def oidc_config() -> OIDCConfig:

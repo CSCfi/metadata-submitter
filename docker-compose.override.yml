@@ -7,9 +7,10 @@ services:
   sd-submit-api-nbis:
     ports:
       - "5431:5431"
+  mock-oauth2:
+    ports:
+      - "8001:8001"
   mockauth:
-    environment:
-      - "OIDC_URL_TEST=${OIDC_URL_TEST}"
     ports:
       - "8000:8000"
   mockkeystone:
