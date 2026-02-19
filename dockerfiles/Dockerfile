@@ -30,9 +30,10 @@ COPY --from=BUILD-BACKEND /app .
 COPY ./deploy/app.sh .
 RUN chmod +x /app/app.sh
 
-# https://manpages.debian.org/trixie/adduser/adduser.8.en.html
-RUN adduser submitter
+RUN groupadd -r -g 998 submitter \
+  && useradd -r -g 998 -u 998  -m submitter \
+  && chown -R 998:998 /app
 
 ENV PATH="/app/uv:$PATH"
-USER submitter
+USER 998
 ENTRYPOINT ["uv", "run", "metadata_submitter"]
