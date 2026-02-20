@@ -14,10 +14,12 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Fixed
 
+- Mockauth hostname issue when running integration tests in local env
 - (users) Unauthenticated API calls will result in `401 Unauthorized` error response, not `500 Internal Server Error`
 
 ### Changed
 
+- Integration tests can be run inside a dedicated container for CI purposes
 - Workflows are deployment specific
 - OIDC callbacks are hidden from OpenAPI docs.
 - All deployments support both web browser and cli login methods.
