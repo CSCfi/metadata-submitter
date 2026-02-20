@@ -21,10 +21,10 @@ services:
       start_period: 30s
     environment:
       - "DEPLOYMENT=CSC"
-      - "OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET}"
-      - "OIDC_CLIENT_ID=${OIDC_CLIENT_ID}"
-      - "OIDC_URL=${OIDC_URL}"
-      - "BASE_URL=http://localhost:5430"
+      - "OIDC_CLIENT_SECRET=${SDS_AAI_CLIENT_SECRET:-${OIDC_CLIENT_SECRET:?OIDC_CLIENT_SECRET must be defined}}"
+      - "OIDC_CLIENT_ID=${SDS_AAI_CLIENT_ID:-${OIDC_CLIENT_ID:?OIDC_CLIENT_ID must be defined}}"
+      - "OIDC_URL=${SDS_AAI_URL:-${OIDC_URL:?OIDC_URL must be defined}}"
+      - "BASE_URL=http://sd-submit-api-csc:5430"
       - "OIDC_REDIRECT_URL=${OIDC_REDIRECT_URL}"
       - "OIDC_SECURE_COOKIE=${OIDC_SECURE_COOKIE}"
       - "OIDC_VERIFY_ID_TOKEN=False"
@@ -73,10 +73,10 @@ services:
       start_period: 30s
     environment:
       - "DEPLOYMENT=NBIS"
-      - "OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET}"
-      - "OIDC_CLIENT_ID=${OIDC_CLIENT_ID}"
-      - "OIDC_URL=${OIDC_URL}"
-      - "BASE_URL=http://localhost:5431"
+      - "OIDC_CLIENT_SECRET=${LS_AAI_CLIENT_SECRET:-${OIDC_CLIENT_SECRET:?OIDC_CLIENT_SECRET must be defined}}"
+      - "OIDC_CLIENT_ID=${LS_AAI_CLIENT_ID:-${OIDC_CLIENT_ID:?OIDC_CLIENT_ID must be defined}}"
+      - "OIDC_URL=${LS_AAI_URL:-${OIDC_URL:?OIDC_URL must be defined}}"
+      - "BASE_URL=http://sd-submit-api-nbis:5431"
       - "OIDC_REDIRECT_URL=${OIDC_REDIRECT_URL}"
       - "OIDC_SECURE_COOKIE=${OIDC_SECURE_COOKIE}"
       - "OIDC_DPOP=False"
@@ -105,7 +105,11 @@ services:
     environment:
       JSON_CONFIG_PATH: /config/mock-auth.json
       PORT: 8001
-      LOG_LEVEL: DEBUG
+    profiles:
+      - ci
+      - ci_ui
+      - dev
+      - demo
     volumes:
       - ./tests/integration/mock-auth.json:/config/mock-auth.json:ro
   mockauth:
@@ -224,3 +228,30 @@ services:
       start_period: 10s
     volumes:
       - /var/lib/postgresql/data
+  integration-test-runner:
+    build:
+      dockerfile: ./dockerfiles/Dockerfile-dev
+      context: .
+      target: test
+    image: cscfi/metadata-submitter-dev
+    profiles:
+      - ci
+    environment:
+      - "CICD=true"
+      - "LOG_LEVEL=${LOG_LEVEL}"
+      - "OIDC_URL=${OIDC_URL}"
+      - "BASE_URL=http://sd-submit-api-csc:5430"
+      - "NBIS_BASE_URL=http://sd-submit-api-nbis:5431"
+      - "KEYSTONE_ENDPOINT=${KEYSTONE_ENDPOINT}"
+    command: "pytest tests/integration"
+    depends_on:
+      sd-submit-api-csc:
+        condition: service_healthy
+      sd-submit-api-nbis:
+        condition: service_healthy
+      mockauth:
+        condition: service_healthy
+      mockadmin:
+        condition: service_healthy
+      mockldap:
+        condition: service_started

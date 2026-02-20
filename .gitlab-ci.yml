@@ -37,6 +37,7 @@ unit-test:
     - docker-exec
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       changes:
         paths:
           - "metadata-backend/**/*"
@@ -47,7 +48,6 @@ unit-test:
           - "tox.ini"
           - "uv.lock"
         compare_to: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
   image: $BUILD_IMAGE
   script:
     # Install uv to /uv and tox uv tool called by pre-commit to /root/.local/bin.
@@ -64,6 +64,7 @@ integration-test:
     - sds
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       changes:
         paths:
           - "dockerfiles/**/*"
@@ -75,7 +76,6 @@ integration-test:
           - "pyproject.toml"
           - "uv.lock"
         compare_to: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
   image: $BUILD_IMAGE
   variables:
     COMPOSE_PROJECT_NAME: $CI_JOB_ID
@@ -85,21 +85,17 @@ integration-test:
   script:
     # Get secrets from Vault for testing
     - make get_ci_env
-    - rm -f docker-compose.override.yml
-    # Start containerized services on the CI runner and wait until they are healthy
-    - docker compose -f docker-compose.yml --env-file tests/integration/.env --profile ci up --build -d --wait
-    # List statuses of the containers of the current CI job
-    - docker compose -f docker-compose.yml --env-file tests/integration/.env --profile ci ps
-    # Run integration tests inside the sd-submit-api container
-    - docker compose --env-file tests/integration/.env --profile ci exec sd-submit-api-csc pytest tests/integration || export TEST_FAILED=1
-  after_script:
+    # Run integration tests with integration-test-runner service in docker-compose
+    - docker compose -f docker-compose.yml --env-file tests/integration/.env --profile ci run --build integration-test-runner || export TEST_FAILED=1
     - |
       if [ "$TEST_FAILED" = "1" ]; then
         echo "Tests failed, printing all docker-compose logs:"
         docker compose --env-file tests/integration/.env --profile ci logs
+        exit 1
       fi
+  after_script:
     # Shut down containers after the tests finish.
-    - docker compose --profile ci down -v
+    - docker compose --profile ci down -v --remove-orphans
 
 # Docker image build, scan and push pipeline
 1-build-image:

@@ -12,7 +12,7 @@ SD_SUBMISSION = TEST_FILES_ROOT / "submission" / "submission.json"
 auth_url = os.getenv("OIDC_URL", "http://localhost:8000")
 
 base_url = os.getenv("BASE_URL", "http://localhost:5430")
-nbis_base_url = os.getenv("BASE_URL", "http://localhost:5431")
+nbis_base_url = os.getenv("NBIS_BASE_URL", "http://localhost:5431")
 
 objects_url = f"{API_PREFIX}/objects"
 submissions_url = f"{API_PREFIX}/submissions"

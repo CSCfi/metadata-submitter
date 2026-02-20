@@ -103,7 +103,7 @@ make get_env  # This will prompt a login in the web browser
 
 ### Run the web service and database locally
 
-Launch both server and database with Docker by running: `docker compose up --build` (add `-d` flag to the command to run
+Launch both server and database with Docker by running: `docker compose --profile dev up --build` (add `-d` flag to the command to run
 containers in the background).
 
 Server can then be found from `http://localhost:5430`.

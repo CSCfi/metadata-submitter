@@ -110,7 +110,8 @@ async def sd_submission(sd_client: aiohttp.ClientSession, project_id: str) -> Su
             async with sd_client.post(f"{submit_url}?projectId={project_id}", data=data) as resp:
                 data = await resp.json()
                 assert resp.status == 200
-                return Submission.model_validate(data)
+                submission_id = data["submissionId"]
+                return await get_submission(sd_client, submission_id)
         else:
             async with sd_client.post(f"{submissions_url}", json=to_json_dict(submission)) as resp:
                 data = await resp.json()
@@ -285,6 +286,10 @@ async def sd_client() -> AsyncGenerator[aiohttp.ClientSession]:
 
         authorize_redirect = resp.headers["Location"]
 
+        # Replace "mockauth" hostname with "localhost" if not in CI/CD environment
+        if os.getenv("CICD") != "true":
+            authorize_redirect = authorize_redirect.replace("mockauth", "localhost")
+
         # Follow the first redirect to OIDC /authorize.
         async with client.get(authorize_redirect, allow_redirects=False) as resp:
             assert resp.status in (302, 303)
@@ -311,6 +316,10 @@ async def nbis_client() -> AsyncGenerator[aiohttp.ClientSession]:
             match = re.search(r"Complete the login at:\s*(\S+)", await resp.text())
             authorize_redirect = match.group(1)
             assert resp.status == 200
+
+        # Replace "mockauth" hostname with "localhost" if not in CI/CD environment
+        if os.getenv("CICD") != "true":
+            authorize_redirect = authorize_redirect.replace("mockauth", "localhost")
 
         # Follow the redirect to OIDC /authorize.
         async with client.get(authorize_redirect) as resp:

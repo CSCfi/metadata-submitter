@@ -38,25 +38,23 @@ async def publish_submission(sess: aiohttp.ClientSession, submission_id: str, *,
     """Publish submission."""
     async with sess.patch(f"{publish_url}/{submission_id}?no_files={str(no_files).lower()}") as resp:
         result = await resp.json()
-        assert resp.status == 200
+        assert resp.status == 200, f"Publish failed with status {resp.status}: {result}"
         assert result["submissionId"] == submission_id
 
 
 async def get_submission(sess: aiohttp.ClientSession, submission_id: str) -> Submission:
     """Get submission document with the given submission id."""
-
     async with sess.get(f"{submissions_url}/{submission_id}") as resp:
         data = await resp.json()
-        assert resp.status == 200
+        assert resp.status == 200, f"Expected status 200, got {resp.status}: {data}"
         return Submission.model_validate(data)
 
 
 async def get_objects(sess: aiohttp.ClientSession, submission_id: str) -> Objects:
     """Get submission objects with the given submission id."""
-
     async with sess.get(f"{submissions_url}/{submission_id}/objects") as resp:
         data = await resp.json()
-        assert resp.status == 200
+        assert resp.status == 200, f"Expected status 200, got {resp.status}: {data}"
         return Objects.model_validate(data)
 
 
@@ -87,10 +85,9 @@ async def get_docs(
 
 async def get_registrations(sess: aiohttp.ClientSession, submission_id: str) -> Registration:
     """Get registrations with the given submission id."""
-
     async with sess.get(f"{submissions_url}/{submission_id}/registrations") as resp:
         data = await resp.json()
-        assert resp.status == 200
+        assert resp.status == 200, f"Expected status 200, got {resp.status}: {data}"
         return Registration.model_validate(data)
 
 

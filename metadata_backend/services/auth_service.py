@@ -136,8 +136,6 @@ class AuthServiceHandler(ServiceHandler):
             LOG.exception("OIDC authorization request failed with: %r", e)
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
-        # LOG.debug(f"Create OIDC authorization URL: {authorization_url}")
-
         return str(authorization_url)
 
     async def callback(self, state: str, code: str) -> tuple[str, dict[str, Any]]:

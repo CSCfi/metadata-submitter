@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.datastructures import Headers
 from starlette.requests import Request
 from starlette.responses import Response
-from starlette.types import ASGIApp, Receive, Scope, Send
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from ..api.errors import problem_response
 from ..api.exceptions import AppException, SystemException, UnauthorizedUserException
@@ -59,15 +59,25 @@ class SessionMiddleware:
                 raise SystemException("Missing session factory")
 
             async with session_factory() as session:
-                async with session.begin():
-                    token = self.session_context.set(session)
-                    try:
-                        await self.app(scope, receive, send)
-                    except Exception as exc:
-                        await _send_error_response(scope, receive, send, exc)
-                    finally:
-                        # Runs before response is returned by the route.
-                        self.session_context.reset(token)
+                response_messages: list[Message] = []
+
+                async def _buffered_send(message: Message) -> None:
+                    response_messages.append(message)
+
+                try:
+                    async with session.begin():
+                        token = self.session_context.set(session)
+                        try:
+                            await self.app(scope, receive, _buffered_send)
+                        finally:
+                            # Runs before response is returned by the route.
+                            self.session_context.reset(token)
+
+                    for message in response_messages:
+                        await send(message)
+
+                except Exception as exc:
+                    await _send_error_response(scope, receive, send, exc)
 
 
 class AuthMiddleware:

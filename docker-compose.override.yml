@@ -1,10 +1,14 @@
 services:
   # Allow running integration tests outside the docker network.
   sd-submit-api-csc:
+    environment:
+      - "BASE_URL=http://localhost:5430"
     ports:
       - "5430:5430"
   # Allow running integration tests outside the docker network.
   sd-submit-api-nbis:
+    environment:
+      - "BASE_URL=http://localhost:5431"
     ports:
       - "5431:5431"
   mock-oauth2:
