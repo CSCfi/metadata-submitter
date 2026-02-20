@@ -74,6 +74,74 @@ async def test_session_middleware_non_api_route(session_factory):
     assert mock_session_context.get() is None
 
 
+async def test_session_middleware_sends_response_after_context_reset(session_factory):
+    """Test session middleware flushes response after session context reset."""
+    mock_app = MagicMock()
+    mock_app.state = SimpleNamespace()
+    mock_app.state.session_factory = session_factory
+
+    async def _call(_scope, _receive, send):
+        assert mock_session_context.get() is not None
+        await send({"type": "http.response.start", "status": 200, "headers": []})
+        await send({"type": "http.response.body", "body": b"ok", "more_body": False})
+
+    mock_app.side_effect = _call
+    middleware = SessionMiddleware(mock_app, mock_session_context)
+
+    scope = {
+        "type": "http",
+        "method": "GET",
+        "app": mock_app,
+        "path": f"{API_PREFIX}/test",
+    }
+
+    context_states: list[AsyncSession | None] = []
+
+    async def _send(message):
+        context_states.append(mock_session_context.get())
+
+    await middleware(scope, Mock(spec=Receive), _send)
+    assert context_states
+    assert all(context_state is None for context_state in context_states)
+
+
+async def test_session_middleware_returns_500_on_app_exception(session_factory):
+    """Test session middleware catches app exceptions and sends a 500 response."""
+    mock_app = MagicMock()
+    mock_app.state = SimpleNamespace()
+    mock_app.state.session_factory = session_factory
+
+    async def _call(_scope, _receive, _send):
+        raise RuntimeError("boom")
+
+    mock_app.side_effect = _call
+    middleware = SessionMiddleware(mock_app, mock_session_context)
+
+    scope = {
+        "type": "http",
+        "method": "GET",
+        "app": mock_app,
+        "path": f"{API_PREFIX}/test",
+        "headers": [],
+        "query_string": b"",
+    }
+
+    sent_messages = []
+
+    async def _send(message):
+        sent_messages.append(message)
+
+    async def _receive():
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    await middleware(scope, _receive, _send)
+
+    assert sent_messages
+    assert sent_messages[0]["type"] == "http.response.start"
+    assert sent_messages[0]["status"] == 500
+    assert mock_session_context.get() is None
+
+
 async def test_auth_middleware_missing_authorization_returns_401():
     """Test auth middleware returns 401 when authorization is missing."""
     mock_asgi_app_called = False
