@@ -19,11 +19,13 @@ import jwt
 import uvicorn
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
+from pydantic_settings import BaseSettings
 
 LOG = logging.getLogger("proxy")
 logging.basicConfig(level=getenv("LOG_LEVEL", "INFO"))
 
 MOCK_PROXY_URL = "http://mockauth:8000"
+MOCK_PROXY_LOCALHOST_URL = "http://localhost:8000"
 MOCK_PROXIED_URL = "http://mock-oauth2:8001/issuer"
 MOCK_KEYSTONE_URL = getenv("KEYSTONE_ENDPOINT")
 
@@ -32,6 +34,18 @@ MOCK_KEYSTONE_PASSWORD = "veryfast"
 
 DPoP_REPLAY_CACHE = set()
 DPoP_SKEW = 60
+
+
+class MockAuthSettings(BaseSettings):
+    # If true then use localhost in the authorization endpoint URL. Allows
+    # traffic to be routed from the localhost outside the container network.
+    mock_auth_localhost: bool = False
+
+
+settings = MockAuthSettings()
+
+if settings.mock_auth_localhost:
+    LOG.info("Using localhost in the authorization endpoint URL")
 
 
 def validate_and_terminate_dpop(request: Request, headers: dict):
@@ -160,7 +174,10 @@ def rewrite_issuer_urls(body: dict) -> dict:
         if key in body:
             url = urlparse(body[key])
             new_path = url.path.replace("/issuer", "")
-            new_url = urlunparse(urlparse(MOCK_PROXY_URL)._replace(path=new_path, query=url.query))
+            if key == "authorization_endpoint" and settings.mock_auth_localhost:
+                new_url = urlunparse(urlparse(MOCK_PROXY_LOCALHOST_URL)._replace(path=new_path, query=url.query))
+            else:
+                new_url = urlunparse(urlparse(MOCK_PROXY_URL)._replace(path=new_path, query=url.query))
             body[key] = new_url
             LOG.info(f"Replaced '{key}' URL: {url} -> {new_url}")
 
