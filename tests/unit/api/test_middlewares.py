@@ -1,7 +1,8 @@
 from contextvars import ContextVar
 from types import SimpleNamespace
-from unittest.mock import MagicMock, Mock
+from unittest.mock import AsyncMock, MagicMock, Mock
 
+import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.types import Receive, Send
@@ -74,15 +75,19 @@ async def test_session_middleware_non_api_route(session_factory):
     assert mock_session_context.get() is None
 
 
-async def test_session_middleware_sends_response_after_context_reset(session_factory):
-    """Test session middleware flushes response after session context reset."""
+async def test_session_middleware_set_and_reset_context(session_factory):
+    """Test that session middleware sets and resets the session context."""
     mock_app = MagicMock()
     mock_app.state = SimpleNamespace()
     mock_app.state.session_factory = session_factory
 
+    assert mock_session_context.get() is None, "Session not reset before request"
+
     async def _call(_scope, _receive, send):
-        assert mock_session_context.get() is not None
+        assert mock_session_context.get() is not None, "Session not available during request"
         await send({"type": "http.response.start", "status": 200, "headers": []})
+        # Test with streaming response.
+        await send({"type": "http.response.body", "body": b"ok", "more_body": True})
         await send({"type": "http.response.body", "body": b"ok", "more_body": False})
 
     mock_app.side_effect = _call
@@ -95,18 +100,25 @@ async def test_session_middleware_sends_response_after_context_reset(session_fac
         "path": f"{API_PREFIX}/test",
     }
 
-    context_states: list[AsyncSession | None] = []
+    sent_messages = []
 
-    async def _send(message):
-        context_states.append(mock_session_context.get())
+    async def _send(_message):
+        sent_messages.append(_message)
+        assert mock_session_context.get() is not None, "Session not available during request"
 
     await middleware(scope, Mock(spec=Receive), _send)
-    assert context_states
-    assert all(context_state is None for context_state in context_states)
+
+    assert sent_messages == [
+        {"headers": [], "status": 200, "type": "http.response.start"},
+        {"body": b"ok", "more_body": True, "type": "http.response.body"},
+        {"body": b"ok", "more_body": False, "type": "http.response.body"},
+    ]
+
+    assert mock_session_context.get() is None, "Session not reset after request"
 
 
-async def test_session_middleware_returns_500_on_app_exception(session_factory):
-    """Test session middleware catches app exceptions and sends a 500 response."""
+async def test_session_middleware_returns_problem_json_on_exception(session_factory):
+    """Test session middleware catches exceptions and returns problem json with 500 response."""
     mock_app = MagicMock()
     mock_app.state = SimpleNamespace()
     mock_app.state.session_factory = session_factory
@@ -136,10 +148,82 @@ async def test_session_middleware_returns_500_on_app_exception(session_factory):
 
     await middleware(scope, _receive, _send)
 
-    assert sent_messages
-    assert sent_messages[0]["type"] == "http.response.start"
-    assert sent_messages[0]["status"] == 500
-    assert mock_session_context.get() is None
+    assert sent_messages == [
+        {
+            "headers": [(b"content-type", b"application/problem+json"), (b"content-length", b"117")],
+            "status": 500,
+            "type": "http.response.start",
+        },
+        {
+            "body": b'{"type":"about:blank","title":"Internal Server Error","detail":"'
+            b'Unexpected error","status":500,"instance":"/v1/test"}',
+            "type": "http.response.body",
+        },
+    ]
+
+    assert mock_session_context.get() is None, "Session not reset after request"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "status_code, expected_action",
+    [
+        (200, "commit"),
+        (201, "commit"),
+        (302, "commit"),
+        (400, "rollback"),
+        (404, "rollback"),
+        (500, "rollback"),
+        (None, "rollback"),  # missing status
+    ],
+)
+async def test_session_middleware_commit_and_rollback(status_code, expected_action):
+    """Check that session middleware commits or rollbacks based on HTTP status."""
+
+    mock_transaction = AsyncMock()
+    mock_session = AsyncMock()
+    mock_session.begin = AsyncMock(return_value=mock_transaction)
+
+    _mock_session_factory = AsyncMock()
+    _mock_session_factory.__aenter__.return_value = mock_session
+    _mock_session_factory.__aexit__.return_value = None
+
+    # session_factory must be a *normal function*
+    def mock_session_factory():
+        return _mock_session_factory
+
+    mock_app = MagicMock()
+    mock_app.state = SimpleNamespace()
+    mock_app.state.session_factory = mock_session_factory
+
+    async def _call(_scope, _receive, _send):
+        await _send({"type": "http.response.start", "status": status_code, "headers": []})
+        await _send({"type": "http.response.body", "body": b"ok", "more_body": False})
+
+    mock_app.side_effect = _call
+
+    middleware = SessionMiddleware(mock_app, mock_session_context)
+
+    scope = {
+        "type": "http",
+        "method": "GET",
+        "app": mock_app,
+        "path": f"{API_PREFIX}/test",
+    }
+
+    sent_messages = []
+
+    async def _send(_message):
+        sent_messages.append(_message)
+
+    await middleware(scope, Mock(spec=Receive), _send)
+
+    if expected_action == "commit":
+        mock_transaction.commit.assert_awaited_once()
+        mock_transaction.rollback.assert_not_awaited()
+    else:
+        mock_transaction.rollback.assert_awaited_once()
+        mock_transaction.commit.assert_not_awaited()
 
 
 async def test_auth_middleware_missing_authorization_returns_401():
