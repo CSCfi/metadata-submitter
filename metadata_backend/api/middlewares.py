@@ -59,25 +59,54 @@ class SessionMiddleware:
                 raise SystemException("Missing session factory")
 
             async with session_factory() as session:
-                response_messages: list[Message] = []
+                response_started = False
 
-                async def _buffered_send(message: Message) -> None:
-                    response_messages.append(message)
+                async def transactional_send(message: Message) -> None:
+                    nonlocal response_started
+
+                    # In ASGI, `http.response.start` message ends the status code and headers
+                    # to the client. After this response is considered started.
+                    # https://asgi.readthedocs.io/en/latest/specs/www.html#response-start-send-event
+                    if message["type"] == "http.response.start" and not response_started:
+                        try:
+                            # Commit or rollback before sending headers.
+                            status = message.get("status", None)
+                            if status is None or 400 <= status < 600:
+                                LOG.debug(f"Rollback session in middleware, status code: {status}")
+                                await transaction.rollback()
+                            else:
+                                LOG.debug(f"Commit session in middleware, status code: {status}")
+                                await transaction.commit()
+                        except Exception:
+                            await transaction.rollback()
+                            raise
+
+                        response_started = True
+
+                    await send(message)
 
                 try:
-                    async with session.begin():
-                        token = self.session_context.set(session)
-                        try:
-                            await self.app(scope, receive, _buffered_send)
-                        finally:
-                            # Runs before response is returned by the route.
-                            self.session_context.reset(token)
+                    token = self.session_context.set(session)
 
-                    for message in response_messages:
-                        await send(message)
+                    transaction = await session.begin()
+
+                    await self.app(scope, receive, transactional_send)
+
+                    if not response_started:
+                        LOG.error("Unexpected session middleware state (response not started)")
+                        await transaction.rollback()
 
                 except Exception as exc:
-                    await _send_error_response(scope, receive, send, exc)
+                    await transaction.rollback()
+
+                    if not response_started:
+                        await _send_error_response(scope, receive, send, exc)
+                    else:
+                        # Response has started, we can't send an error response anymore.
+                        raise
+
+                finally:
+                    self.session_context.reset(token)
 
 
 class AuthMiddleware:
