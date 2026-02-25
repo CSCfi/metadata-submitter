@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, PropertyMock, patch
 
 from metadata_backend.api.services.auth import AuthService
 from metadata_backend.conf.oidc import oidc_config
-from metadata_backend.services.auth_service import OIDC_PROFILE_WEB, AuthServiceHandler
+from metadata_backend.services.auth_service import AuthServiceHandler
 
 
 async def test_auth(csc_client, dpop_test_jwks, monkeypatch):
@@ -21,7 +21,7 @@ async def test_auth(csc_client, dpop_test_jwks, monkeypatch):
         resp = csc_client.get("/login", follow_redirects=False)
         assert resp.status_code == 303
         assert resp.headers["Location"] is not None
-        mock_rph.begin.assert_called_once_with(OIDC_PROFILE_WEB)
+        mock_rph.begin.assert_called_once_with("aai")
 
         # Test /callback endpoint.
         resp = csc_client.get("/callback", params={"state": "state", "code": "code"}, follow_redirects=False)

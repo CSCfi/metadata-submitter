@@ -42,6 +42,7 @@ get_env: ## Get secrets needed for integration tests from vault
 	cp tests/integration/.env.example tests/integration/.env
 	cp tests/integration/.env.example .env
 
+	@printf "%s\n" "OIDC_VERIFY_ID_TOKEN=True" >> .env
 	$(call write_line,### VAULT SECRETS START ###)
 
 	# Write secrets to .env and tests/integration/.env files.
@@ -50,10 +51,10 @@ get_env: ## Get secrets needed for integration tests from vault
 	$(call write_secret,CSC_LDAP_USER,sd-submit/secrets,ldap_user) \
 	$(call write_secret,CSC_LDAP_PASSWORD,sd-submit/secrets,ldap_password) \
 	$(call write_secret,SDS_AAI_CLIENT_ID,sd-submit/secrets,sds_aai_id) \
-	$(call write_secret,SDS_AAI_SECRET,sd-submit/secrets,sds_aai_secret) \
+	$(call write_secret,SDS_AAI_CLIENT_SECRET,sd-submit/secrets,sds_aai_secret) \
 	$(call write_secret,SDS_AAI_URL,sd-submit/secrets,sds_aai_url) \
 	$(call write_secret,LS_AAI_CLIENT_ID,sd-submit/secrets,ls_aai_id) \
-	$(call write_secret,LS_AAI_SECRET,sd-submit/secrets,ls_aai_secret) \
+	$(call write_secret,LS_AAI_CLIENT_SECRET,sd-submit/secrets,ls_aai_secret) \
 	$(call write_secret,LS_AAI_URL,sd-submit/secrets,ls_aai_url) \
 	$(call write_secret,KEYSTONE_ENDPOINT,sd-submit/secrets,pouta_host) \
 	$(call write_integration_test_secret,DATACITE_API,sd-submit/datacite_test,DOI_API) \
@@ -72,10 +73,10 @@ get_env: ## Get secrets needed for integration tests from vault
 	$(call write_integration_test_secret,SD_SUBMIT_PROJECT_ID,sd-submit/secrets,sd_submit_project_id) \
 	$(call write_integration_test_secret,USER_S3_ACCESS_KEY_ID,sd-submit/secrets,s3_test_user_access_key) \
 	$(call write_integration_test_secret,USER_S3_SECRET_ACCESS_KEY,sd-submit/secrets,s3_test_user_secret_key) \
-    $(call write_integration_test_secret,REMS_URL,sd-submit/secrets,rems_url) \
-    $(call write_integration_test_secret,REMS_USER,sd-submit/secrets,rems_user) \
-    $(call write_integration_test_secret,REMS_KEY,sd-submit/secrets,rems_key) \
-    $(call write_integration_test_secret,REMS_DISCOVERY_URL,sd-submit/secrets,rems_discovery_url) \
+	$(call write_integration_test_secret,REMS_URL,sd-submit/secrets,rems_url) \
+	$(call write_integration_test_secret,REMS_USER,sd-submit/secrets,rems_user) \
+	$(call write_integration_test_secret,REMS_KEY,sd-submit/secrets,rems_key) \
+	$(call write_integration_test_secret,REMS_DISCOVERY_URL,sd-submit/secrets,rems_discovery_url) \
 	vault kv get --field=oidc_jwks secret/sd-submit/secrets >> private/private_jwks.json;
 
 	$(call write_line,### VAULT SECRETS END ###)
