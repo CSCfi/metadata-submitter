@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Any
 
 import httpx
-import idpyoidc.message.oidc as oidc
 import jwt
 import ujson
 from fastapi import HTTPException
@@ -18,6 +17,7 @@ from fastapi.responses import RedirectResponse
 from idpyoidc.client.exception import OidcServiceError
 from idpyoidc.client.rp_handler import RPHandler
 from idpyoidc.exception import OidcMsgError
+from idpyoidc.message import oidc
 from jwt import decode as jwt_decode
 from requests import Session
 from starlette import status
@@ -27,9 +27,6 @@ from ..api.services.auth import JWT_EXPIRATION, AuthService
 from ..conf.oidc import oidc_config
 from ..helpers.logger import LOG
 from .service_handler import ServiceHandler
-
-OIDC_PROFILE_WEB = "web"
-OIDC_PROFILE_CLI = "cli"
 
 
 class AuthServiceHandler(ServiceHandler):
@@ -47,15 +44,13 @@ class AuthServiceHandler(ServiceHandler):
             healthcheck_callback=self.healthcheck_callback,
         )
 
-        self.callback_web_url = self._config.callback_web_url
-        self.callback_cli_url = self._config.callback_cli_url
+        self.callback_url = self._config.callback_url
         self.redirect_url = self._config.OIDC_REDIRECT_URL
         self.client_id = self._config.OIDC_CLIENT_ID
         self.client_secret = self._config.OIDC_CLIENT_SECRET
         self.oidc_url = self._config.OIDC_URL.rstrip("/") + "/.well-known/openid-configuration"
         self.iss = self._config.OIDC_URL
         self.scope = self._config.OIDC_SCOPE
-        self.verify_id_token = self._config.OIDC_VERIFY_ID_TOKEN
         self.auth_method = "code"
         self._rph: RPHandler | None = None
 
@@ -84,52 +79,43 @@ class AuthServiceHandler(ServiceHandler):
             self._rph = RPHandler(self.oidc_url, client_configs=self.get_client_configs())
         return self._rph
 
-    def _client_config(self, callback_url: str) -> dict[str, Any]:
-        """
+    def get_client_configs(self) -> dict[str, dict[str, Any]]:
+        """Create OIDC client configuration.
 
-        Create OIDC client configuration.
-
-        :param callback_url: The callback URL.
         :return: The OIDC client configuration.
         """
         return {
-            "issuer": self.iss,
-            "client_id": self.client_id,
-            "client_secret": self.client_secret,
-            "client_type": "oidc",
-            "redirect_uris": [callback_url],
-            "behaviour": {
-                "response_types": self.auth_method.split(" "),
-                "scope": self.scope.split(" "),
-            },
-            "add_ons": {
-                "pkce": {
-                    "function": "idpyoidc.client.oauth2.add_on.pkce.add_support",
-                    "kwargs": {
-                        "code_challenge_length": 64,
-                        "code_challenge_method": "S256",
+            "aai": {
+                "issuer": self.iss,
+                "client_id": self.client_id,
+                "client_secret": self.client_secret,
+                "client_type": "oidc",
+                "redirect_uris": [self.callback_url],
+                "preference": {
+                    "response_types_supported": self.auth_method.split(" "),
+                    "scopes_supported": self.scope.split(" "),
+                },
+                "add_ons": {
+                    "pkce": {
+                        "function": "idpyoidc.client.oauth2.add_on.pkce.add_support",
+                        "kwargs": {
+                            "code_challenge_length": 64,
+                            "code_challenge_method": "S256",
+                        },
                     },
                 },
             },
         }
 
-    def get_client_configs(self) -> dict[str, dict[str, Any]]:
-        return {
-            OIDC_PROFILE_WEB: self._client_config(self.callback_web_url),
-            OIDC_PROFILE_CLI: self._client_config(self.callback_cli_url),
-        }
+    async def get_oidc_auth_url(self) -> str:
+        """Get the OIDC authorization URL.
 
-    async def get_oidc_auth_url(self, oidc_profile: str) -> str:
-        """
-        Get the OIDC authorize URL for the given profile.
-
-        :param oidc_profile: The OIDC profile.
-        :returns: The OIDC authorize URL for the given profile.
+        :returns: The OIDC authorization endpoint URL.
         """
 
         # Generate authentication payload
         try:
-            authorization_url = self.rph.begin(oidc_profile)
+            authorization_url = self.rph.begin("aai")
         except Exception as e:
             # This can be caused if config is improperly configured, and
             # idpyoidc is unable to fetch oidc configuration from the given URL
@@ -180,7 +166,6 @@ class AuthServiceHandler(ServiceHandler):
                     # Remove the failed state from rph to allow retry
                     session_state = self.rph.get_session_information(state)
                     session_state["code"] = code
-
                     # Retry finalize with fresh session info and new nonce from DPoP-Nonce header
                     session = self.rph.finalize(self.iss, session_state)
                 except (OidcMsgError, OidcServiceError) as retry_error:
@@ -200,14 +185,13 @@ class AuthServiceHandler(ServiceHandler):
         return jwt_token, session["userinfo"]
 
     async def initiate_web_session(self, jwt_token: str, userinfo: dict[str, Any]) -> RedirectResponse:
-        """
-        Initiate web session by setting JWT token in secure cookie.
+        """Initiate web session by setting JWT token in secure cookie.
 
         :param jwt_token: The JWT token to be set in the cookie
         :param userinfo: The user information dictionary
         :return: HTTPSeeOther redirect to the home page
         """
-        LOG.info("OIDC redirect to %r", f"{self.redirect_url}")
+        LOG.info("OIDC redirect to %r", self.redirect_url)
 
         response = RedirectResponse(url=self.redirect_url, status_code=status.HTTP_303_SEE_OTHER)
 
@@ -236,13 +220,12 @@ class AuthServiceHandler(ServiceHandler):
             max_age=int(JWT_EXPIRATION.total_seconds()),
         )
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-        response.headers["Pragma"] = "no-Cache"
+        response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
         return response
 
     async def logout(self) -> RedirectResponse:
-        """
-        Logout the user by clearing all cookies.
+        """Logout the user by clearing all cookies.
 
         :returns: Redirect response to login page.
         """

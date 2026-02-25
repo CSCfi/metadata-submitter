@@ -88,13 +88,7 @@ source .venv/bin/activate  # activate the uv venv
 
 ### Configure environment variables
 
-Copy the contents of `.env.example` file to `.env` file and edit it as needed:
-
-```bash
-cp tests/integration/.env.example .env
-```
-
-Additionally, secrets for live services can be inserted into the `.env` file automatically with:
+Secret values for live services can be written into the `.env` file automatically with:
 
 ```bash
 export VAULT_ADDR=  # Define URL address for a Vault instance
@@ -123,31 +117,21 @@ _**Python virtual environment using a Procfile**_, which is described here below
 Use `uv` to create and activate the virtual environment for development and testing
 as [instructed above](#initialise-the-project-for-development-and-testing).
 
-Then copy `.env` file and set up the environment variables.
-The example file has hostnames for development with Docker network (via `docker compose`).
-You will have to change the hostnames to `localhost`.
+Then [configure environment variables](#configure-environment-variables) and edit the
+generated `.env` file as needed. The environment variables include hostnames for
+development within a Docker network (via the use of `docker compose`).
+These mock hostnames need to be renamed to `localhost`.
 
-```bash
-cp tests/integration/.env.example .env  # Make any changes you need to the file
-```
-
-Secrets, which are used for testing against other services are fetched from Vault and added to the `.env` file with the
-following:
-
-```bash
-export VAULT_ADDR=  # Add correct URL here
-make get_env  # This will prompt a login in the web browser
-```
-
-Finally, start the servers with code reloading enabled, so any code changes restarts the servers automatically:
+Finally, start the servers with code reloading enabled, so any code changes restarts
+the servers automatically:
 
 ```bash
 honcho start
 ```
 
 The development server should now be accessible at `localhost:5430`.
-If it doesn't work right away, check your settings in `.env` and restart the servers manually if you make changes to
-`.env` file.
+If it doesn't work right away, check your settings in `.env` and restart the servers
+manually if you make changes to `.env` file.
 
 ### Keeping Python requirements up to date
 
@@ -202,18 +186,15 @@ tox -p auto
 Integration tests are run separately with [`pytest`](https://docs.pytest.org/en/stable/)
 after the containerized testing environment has been set up.
 
-Integration tests can be run using mock services:
-
+Integration tests can be run with the following commands:
 ```bash
-docker compose --env-file tests/integration/.env.example --profile dev up --build -d
-pytest tests/integration
-```
-
-Or using external services configured with secrets:
-
-```bash
+# Get secrets and write .env file
 make get_env
+
+# Build and run all backend containers
 docker compose --env-file tests/integration/.env --profile dev up --build -d
+
+# Run tests
 pytest tests/integration
 ```
 

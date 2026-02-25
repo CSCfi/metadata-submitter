@@ -33,16 +33,9 @@ class OIDCConfig(BaseSettings):
     )
 
     @property
-    def callback_web_url(self) -> str:
-        """Get web callback URL."""
-
+    def callback_url(self) -> str:
+        """Get callback URL."""
         return urljoin(self.BASE_URL, "callback")
-
-    @property
-    def callback_cli_url(self) -> str:
-        """Get CLI callback URL."""
-
-        return urljoin(self.BASE_URL, "callback-cli")
 
 
 def oidc_config() -> OIDCConfig:

@@ -7,8 +7,8 @@ to share functionality of the `class` scoped fixtures.
 import io
 import logging
 import os
-import re
 import uuid
+from contextlib import asynccontextmanager
 from io import BufferedReader
 from typing import Any, AsyncGenerator, Awaitable, Protocol
 from xml.etree import ElementTree
@@ -275,11 +275,11 @@ async def client() -> AsyncGenerator[aiohttp.ClientSession]:
         yield client
 
 
-@pytest.fixture
-async def sd_client() -> AsyncGenerator[aiohttp.ClientSession]:
-    """Create CSC submission client using the OIDC standard authentication flow."""
+@asynccontextmanager
+async def _oidc_authenticated_client(api_base_url: str) -> AsyncGenerator[aiohttp.ClientSession]:
+    """Create an authenticated client using the OIDC standard authentication flow."""
 
-    async with aiohttp.ClientSession(base_url=f"{base_url}/") as client:
+    async with aiohttp.ClientSession(base_url=f"{api_base_url}/") as client:
         # Start OIDC authentication.
         async with client.get("/login", allow_redirects=False) as resp:
             assert resp.status in (302, 303)
@@ -301,8 +301,16 @@ async def sd_client() -> AsyncGenerator[aiohttp.ClientSession]:
             access_token = cookies.get("access_token").value
 
         # Add the JWT token in the cookie.
-        client.cookie_jar.update_cookies({"access_token": access_token}, response_url=URL(base_url))
+        client.cookie_jar.update_cookies({"access_token": access_token}, response_url=URL(api_base_url))
 
+        yield client
+
+
+@pytest.fixture
+async def sd_client() -> AsyncGenerator[aiohttp.ClientSession]:
+    """Create CSC submission client using the OIDC standard authentication flow."""
+
+    async with _oidc_authenticated_client(base_url) as client:
         yield client
 
 
@@ -310,27 +318,7 @@ async def sd_client() -> AsyncGenerator[aiohttp.ClientSession]:
 async def nbis_client() -> AsyncGenerator[aiohttp.ClientSession]:
     """Create NBIS BigPicture submission client using the OIDC standard authentication flow."""
 
-    async with aiohttp.ClientSession(base_url=f"{nbis_base_url}/") as client:
-        # Start OIDC authentication.
-        async with client.get("/login-cli", allow_redirects=False) as resp:
-            match = re.search(r"Complete the login at:\s*(\S+)", await resp.text())
-            authorize_redirect = match.group(1)
-            assert resp.status == 200
-
-        # Replace "mockauth" hostname with "localhost" if not in CI/CD environment
-        if os.getenv("CICD") != "true":
-            authorize_redirect = authorize_redirect.replace("mockauth", "localhost")
-
-        # Follow the redirect to OIDC /authorize.
-        async with client.get(authorize_redirect) as resp:
-            assert resp.status == 200
-
-            # Extract the JWT token from the response.
-            access_token = (await resp.text()).strip()
-
-        # Add the JWT token in the cookie.
-        client.cookie_jar.update_cookies({"access_token": access_token}, response_url=URL(nbis_base_url))
-
+    async with _oidc_authenticated_client(nbis_base_url) as client:
         yield client
 
 
