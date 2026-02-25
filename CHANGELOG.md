@@ -9,16 +9,20 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Removed
 
+- CLI related login endpoints/methods
 - (users) Workflow path parameter from submit endpoints.
 - Previously used methods and mentions of OpenAPI specification generation.
 
 ### Fixed
 
+- Minor bug with inserting OIDC scopes correctly to the authorization endpoint url
+- API container not starting with correct OIDC client secrets
 - Mockauth hostname issue when running integration tests in local env
 - (users) Unauthenticated API calls will result in `401 Unauthorized` error response, not `500 Internal Server Error`
 
 ### Changed
 
+- Corrected outdated info in README file
 - Integration tests can be run inside a dedicated container for CI purposes
 - Workflows are deployment specific
 - OIDC callbacks are hidden from OpenAPI docs.
