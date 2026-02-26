@@ -3,7 +3,7 @@
 SD Submit API supports the submission of Bigpicture datasets.
 
 This document explains the main dataset submission steps and how to
-execute them from the command line. SD Submit for BigPicture currently
+execute them from the command line. SD Submit for Bigpicture currently
 does not provide a UI or a dedicated CLI, so HTTP requests must be issued using a tool
 such as [cURL](https://curl.se/).
 
@@ -18,54 +18,24 @@ accessible from the root of the installed application.
 
 ### 1. Authenticate to the SD Submit API
 
-Start by creating an environment variable in a bash terminal session for the API URL:
+Go to the [Bigpicture login portal](https://login.bp.nbis.se) and complete OIDC authentication.
 
-```bash
-# Enter the API url inside the quotes
-export API_URL="..."
-
-# If you have deployed the API locally for testing, set this as:
-export API_URL="http://localhost:5431"
-```
-
-Authenticate to the API via an OIDC Client.
-Get the login url with below command:
-
-```bash
-curl --request GET $API_URL/login
-```
-
-Use curl -L command to get the JWT session token (or simply paste the login url in a web browser):
-
-```bash
-curl -L "..."
-```
-
-A JWT will be printed in the terminal or browser window. Copy it and use it for suqsequent API calls in the
-authorization header:
+Then copy the same access token as _"For **uploading** to the Inbox"_ use it for all
+suqsequent API calls in the authorization header:
 
 ```bash
 # Set the JWT as env variable
 export TOKEN="..."
 
-# Ensure login has completed by getting user info
+# Set the API url as env variable
+export API_URL="..."
+
+# If you have deployed the API locally for testing, set this as:
+export API_URL="http://localhost:5431"
+
+# Ensure the API recognizes the user based on the access token with:
 curl --request GET $API_URL/v1/users \
      --header "authorization: Bearer $TOKEN" | jq
-```
-
-**Optional:**
-A reusable API keys for the service can be created after the original OIDC authentication with the following command.
-This key can then be used as a bearer token instead of the JWT in the authorization header:
-
-```bash
-curl --request POST $API_URL/v1/api/keys \
-     --header "authorization: Bearer $TOKEN" \
-     --data '{"key_id": "test api key"}'
-
-# The created API key with the specified key_id will be printed in the terminal
-
-# Replace the TOKEN env variable with the API key
-export TOKEN="..."
 ```
 
 ### 2. Create a new submission entity

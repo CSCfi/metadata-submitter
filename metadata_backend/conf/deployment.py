@@ -14,6 +14,10 @@ class DeploymentConfig(BaseSettings):
     ALLOW_REGISTRATION: bool = Field(
         default=True, description="Allow published submissions to be registered with external services."
     )
+    JWT_KEY: str = Field(description="Secret key used to sign and verify or public key used to verify JWT.")
+    JWT_ISSUER: str = Field(
+        default="SD Submit", description="Issuer claim to use when creating and verifying JWT tokens."
+    )
 
 
 def deployment_config() -> DeploymentConfig:

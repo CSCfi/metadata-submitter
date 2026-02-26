@@ -43,7 +43,7 @@ services:
       - "CSC_LDAP_HOST=${CSC_LDAP_HOST}"
       - "CSC_LDAP_USER=${CSC_LDAP_USER}"
       - "CSC_LDAP_PASSWORD=${CSC_LDAP_PASSWORD}"
-      - "JWT_SECRET=${JWT_SECRET}"
+      - "JWT_KEY=${JWT_SECRET}"
       - "DATABASE_URL=${CSC_DATABASE_URL}"
       - "STATIC_S3_ACCESS_KEY_ID=${STATIC_S3_ACCESS_KEY_ID}"
       - "STATIC_S3_SECRET_ACCESS_KEY=${STATIC_S3_SECRET_ACCESS_KEY}"
@@ -91,7 +91,8 @@ services:
       - "REMS_KEY=${REMS_KEY}"
       - "REMS_URL=${REMS_URL}"
       - "REMS_DISCOVERY_URL=${REMS_DISCOVERY_URL}"
-      - "JWT_SECRET=${JWT_SECRET}"
+      - "JWT_KEY=${NBIS_JWT_PUBLIC_KEY:?NBIS_JWT_PUBLIC_KEY must be defined}"
+      - "JWT_ISSUER=${NBIS_JWT_ISSUER:?NBIS_JWT_ISSUER must be defined}"
       - "DATABASE_URL=${NBIS_DATABASE_URL}"
       - "BP_CENTER_ID=${BP_CENTER_ID}"
       - "STATIC_S3_ACCESS_KEY_ID=${STATIC_S3_ACCESS_KEY_ID}"
@@ -111,7 +112,6 @@ services:
       - ci
       - ci_ui
       - dev
-      - demo
     volumes:
       - ./tests/integration/mock-auth.json:/config/mock-auth.json:ro
   mockauth:
@@ -129,7 +129,6 @@ services:
       - ci
       - ci_ui
       - dev
-      - demo
     depends_on:
       mock-oauth2:
         condition: service_started
@@ -188,7 +187,6 @@ services:
       - ci
       - ci_ui
       - dev
-      - demo
     healthcheck:
       test: curl --fail http://127.0.0.1:5001/ || exit 1
       interval: 20s

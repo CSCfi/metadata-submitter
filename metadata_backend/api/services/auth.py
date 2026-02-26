@@ -11,14 +11,14 @@ import jwt
 from fastapi import HTTPException
 from starlette import status
 
-from ...conf.oidc import oidc_config
+from ...conf.deployment import deployment_config
 from ...database.postgres.models import ApiKeyEntity
 from ...database.postgres.repositories.api_key import ApiKeyRepository
 from ...helpers.logger import LOG
 from ..models.models import ApiKey
 
 JWT_ALGORITHM = "HS256"
-JWT_ISSUER = "SD Submit"
+NBIS_JWT_ALGORITHM = "ES256"
 JWT_EXPIRATION = timedelta(days=7)
 
 API_KEY_ID_LENGTH = 12
@@ -84,10 +84,10 @@ class AuthService:
             "user_name": user_name,
             "exp": exp_time,
             "iat": now,
-            "iss": JWT_ISSUER,
+            "iss": deployment_config().JWT_ISSUER,
         }
 
-        return jwt.encode(payload, oidc_config().JWT_SECRET, algorithm=JWT_ALGORITHM)
+        return jwt.encode(payload, deployment_config().JWT_KEY, algorithm=JWT_ALGORITHM)
 
     @staticmethod
     def validate_jwt_token(token: str) -> tuple[str, str]:
@@ -100,16 +100,17 @@ class AuthService:
             The user ID from the `sub` claim, and the user name from the `user_name` claim.
 
         Raises:
-            RuntimeError: If the JWT secret is not set.
-            PyJWTError: If the token has expired, is malformed or fails verification.
+            HTTPUnauthorized: If the token is expired, malformed, or fails verification.
         """
-        decoded = jwt.decode(
-            token,
-            oidc_config().JWT_SECRET,
-            algorithms=[JWT_ALGORITHM],
-            issuer=JWT_ISSUER,
+        alg = JWT_ALGORITHM if deployment_config().DEPLOYMENT == "CSC" else NBIS_JWT_ALGORITHM
+        key = (
+            deployment_config().JWT_KEY
+            if deployment_config().DEPLOYMENT == "CSC"
+            else deployment_config().JWT_KEY.replace("\\n", "\n").strip()
         )
-        return str(decoded["sub"]), str(decoded["user_name"])
+
+        decoded = jwt.decode(token, key, algorithms=[alg], issuer=deployment_config().JWT_ISSUER)
+        return str(decoded["sub"]), str(decoded.get("user_name", decoded["sub"]))
 
     @staticmethod
     def _hash_api_key(api_key: str, salt: str) -> str:

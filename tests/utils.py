@@ -66,12 +66,13 @@ SD_SUBMISSION = TEST_FILES_ROOT / "submission" / "submission.json"
 BP_SUBMISSION_DIR = TEST_FILES_ROOT / "xml" / "bigpicture"
 BP_UPDATE_DIR = BP_SUBMISSION_DIR / "update"
 
+TEST_KEYS_DIR = TEST_FILES_ROOT / "keys"
+
 ObjectNames = dict[str, dict[str, dict[str, str]]]
 
 
 def bp_objects(is_update: bool) -> tuple[list[ObjectSubmission], dict[str, Path]]:
-    """
-    Get BP XML test files.
+    """Get BP XML test files.
 
     :param is_update: If true then updated XML files are used.
     :return: ObjectSubmission list, and list of file names and paths.
@@ -98,8 +99,7 @@ def _bp_submission_documents(
     is_update: bool = False,
     is_datacite: bool = False,
 ) -> tuple[str, ObjectNames, dict[str, io.BytesIO]]:
-    """
-    Read BP XML test files, assign unique submission name and object names while preserving provided object names.
+    """Read BP XML test files, assign unique submission name and object names while preserving provided object names.
 
     Assigns a unique submission name and unique object names. The original object names in the
     XML files are suffixed with an underscore and a generated UUID4.
@@ -192,8 +192,7 @@ def _bp_submission_documents(
 def bp_submission_documents(
     *, is_datacite: bool, submission_name: str | None = None
 ) -> tuple[str, ObjectNames, dict[str, io.BytesIO]]:
-    """
-    Get BP XML test files for a new submission.
+    """Get BP XML test files for a new submission.
 
     Assigns a unique submission name and object names. The original object names in the
     XML files are suffixed with an underscore and a generated UUID4.
@@ -209,8 +208,7 @@ def bp_submission_documents(
 def bp_update_documents(
     submission_name: str, object_names: ObjectNames, is_datacite: bool
 ) -> tuple[str, ObjectNames, dict[str, io.BytesIO]]:
-    """
-    Get BP XML test files for a submission update.
+    """Get BP XML test files for a submission update.
 
     Assigns unique names for any new objects. The original object names in the
     XML files are suffixed with an underscore and a generated UUID4.
@@ -225,8 +223,7 @@ def bp_update_documents(
 
 
 def sd_submission_document(submission: Submission | dict[str, Any] | None = None) -> dict[str, io.BytesIO]:
-    """
-    Get SD submission JSON for a new submission.
+    """Get SD submission JSON for a new submission.
 
     :param submission: Use the provided submission document instead of using the test file.
     :return: dictionary of file names and IO bytes.
@@ -244,10 +241,20 @@ def sd_submission_document(submission: Submission | dict[str, Any] | None = None
 
 
 def sd_submission_dict() -> dict[str, Any]:
-    """
-    Get SD submission metadata for a new submission as a dictionary.
+    """Get SD submission metadata for a new submission as a dictionary.
 
     :return: SD submission metadata.
     """
 
     return json.loads(SD_SUBMISSION.read_text())
+
+
+def get_test_es256_keypair() -> tuple[str, str]:
+    """Get ES256 private and public test keys.
+
+    :return: Tuple of (private_key, public_key).
+    """
+
+    private_key = (TEST_KEYS_DIR / "es256_private.txt").read_text(encoding="utf-8")
+    public_key = (TEST_KEYS_DIR / "es256_public.txt").read_text(encoding="utf-8")
+    return private_key, public_key

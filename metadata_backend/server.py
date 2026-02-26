@@ -327,9 +327,10 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
     )
 
     # Key routes.
-    api_router.add_api_route("/api/keys", _key.create_api_key, methods=POST, tags=key_tag)
-    api_router.add_api_route("/api/keys", _key.delete_api_key, methods=DELETE, tags=key_tag)
-    api_router.add_api_route("/api/keys", _key.get_api_keys, methods=GET, tags=key_tag)
+    if config.DEPLOYMENT == DEPLOYMENT_CSC:
+        api_router.add_api_route("/api/keys", _key.create_api_key, methods=POST, tags=key_tag)
+        api_router.add_api_route("/api/keys", _key.delete_api_key, methods=DELETE, tags=key_tag)
+        api_router.add_api_route("/api/keys", _key.get_api_keys, methods=GET, tags=key_tag)
 
     # File routes.
     api_router.add_api_route("/buckets", _file.get_project_buckets, methods=GET, tags=bucket_tag)
@@ -343,12 +344,14 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
     # Auth router (authorization not required).
     #
 
-    auth_router = APIRouter(tags=["Authentication"])
-    # TODO(improve): deprecate /aai endpoint
-    auth_router.add_api_route(path="/aai", endpoint=_auth.login, methods=GET, include_in_schema=False)
-    auth_router.add_api_route(path="/login", endpoint=_auth.login, methods=GET)
-    auth_router.add_api_route(path="/callback", endpoint=_auth.callback, methods=GET, include_in_schema=False)
-    auth_router.add_api_route(path="/logout", endpoint=_auth.logout, methods=GET)
+    auth_router = None
+    if config.DEPLOYMENT == DEPLOYMENT_CSC:
+        auth_router = APIRouter(tags=["Authentication"])
+        # TODO(improve): deprecate /aai endpoint
+        auth_router.add_api_route(path="/aai", endpoint=_auth.login, methods=GET, include_in_schema=False)
+        auth_router.add_api_route(path="/login", endpoint=_auth.login, methods=GET)
+        auth_router.add_api_route(path="/callback", endpoint=_auth.callback, methods=GET, include_in_schema=False)
+        auth_router.add_api_route(path="/logout", endpoint=_auth.logout, methods=GET)
 
     # Health router (authorization not required).
     #
@@ -369,7 +372,8 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
     # Add routers.
 
     app.include_router(api_router)
-    app.include_router(auth_router)
+    if auth_router:
+        app.include_router(auth_router)
     app.include_router(health_router)
     app.include_router(openapi_router)
 

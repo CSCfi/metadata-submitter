@@ -1,45 +1,25 @@
 # https://github.com/Huachao/vscode-restclient
 # https://jsonpath.com/
 
+# To test these API calls, run all following commands in project root.
+
 # Get secrets from Vault for local deployment:
-# make get_env_demo
+$ make get_env_demo
+
+# Add the JWT public key to the .env file in this way:
+# NBIS_JWT_PUBLIC_KEY=-----BEGIN PUBLIC KEY-----\n...[rest of the key]...\n-----END PUBLIC KEY-----\n
 
 # Run this to launch the API service locally:
-# docker compose --profile dev demo --build -d
+$ docker compose --profile demo up --build -d
+
+# Login at: https://login.bp.nbis.se
+# Copy the uploading access token for and paste it in the variable below
+@bearer_token = ...
 
 @api_url = http://localhost:5431
-@auth_url = http://localhost:8000
-@auth_email = mock_user@test.what
 
 @submission_id = {{submission_id_req.response.body.submissionId}}
 @user_id = {{user_data_req.response.body.user_id}}
-@bearer_token = {{token_req.response.body.*}}
-
-# Authentication
-
-### Get login URL for OIDC Authentication
-curl {{api_url}}/login
-
-### Paste login url here with mock authentication
-# @name token_req
-curl '{{auth_url}}/authorize?...'
-
-### Optional: Generate an API key for further requests
-### Create API key
-# @name token_req
-curl -X POST {{api_url}}/v1/api/keys \
-     -H 'Authorization: Bearer {{bearer_token}}' \
-     -d '{"key_id": "test api key"}'
-
-### Get API keys
-curl {{api_url}}/v1/api/keys \
-     -H 'Authorization: Bearer {{bearer_token}}' \
-
-### Delete API key
-curl -X DELETE {{api_url}}/v1/api/keys \
-     -H 'Authorization: Bearer {{bearer_token}}' \
-     -d '{"key_id": "test api key"}'
-
 
 ### Get user data
 # @name user_data_req
@@ -53,7 +33,7 @@ curl {{api_url}}/v1/submissions?projectId={{user_id}}
 
 # Process Bigpicture submission
 
-### Create new submission (copy-paste to terminal because -F flags are not supported in REST Client)
+### Create new submission (copy-paste to terminal because -F flags are not supported in REST Client extension)
 # @name submission_id_req
 curl -X POST '{{api_url}}/v1/submit/Bigpicture' \
      -H 'Authorization: Bearer {{bearer_token}}' \
@@ -70,6 +50,7 @@ curl -X POST '{{api_url}}/v1/submit/Bigpicture' \
      -F "sample=@./tests/test_files/xml/bigpicture/sample.xml;type=text/xml" \
      -F "staining=@./tests/test_files/xml/bigpicture/staining.xml;type=text/xml" | jq
 
+# Fill in submission_id here:
 # @submission_id =
 
 ### Get submission by ID
