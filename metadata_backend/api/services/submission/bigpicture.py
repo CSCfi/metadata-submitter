@@ -87,17 +87,30 @@ class BigPictureObjectSubmissionService(ObjectSubmissionService):
         :return: the XML documents processor.
         """
 
-        datacite_object, bp_objects = self._get_objects(objects)
+        processor, datacite = BigPictureObjectSubmissionService._create_processor(objects)
+        self._processor = processor
+        self._datacite = datacite
+        return self._processor
+
+    @staticmethod
+    def _create_processor(objects: list[ObjectSubmission]) -> tuple[XmlStringDocumentsProcessor, DataCiteMetadata]:
+        """
+        Return XML documents processor for BigPicture XMLs (excl. DataCite XML) and datacite metadata from DataCite XML.
+
+        :param objects: The metadata object documents.
+        :return: a tuple containing the XML documents processor and the DataCite metadata
+        """
+
+        datacite_object, bp_objects = BigPictureObjectSubmissionService._get_objects(objects)
 
         # Read DataCite XML.
+        datacite = None
         if datacite_object:
-            self._datacite = read_datacite_xml(datacite_object.document)
+            datacite = read_datacite_xml(datacite_object.document)
 
         # Create processor for BigPicture XMLs.
-        self._processor = XmlStringDocumentsProcessor(
-            BP_FULL_SUBMISSION_XML_OBJECT_CONFIG, [o.document for o in bp_objects]
-        )
-        return self._processor
+        processor = XmlStringDocumentsProcessor(BP_FULL_SUBMISSION_XML_OBJECT_CONFIG, [o.document for o in bp_objects])
+        return processor, datacite
 
     @override
     def assign_submission_accession(self) -> str | None:

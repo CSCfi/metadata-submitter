@@ -180,7 +180,7 @@ async def test_create_resource(secret_env):
     service = RemsServiceHandler()
 
     doi = create_doi()
-    resource_id = await service.create_resource(organization_id="nbn", license_ids=[1], doi=doi)
+    resource_id = await service.create_resource(organization_id="nbn", license_ids=[1], resid=doi)
     assert resource_id is not None
 
     resources = await service.get_resources(doi=doi)
@@ -197,7 +197,7 @@ async def test_create_catalogue_item(secret_env):
     handler = RemsServiceHandler()
 
     doi = create_doi()
-    resource_id = await handler.create_resource(organization_id="nbn", license_ids=[1], doi=doi)
+    resource_id = await handler.create_resource(organization_id="nbn", license_ids=[1], resid=doi)
 
     title = f"test_{uuid.uuid4()}"
     discovery_url = handler.get_discovery_url(doi)

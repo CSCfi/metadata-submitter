@@ -9,8 +9,7 @@ from typing import Callable
 from sqlalchemy import create_mock_engine, event, text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 
-from metadata_backend.api.exceptions import SystemException
-
+from ...api.exceptions import SystemException
 from ...conf.database import database_config
 from .models import Base
 

@@ -1,7 +1,7 @@
 """Other models."""
 
 from datetime import datetime
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import RootModel
 
@@ -58,14 +58,14 @@ class Objects(RootModel[list[Object]]):
 class File(StrictBaseModel):
     """A file associated with the submission."""
 
-    fileId: Optional[str] = None
-    submissionId: Optional[str] = None
-    objectId: Optional[str] = None
+    fileId: str | None = None
+    submissionId: str | None = None
+    objectId: str | None = None
     path: str
-    bytes: Optional[int] = None
-    checksumMethod: Optional[ChecksumMethodType] = None
-    unencryptedChecksum: Optional[str] = None
-    encryptedChecksum: Optional[str] = None
+    bytes: int | None = None
+    checksumMethod: ChecksumMethodType | None = None
+    unencryptedChecksum: str | None = None
+    encryptedChecksum: str | None = None
 
 
 class Files(RootModel[list[File]]):
@@ -75,14 +75,14 @@ class Files(RootModel[list[File]]):
 class Registration(StrictBaseModel):
     """A registration entry to an external service."""
 
-    submissionId: Optional[str] = None
-    objectId: Optional[str] = None
-    objectType: Optional[str] = None
+    submissionId: str | None = None
+    objectId: str | None = None
+    objectType: str | None = None
     title: str
     description: str
-    doi: str
-    metaxId: Optional[str] = None
-    dataciteUrl: Optional[str] = None
-    remsUrl: Optional[str] = None
-    remsResourceId: Optional[str] = None
-    remsCatalogueId: Optional[str] = None
+    doi: str | None = None
+    metaxId: str | None = None
+    dataciteUrl: str | None = None
+    remsUrl: str | None = None
+    remsResourceId: str | None = None
+    remsCatalogueId: str | None = None

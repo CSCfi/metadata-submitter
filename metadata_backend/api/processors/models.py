@@ -9,5 +9,6 @@ class ObjectIdentifier(BaseModel):
     schema_type: str
     object_type: str
     name: str
-    id: str | None
+    id: str | None = None
     root_path: str  # Absolute path (e.g. XPath) to the metadata object root element.
+    new_name: str | None = None  # Used in tests to make names unique.

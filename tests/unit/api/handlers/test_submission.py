@@ -1,9 +1,7 @@
 """Tests for submission API handler."""
 
-import json
 import uuid
 from datetime import datetime, timedelta
-from pathlib import Path
 from typing import Any
 
 import pytest
@@ -11,11 +9,9 @@ import pytest
 from metadata_backend.api.handlers.submission import SubmissionAPIHandler
 from metadata_backend.conf.conf import API_PREFIX
 from tests.unit.patches.user import patch_verify_authorization, patch_verify_user_project
+from tests.utils import sd_submission_dict
 
-from .common import get_submission, post_submission
-
-TEST_ROOT_DIR = Path(__file__).parent.parent.parent.parent / "test_files"
-SUBMISSION_JSON = TEST_ROOT_DIR / "submission" / "submission.json"
+from .common import get_submission, sd_submission
 
 
 async def test_post_get_delete_submission(csc_client):
@@ -30,9 +26,7 @@ async def test_post_get_delete_submission(csc_client):
 
     # Post submission.
 
-    submission_id = await post_submission(
-        csc_client, name=name, description=description, project_id=project_id, workflow=workflow
-    )
+    submission_id = await sd_submission(csc_client, name=name, description=description, project_id=project_id)
 
     # Get submission.
 
@@ -82,7 +76,6 @@ async def test_post_submission_fails_with_missing_fields(csc_client):
     await assert_missing_field("name")
     await assert_missing_field("description")
     await assert_missing_field("projectId")
-    await assert_missing_field("workflow")
 
 
 async def test_post_submission_fails_with_empty_body(csc_client):
@@ -105,7 +98,7 @@ async def test_post_submission_fails_with_duplicate_name(csc_client):
     name = f"name_{uuid.uuid4()}"
     project_id = f"project_{uuid.uuid4()}"
 
-    await post_submission(csc_client, name=name, project_id=project_id)
+    await sd_submission(csc_client, name=name, project_id=project_id)
 
     data = {
         "name": name,
@@ -135,11 +128,11 @@ async def test_get_submissions(csc_client):
     description = f"description_{uuid.uuid4()}"
     workflow = "SD"
 
-    submission_id_1 = await post_submission(
-        csc_client, name=name_1, title=title, description=description, project_id=project_id, workflow=workflow
+    submission_id_1 = await sd_submission(
+        csc_client, name=name_1, title=title, description=description, project_id=project_id
     )
-    submission_id_2 = await post_submission(
-        csc_client, name=name_2, title=title, description=description, project_id=project_id, workflow=workflow
+    submission_id_2 = await sd_submission(
+        csc_client, name=name_2, title=title, description=description, project_id=project_id
     )
 
     with (
@@ -196,15 +189,10 @@ async def test_get_submissions_by_name(csc_client):
     name_3 = f"{uuid.uuid4()} name"
     project_id = f"project_{uuid.uuid4()}"
     description = f"description_{uuid.uuid4()}"
-    workflow = "SD"
 
-    submission_id_1 = await post_submission(
-        csc_client, name=name_1, description=description, project_id=project_id, workflow=workflow
-    )
-    await post_submission(csc_client, name=name_2, description=description, project_id=project_id, workflow=workflow)
-    submission_id_3 = await post_submission(
-        csc_client, name=name_3, description=description, project_id=project_id, workflow=workflow
-    )
+    submission_id_1 = await sd_submission(csc_client, name=name_1, description=description, project_id=project_id)
+    await sd_submission(csc_client, name=name_2, description=description, project_id=project_id)
+    submission_id_3 = await sd_submission(csc_client, name=name_3, description=description, project_id=project_id)
 
     with (
         patch_verify_user_project,
@@ -222,7 +210,7 @@ async def test_get_submissions_by_created(csc_client):
     """Test that get submissions by created date."""
 
     project_id = f"project_{uuid.uuid4()}"
-    submission_id = await post_submission(csc_client, project_id=project_id)
+    submission_id = await sd_submission(csc_client, project_id=project_id)
 
     def today_with_offset(days: int = 0) -> str:
         """Return the current date plus or minus the given number of days in the format 'YYYY-MM-DD'."""
@@ -276,7 +264,7 @@ async def test_get_submissions_by_modified(csc_client):
     """Test that get submissions by modified date."""
 
     project_id = f"project_{uuid.uuid4()}"
-    submission_id = await post_submission(csc_client, project_id=project_id)
+    submission_id = await sd_submission(csc_client, project_id=project_id)
 
     def today_with_offset(days: int = 0) -> str:
         """Return the current date plus or minus the given number of days in the format 'YYYY-MM-DD'."""
@@ -405,9 +393,7 @@ async def test_patch_submission(csc_client):
     description = f"description_{uuid.uuid4()}"
     workflow = "SD"
 
-    submission_id = await post_submission(
-        csc_client, name=name, description=description, project_id=project_id, workflow=workflow
-    )
+    submission_id = await sd_submission(csc_client, name=name, description=description, project_id=project_id)
 
     # Update title.
 
@@ -447,7 +433,7 @@ async def test_patch_submission(csc_client):
 async def test_submission_json(csc_client):
     """Test that submission json test file works."""
 
-    submission = json.loads(SUBMISSION_JSON.read_text())
+    submission = sd_submission_dict()
 
     # Test valid submission.
 
@@ -455,12 +441,11 @@ async def test_submission_json(csc_client):
 
     description = f"description_{uuid.uuid4()}"
     project_id = f"project_{uuid.uuid4()}"
-    workflow = "SD"
 
     # Post submission.
 
-    submission_id, submission = await post_submission(
-        csc_client, name=name, description=description, project_id=project_id, workflow=workflow, submission=submission
+    submission_id, submission = await sd_submission(
+        csc_client, name=name, description=description, project_id=project_id, submission=submission
     )
 
     # Get submission.
@@ -477,6 +462,7 @@ async def test_submission_json(csc_client):
     del saved_submission["published"]
     del saved_submission["submissionId"]
 
+    submission["workflow"] = "SD"  # Automatically added.
     assert submission == saved_submission
 
 

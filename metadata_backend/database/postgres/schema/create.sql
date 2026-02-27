@@ -87,7 +87,7 @@ CREATE TABLE registrations (
 	title TEXT NOT NULL,
 	description TEXT NOT NULL,
 	object_type VARCHAR(256),
-	doi VARCHAR(256) NOT NULL,
+	doi VARCHAR(256),
 	metax_id VARCHAR(256),
 	datacite_url VARCHAR(1024),
 	rems_url VARCHAR,
@@ -99,9 +99,9 @@ CREATE TABLE registrations (
 	FOREIGN KEY(submission_id) REFERENCES submissions (submission_id) ON DELETE CASCADE,
 	FOREIGN KEY(object_id) REFERENCES objects (object_id) ON DELETE CASCADE
 );
-CREATE INDEX ix_registrations_modified ON registrations (modified);
 CREATE INDEX ix_registrations_created ON registrations (created);
 CREATE UNIQUE INDEX ix_registrations_object_id ON registrations (object_id);
+CREATE INDEX ix_registrations_modified ON registrations (modified);
 COMMENT ON COLUMN registrations.doi IS 'Digital Object identifier';
 COMMENT ON COLUMN registrations.metax_id IS 'Metax identifier';
 COMMENT ON COLUMN registrations.datacite_url IS 'Datacite discovery URL';

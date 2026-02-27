@@ -12,6 +12,7 @@ from ...api.dependencies import (
     WorkflowDependency,
 )
 from ...database.postgres.services.submission import UnknownSubmissionUserException
+from ...helpers.logger import LOG
 from ..exceptions import SystemException, UserException
 from ..models.models import Object
 from ..models.submission import Submission, SubmissionWorkflow
@@ -317,6 +318,7 @@ class ObjectAPIHandler(RESTAPIHandler):
                 try:
                     document = content.decode("utf-8")
                 except UnicodeDecodeError:
+                    LOG.error(f"Could not decode file '{file.filename}' as UTF-8")
                     raise UserException(f"Could not decode file '{file.filename}' as UTF-8")
 
                 objects.append(ObjectSubmission(filename=file.filename, document=document))

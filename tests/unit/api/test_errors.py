@@ -44,7 +44,6 @@ def test_problem_json_post_submissions_error(csc_client):
                 {"field": "body.name", "message": "Field required"},
                 {"field": "body.title", "message": "Field required"},
                 {"field": "body.description", "message": "Field required"},
-                {"field": "body.workflow", "message": "Field required"},
             ],
             "instance": "/v1/submissions",
             "status": 400,

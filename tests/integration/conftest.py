@@ -4,24 +4,20 @@ Setting scope to `class` means that tests should be grouped in classes
 to share functionality of the `class` scoped fixtures.
 """
 
-import io
 import logging
 import os
 import uuid
 from contextlib import asynccontextmanager
-from io import BufferedReader
 from typing import Any, AsyncGenerator, Awaitable, Protocol
-from xml.etree import ElementTree
 
 import aiohttp
 import pytest
 from dotenv import dotenv_values
 from yarl import URL
 
-from metadata_backend.api.json import to_json, to_json_dict
-from metadata_backend.api.models.submission import Submission, SubmissionWorkflow
+from metadata_backend.api.json import to_json_dict
+from metadata_backend.api.models.submission import Submission
 from tests.integration.conf import (
-    TEST_FILES_ROOT,
     auth_url,
     base_url,
     mock_s3_region,
@@ -36,6 +32,7 @@ from tests.integration.helpers import (
     delete_bucket,
     get_submission,
 )
+from tests.utils import bp_submission_documents, bp_update_documents, sd_submission_document
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
@@ -65,12 +62,6 @@ class SubmissionUpdateCallableSD(Protocol):
     ) -> Awaitable[Submission]: ...
 
 
-def sd_submit_multipart_data(submission: Submission | dict[str, Any]) -> dict[str, io.BytesIO]:
-    content = io.BytesIO(to_json(submission).encode("utf-8"))
-    content.seek(0)
-    return {"submission.json": content}
-
-
 @pytest.fixture
 async def sd_submission(sd_client: aiohttp.ClientSession, project_id: str) -> SubmissionCallableSD:
     """
@@ -80,7 +71,6 @@ async def sd_submission(sd_client: aiohttp.ClientSession, project_id: str) -> Su
     minimum information. Deletes any existing submission with the same
     name.
     """
-    workflow = SubmissionWorkflow.SD
 
     async def _create(submission_dict: dict[str, Any] | None = None, *, submit_endpoint: bool = False) -> Submission:
         if not submission_dict:
@@ -89,11 +79,9 @@ async def sd_submission(sd_client: aiohttp.ClientSession, project_id: str) -> Su
                 title=f"title_{uuid.uuid4()}",
                 description=f"description_{uuid.uuid4()}",
                 projectId=project_id,
-                workflow=workflow,
             )
         else:
             submission_dict["projectId"] = project_id
-            submission_dict["workflow"] = workflow
             submission = Submission.model_validate(submission_dict)
 
         # Delete submission if it exists (requires ALLOW_UNSAFE=TRUE).
@@ -106,7 +94,7 @@ async def sd_submission(sd_client: aiohttp.ClientSession, project_id: str) -> Su
 
         # Post submission.
         if submit_endpoint:
-            data = sd_submit_multipart_data(submission)
+            data = sd_submission_document(submission)
             async with sd_client.post(f"{submit_url}?projectId={project_id}", data=data) as resp:
                 data = await resp.json()
                 assert resp.status == 200
@@ -131,7 +119,7 @@ async def sd_submission_update(sd_client: aiohttp.ClientSession, project_id: str
     ) -> Submission:
         # Patch submission.
         if submit_endpoint:
-            data = sd_submit_multipart_data(submission_dict)
+            data = sd_submission_document(submission_dict)
             async with sd_client.patch(f"{submit_url}/{submission_id}?projectId={project_id}", data=data) as resp:
                 assert resp.status == 200
                 return await get_submission(sd_client, submission_id)
@@ -147,106 +135,28 @@ async def sd_submission_update(sd_client: aiohttp.ClientSession, project_id: str
 
 class SubmissionCallableBigPicture(Protocol):
     def __call__(
-        self,
-    ) -> Awaitable[Submission]: ...
+        self, is_datacite: bool
+    ) -> Awaitable[tuple[Submission, dict[str, dict[str]]]]: ...  # submission names, object names
 
 
 class SubmissionUpdateCallableBigPicture(Protocol):
-    def __call__(self, submission_id: str) -> Awaitable[Submission]: ...
-
-
-def bp_submit_multipart_data() -> tuple[str, dict[str, io.BytesIO]]:
-    """Get the BP submission name and XML data for multipart upload."""
-
-    submission_dir = TEST_FILES_ROOT / "xml" / "bigpicture"
-    files = [
-        "dataset.xml",
-        "policy.xml",
-        "image.xml",
-        "annotation.xml",
-        "observation.xml",
-        "observer.xml",
-        "sample.xml",
-        "staining.xml",
-        "landing_page.xml",
-        "rems.xml",
-        "organisation.xml",
-        "datacite.xml",
-    ]
-
-    # Read XML files.
-    data = {}
-    for file in files:
-        data[file] = (submission_dir / file).open("rb")
-
-    # Read submission name from XML.
-    dataset_xml = ElementTree.parse(data["dataset.xml"]).getroot()
-    submission_name = [elem.text for elem in dataset_xml.findall(".//SHORT_NAME")][0]
-    data["dataset.xml"].seek(0)
-
-    return submission_name, data
-
-
-def bp_submission_update_data() -> tuple[str, dict[str, BufferedReader]]:
-    """Get the BP submission name and XML data for multipart upload."""
-
-    submission_dir = TEST_FILES_ROOT / "xml" / "bigpicture"
-    update_dir = TEST_FILES_ROOT / "xml" / "bigpicture" / "update"
-    files = [
-        "policy.xml",
-        "annotation.xml",
-        "observation.xml",
-        "observer.xml",
-        "sample.xml",
-        "staining.xml",
-        "landing_page.xml",
-        "rems.xml",
-        "organisation.xml",
-        "datacite.xml",
-    ]
-    updated_files = [
-        "dataset.xml",
-        "image.xml",
-    ]
-
-    # Read XML files.
-    data = {}
-    for file in files:
-        data[file] = (submission_dir / file).open("rb")
-    for file in updated_files:
-        data[file] = (update_dir / file).open("rb")
-
-    # Read submission name from XML.
-    dataset_xml = ElementTree.parse(data["dataset.xml"]).getroot()
-    submission_name = [elem.text for elem in dataset_xml.findall(".//SHORT_NAME")][0]
-    data["dataset.xml"].seek(0)
-
-    return submission_name, data
+    def __call__(
+        self, submission_id: str, submission_name: str, object_names: dict[str, dict[str]], is_datacite: bool
+    ) -> Awaitable[Submission]: ...
 
 
 @pytest.fixture
 async def bp_submission(nbis_client: aiohttp.ClientSession, project_id: str) -> SubmissionCallableBigPicture:
-    """
-    Create BigPicture NBIS submission using the /submit endpoint.
+    """Create BigPicture submission using the /submit endpoint."""
 
-    Creates a submission using default XMLs. Deletes any existing submission
-    with the same name.
-    """
-
-    async def _create() -> Submission:  # noqa
-        submission_name, data = bp_submit_multipart_data()
-
-        # Delete submission if it exists (requires ALLOW_UNSAFE=TRUE).
-        async with nbis_client.delete(
-            f"{submit_url}/{submission_name}?&unsafe=true",
-        ) as resp:
-            assert resp.status == 204
+    async def _create(is_datacite: bool = False) -> tuple[Submission, dict[str, dict[str]]]:  # noqa
+        submission_name, object_names, files = bp_submission_documents(is_datacite=is_datacite)
 
         # Post submission.
-        async with nbis_client.post(f"{submit_url}", data=data) as resp:
+        async with nbis_client.post(f"{submit_url}", data=files) as resp:
             data = await resp.json()
             assert resp.status == 200
-            return Submission.model_validate(data)
+            return Submission.model_validate(data), object_names
 
     return _create
 
@@ -255,13 +165,19 @@ async def bp_submission(nbis_client: aiohttp.ClientSession, project_id: str) -> 
 async def bp_submission_update(
     nbis_client: aiohttp.ClientSession, project_id: str
 ) -> SubmissionUpdateCallableBigPicture:
-    """Update BigPicture NBIS submission using the /submit endpoint."""
+    """
+    Update BigPicture submission using the /submit endpoint.
 
-    async def _update(submission_id: str) -> Submission:  # noqa
-        submission_name, data = bp_submission_update_data()
+    Uses the same XMLs as the initial submission.
+    """
+
+    async def _update(
+        submission_id: str, submission_name: str, object_names: dict[str, dict[str, dict[str, str]]], is_datacite: bool
+    ) -> Submission:  # noqa
+        _, _, files = bp_update_documents(submission_name, object_names, is_datacite)
 
         # Patch submission.
-        async with nbis_client.patch(f"{submit_url}/{submission_id}", data=data) as resp:
+        async with nbis_client.patch(f"{submit_url}/{submission_id}", data=files) as resp:
             assert resp.status == 200
             return await get_submission(nbis_client, submission_id)
 

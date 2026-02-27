@@ -7,7 +7,7 @@ from typing import Annotated, Any
 from fastapi import Body, HTTPException, Query, Request, Response, status
 from fastapi.responses import JSONResponse
 
-from ...api.dependencies import SubmissionIdPathParam, UserDependency
+from ...api.dependencies import SubmissionIdPathParam, UserDependency, WorkflowDependency
 from ...conf.deployment import deployment_config
 from ...database.postgres.services.submission import SubmissionService
 from ...helpers.logger import LOG
@@ -224,12 +224,17 @@ class SubmissionAPIHandler(RESTAPIHandler):
 
         return {"Link": ", ".join(links)} if links else {}
 
-    async def create_submission(self, user: UserDependency, submission: SubmissionDocumentBody) -> SubmissionId:
+    async def create_submission(
+        self, user: UserDependency, workflow: WorkflowDependency, submission: SubmissionDocumentBody
+    ) -> SubmissionId:
         """Create a new submission given a submission document, and return the submission id."""
 
         user_id = user.user_id
         project_service = self._services.project
         submission_service = self._services.submission
+
+        # Set workflow according to the deployment type.
+        submission.workflow = workflow
 
         # Check that user is affiliated with the project.
         await project_service.verify_user_project(user_id, submission.projectId)

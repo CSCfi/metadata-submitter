@@ -77,18 +77,18 @@ class Submission(StrictBaseModel):
     """Submission document."""
 
     projectId: str
-    submissionId: Optional[str] = None  # Stored only in a database column.
+    submissionId: str | None = None  # Stored only in a database column.
     name: str
     title: str
     description: str
-    workflow: SubmissionWorkflow
-    bucket: Optional[str] = None  # Stored only in a database column.
-    metadata: Optional[SubmissionMetadata] = None
-    rems: Optional[Rems] = None
-    dateCreated: Optional[datetime] = None  # Stored only in a database column.
-    datePublished: Optional[datetime] = None  # Stored only in a database column.
-    lastModified: Optional[datetime] = None  # Stored only in a database column.
-    published: Optional[bool] = None  # Stored only in a database column.
+    workflow: SubmissionWorkflow | None = None
+    bucket: str | None = None  # Stored only in a database column.
+    metadata: SubmissionMetadata | None = None
+    rems: Rems | None = None
+    dateCreated: datetime | None = None  # Stored only in a database column.
+    datePublished: datetime | None = None  # Stored only in a database column.
+    lastModified: datetime | None = None  # Stored only in a database column.
+    published: bool | None = None  # Stored only in a database column.
 
     @model_validator(mode="before")
     @classmethod

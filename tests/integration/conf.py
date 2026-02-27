@@ -1,13 +1,8 @@
 """Constants and variables used in integration tests."""
 
 import os
-from pathlib import Path
 
 from metadata_backend.conf.conf import API_PREFIX
-
-TEST_FILES_ROOT = Path(__file__).parent.parent / "test_files"
-
-SD_SUBMISSION = TEST_FILES_ROOT / "submission" / "submission.json"
 
 auth_url = os.getenv("OIDC_URL", "http://localhost:8000")
 

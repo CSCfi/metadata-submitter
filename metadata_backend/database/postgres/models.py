@@ -353,7 +353,7 @@ class RegistrationEntity(Base):
     title: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     object_type: Mapped[str] = mapped_column(String(256), nullable=True)
-    doi: Mapped[str] = mapped_column(String(256), nullable=False, comment="Digital Object identifier")
+    doi: Mapped[str] = mapped_column(String(256), nullable=True, comment="Digital Object identifier")
     metax_id: Mapped[str] = mapped_column(String(256), nullable=True, comment="Metax identifier")
     datacite_url: Mapped[str] = mapped_column(String(1024), nullable=True, comment="Datacite discovery URL")
     rems_url = mapped_column(String, nullable=True)

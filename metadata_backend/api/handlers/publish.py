@@ -6,6 +6,7 @@ from datetime import datetime
 from fastapi import Request
 
 from ...api.dependencies import SubmissionIdPathParam, UserDependency
+from ...conf.conf import DEPLOYMENT_CSC
 from ...conf.deployment import deployment_config
 from ...helpers.logger import LOG
 from ..exceptions import SystemException, UserException
@@ -115,9 +116,11 @@ class PublishAPIHandler(RESTAPIHandler):
 
         try:
             if not registration.remsResourceId:
-                resource_id = await self._handlers.rems.create_resource(
-                    workflow.organization.id, rems.licenses, registration.doi
-                )
+                # Use the submission ID as the REMS identifier if DOI is not available.
+                resid = registration.doi
+                if resid is None:
+                    resid = registration.submissionId
+                resource_id = await self._handlers.rems.create_resource(workflow.organization.id, rems.licenses, resid)
                 await self._services.registration.update_rems_resource_id(registration.submissionId, str(resource_id))
                 registration.remsResourceId = str(resource_id)
             else:
@@ -174,6 +177,12 @@ class PublishAPIHandler(RESTAPIHandler):
                 f"Failed to publish submission '{registration.submissionId}' to Metax. Please try again later."
             ) from ex
 
+    @staticmethod
+    def _require_doi(submission_id: str, datacite: DataCiteMetadata) -> None:
+        if deployment_config().DEPLOYMENT == DEPLOYMENT_CSC:
+            if datacite is None:
+                raise UserException(f"Submission '{submission_id}' does not have required DataCite information.")
+
     async def publish_submission(
         self,
         req: Request,
@@ -225,16 +234,16 @@ class PublishAPIHandler(RESTAPIHandler):
         submission = await submission_service.get_submission_by_id(submission_id)
 
         # Get DataCite metadata.
-        datacite = submission.metadata.to_datacite()
-        # Set DataCite publication year.
-        datacite.publicationYear = datetime.now().year
+        datacite = None
+        if submission.metadata:
+            datacite = submission.metadata.to_datacite()
+            # Set DataCite publication year.
+            datacite.publicationYear = datetime.now().year
+
+        self._require_doi(submission_id, datacite)
 
         # Get REMS metadata.
         rems = submission.rems
-
-        # Check that the submission contains DataCite information.
-        if (self._handlers.datacite is not None or self._handlers.pid is not None) and not datacite:
-            raise UserException(f"Submission '{submission_id}' does not have required DataCite information.")
 
         # Check that the submission contains REMS information.
         if not rems:
@@ -249,7 +258,7 @@ class PublishAPIHandler(RESTAPIHandler):
         LOG.info("Publishing submission with ID %r was successful.", submission_id)
         return SubmissionId(submissionId=submission_id)
 
-    async def _register_submission(self, submission: Submission, datacite: DataCiteMetadata, rems: Rems) -> None:
+    async def _register_submission(self, submission: Submission, datacite: DataCiteMetadata | None, rems: Rems) -> None:
         """
         Register submission with external discovery services.
 
@@ -270,24 +279,25 @@ class PublishAPIHandler(RESTAPIHandler):
 
         registration: Registration = await registration_service.get_registration(submission_id)
 
+        self._require_doi(submission_id, datacite)
+
+        # Create registration.
         if registration is None:
-            # Register DOI.
-            doi = await self._register_draft_doi()
+            doi = None
+            if datacite is not None:
+                # Create DOI if DataCite metadata is available.
+                doi = await self._register_draft_doi()
             registration = self._create_registration(submission_id, submission.title, submission.description, doi)
             await registration_service.add_registration(registration)
 
-        # Registration has now been created with a DOI.
-
-        # Register Metax IDs. Requires DOI.
-
-        # Register Metax ID for submission.
+        # Register Metax ID. Requires DOI.
         if self._handlers.metax is not None:
             if registration.metaxId is None:
                 await self._register_metax_id(submission_id, registration)
                 await registration_service.update_metax_id(submission_id, registration.metaxId)
 
-        # Publish to DataCite. Requires DOIs. Modifies the datacite information.
-        if self._handlers.datacite is not None or self._handlers.pid is not None:
+        # Publish to DataCite. Modifies the datacite information.
+        if datacite:
             await self._publish_datacite_or_pid(registration, datacite)
 
         # Update Metax with DOI information.

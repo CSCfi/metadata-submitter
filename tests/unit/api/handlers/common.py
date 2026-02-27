@@ -31,17 +31,16 @@ SUBMISSION_METADATA = {
 }
 
 
-async def post_submission(
+async def sd_submission(
     client: TestClient,
     name: str | None = None,
     title: str | None = None,
     description: str | None = None,
     project_id: str | None = None,
-    workflow: str = "SD",
     *,
     submission: dict[str, Any] | None = None,
 ) -> str | tuple[str, dict[str, Any]]:
-    """Post a submission."""
+    """Post a SD submission."""
 
     is_submission = submission is not None
 
@@ -64,14 +63,12 @@ async def post_submission(
                 "title": title,
                 "description": description,
                 "projectId": project_id,
-                "workflow": workflow,
             }
         else:
             submission["name"] = name
             submission["title"] = title
             submission["description"] = description
             submission["projectId"] = project_id
-            submission["workflow"] = workflow
 
         response = client.post(f"{API_PREFIX}/submissions", json=submission)
         response.raise_for_status()
