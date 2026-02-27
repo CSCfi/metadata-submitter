@@ -9,15 +9,6 @@ Development Deployment
 For integration testing and local development we recommend ``docker-compose``,
 which can be installed using ``pip install docker-compose``.
 
-Deploying Backend
-~~~~~~~~~~~~~~~~~
-
-Check out `backend repository <https://github.com/CSCfi/metadata-submitter>`_.
-
-For quick testing, launch both server and database with Docker by running ``docker compose up --build``
-(add ``-d`` flag to run containers in background). Server can then be found from ``http://localhost:5430``.
-
-This will launch a version without the frontend.
 
 Deploying Frontend
 ~~~~~~~~~~~~~~~~~~
@@ -48,19 +39,6 @@ With backend and frontend running in containers:
 4. check out metadata submitter frontend repository
 5. ``docker compose up -d --build`` frontend repository root directory
 
-
-Production Deployment
----------------------
-
-To ease production deployment Frontend is built and added as static files to backend while building the Docker image.
-The production image can be built and run with following docker commands:
-
-.. code-block:: console
-
-    docker build --no-cache -f dockerfiles/Dockerfile -t cscfi/metadata-submitter .
-    docker run -p 5430:5430 cscfi/metadata-submitter
-
-.. important:: Requires a PostgreSQL database configured using the DATABASE_URL environment variable.
 
 Kubernetes Deployment
 ~~~~~~~~~~~~~~~~~~~~~

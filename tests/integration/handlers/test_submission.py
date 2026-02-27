@@ -75,55 +75,56 @@ async def test_bp_objects_and_docs(nbis_client, sd_submission, project_id, bp_su
     """Test get BigPicture objects and XML docs for NBIS deployment."""
 
     # Create submission.
-    submission = await bp_submission()
+    submission, object_names = await bp_submission()
     submission_id = submission.submissionId
 
     # Get objects.
     objects = (await get_objects(nbis_client, submission_id)).root
 
-    def assert_exactly_one(name: str, object_type: str) -> None:
-        assert sum(obj.name == name and obj.objectType == object_type for obj in objects) == 1, (
-            f"Expected exactly one {object_type!r} with name={name!r}"
-        )
+    def assert_exactly_one(original_name: str, object_type: str) -> None:
+        assert (
+            sum(obj.name.startswith(original_name + "_") and obj.objectType == object_type for obj in objects) == 1
+        ), f"Expected exactly one {object_type!r} with name starting with {(original_name + '_')!r}"
 
-    assert_exactly_one(name="1", object_type="dataset")
-    assert_exactly_one(name="1", object_type="policy")
-    assert_exactly_one(name="1", object_type="image")
-    assert_exactly_one(name="2", object_type="image")
-    assert_exactly_one(name="1", object_type="annotation")
-    assert_exactly_one(name="1", object_type="observation")
-    assert_exactly_one(name="1", object_type="observer")
-    assert_exactly_one(name="1", object_type="biological_being")
-    assert_exactly_one(name="1", object_type="case")
-    assert_exactly_one(name="1", object_type="specimen")
-    assert_exactly_one(name="1", object_type="block")
-    assert_exactly_one(name="1", object_type="slide")
-    assert_exactly_one(name="1", object_type="staining")
-    assert_exactly_one(name="1", object_type="landing_page")
-    assert_exactly_one(name="1", object_type="rems")
-    assert_exactly_one(name="1", object_type="organisation")
+    assert_exactly_one("1", object_type="dataset")
+    assert_exactly_one("1", object_type="policy")
+    assert_exactly_one("1", object_type="image")
+    assert_exactly_one("2", object_type="image")
+    assert_exactly_one("1", object_type="annotation")
+    assert_exactly_one("1", object_type="observation")
+    assert_exactly_one("1", object_type="observer")
+    assert_exactly_one("1", object_type="biological_being")
+    assert_exactly_one("1", object_type="case")
+    assert_exactly_one("1", object_type="specimen")
+    assert_exactly_one("1", object_type="block")
+    assert_exactly_one("1", object_type="slide")
+    assert_exactly_one("1", object_type="staining")
+    assert_exactly_one("1", object_type="landing_page")
+    assert_exactly_one("1", object_type="rems")
+    assert_exactly_one("1", object_type="organisation")
 
-    def get_exactly_one(name: str, object_type: str):
+    def get_exactly_one(original_name: str, schema_type: str, object_type: str):
+        name = object_names[schema_type][object_type][original_name]
         matches = [obj for obj in objects if obj.name == name and obj.objectType == object_type]
         assert len(matches) == 1, f"Expected exactly one {object_type!r} with name={name!r}, found {len(matches)}"
         return matches[0]
 
-    dataset = get_exactly_one(name="1", object_type="dataset")
-    image = get_exactly_one(name="1", object_type="image")
-    annotation = get_exactly_one(name="1", object_type="annotation")
-    observation = get_exactly_one(name="1", object_type="observation")
+    dataset = get_exactly_one("1", "dataset", "dataset")
+    image = get_exactly_one("1", "image", "image")
+    annotation = get_exactly_one("1", "annotation", "annotation")
+    observation = get_exactly_one("1", "observation", "observation")
 
     expected_xml = f"""<?xml version='1.0' encoding='UTF-8'?>
 <DATASET_SET>
-  <DATASET alias="1" accession="{dataset.objectId}">
+  <DATASET alias="{object_names["dataset"]["dataset"]["1"]}" accession="{dataset.objectId}">
     <TITLE>test_title</TITLE>
-    <SHORT_NAME>test_short_name</SHORT_NAME>
+    <SHORT_NAME>{submission.name}</SHORT_NAME>
     <DESCRIPTION>test_description</DESCRIPTION>
     <VERSION>1</VERSION>
     <METADATA_STANDARD>2.0.0</METADATA_STANDARD>
-    <IMAGE_REF alias="1" accession="{image.objectId}"/>
-    <ANNOTATION_REF alias="1" accession="{annotation.objectId}"/>
-    <OBSERVATION_REF alias="1" accession="{observation.objectId}"/>
+    <IMAGE_REF alias="{object_names["image"]["image"]["1"]}" accession="{image.objectId}"/>
+    <ANNOTATION_REF alias="{object_names["annotation"]["annotation"]["1"]}" accession="{annotation.objectId}"/>
+    <OBSERVATION_REF alias="{object_names["observation"]["observation"]["1"]}" accession="{observation.objectId}"/>
     <ATTRIBUTES>
       <STRING_ATTRIBUTE>
         <TAG>test</TAG>

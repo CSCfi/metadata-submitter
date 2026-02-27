@@ -161,7 +161,7 @@ async def test_publish_submission_sd(csc_client, submission_repository, object_r
         )
 
 
-async def test_publish_submission_nbis(nbis_client, submission_repository, object_repository, file_repository):
+async def test_publish_submission_bp(nbis_client, submission_repository, object_repository, file_repository):
     """Test publishing of BP submission."""
 
     # RENS information.

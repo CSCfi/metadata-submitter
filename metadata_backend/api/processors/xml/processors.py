@@ -107,6 +107,14 @@ class XmlProcessor(ABC):
         """
 
     @abstractmethod
+    def set_object_reference_names(self, references: list[ObjectIdentifier]) -> None:
+        """
+        Set the metadata object reference names. Used in tests to make names unique.
+
+        :param references: The metadata object references.
+        """
+
+    @abstractmethod
     def is_object_reference_ids(self) -> bool:
         """
         Return true if all metadata object references in the XML have ids.
@@ -406,7 +414,7 @@ class XmlObjectProcessor(XmlProcessor, ObjectProcessor):
 
     @staticmethod
     def _set_xml_node_value(
-        path: str, xml: Element, value: str, *, insertion_callback: XmlElementInsertionCallback | None
+        path: str, xml: Element, value: str, *, insertion_callback: XmlElementInsertionCallback | None = None
     ) -> None:
         """
         Set the value of an XML element or attribute specified by an XPath expression.
@@ -525,6 +533,16 @@ class XmlObjectProcessor(XmlProcessor, ObjectProcessor):
             id_path = self._get_relative_xpath(p.id_path)
             self._set_xml_node_value(id_path, self.root_element, value, insertion_callback=p.id_insertion_callback)
 
+    def set_xml_object_name(self, value: str) -> None:
+        """
+        Set the metadata object name. Used in tests to makes names unique.
+
+        :param value: The metadata object name.
+        """
+        for p in self.object_paths.identifier_paths:
+            name_path = self._get_relative_xpath(p.name_path)
+            self._set_xml_node_value(name_path, self.root_element, value)
+
     @property
     def schema_type(self) -> str:
         """
@@ -604,6 +622,35 @@ class XmlObjectProcessor(XmlProcessor, ObjectProcessor):
                         self._set_xml_node_value(
                             id_path, ref_element, reference.id, insertion_callback=p.id_insertion_callback
                         )
+
+    @override
+    def set_object_reference_names(self, references: list[ObjectIdentifier]) -> None:
+        """
+        Set the metadata object reference names. Used in tests to make names unique.
+
+        :param references: The metadata object references.
+        """
+
+        def _find_reference(schema_type_: str, root_path_: str, name_: str) -> ObjectIdentifier | None:
+            # Find matching input reference.
+            for ref in references:
+                if ref.schema_type == schema_type_ and ref.root_path == root_path_ and ref.name == name_:
+                    return ref
+            return None
+
+        # Extract all references from the XML.
+        for r in self.reference_paths:
+            ref_path = self._get_absolute_xpath(r.root_path)
+            ref_elements = self._get_xml_elements(ref_path, self.xml)
+            for ref_element in ref_elements:
+                for p in r.paths:
+                    # Extract reference name.
+                    name_path = self._get_relative_xpath(p.name_path)
+                    name = self._get_xml_node_value(name_path, ref_element)
+                    # Find matching input reference.
+                    reference = _find_reference(r.ref_schema_type, r.ref_root_path, name)
+                    if reference and reference.new_name:
+                        self._set_xml_node_value(name_path, ref_element, reference.new_name)
 
     @override
     def is_object_reference_ids(self) -> bool:
@@ -870,6 +917,16 @@ class XmlDocumentProcessor(XmlProcessor):
             processor.set_object_reference_ids(references)
 
     @override
+    def set_object_reference_names(self, references: list[ObjectIdentifier]) -> None:
+        """
+        Set the metadata object reference names. Used in tests to make names unique.
+
+        :param references: The metadata object references.
+        """
+        for processor in self.xml_processors:
+            processor.set_object_reference_names(references)
+
+    @override
     def is_object_reference_ids(self) -> bool:
         """
         Return true if all metadata object references in the XML have ids.
@@ -1064,6 +1121,47 @@ class XmlDocumentsProcessor(XmlProcessor, DocumentsProcessor):
         ).set_xml_object_id(id_)
         self.set_object_reference_ids([identifier])
 
+    def is_object_name(self, identifier: ObjectIdentifier) -> bool:
+        """
+        Returns true if a document exists with the object name.
+
+        :param identifier: The metadata object identifier. If the XML schema
+        supports multiple metadata object types then must also have the root path.
+        """
+        if not isinstance(identifier, ObjectIdentifier):
+            raise ValueError("Invalid identifier type")
+
+        schema_type = identifier.schema_type
+        root_path = identifier.root_path
+        name = identifier.name
+
+        return XmlDocumentProcessor.is_xml_object_processor(self.xml_processor, schema_type, root_path, name)
+
+    def set_object_name(self, identifier: ObjectIdentifier) -> None:
+        """
+        Set the metadata object name. Used in tests to make names unique.
+
+        :param identifier: The metadata object identifier. If the XML schema
+        supports multiple metadata object types then must also have the root path.
+        """
+        if not isinstance(identifier, ObjectIdentifier):
+            raise ValueError("Invalid identifier type")
+
+        schema_type = identifier.schema_type
+        root_path = identifier.root_path
+        name = identifier.name
+
+        XmlDocumentProcessor.get_xml_object_processor(
+            self.xml_processor, schema_type, root_path, name
+        ).set_xml_object_name(identifier.new_name)
+        self.set_object_reference_names([identifier])
+
+        schema_type_map = self.xml_processor.get(schema_type)
+        root_path_map = schema_type_map.get(root_path)
+        processor = root_path_map.get(name)
+        root_path_map[identifier.new_name] = processor
+        del root_path_map[name]
+
     @override
     def get_object_references(self) -> Sequence[ObjectIdentifier]:
         """
@@ -1085,6 +1183,16 @@ class XmlDocumentsProcessor(XmlProcessor, DocumentsProcessor):
         """
         for processor in self.xml_processors:
             processor.set_object_reference_ids(references)
+
+    @override
+    def set_object_reference_names(self, references: list[ObjectIdentifier]) -> None:
+        """
+        Set the metadata object reference names.  Used in tests to make names unique.
+
+        :param references: The metadata object references.
+        """
+        for processor in self.xml_processors:
+            processor.set_object_reference_names(references)
 
     @override
     def is_object_reference_ids(self) -> bool:

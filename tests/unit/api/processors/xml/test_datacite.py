@@ -63,7 +63,7 @@ def assert_datacite(datacite: DataCiteMetadata, saved: bool) -> None:
     # publisher
     assert datacite.publisher == Publisher(
         name="Attogen Biomedical Research",
-        publisherIdentifier=AnyUrl("https://ror.org/01pbevv17"),
+        publisherIdentifier=AnyUrl("https://ror.org/01pbevv174"),
         publisherIdentifierScheme="ROR",
         schemeUri=AnyUrl("https://ror.org/"),
     )

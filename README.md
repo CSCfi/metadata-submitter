@@ -183,7 +183,7 @@ tox -p auto
 
 ### Integration tests
 
-Integration tests are run separately with [`pytest`](https://docs.pytest.org/en/stable/)
+Integration tests are run with [`pytest`](https://docs.pytest.org/en/stable/)
 after the containerized testing environment has been set up.
 
 Integration tests can be run with the following commands:
@@ -197,6 +197,21 @@ docker compose --env-file tests/integration/.env --profile dev up --build -d
 # Run tests
 pytest tests/integration
 ```
+
+### Performance tests
+
+Performance tests are run with [`locust`](https://locust.io//).
+They use the same test containers as the integrations tests,
+and are executed using the following commands:
+
+```bash
+cd tests/performace
+locust -f locustfile_csc.py
+locust -f locustfile_nbis.py -u 2
+```
+
+The CSC and NBIS deployments have their own performance test files. The
+number of users (-u) has to be set to at least two to run all NBIS tests.
 
 </details>
 

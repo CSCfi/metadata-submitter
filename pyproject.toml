@@ -85,6 +85,7 @@ dev = [
     "moto[server]>=5.1.6",
     "pytest-aiohttp>=1.1.0",
     "respx>=0.22.0",
+    "locust>=2.43.3",
 ]
 
 [project.scripts]

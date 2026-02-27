@@ -1,9 +1,8 @@
-import json
 import uuid
 
 from metadata_backend.api.models.models import Registration
-from metadata_backend.api.models.submission import Submission, SubmissionWorkflow
-from tests.integration.conf import SD_SUBMISSION
+from metadata_backend.api.models.submission import Submission
+from tests.utils import sd_submission_dict
 
 
 async def test_datacite_service(client, secret_env):
@@ -16,9 +15,8 @@ async def test_datacite_service(client, secret_env):
 
     # Submission with DataCite metadata.
     project_id = f"test_{uuid.uuid4()}"
-    submission_dict = json.loads(SD_SUBMISSION.read_text())
+    submission_dict = sd_submission_dict()
     submission_dict["projectId"] = project_id
-    submission_dict["workflow"] = SubmissionWorkflow.SD.value
     submission = Submission(**submission_dict)
 
     # Register draft DOI.

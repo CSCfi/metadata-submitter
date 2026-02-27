@@ -154,17 +154,17 @@ class RemsServiceHandler(ServiceHandler):
         response: dict[str, Any] = await self._request(method="GET", path=f"/catalogue-items/{catalogue_id}")
         return RemsCatalogueItem.model_validate(response)
 
-    async def create_resource(self, organization_id: str, license_ids: list[int] | None, doi: str) -> int:
+    async def create_resource(self, organization_id: str, license_ids: list[int] | None, resid: str) -> int:
         """Create a REMS resource.
 
         :param organization_id: The REMS organization id.
         :param license_ids: The REMS license ids.
         :returns: The REMS resource id.
-        :param doi: The dataset DOI.
+        :param resid: The external resource id e.g. a DOI.
         """
 
         data = {
-            "resid": doi,
+            "resid": resid,
             "organization": {"organization/id": organization_id},
             "licenses": license_ids or [],
         }

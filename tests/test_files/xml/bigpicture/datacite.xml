@@ -10,7 +10,7 @@
                 https://orcid.org/0000-0002-1825-0097
             </nameIdentifier>
             <affiliation affiliationIdentifier="https://ror.org/00fnk0q46" affiliationIdentifierScheme="ROR"
-                         schemeURI="hhttps://www.ror.org/">
+                         schemeURI="https://www.ror.org/">
                 Academy of Medicine
             </affiliation>
         </creator>
@@ -121,6 +121,10 @@
                     <pointLatitude>41.991</pointLatitude>
                     <pointLongitude>-71.032</pointLongitude>
                 </polygonPoint>
+                <inPolygonPoint>
+                    <pointLatitude>41.500</pointLatitude>
+                    <pointLongitude>-69.800</pointLongitude>
+                </inPolygonPoint>
             </geoLocationPolygon>
         </geoLocation>
     </geoLocations>

@@ -18,7 +18,7 @@
         </ATTRIBUTES>
     </IMAGE>
     <IMAGE alias="2">
-        <IMAGE_OF alias="2"/>
+        <IMAGE_OF alias="1"/>
         <IMAGE_TYPE>
             <WSI_IMAGE>test2</WSI_IMAGE>
         </IMAGE_TYPE>
