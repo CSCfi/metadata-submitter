@@ -9,12 +9,14 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Removed
 
+- Unnecessary documentation.
 - CLI related login endpoints/methods
 - (users) Workflow path parameter from submit endpoints.
 - Previously used methods and mentions of OpenAPI specification generation.
 
 ### Fixed
 
+- (users) `/publish` endpoint for Bigpicture submission did not work without DataCite XML.
 - Minor bug with inserting OIDC scopes correctly to the authorization endpoint url
 - API container not starting with correct OIDC client secrets
 - Mockauth hostname issue when running integration tests in local env
@@ -22,6 +24,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- Workflow is optional and set automatically based on deployment type.
 - Corrected outdated info in README file
 - Integration tests can be run inside a dedicated container for CI purposes
 - Workflows are deployment specific
@@ -31,6 +34,9 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- Shared code to prepare SD and BP submission documentation between unit, integration and performance tests.
+- XML object are given unique names for BP performance tests to avoid duplicate object errors.
+- Locust performance tests for CSC and NBIS deployments (SD and BP submissions).
 - Use mock-oauth2-server for integration tests.
 
 ## [2026.2.0] - 2026-02-06
