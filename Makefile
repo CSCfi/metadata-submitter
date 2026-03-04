@@ -93,7 +93,7 @@ get_ci_env: ## Get secrets needed for CI tests from vault
 
 	# Copy test JWKS file to private directory.
 	@mkdir -p private
-	cp tests/test_files/jwks.json private/private_jwks.json
+	cp tests/test_files/keys/jwks.json private/private_jwks.json
 
 	# Create .tests/integration/.env file.
 	cp tests/integration/.env.example tests/integration/.env
