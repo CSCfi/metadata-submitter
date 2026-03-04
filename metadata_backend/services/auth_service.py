@@ -51,8 +51,9 @@ class AuthServiceHandler(ServiceHandler):
         self.oidc_url = self._config.OIDC_URL.rstrip("/") + "/.well-known/openid-configuration"
         self.iss = self._config.OIDC_URL
         self.scope = self._config.OIDC_SCOPE
-        self.auth_method = "code"
         self._rph: RPHandler | None = None
+
+        LOG.info("Using OIDC issuer: %s", self.iss)
 
         if not self._config.OIDC_VERIFY_ID_TOKEN:
             # Disable ID Token verification during testing.
@@ -92,7 +93,7 @@ class AuthServiceHandler(ServiceHandler):
                 "client_type": "oidc",
                 "redirect_uris": [self.callback_url],
                 "preference": {
-                    "response_types_supported": self.auth_method.split(" "),
+                    "response_types_supported": ["code"],
                     "scopes_supported": self.scope.split(" "),
                 },
                 "add_ons": {
@@ -124,7 +125,7 @@ class AuthServiceHandler(ServiceHandler):
 
         return str(authorization_url)
 
-    async def callback(self, state: str, code: str) -> tuple[str, dict[str, Any]]:
+    async def callback(self, state: str, code: str) -> tuple[str, str, int]:
         """Handle the OIDC callback and return application-specific JWT.
 
         This function completes the OpenID Connect (OIDC) authorization code flow with DPoP.
@@ -133,7 +134,7 @@ class AuthServiceHandler(ServiceHandler):
 
         :param state: The OIDC Authorization Code flow `state` parameter.
         :param code: The OIDC Authorization Code flow `code` parameter.
-        :returns: JWT token as a string and userinfo dictionary
+        :returns: Application JWT, OIDC access token, and OIDC token expiration Unix timestamp
         """
 
         # Verify oidc_state and retrieve auth session
@@ -182,13 +183,24 @@ class AuthServiceHandler(ServiceHandler):
 
         # Generate a JWT token for application authentication
         jwt_token = await AuthService.create_jwt_token_from_userinfo(session["userinfo"])
-        return jwt_token, session["userinfo"]
 
-    async def initiate_web_session(self, jwt_token: str, userinfo: dict[str, Any]) -> RedirectResponse:
+        # Get OIDC access token and expiration time
+        try:
+            access_token, exp_time = self.rph.get_valid_access_token(state)
+        except KeyError:
+            LOG.exception("OIDC access token missing from callback session data")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+
+        return jwt_token, access_token, exp_time
+
+    async def initiate_web_session(
+        self, jwt_token: str, oidc_access_token: str, oidc_exp_time: int
+    ) -> RedirectResponse:
         """Initiate web session by setting JWT token in secure cookie.
 
         :param jwt_token: The JWT token to be set in the cookie
-        :param userinfo: The user information dictionary
+        :param oidc_access_token: OIDC access token to be stored in separate cookie
+        :param oidc_exp_time: OIDC access token expiration Unix timestamp
         :return: HTTPSeeOther redirect to the home page
         """
         LOG.info("OIDC redirect to %r", self.redirect_url)
@@ -207,17 +219,17 @@ class AuthServiceHandler(ServiceHandler):
             path="/",
             max_age=int(JWT_EXPIRATION.total_seconds()),
         )
-        # TODO(improve): Remove pouta_access_token from session cookies.
-        # Instead fetch it from /userinfo whenever needed.
-        pouta_access_token = userinfo.get("pouta_access_token", "").strip()
+        oidc_max_age = (
+            int(max(0, oidc_exp_time - time.time())) if oidc_exp_time > 0 else int(JWT_EXPIRATION.total_seconds())
+        )
         response.set_cookie(
-            key="pouta_access_token",
-            value=pouta_access_token,
+            key="oidc_access_token",
+            value=oidc_access_token,
             httponly=True,
             secure=secure_cookie,
             samesite="strict",
             path="/",
-            max_age=int(JWT_EXPIRATION.total_seconds()),
+            max_age=oidc_max_age,
         )
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
         response.headers["Pragma"] = "no-cache"
@@ -234,10 +246,51 @@ class AuthServiceHandler(ServiceHandler):
 
         # Delete cookies
         response.delete_cookie("access_token", path="/")
-        response.delete_cookie("pouta_access_token", path="/")
+        response.delete_cookie("oidc_access_token", path="/")
 
         LOG.debug("Logged out user and cleared all cookies.")
         return response
+
+    @staticmethod
+    async def get_pouta_access_token_from_userinfo(oidc_access_token: str) -> str:
+        """Fetch pouta_access_token from OIDC userinfo endpoint.
+
+        :param oidc_access_token: OIDC access token.
+        :returns: pouta_access_token from userinfo response.
+        """
+        try:
+            if not oidc_access_token:
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing OIDC access token")
+
+            userinfo_endpoint = f"{oidc_config().OIDC_URL.rstrip('/')}/idp/profile/oidc/userinfo"
+            dpop = DPoPHandler()
+            headers = {
+                "Authorization": f"DPoP {oidc_access_token}",
+                "DPoP": dpop.generate_proof("GET", userinfo_endpoint, access_token=oidc_access_token),
+            }
+
+            # DPoP proof may be rejected on the first attempt when server requires a nonce
+            async with httpx.AsyncClient() as http_client:
+                response = await http_client.get(userinfo_endpoint, headers=headers)
+                if response.status_code == status.HTTP_401_UNAUTHORIZED:
+                    server_nonce = response.headers.get("DPoP-Nonce")
+                    if server_nonce:
+                        # Update DPoP handler with server nonce and retry the request
+                        dpop.update_nonce(server_nonce)
+                        retry_headers = {
+                            "Authorization": f"DPoP {oidc_access_token}",
+                            "DPoP": dpop.generate_proof("GET", userinfo_endpoint, access_token=oidc_access_token),
+                        }
+                        response = await http_client.get(userinfo_endpoint, headers=retry_headers)
+
+                response.raise_for_status()
+                userinfo = response.json()
+                return str(userinfo.get("pouta_access_token", ""))
+        except HTTPException:
+            raise
+        except Exception as e:
+            LOG.exception("Failed to retrieve pouta access token from userinfo: %r", e)
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
     @staticmethod
     async def healthcheck_callback(response: httpx.Response) -> bool:

@@ -17,9 +17,6 @@ services:
   mockauth:
     ports:
       - "8000:8000"
-  mockauth-ui:
-    ports:
-      - "8000:8000"
   mockkeystone:
     ports:
       - "5001:5001"

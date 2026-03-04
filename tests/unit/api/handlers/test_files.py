@@ -24,11 +24,18 @@ async def test_get_project_buckets(csc_client) -> None:
         patch_keystone_get_ec2,
         patch_keystone_delete_ec2,
         patch(
+            "metadata_backend.services.auth_service.AuthServiceHandler.get_pouta_access_token_from_userinfo",
+            return_value="pouta-token",
+        ),
+        patch(
             "metadata_backend.api.services.file.FileProviderService.list_buckets",
             return_value=["bucket1", "bucket2"],
         ),
     ):
-        response = csc_client.get(f"{API_PREFIX}/buckets?projectId={project_id}")
+        response = csc_client.get(
+            f"{API_PREFIX}/buckets?projectId={project_id}",
+            cookies={"oidc_access_token": "oidc-token"},
+        )
         assert response.status_code == 200
 
         buckets = response.json()
@@ -85,11 +92,18 @@ async def test_grant_access_to_bucket(csc_client) -> None:
         patch_keystone_get_ec2,
         patch_keystone_delete_ec2,
         patch(
+            "metadata_backend.services.auth_service.AuthServiceHandler.get_pouta_access_token_from_userinfo",
+            return_value="pouta-token",
+        ),
+        patch(
             "metadata_backend.api.services.file.FileProviderService.update_bucket_policy",
             return_value=None,
         ),
     ):
-        response = csc_client.put(f"{API_PREFIX}/buckets/{bucket_name}?projectId={project_id}")
+        response = csc_client.put(
+            f"{API_PREFIX}/buckets/{bucket_name}?projectId={project_id}",
+            cookies={"oidc_access_token": "oidc-token"},
+        )
         assert response.status_code == 200
 
 

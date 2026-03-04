@@ -1,7 +1,7 @@
 """
-Reverse proxy for mock-oauth2. Modifies /userinfo responses to
-inject pouta access tokens, and all responses to change issue URLs.
-Supports DPoP and acts as a DPoP termination point, validating DPoP
+Proxy for mock-oauth2. Modifies /userinfo responses to
+inject pouta access tokens. Modifies all responses to change
+URLs. Supports DPoP and acts as a DPoP termination point, validating DPoP
 proofs and forwarding requests upstream as standard Bearer token requests.
 """
 
@@ -10,42 +10,32 @@ import contextlib
 import hashlib
 import json
 import logging
+import re
 import time
 from os import getenv
-from urllib.parse import urlparse, urlunparse
+from typing import Any
 
 import httpx
 import jwt
 import uvicorn
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
-from pydantic_settings import BaseSettings
 
 LOG = logging.getLogger("proxy")
-logging.basicConfig(level=getenv("LOG_LEVEL", "INFO"))
+logging.basicConfig(level="INFO")
 
-MOCK_PROXY_URL = "http://mockauth:8000"
-MOCK_PROXY_LOCALHOST_URL = "http://localhost:8000"
-MOCK_PROXIED_URL = "http://mock-oauth2:8001/issuer"
+PROXY_URL = "http://mockauth:8000"
+PROXIED_BASE_URL = "http://mock-oauth2:8001"
+PROXIED_URL = f"{PROXIED_BASE_URL}/issuer"
+PROXIED_PATTERN = re.compile(re.escape(PROXIED_URL), re.IGNORECASE)
+PROXIED_BASE_PATTERN = re.compile(re.escape(PROXIED_BASE_URL), re.IGNORECASE)
+
 MOCK_KEYSTONE_URL = getenv("KEYSTONE_ENDPOINT")
-
 MOCK_KEYSTONE_USERNAME = "swift"
 MOCK_KEYSTONE_PASSWORD = "veryfast"
 
 DPoP_REPLAY_CACHE = set()
 DPoP_SKEW = 60
-
-
-class MockAuthSettings(BaseSettings):
-    # If true then use localhost in the authorization endpoint URL. Allows
-    # traffic to be routed from the localhost outside the container network.
-    mock_auth_localhost: bool = False
-
-
-settings = MockAuthSettings()
-
-if settings.mock_auth_localhost:
-    LOG.info("Using localhost in the authorization endpoint URL")
 
 
 def validate_and_terminate_dpop(request: Request, headers: dict):
@@ -116,76 +106,76 @@ def validate_and_terminate_dpop(request: Request, headers: dict):
     LOG.info("DPoP proof validated and terminated")
 
 
-async def log_request(request: Request):
-    body = None
-    try:
-        body = await request.json()
-    except Exception:
-        try:
-            raw = await request.body()
-            body = raw.decode(errors="ignore") if raw else None
-        except Exception as ex:
-            LOG.error(f"Failed to decode request body: {str(ex)}")
-
+async def log_request(request: Request) -> None:
     LOG.info("================ Proxied request ================>")
     LOG.info(f"Method: {request.method}")
     LOG.info(f"URL: {request.url}")
     LOG.info("Headers:")
     for k, v in request.headers.items():
         LOG.info(f"  {k}: {v}")
-    if body:
+    try:
+        body = await request.json()
         LOG.info(f"Body: {json.dumps(body)}")
+    except Exception:
+        body = await request.body()
+        body = body.decode(errors="ignore") if body else None
+        LOG.info(f"Body: {body}")
     LOG.info("<================ Proxied request ================")
 
 
-async def log_response(resp: httpx.Response):
-    try:
-        body = resp.json()
-    except Exception:
-        body = resp.text
-
+def log_response(status_code, headers, body) -> None:
     LOG.info("================ Proxied response ================>")
-    LOG.info(f"Status code: {resp.status_code}")
+    LOG.info(f"Status code: {status_code}")
     LOG.info("Headers:")
-    for k, v in resp.headers.items():
+    for k, v in headers.items():
         LOG.info(f"  {k}: {v}")
-    if body:
-        if isinstance(body, dict):
-            LOG.info(f"Body: {json.dumps(body, indent=2)}")
-        else:
-            LOG.info(f"Body: {body}")
+    try:
+        LOG.info(f"Body: {json.dumps(body)}")
+    except Exception:
+        LOG.info(f"Body: {body}")
     LOG.info("<================ Proxied response ================")
 
 
-def rewrite_issuer_urls(body: dict) -> dict:
-    """Rewrite issuer and all endpoint URLs to point to this proxy, removing '/issuer' from paths."""
-
-    body = body.copy()
-    for key in [
-        "issuer",
-        "authorization_endpoint",
-        "token_endpoint",
-        "userinfo_endpoint",
-        "revocation_endpoint",
-        "end_session_endpoint",
-        "introspection_endpoint",
-        "jwks_uri",
-    ]:
-        if key in body:
-            url = urlparse(body[key])
-            new_path = url.path.replace("/issuer", "")
-            if key == "authorization_endpoint" and settings.mock_auth_localhost:
-                new_url = urlunparse(urlparse(MOCK_PROXY_LOCALHOST_URL)._replace(path=new_path, query=url.query))
-            else:
-                new_url = urlunparse(urlparse(MOCK_PROXY_URL)._replace(path=new_path, query=url.query))
-            body[key] = new_url
-            LOG.info(f"Replaced '{key}' URL: {url} -> {new_url}")
-
-    return body
+def rewrite_str(s: str) -> str:
+    """
+    Rewrite all URLs.
+    """
+    s = PROXIED_PATTERN.sub(PROXY_URL, s)
+    return PROXIED_BASE_PATTERN.sub(PROXY_URL, s)
 
 
-def rewrite_id_token_issuer(body: dict) -> dict:
-    """Rewrite ID token issuer to point to this proxy, removing '/issuer' from paths."""
+def rewrite_json(obj: Any) -> Any:
+    """
+    Recursively rewrite URLs in JSON body.
+    """
+    if isinstance(obj, dict):
+        d = {}
+        for k, v in obj.items():
+            d[k] = rewrite_json(v)
+        return d
+    elif isinstance(obj, list):
+        return [rewrite_json(o) for o in obj]
+    elif isinstance(obj, str):
+        return rewrite_str(obj)
+    else:
+        return obj
+
+
+def rewrite_body(resp: httpx.Response) -> Any:
+    """
+    Rewrite URLs response body.
+    """
+    try:
+        body = resp.json()
+        body = rewrite_json(body)
+        body = rewrite_id_token(body)
+        return body
+    except Exception:
+        return rewrite_str(resp.text)
+
+
+def rewrite_id_token(body: dict) -> dict:
+    """Rewrite ID token issuer to point to this proxy."""
 
     if "id_token" not in body:
         return body
@@ -195,8 +185,8 @@ def rewrite_id_token_issuer(body: dict) -> dict:
 
     old_iss = claims.get("iss")
     if old_iss:
-        claims["iss"] = MOCK_PROXY_URL
-        LOG.info(f"Replaced id token issuer: {old_iss} -> {MOCK_PROXY_URL}")
+        claims["iss"] = PROXY_URL
+        LOG.info(f"Replaced id token issuer: {old_iss} -> {PROXY_URL}")
 
     body["id_token"] = jwt.encode(
         claims,
@@ -205,6 +195,33 @@ def rewrite_id_token_issuer(body: dict) -> dict:
     )
 
     return body
+
+
+def rewrite_headers(headers: dict):
+    """
+    Remove hop‑by‑hop headers as defined in RFC 7230 §6.1. Remove content-length
+    header. Rewrite URLs.
+    """
+    new = {}
+    for k, v in headers.items():
+        if k.lower() in {
+            "connection",
+            "keep-alive",
+            "proxy-authenticate",
+            "proxy-authorization",
+            "te",
+            "trailer",
+            "transfer-encoding",
+            "upgrade",
+            "content-length",
+        }:
+            continue
+
+        if isinstance(v, str):
+            v = rewrite_str(v)
+
+        new[k] = v
+    return new
 
 
 async def get_pouta_token() -> str:
@@ -259,8 +276,6 @@ async def proxy_request(proxied_url: str, request: Request) -> httpx.Response:
             request.method, proxied_url, headers=headers, params=request.query_params, content=await request.body()
         )
 
-    await log_response(resp)
-
     return resp
 
 
@@ -269,75 +284,43 @@ app = FastAPI(lifespan=lifespan)
 
 @app.api_route("/userinfo", methods=["GET", "POST"])
 async def userinfo(request: Request) -> JSONResponse:
-    """Proxy OAUTH userinfo request to add pouta access token to userinfo."""
+    """Proxy userinfo to add pouta access token."""
 
-    proxied_url = f"{MOCK_PROXIED_URL}/userinfo"
-    resp = await proxy_request(proxied_url, request)
+    resp = await proxy_request(f"{PROXIED_URL}/userinfo", request)
 
-    data = resp.json()
-    data["pouta_access_token"] = request.app.state.pouta_token
+    headers = rewrite_headers(resp.headers)
+    body = rewrite_body(resp)
+    body["pouta_access_token"] = request.app.state.pouta_token
 
-    LOG.info(f"Returning userinfo: {json.dumps(data)}")
+    log_response(resp.status_code, headers, body)
 
     return JSONResponse(
-        content=data,
         status_code=resp.status_code,
+        headers=headers,
+        content=body,
     )
 
 
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
 async def proxy(request: Request, path: str):
-    """Proxy other OAUTH requests."""
+    """Proxy other requests."""
 
-    proxied_url = f"{MOCK_PROXIED_URL}/{path}"
+    resp = await proxy_request(f"{PROXIED_URL}/{path}", request)
 
-    LOG.info(f"Auth proxy request {request.method} {request.url} to {proxied_url}/")
+    headers = rewrite_headers(resp.headers)
+    body = rewrite_body(resp)
 
-    resp = await proxy_request(proxied_url, request)
+    if isinstance(body, (dict, list)):
+        content = json.dumps(body).encode("utf-8")
+    else:
+        content = body.encode("utf-8")
 
-    LOG.info(f"Auth proxy response status code: {resp.status_code}")
-    LOG.info(f"Auth proxy response content-type: {resp.headers.get('content-type')}")
-
-    updated_content = None
-
-    remove_headers = {
-        # Remove hop‑by‑hop headers as defined in RFC 7230 §6.1.
-        "connection",
-        "keep-alive",
-        "proxy-authenticate",
-        "proxy-authorization",
-        "te",
-        "trailer",
-        "transfer-encoding",
-        "upgrade",
-        # Remove content length header.
-        "content-length",
-    }
-    headers = {k: v for k, v in resp.headers.items() if k.lower() not in remove_headers}
-
-    try:
-        body = resp.json()
-    except ValueError:
-        try:
-            body = json.loads(resp.text)
-        except json.JSONDecodeError:
-            body = None
-
-    if body is not None:
-        try:
-            body = rewrite_issuer_urls(body)
-            body = rewrite_id_token_issuer(body)
-            updated_content = json.dumps(body).encode("utf-8")
-            LOG.info("================ Updated response body ================>")
-            LOG.info(updated_content)
-            LOG.info("<================ Updated response body ================")
-        except Exception as ex:
-            LOG.error(f"Failed to update response body: {str(ex)}")
+    log_response(resp.status_code, headers, content)
 
     return Response(
-        content=updated_content or resp.content,
         status_code=resp.status_code,
         headers=headers,
+        content=content,
     )
 
 

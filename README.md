@@ -198,6 +198,22 @@ docker compose --env-file tests/integration/.env --profile dev up --build -d
 pytest tests/integration
 ```
 
+To run integration tests from your local development environment and call
+the /login endpoint of the API running in docker compose, you must ensure that the
+mockauth hostname resolves from your machine to the container network.
+
+To do this, edit the `/etc/hosts` file:
+
+```bash
+sudo nano /etc/hosts
+```
+
+and add:
+
+```bash
+127.0.0.1   mockauth
+```
+
 ### Performance tests
 
 Performance tests are run with [`locust`](https://locust.io//).

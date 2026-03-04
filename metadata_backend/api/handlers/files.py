@@ -6,6 +6,7 @@ from fastapi import HTTPException, Path, Query, Request, Response, status
 
 from ...api.dependencies import UserDependency
 from ...helpers.logger import LOG
+from ...services.auth_service import AuthServiceHandler
 from ..services.file import FileProviderService
 from .restapi import RESTAPIHandler
 
@@ -33,7 +34,11 @@ class FilesAPIHandler(RESTAPIHandler):
         await project_service.verify_user_project(user_id, project_id)
 
         # Get temporary user specific project scoped token.
-        access_token = request.cookies.get("pouta_access_token")
+        oidc_access_token = request.cookies.get("oidc_access_token")
+        if not oidc_access_token:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing OIDC auth cookie")
+
+        access_token = await AuthServiceHandler.get_pouta_access_token_from_userinfo(oidc_access_token)
         project_entry = await keystone_service.get_project_entry(project_id, access_token)
         credentials = await keystone_service.get_ec2_for_project(project_entry)
 
@@ -82,7 +87,11 @@ class FilesAPIHandler(RESTAPIHandler):
         await project_service.verify_user_project(user_id, project_id)
 
         # Get temporary user specific project scoped token.
-        access_token = request.cookies.get("pouta_access_token")
+        oidc_access_token = request.cookies.get("oidc_access_token")
+        if not oidc_access_token:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing OIDC auth cookie")
+
+        access_token = await AuthServiceHandler.get_pouta_access_token_from_userinfo(oidc_access_token)
         project_entry = await keystone_handler.get_project_entry(project_id, access_token)
         credentials = await keystone_handler.get_ec2_for_project(project_entry)
 

@@ -7,11 +7,34 @@ from http.cookies import SimpleCookie
 from unittest.mock import MagicMock
 
 import jwt as pyjwt
+import pytest
+from fastapi import HTTPException
 from fastapi.responses import RedirectResponse
 from requests import Session
+from starlette import status
 
 from metadata_backend.api.services.auth import AuthService
 from metadata_backend.services.auth_service import AuthServiceHandler, DPoPHandler
+from tests.unit.patches.auth_service import (
+    MockDPoPHandler,
+    mock_response,
+    patch_async_client,
+)
+
+
+@pytest.fixture
+def mock_oidc_url(monkeypatch) -> str:
+    url = "http://mockauth:8000"
+    monkeypatch.setenv("OIDC_URL", url)
+    return url
+
+
+@pytest.fixture
+def async_client(monkeypatch):
+    def _factory(responses: list[MagicMock]) -> MagicMock:
+        return patch_async_client(monkeypatch, responses)
+
+    return _factory
 
 
 async def test_auth(csc_client, dpop_test_jwks, monkeypatch):
@@ -32,6 +55,7 @@ async def test_auth(csc_client, dpop_test_jwks, monkeypatch):
     mock_rph.begin.return_value = mock_auth_url
     mock_rph.get_session_information.return_value = {"iss": mock_oidc_url, "code": mock_code}
     mock_rph.finalize.return_value = {"userinfo": {"sub": mock_user_id}}
+    mock_rph.get_valid_access_token.return_value = ("oidc-access-token", 0)
 
     handler._rph = mock_rph
 
@@ -40,15 +64,21 @@ async def test_auth(csc_client, dpop_test_jwks, monkeypatch):
     assert resp == mock_auth_url
 
     # Test callback.
-    jwt, userinfo = await handler.callback(mock_state, mock_code)
-    resp = await handler.initiate_web_session(jwt, userinfo)
+    jwt_token, oidc_access_token, oidc_exp_time = await handler.callback(mock_state, mock_code)
+    resp = await handler.initiate_web_session(jwt_token, oidc_access_token, oidc_exp_time)
     assert isinstance(resp, RedirectResponse)
     cookie = SimpleCookie()
-    cookie.load(resp.headers.get("set-cookie"))
-    jwt_token = cookie["access_token"].value
-    assert jwt_token == jwt
+    set_cookie_headers = [
+        value.decode("utf-8") for key, value in resp.raw_headers if key.decode("utf-8").lower() == "set-cookie"
+    ]
+    for header in set_cookie_headers:
+        cookie.load(header)
+    jwt_cookie = cookie["access_token"].value
+    oidc_cookie = cookie["oidc_access_token"].value
+    assert jwt_cookie == jwt_token
+    assert oidc_cookie == oidc_access_token
 
-    user_id, user_name = AuthService.validate_jwt_token(jwt_token)
+    user_id, user_name = AuthService.validate_jwt_token(jwt_cookie)
     assert user_id == mock_user_id
     assert user_name == mock_user_id
 
@@ -156,3 +186,57 @@ async def test_patched_request(dpop_test_jwks):
         handler._original_request = original_request  # Restore original request method (not mock)
         handler.teardown_http_interception()
         assert Session.request == original_session_request
+
+
+async def test_get_pouta_access_token_from_userinfo_success(mock_oidc_url, async_client, monkeypatch):
+    client = async_client([mock_response(200, {"pouta_access_token": "pouta-token"})])
+
+    monkeypatch.setattr(
+        "metadata_backend.services.auth_service.DPoPHandler",
+        MockDPoPHandler,
+    )
+
+    token = await AuthServiceHandler.get_pouta_access_token_from_userinfo("oidc-token")
+    assert token == "pouta-token"
+    assert client.get.await_count == 1
+
+
+async def test_get_pouta_access_token_from_userinfo_retries_with_nonce(mock_oidc_url, async_client, monkeypatch):
+    """Test that a 401 response with DPoP-Nonce triggers a retry with the nonce."""
+    client = async_client(
+        [
+            mock_response(status.HTTP_401_UNAUTHORIZED, headers={"DPoP-Nonce": "nonce-1"}),
+            mock_response(200, {"pouta_access_token": "pouta-token"}),
+        ]
+    )
+
+    monkeypatch.setattr("metadata_backend.services.auth_service.DPoPHandler", MockDPoPHandler)
+
+    token = await AuthServiceHandler.get_pouta_access_token_from_userinfo("oidc-token")
+    assert token == "pouta-token"
+    assert client.get.await_count == 2
+
+
+async def test_get_pouta_access_token_from_userinfo_missing_oidc_token():
+    """Test that missing OIDC access token raises HTTPException."""
+    try:
+        await AuthServiceHandler.get_pouta_access_token_from_userinfo("")
+    except HTTPException as ex:
+        assert ex.status_code == status.HTTP_401_UNAUTHORIZED
+        assert ex.detail == "Missing OIDC access token"
+    else:
+        raise AssertionError("Expected HTTPException")
+
+
+async def test_get_pouta_access_token_from_userinfo_upstream_error(mock_oidc_url, async_client, monkeypatch):
+    """Test that a 500 response from the upstream server triggers a 401 HTTPException."""
+    async_client([mock_response(status.HTTP_500_INTERNAL_SERVER_ERROR)])
+
+    monkeypatch.setattr("metadata_backend.services.auth_service.DPoPHandler", MockDPoPHandler)
+
+    try:
+        await AuthServiceHandler.get_pouta_access_token_from_userinfo("oidc-token")
+    except HTTPException as ex:
+        assert ex.status_code == status.HTTP_401_UNAUTHORIZED
+    else:
+        raise AssertionError("Expected HTTPException")

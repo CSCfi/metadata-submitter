@@ -14,6 +14,7 @@ async def test_auth(csc_client, dpop_test_jwks, monkeypatch):
     mock_rph.begin.return_value = mock_auth_url
     mock_rph.get_session_information.return_value = {"code": "code"}
     mock_rph.finalize.return_value = {"userinfo": {"sub": "user"}}
+    mock_rph.get_valid_access_token.return_value = ("oidc-access-token", 0)
 
     with patch.object(AuthServiceHandler, "rph", new_callable=PropertyMock) as mock_prop:
         mock_prop.return_value = mock_rph
