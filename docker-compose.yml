@@ -125,37 +125,11 @@ services:
       - "KEYSTONE_ENDPOINT=${KEYSTONE_ENDPOINT}"
     hostname: mockauth
     profiles:
+      - ui
       - ci
       - ci_ui
       - dev
       - demo
-    depends_on:
-      mock-oauth2:
-        condition: service_started
-      mockkeystone:
-        condition: service_healthy
-    healthcheck:
-      test: curl --fail http://127.0.0.1:8000/.well-known/openid-configuration || exit 1
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    volumes:
-      - ./tests/integration/mock_auth.py:/mock_auth.py
-    entrypoint: [ "uv", "run", "/mock_auth.py" ]
-  mockauth-ui:
-    build:
-      dockerfile: ./dockerfiles/Dockerfile-dev
-      context: .
-      target: base
-    image: cscfi/metadata-submitter-dev
-    environment:
-      - "LOG_LEVEL=${LOG_LEVEL}"
-      - "KEYSTONE_ENDPOINT=${KEYSTONE_ENDPOINT}"
-      - "MOCK_AUTH_LOCALHOST=TRUE"
-    hostname: mockauth
-    profiles:
-      - ui
     depends_on:
       mock-oauth2:
         condition: service_started

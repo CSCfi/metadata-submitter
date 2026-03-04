@@ -196,15 +196,13 @@ async def _oidc_authenticated_client(api_base_url: str) -> AsyncGenerator[aiohtt
     """Create an authenticated client using the OIDC standard authentication flow."""
 
     async with aiohttp.ClientSession(base_url=f"{api_base_url}/") as client:
-        # Start OIDC authentication.
+        # Start the authentication flow by calling the /login endpoint. Follow all re-directs
+        # except the last one so that the access tokens can be intercepted.
+
         async with client.get("/login", allow_redirects=False) as resp:
             assert resp.status in (302, 303)
 
         authorize_redirect = resp.headers["Location"]
-
-        # Replace "mockauth" hostname with "localhost" if not in CI/CD environment
-        if os.getenv("CICD") != "true":
-            authorize_redirect = authorize_redirect.replace("mockauth", "localhost")
 
         # Follow the first redirect to OIDC /authorize.
         async with client.get(authorize_redirect, allow_redirects=False) as resp:
@@ -215,9 +213,16 @@ async def _oidc_authenticated_client(api_base_url: str) -> AsyncGenerator[aiohtt
         async with client.get(callback_redirect, allow_redirects=False) as resp:
             cookies = resp.cookies
             access_token = cookies.get("access_token").value
+            oidc_access_token = cookies.get("oidc_access_token").value
 
-        # Add the JWT token in the cookie.
-        client.cookie_jar.update_cookies({"access_token": access_token}, response_url=URL(api_base_url))
+        # Add the tokens in cookies for authenticated requests.
+        client.cookie_jar.update_cookies(
+            {
+                "access_token": access_token,
+                "oidc_access_token": oidc_access_token,
+            },
+            response_url=URL(api_base_url),
+        )
 
         yield client
 
@@ -253,7 +258,11 @@ async def project_id() -> str:
 @pytest.fixture
 async def mock_pouta_token(client) -> str:
     """Return a mock pouta access token for testing Keystone service."""
-    async with client.get(f"{auth_url}/userinfo") as resp:
+    userinfo_url = f"{auth_url}/userinfo"
+    if os.getenv("CICD") != "true":
+        userinfo_url = userinfo_url.replace("mockauth", "localhost")
+
+    async with client.get(userinfo_url) as resp:
         userinfo = await resp.json()
         return userinfo["pouta_access_token"]
 

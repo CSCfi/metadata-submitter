@@ -32,8 +32,8 @@ class AuthAPIHandler:
     ) -> RedirectResponse:
         """The OIDC Authorization Code flow callback."""
 
-        jwt, userinfo = await self._service_handler.callback(state, code)
-        return await self._service_handler.initiate_web_session(jwt, userinfo)
+        jwt, oidc_token, oidc_token_exp = await self._service_handler.callback(state, code)
+        return await self._service_handler.initiate_web_session(jwt, oidc_token, oidc_token_exp)
 
     async def logout(self, _: Request) -> RedirectResponse:
         """Logout and redirect to the login page."""

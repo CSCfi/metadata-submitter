@@ -34,8 +34,7 @@ class AuthService:
 
     @staticmethod
     async def create_jwt_token_from_userinfo(userinfo: dict[str, Any]) -> str:
-        """
-        Generate a signed JWT token from /userinfo response.
+        """Generate a signed JWT token from /userinfo response.
 
         :param userinfo: OIDC /userinfo response.
         :returns: The signed JWT token
@@ -66,8 +65,7 @@ class AuthService:
 
     @staticmethod
     def create_jwt_token(user_id: str, user_name: str, expiration: timedelta = JWT_EXPIRATION) -> str:
-        """
-        Generate a signed JWT token.
+        """Generate a signed JWT token.
 
         Args:
             user_id: The unique identifier of the user used in the 'sub' claim.
@@ -93,14 +91,13 @@ class AuthService:
 
     @staticmethod
     def validate_jwt_token(token: str) -> tuple[str, str]:
-        """
-        Decode and verify the JWT token, returning the user ID and user name.
+        """Decode and verify the JWT token, returning the user ID and user name.
 
         Args:
             token: The JWT token string to decode.
 
         Returns:
-             The user ID from the `sub` claim, and the user name from the `user_name` claim.
+            The user ID from the `sub` claim, and the user name from the `user_name` claim.
 
         Raises:
             RuntimeError: If the JWT secret is not set.
@@ -126,13 +123,12 @@ class AuthService:
 
     @staticmethod
     def _generate_api_key_id() -> str:
-        """Generate a fixed length hex key id ."""
+        """Generate a fixed length hex key id."""
         n_bytes = API_KEY_ID_LENGTH // 2
         return secrets.token_hex(n_bytes)
 
     async def create_api_key(self, user_id: str, key_id: str) -> str:
-        """
-        Create a cryptographically secure random API key.
+        """Create a cryptographically secure random API key.
 
         Returns a plain-text API key prefixed with a generated API key id.
 
@@ -181,8 +177,7 @@ class AuthService:
         return f"{generated_key_id}.{api_key}"
 
     async def validate_api_key(self, api_key: str) -> str | None:
-        """
-        Validate the provided API key by comparing it with the stored hash.
+        """Validate the provided API key by comparing it with the stored hash.
 
         The API key must be prefixed with the generated API key id.
 

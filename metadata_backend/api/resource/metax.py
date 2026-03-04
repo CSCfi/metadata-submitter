@@ -52,7 +52,7 @@ async def fetch_metax_mapping_languages() -> MetaxMappingLanguages:
         "http://www.lexvo.org/resources/lexvo-iso639-2.tsv",
         "http://www.lexvo.org/resources/lexvo-iso639-1.tsv",
     ]
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=httpx.Timeout(60)) as client:
         for url in lexvo_urls:
             resp = await client.get(url)
             resp.raise_for_status()
