@@ -18,8 +18,11 @@ $ docker compose --profile demo up --build -d
 
 @api_url = http://localhost:5431
 
-@submission_id = {{submission_id_req.response.body.submissionId}}
 @user_id = {{user_data_req.response.body.user_id}}
+
+###
+curl -sK -L http://localhost:8090/users/test@dummy.org/files
+     -H 'Authorization: Bearer '
 
 ### Get user data
 # @name user_data_req
@@ -34,8 +37,7 @@ curl {{api_url}}/v1/submissions?projectId={{user_id}}
 # Process Bigpicture submission
 
 ### Create new submission (copy-paste to terminal because -F flags are not supported in REST Client extension)
-# @name submission_id_req
-curl -X POST '{{api_url}}/v1/submit/Bigpicture' \
+curl -X POST '{{api_url}}/v1/submit' \
      -H 'Authorization: Bearer {{bearer_token}}' \
      -F "annotation=@./tests/test_files/xml/bigpicture/annotation.xml;type=text/xml" \
      -F "datacite=@./tests/test_files/xml/bigpicture/datacite.xml;type=text/xml" \
@@ -51,10 +53,14 @@ curl -X POST '{{api_url}}/v1/submit/Bigpicture' \
      -F "staining=@./tests/test_files/xml/bigpicture/staining.xml;type=text/xml" | jq
 
 # Fill in submission_id here:
-# @submission_id =
+@submission_id = ...
 
 ### Get submission by ID
 curl {{api_url}}/v1/submissions/{{submission_id}}
+     -H 'Authorization: Bearer {{bearer_token}}'
+
+### List files in the submission
+curl {{api_url}}/v1/submissions/{{submission_id}}/files
      -H 'Authorization: Bearer {{bearer_token}}'
 
 ### List metadata objects in the submission
@@ -70,7 +76,7 @@ curl {{api_url}}/v1/submissions/{{submission_id}}/objects/docs?schemaType=image
      -H 'Authorization: Bearer {{bearer_token}}'
 
 ### Update image xml file in the submission
-curl -X PATCH {{api_url}}/v1/submit/Bigpicture/{{submission_id}} \
+curl -X PATCH {{api_url}}/v1/submit/{{submission_id}} \
      -H 'Authorization: Bearer {{bearer_token}}' \
      -F "annotation=@./tests/test_files/xml/bigpicture/annotation.xml;type=text/xml" \
      -F "datacite=@./tests/test_files/xml/bigpicture/datacite.xml;type=text/xml" \
@@ -86,5 +92,5 @@ curl -X PATCH {{api_url}}/v1/submit/Bigpicture/{{submission_id}} \
      -F "staining=@./tests/test_files/xml/bigpicture/staining.xml;type=text/xml" | jq
 
 ### Delete submission
-curl -X DELETE {{api_url}}/v1/submit/Bigpicture/{{submission_id}} \
+curl -X DELETE {{api_url}}/v1/submit/{{submission_id}} \
      -H 'Authorization: Bearer {{bearer_token}}'
