@@ -12,8 +12,6 @@ from starlette import status
 from metadata_backend.api.services.auth import (
     API_KEY_ID_LENGTH,
     API_KEY_LENGTH,
-    JWT_ALGORITHM,
-    NBIS_JWT_ALGORITHM,
     AuthService,
 )
 from metadata_backend.database.postgres.repositories.api_key import ApiKeyRepository
@@ -27,6 +25,7 @@ class JwtConfig(BaseModel):
     expiration: timedelta
     issuer: str
     jwt_secret: str
+    jwt_algorithm: str
 
 
 @pytest.fixture
@@ -37,8 +36,11 @@ def jwt_config() -> Iterator[JwtConfig]:
         expiration=timedelta(minutes=10),
         issuer="SD Submit",
         jwt_secret="mock-secret",
+        jwt_algorithm="HS256",
     )
-    env_patcher = patch.dict(os.environ, {"JWT_KEY": config.jwt_secret, "JWT_ISSUER": config.issuer})
+    env_patcher = patch.dict(
+        os.environ, {"JWT_KEY": config.jwt_secret, "JWT_ISSUER": config.issuer, "JWT_ALGORITHM": config.jwt_algorithm}
+    )
     env_patcher.start()
     yield config
     env_patcher.stop()
@@ -76,7 +78,7 @@ async def test_create_jwt_token_from_userinfo():
 
 def test_create_jwt_token_contains_required_claims(jwt_config) -> None:
     token = AuthService.create_jwt_token(jwt_config.user_id, jwt_config.user_name, jwt_config.expiration)
-    decoded = jwt.decode(token, jwt_config.jwt_secret, algorithms=[JWT_ALGORITHM], issuer=jwt_config.issuer)
+    decoded = jwt.decode(token, jwt_config.jwt_secret, algorithms=[jwt_config.jwt_algorithm], issuer=jwt_config.issuer)
 
     assert decoded["sub"] == jwt_config.user_id
     assert decoded["user_name"] == jwt_config.user_name
@@ -101,17 +103,18 @@ def test_read_nbis_jwt_token_returns_user_id(jwt_config) -> None:
         {
             "DEPLOYMENT": "NBIS",
             "JWT_KEY": mock_nbis_public_key,
-            "JWT_ISSUER": jwt_config.issuer,
+            "JWT_ISSUER": "nbis-issuer",
+            "JWT_ALGORITHM": "ES256",
         },
     )
     monkeypatch.start()
     payload = {
         "sub": jwt_config.user_id,
-        "iss": jwt_config.issuer,
+        "iss": "nbis-issuer",
         "exp": datetime.now(timezone.utc) + jwt_config.expiration,
         "iat": datetime.now(timezone.utc),
     }
-    token = jwt.encode(payload, mock_nbis_private_key, algorithm=NBIS_JWT_ALGORITHM)
+    token = jwt.encode(payload, mock_nbis_private_key, algorithm="ES256")
     user_id, user_name = AuthService.validate_jwt_token(token)
     assert user_id == jwt_config.user_id
     assert user_name == jwt_config.user_id

@@ -11,14 +11,12 @@ import jwt
 from fastapi import HTTPException
 from starlette import status
 
-from ...conf.deployment import deployment_config
+from ...conf.jwt import jwt_config
 from ...database.postgres.models import ApiKeyEntity
 from ...database.postgres.repositories.api_key import ApiKeyRepository
 from ...helpers.logger import LOG
 from ..models.models import ApiKey
 
-JWT_ALGORITHM = "HS256"
-NBIS_JWT_ALGORITHM = "ES256"
 JWT_EXPIRATION = timedelta(days=7)
 
 API_KEY_ID_LENGTH = 12
@@ -84,10 +82,10 @@ class AuthService:
             "user_name": user_name,
             "exp": exp_time,
             "iat": now,
-            "iss": deployment_config().JWT_ISSUER,
+            "iss": jwt_config().JWT_ISSUER,
         }
 
-        return jwt.encode(payload, deployment_config().JWT_KEY, algorithm=JWT_ALGORITHM)
+        return jwt.encode(payload, jwt_config().JWT_KEY, algorithm=jwt_config().JWT_ALGORITHM)
 
     @staticmethod
     def validate_jwt_token(token: str) -> tuple[str, str]:
@@ -102,14 +100,8 @@ class AuthService:
         Raises:
             HTTPUnauthorized: If the token is expired, malformed, or fails verification.
         """
-        alg = JWT_ALGORITHM if deployment_config().DEPLOYMENT == "CSC" else NBIS_JWT_ALGORITHM
-        key = (
-            deployment_config().JWT_KEY
-            if deployment_config().DEPLOYMENT == "CSC"
-            else deployment_config().JWT_KEY.replace("\\n", "\n").strip()
-        )
-
-        decoded = jwt.decode(token, key, algorithms=[alg], issuer=deployment_config().JWT_ISSUER)
+        key = jwt_config().JWT_KEY.replace("\\n", "\n").strip()  # Handle escaped newlines in environment variable
+        decoded = jwt.decode(token, key, algorithms=[jwt_config().JWT_ALGORITHM], issuer=jwt_config().JWT_ISSUER)
         return str(decoded["sub"]), str(decoded.get("user_name", decoded["sub"]))
 
     @staticmethod
