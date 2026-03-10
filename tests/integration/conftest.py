@@ -7,10 +7,11 @@ to share functionality of the `class` scoped fixtures.
 import logging
 import os
 import uuid
-from contextlib import asynccontextmanager
+from datetime import datetime, timedelta, timezone
 from typing import Any, AsyncGenerator, Awaitable, Protocol
 
 import aiohttp
+import jwt
 import pytest
 from dotenv import dotenv_values
 from yarl import URL
@@ -32,7 +33,7 @@ from tests.integration.helpers import (
     delete_bucket,
     get_submission,
 )
-from tests.utils import bp_submission_documents, bp_update_documents, sd_submission_document
+from tests.utils import bp_submission_documents, bp_update_documents, get_test_es256_keypair, sd_submission_document
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
@@ -147,7 +148,7 @@ class SubmissionUpdateCallableBigPicture(Protocol):
 
 @pytest.fixture
 async def bp_submission(nbis_client: aiohttp.ClientSession, project_id: str) -> SubmissionCallableBigPicture:
-    """Create BigPicture submission using the /submit endpoint."""
+    """Create Bigpicture submission using the /submit endpoint."""
 
     async def _create(is_datacite: bool = False) -> tuple[Submission, dict[str, dict[str]]]:  # noqa
         submission_name, object_names, files = bp_submission_documents(is_datacite=is_datacite)
@@ -165,8 +166,7 @@ async def bp_submission(nbis_client: aiohttp.ClientSession, project_id: str) -> 
 async def bp_submission_update(
     nbis_client: aiohttp.ClientSession, project_id: str
 ) -> SubmissionUpdateCallableBigPicture:
-    """
-    Update BigPicture submission using the /submit endpoint.
+    """Update Bigpicture submission using the /submit endpoint.
 
     Uses the same XMLs as the initial submission.
     """
@@ -191,14 +191,12 @@ async def client() -> AsyncGenerator[aiohttp.ClientSession]:
         yield client
 
 
-@asynccontextmanager
-async def _oidc_authenticated_client(api_base_url: str) -> AsyncGenerator[aiohttp.ClientSession]:
-    """Create an authenticated client using the OIDC standard authentication flow."""
+@pytest.fixture
+async def sd_client() -> AsyncGenerator[aiohttp.ClientSession]:
+    """Create CSC submission client using the OIDC standard authentication flow."""
 
-    async with aiohttp.ClientSession(base_url=f"{api_base_url}/") as client:
-        # Start the authentication flow by calling the /login endpoint. Follow all re-directs
-        # except the last one so that the access tokens can be intercepted.
-
+    async with aiohttp.ClientSession(base_url=f"{base_url}/") as client:
+        # Start OIDC authentication.
         async with client.get("/login", allow_redirects=False) as resp:
             assert resp.status in (302, 303)
 
@@ -221,25 +219,35 @@ async def _oidc_authenticated_client(api_base_url: str) -> AsyncGenerator[aiohtt
                 "access_token": access_token,
                 "oidc_access_token": oidc_access_token,
             },
-            response_url=URL(api_base_url),
+            response_url=URL(base_url),
         )
 
         yield client
 
 
 @pytest.fixture
-async def sd_client() -> AsyncGenerator[aiohttp.ClientSession]:
-    """Create CSC submission client using the OIDC standard authentication flow."""
-
-    async with _oidc_authenticated_client(base_url) as client:
-        yield client
-
-
-@pytest.fixture
 async def nbis_client() -> AsyncGenerator[aiohttp.ClientSession]:
-    """Create NBIS BigPicture submission client using the OIDC standard authentication flow."""
+    """Create NBIS Bigpicture submission client using Bearer JWT authorization."""
 
-    async with _oidc_authenticated_client(nbis_base_url) as client:
+    # Create a similar JWT token as the user would get from the NBIS Bigpicture login portal
+    private_key, _ = get_test_es256_keypair()
+    issuer = os.getenv("NBIS_JWT_ISSUER", "https://login.bp.nbis.se")
+    user_id = mock_user
+    now = datetime.now(timezone.utc)
+    token = jwt.encode(
+        {
+            "sub": user_id,
+            "iss": issuer,
+            "iat": now,
+            "exp": now + timedelta(minutes=30),
+        },
+        private_key,
+        algorithm="ES256",
+    )
+
+    headers = {"Authorization": f"Bearer {token}"}
+
+    async with aiohttp.ClientSession(base_url=f"{nbis_base_url}/", headers=headers) as client:
         yield client
 
 

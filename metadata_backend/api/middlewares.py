@@ -171,7 +171,7 @@ async def extract_jwt_token_and_api_key(method: str, path: str, scope: MutableMa
     # Extract JWT token from the Secure HttpOnly cookie.
     jwt_token = cookies.get(AUTH_COOKIE)
     if jwt_token:
-        LOG.debug("JWT Authorization token in cookie: method:, %s path: %s", method, path)
+        LOG.debug("JWT Authorization token in cookie: method: %s, path: %s", method, path)
 
     # Extract JWT token or API key from the Authorization header.
     api_key = None
@@ -186,14 +186,14 @@ async def extract_jwt_token_and_api_key(method: str, path: str, scope: MutableMa
                     jwt.get_unverified_header(api_key_or_jwt_token)
                     jwt_token = api_key_or_jwt_token
                     LOG.debug(
-                        "JWT Authorization token in Authorization header: method:, %s path: %s",
+                        "JWT Authorization token in Authorization header: method: %s, path: %s",
                         method,
                         path,
                     )
                 except Exception:
                     # Not a JWT -> treat as API key
                     api_key = api_key_or_jwt_token
-                    LOG.debug("API key in Authorization header: method:, %s path: %s", method, path)
+                    LOG.debug("API key in Authorization header: method: %s, path: %s", method, path)
 
     return jwt_token, api_key
 
@@ -205,8 +205,7 @@ async def verify_authorization(
     jwt_token: str | None = None,
     api_key: str | None = None,
 ) -> User:
-    """
-    Verify the jwt authorization token and returns the authorized user.
+    """Verify the jwt authorization token and returns the authorized user.
 
     :param method: The HTTP method.
     :param path: The request path.
@@ -221,19 +220,21 @@ async def verify_authorization(
             # Verify the JWT token.
             user_id, user_name = auth_service.validate_jwt_token(jwt_token)
             return User(user_id=user_id, user_name=user_name)
-        except Exception:
-            LOG.warning("App middleware JWT authorization failed: method:, %s path: %s", method, path)
+        except Exception as exc:
+            LOG.warning("App middleware JWT authorization failed: method: %s, path: %s, error: %s", method, path, exc)
             raise UnauthorizedUserException("Authorization failed")
     elif api_key:
         try:
             # Verify the API key.
             user_id = await auth_service.validate_api_key(api_key)
             if user_id is None:
-                LOG.warning("App middleware API key authorization failed: method:, %s path: %s", method, path)
+                LOG.warning("App middleware API key authorization failed: method: %s, path: %s", method, path)
                 raise UnauthorizedUserException("Authorization failed")
             return User(user_id=user_id, user_name=user_id)
-        except Exception:
-            LOG.warning("App middleware API key authorization failed: method:, %s path: %s", method, path)
+        except Exception as exc:
+            LOG.warning(
+                "App middleware API key authorization failed: method: %s, path: %s, error: %s", method, path, exc
+            )
             raise UnauthorizedUserException("Authorization failed")
     else:
         raise UnauthorizedUserException("Authorization failed")

@@ -23,7 +23,6 @@ class OIDCConfig(BaseSettings):
         validation_alias="OIDC_CLIENT_SECRET",
     )
     OIDC_SCOPE: str = Field(default="openid profile email", description="OIDC scopes")
-    JWT_SECRET: str = Field(description="Secret key used to sign and verify JWT")
     OIDC_DPOP: bool = Field(
         default=False, description="Enables DPoP (Demonstration of Proof-of-Possession) for OIDC requests."
     )

@@ -7,6 +7,7 @@ def test_valid_deployment_config(monkeypatch):
     monkeypatch.setenv("DEPLOYMENT", "NBIS")
     monkeypatch.setenv("ALLOW_UNSAFE", "TRUE")
     monkeypatch.setenv("ALLOW_REGISTRATION", "false")
+    monkeypatch.setenv("JWT_KEY", "mock-secret")
 
     config = DeploymentConfig()
 

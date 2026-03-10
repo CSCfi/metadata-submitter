@@ -1,5 +1,5 @@
 import os
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Iterator
 from unittest.mock import patch
 
@@ -12,19 +12,20 @@ from starlette import status
 from metadata_backend.api.services.auth import (
     API_KEY_ID_LENGTH,
     API_KEY_LENGTH,
-    JWT_ALGORITHM,
-    JWT_ISSUER,
     AuthService,
 )
 from metadata_backend.database.postgres.repositories.api_key import ApiKeyRepository
 from tests.unit.patches.user import MOCK_USER_ID, MOCK_USER_NAME
+from tests.utils import get_test_es256_keypair
 
 
 class JwtConfig(BaseModel):
     user_id: str
     user_name: str
     expiration: timedelta
+    issuer: str
     jwt_secret: str
+    jwt_algorithm: str
 
 
 @pytest.fixture
@@ -33,9 +34,13 @@ def jwt_config() -> Iterator[JwtConfig]:
         user_id=MOCK_USER_ID,
         user_name=MOCK_USER_NAME,
         expiration=timedelta(minutes=10),
+        issuer="SD Submit",
         jwt_secret="mock-secret",
+        jwt_algorithm="HS256",
     )
-    env_patcher = patch.dict(os.environ, {"JWT_SECRET": config.jwt_secret})
+    env_patcher = patch.dict(
+        os.environ, {"JWT_KEY": config.jwt_secret, "JWT_ISSUER": config.issuer, "JWT_ALGORITHM": config.jwt_algorithm}
+    )
     env_patcher.start()
     yield config
     env_patcher.stop()
@@ -73,31 +78,58 @@ async def test_create_jwt_token_from_userinfo():
 
 def test_create_jwt_token_contains_required_claims(jwt_config) -> None:
     token = AuthService.create_jwt_token(jwt_config.user_id, jwt_config.user_name, jwt_config.expiration)
-    decoded = jwt.decode(token, jwt_config.jwt_secret, algorithms=[JWT_ALGORITHM], issuer=JWT_ISSUER)
+    decoded = jwt.decode(token, jwt_config.jwt_secret, algorithms=[jwt_config.jwt_algorithm], issuer=jwt_config.issuer)
 
     assert decoded["sub"] == jwt_config.user_id
     assert decoded["user_name"] == jwt_config.user_name
-    assert decoded["iss"] == JWT_ISSUER
+    assert decoded["iss"] == jwt_config.issuer
     assert "exp" in decoded
     assert "iat" in decoded
 
 
-def test_read_jwt_token_returns_user_id(jwt_config) -> None:
+def test_read_csc_jwt_token_returns_user_id(jwt_config) -> None:
+    # CSC deployment
     token = AuthService.create_jwt_token(jwt_config.user_id, jwt_config.user_name, jwt_config.expiration)
     user_id, user_name = AuthService.validate_jwt_token(token)
     assert user_id == jwt_config.user_id
     assert user_name == jwt_config.user_name
 
 
+def test_read_nbis_jwt_token_returns_user_id(jwt_config) -> None:
+    # NBIS deployment
+    mock_nbis_private_key, mock_nbis_public_key = get_test_es256_keypair()
+    monkeypatch = patch.dict(
+        os.environ,
+        {
+            "DEPLOYMENT": "NBIS",
+            "JWT_KEY": mock_nbis_public_key,
+            "JWT_ISSUER": "nbis-issuer",
+            "JWT_ALGORITHM": "ES256",
+        },
+    )
+    monkeypatch.start()
+    payload = {
+        "sub": jwt_config.user_id,
+        "iss": "nbis-issuer",
+        "exp": datetime.now(timezone.utc) + jwt_config.expiration,
+        "iat": datetime.now(timezone.utc),
+    }
+    token = jwt.encode(payload, mock_nbis_private_key, algorithm="ES256")
+    user_id, user_name = AuthService.validate_jwt_token(token)
+    assert user_id == jwt_config.user_id
+    assert user_name == jwt_config.user_id
+    monkeypatch.stop()
+
+
 def test_create_jwt_token_missing_secret_raises(jwt_config, monkeypatch) -> None:
-    monkeypatch.delenv("JWT_SECRET", raising=False)
+    monkeypatch.delenv("JWT_KEY", raising=False)
     with pytest.raises(ValidationError):
         AuthService.create_jwt_token(jwt_config.user_id, jwt_config.user_name, jwt_config.expiration)
 
 
 def test_read_jwt_token_missing_secret_raises(jwt_config, monkeypatch) -> None:
     token = AuthService.create_jwt_token(jwt_config.user_id, jwt_config.user_name, jwt_config.expiration)
-    monkeypatch.delenv("JWT_SECRET", raising=False)
+    monkeypatch.delenv("JWT_KEY", raising=False)
     with pytest.raises(ValidationError):
         AuthService.validate_jwt_token(token)
 
@@ -117,7 +149,7 @@ def test_read_expired_jwt_token_raises(jwt_config) -> None:
 def test_read_wrong_issuer_jwt_token_raises(jwt_config) -> None:
     token = AuthService.create_jwt_token(jwt_config.user_id, jwt_config.user_name, jwt_config.expiration)
     with pytest.raises(jwt.InvalidIssuerError):
-        jwt.decode(token, os.getenv("JWT_SECRET"), algorithms=["HS256"], issuer="invalid")
+        jwt.decode(token, os.getenv("JWT_KEY"), algorithms=["HS256"], issuer="invalid")
 
 
 async def test_hash_api_key(jwt_config, service) -> None:

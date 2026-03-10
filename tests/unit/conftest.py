@@ -207,6 +207,7 @@ def registration_service() -> RegistrationService:
 @pytest.fixture
 def csc_client(monkeypatch, session) -> Generator[TestClient]:
     monkeypatch.setenv("DEPLOYMENT", DEPLOYMENT_CSC)
+    monkeypatch.setenv("JWT_KEY", "mock-secret")
     app = create_app(session)
     with TestClient(app) as client:
         yield client
@@ -215,6 +216,7 @@ def csc_client(monkeypatch, session) -> Generator[TestClient]:
 @pytest.fixture
 def nbis_client(monkeypatch, session) -> Generator[TestClient]:
     monkeypatch.setenv("DEPLOYMENT", DEPLOYMENT_NBIS)
+    monkeypatch.setenv("JWT_KEY", "mock-secret")
     app = create_app(session)
     with TestClient(app) as client:
         yield client
@@ -226,7 +228,7 @@ def nbis_client(monkeypatch, session) -> Generator[TestClient]:
 @pytest.fixture
 def dpop_test_jwks(tmp_path: Path, monkeypatch) -> Path:
     """Create a test JWKS file for DPoP handler."""
-    jwks_file_path = Path(__file__).parent.parent / "test_files" / "jwks.json"
+    jwks_file_path = Path(__file__).parent.parent / "test_files" / "keys" / "jwks.json"
     test_jwks = json.loads(jwks_file_path.read_text())
 
     jwks_file = tmp_path / "jwks.json"

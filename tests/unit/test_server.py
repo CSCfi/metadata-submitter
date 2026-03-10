@@ -9,6 +9,7 @@ from metadata_backend.server import main
 def test_main_csc(monkeypatch):
     """Test web server main for CSC deployment."""
     monkeypatch.setenv("DEPLOYMENT", DEPLOYMENT_CSC)
+    monkeypatch.setenv("JWT_KEY", "mock-secret")
     with (
         patch("metadata_backend.server.create_app", return_value=Mock()) as mock_create_app,
         patch("metadata_backend.server.uvicorn.run") as mock_uvicorn_run,
@@ -24,6 +25,7 @@ def test_main_csc(monkeypatch):
 
 def test_main_nbis(monkeypatch):
     monkeypatch.setenv("DEPLOYMENT", DEPLOYMENT_NBIS)
+    monkeypatch.setenv("JWT_KEY", "mock-secret")
     """Test web server main for NBIS deployment."""
     with (
         patch("metadata_backend.server.create_app", return_value=Mock()) as mock_create_app,

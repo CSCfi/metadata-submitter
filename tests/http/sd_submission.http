@@ -1,0 +1,120 @@
+# https://github.com/Huachao/vscode-restclient
+# https://jsonpath.com/
+
+# To test these API calls, run the following terminal commands in project root.
+
+# Get secrets from Vault for local deployment:
+$ make get_env
+
+# Launch the API containers locally:
+$ docker compose --profile dev up --build -d
+
+# Run login script to obtain access tokens and write them to tests/http/.env:
+$ python tests/http/_login.py
+
+
+@api_url = http://localhost:5430
+@token = {{$dotenv ACCESS_TOKEN}}
+@oidc_token = {{$dotenv OIDC_ACCESS_TOKEN}}
+
+@project_id = {{user_data_req.response.body.projects[1].project_id}}
+@submission_id = {{submission_id_req.response.body.submissionId}}
+
+@bucket_name = sd-submit-test
+
+
+# Communicate directly with S3 API
+
+### List S3 buckets in user project
+GET {{$dotenv S3_ENDPOINT}}
+Authorization: AWS {{$dotenv S3_KEY_ID}} {{$dotenv S3_SECRET_KEY}} region:{{$dotenv S3_REGION}} service:s3
+
+### Create bucket
+PUT {{$dotenv S3_ENDPOINT}}/{{bucket_name}}/
+Authorization: AWS {{$dotenv S3_KEY_ID}} {{$dotenv S3_SECRET_KEY}} region:{{$dotenv S3_REGION}} service:s3
+
+### Delete bucket
+DELETE {{$dotenv S3_ENDPOINT}}/{{bucket_name}}/
+Authorization: AWS {{$dotenv S3_KEY_ID}} {{$dotenv S3_SECRET_KEY}} region:{{$dotenv S3_REGION}} service:s3
+
+### Upload file to bucket
+PUT {{$dotenv S3_ENDPOINT}}/{{bucket_name}}/metadata.json
+Authorization: AWS {{$dotenv S3_KEY_ID}} {{$dotenv S3_SECRET_KEY}} region:{{$dotenv S3_REGION}} service:s3
+Content-Type: application/json
+x-amz-content-sha256: UNSIGNED-PAYLOAD
+
+< ../test_files/submission/metadata.json
+
+### Delete object from bucket
+DELETE {{$dotenv S3_ENDPOINT}}/{{bucket_name}}/metadata.json
+Authorization: AWS {{$dotenv S3_KEY_ID}} {{$dotenv S3_SECRET_KEY}} region:{{$dotenv S3_REGION}} service:s3
+
+
+# Send SD SUBMIT API requests
+
+### Get user data
+# @name user_data_req
+GET {{api_url}}/v1/users
+Cookie: access_token={{token}}
+
+### List submissions
+GET {{api_url}}/v1/submissions
+    ?projectId={{project_id}}
+Cookie: access_token={{token}}
+
+### Create submission
+# @name submission_id_req
+POST {{api_url}}/v1/submissions
+Cookie: access_token={{token}}
+
+{
+    "name": "submission test 1",
+    "title": "submission title 1",
+    "description": "submission test 1",
+    "projectId": "{{project_id}}",
+    "workflow": "SD"
+}
+
+### Get submission
+GET {{api_url}}/v1/submissions/{{submission_id}}
+Cookie: access_token={{token}}
+
+### Delete submission
+DELETE {{api_url}}/v1/submissions/{{submission_id}}
+Cookie: access_token={{token}}
+
+
+### Get submission files
+GET {{api_url}}/v1/submissions/{{submission_id}}/files
+Cookie: access_token={{token}}
+
+### Get buckets from S3
+GET {{api_url}}/v1/buckets?projectId={{project_id}}
+Cookie: access_token={{token}}
+Cookie: oidc_access_token={{oidc_token}}
+
+### Grant access to bucket
+PUT {{api_url}}/v1/buckets/{{bucket_name}}?projectId={{project_id}}
+Cookie: access_token={{token}}
+Cookie: oidc_access_token={{oidc_token}}
+
+### Get files in bucket
+GET {{api_url}}/v1/buckets/{{bucket_name}}/files?projectId={{project_id}}
+Cookie: access_token={{token}}
+Cookie: oidc_access_token={{oidc_token}}
+
+### Update linked bucket
+PATCH {{api_url}}/v1/submissions/{{submission_id}}?projectId={{project_id}}
+Cookie: access_token={{token}}
+
+{
+    "bucket": "{{bucket_name}}"
+}
+
+### Publish submission
+PATCH {{api_url}}/v1/publish/{{submission_id}}
+Authorization: Bearer {{token}}
+
+### Get submission files
+GET {{api_url}}/v1/submissions/{{submission_id}}/files
+Authorization: Bearer {{token}}
