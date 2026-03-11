@@ -238,7 +238,7 @@ async def nbis_client() -> AsyncGenerator[aiohttp.ClientSession]:
         {
             "sub": user_id,
             "iss": issuer,
-            "iat": now,
+            "iat": now - timedelta(minutes=1),
             "exp": now + timedelta(minutes=30),
         },
         private_key,
