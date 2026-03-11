@@ -117,16 +117,65 @@ BP_SAMPLE_OBJECT_TYPES = [
     BP_SAMPLE_CASE_OBJECT_TYPE,
 ]
 
+BP_MANDATORY_OBJECT_TYPES = [
+    BP_DATASET_OBJECT_TYPE,
+    BP_IMAGE_OBJECT_TYPE,
+    BP_LANDING_PAGE_OBJECT_TYPE,
+    BP_OBSERVATION_OBJECT_TYPE,
+    BP_ORGANISATION_OBJECT_TYPE,
+    BP_POLICY_OBJECT_TYPE,
+    BP_REMS_OBJECT_TYPE,
+    BP_STAINING_OBJECT_TYPE,
+]
+
+BP_SINGLE_OBJECT_TYPES = [
+    BP_DATASET_OBJECT_TYPE,
+    BP_LANDING_PAGE_OBJECT_TYPE,
+    BP_ORGANISATION_OBJECT_TYPE,
+    BP_POLICY_OBJECT_TYPE,
+    BP_REMS_OBJECT_TYPE,
+]
+
+
+def get_xml_object_type_schema(object_type: str) -> str:
+    if object_type in BP_SAMPLE_OBJECT_TYPES:
+        return BP_SAMPLE_SCHEMA
+    if object_type == BP_ANNOTATION_OBJECT_TYPE:
+        return BP_ANNOTATION_SCHEMA
+    if object_type == BP_DATASET_OBJECT_TYPE:
+        return BP_DATASET_SCHEMA
+    if object_type == BP_IMAGE_OBJECT_TYPE:
+        return BP_IMAGE_SCHEMA
+    if object_type == BP_LANDING_PAGE_OBJECT_TYPE:
+        return BP_LANDING_PAGE_SCHEMA
+    if object_type == BP_OBSERVATION_OBJECT_TYPE:
+        return BP_OBSERVATION_SCHEMA
+    if object_type == BP_OBSERVER_OBJECT_TYPE:
+        return BP_OBSERVER_SCHEMA
+    if object_type == BP_ORGANISATION_OBJECT_TYPE:
+        return BP_ORGANISATION_SCHEMA
+    if object_type == BP_POLICY_OBJECT_TYPE:
+        return BP_POLICY_SCHEMA
+    if object_type == BP_REMS_OBJECT_TYPE:
+        return BP_REMS_SCHEMA
+    if object_type == BP_STAINING_OBJECT_TYPE:
+        return BP_STAINING_SCHEMA
+
+    raise ValueError(f"Unknown schema for object type: {object_type}")
+
 
 def _xml_identifier_path_bp(
     schema_type: str,
     root_path: str,
     *,
-    is_mandatory: bool = False,
-    is_single: bool = False,
     title_path: str | None = None,
     description_path: str | None = None,
 ) -> XmlObjectPaths:
+    object_type = _get_xml_object_type_bp(root_path)
+
+    is_mandatory = object_type in BP_MANDATORY_OBJECT_TYPES
+    is_single = object_type in BP_SINGLE_OBJECT_TYPES
+
     return XmlObjectPaths(
         schema_type=schema_type,
         object_type=_get_xml_object_type_bp(root_path),
@@ -182,28 +231,20 @@ BP_FULL_SUBMISSION_XML_OBJECT_CONFIG = XmlObjectConfig(
     ],
     object_paths=[
         _xml_identifier_path_bp(*BP_ANNOTATION_SCHEMA_AND_PATH),
-        _xml_identifier_path_bp(
-            *BP_DATASET_SCHEMA_AND_PATH,
-            is_mandatory=True,
-            is_single=True,
-            title_path="/TITLE",
-            description_path="/DESCRIPTION",
-        ),
-        _xml_identifier_path_bp(*BP_IMAGE_SCHEMA_AND_PATH, is_mandatory=True),
-        _xml_identifier_path_bp(*BP_LANDING_PAGE_SCHEMA_AND_PATH, is_mandatory=True, is_single=True),
-        _xml_identifier_path_bp(*BP_OBSERVATION_SCHEMA_AND_PATH, is_mandatory=True),
+        _xml_identifier_path_bp(*BP_DATASET_SCHEMA_AND_PATH, title_path="/TITLE", description_path="/DESCRIPTION"),
+        _xml_identifier_path_bp(*BP_IMAGE_SCHEMA_AND_PATH),
+        _xml_identifier_path_bp(*BP_LANDING_PAGE_SCHEMA_AND_PATH),
+        _xml_identifier_path_bp(*BP_OBSERVATION_SCHEMA_AND_PATH),
         _xml_identifier_path_bp(*BP_OBSERVER_SCHEMA_AND_PATH),
-        _xml_identifier_path_bp(
-            *BP_ORGANISATION_SCHEMA_AND_PATH, is_mandatory=True, is_single=True, title_path="/NAME"
-        ),
-        _xml_identifier_path_bp(*BP_POLICY_SCHEMA_AND_PATH, is_mandatory=True, is_single=True),
-        _xml_identifier_path_bp(*BP_REMS_SCHEMA_AND_PATH, is_mandatory=True, is_single=True),
+        _xml_identifier_path_bp(*BP_ORGANISATION_SCHEMA_AND_PATH, title_path="/NAME"),
+        _xml_identifier_path_bp(*BP_POLICY_SCHEMA_AND_PATH),
+        _xml_identifier_path_bp(*BP_REMS_SCHEMA_AND_PATH),
         _xml_identifier_path_bp(*BP_SAMPLE_BIOLOGICAL_BEING_SCHEMA_AND_PATH),
         _xml_identifier_path_bp(*BP_SAMPLE_SLIDE_SCHEMA_AND_PATH),
         _xml_identifier_path_bp(*BP_SAMPLE_SPECIMEN_SCHEMA_AND_PATH),
         _xml_identifier_path_bp(*BP_SAMPLE_BLOCK_SCHEMA_AND_PATH),
         _xml_identifier_path_bp(*BP_SAMPLE_CASE_SCHEMA_AND_PATH),
-        _xml_identifier_path_bp(*BP_STAINING_SCHEMA_AND_PATH, is_mandatory=True),
+        _xml_identifier_path_bp(*BP_STAINING_SCHEMA_AND_PATH),
     ],
     reference_paths=[
         # annotation

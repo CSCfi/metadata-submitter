@@ -20,6 +20,7 @@ from metadata_backend.api.processors.xml.bigpicture import (
     BP_IMAGE_SCHEMA,
     BP_LANDING_PAGE_OBJECT_TYPE,
     BP_LANDING_PAGE_SCHEMA,
+    BP_MANDATORY_OBJECT_TYPES,
     BP_OBSERVATION_OBJECT_TYPE,
     BP_OBSERVATION_SCHEMA,
     BP_OBSERVER_OBJECT_TYPE,
@@ -36,8 +37,10 @@ from metadata_backend.api.processors.xml.bigpicture import (
     BP_SAMPLE_SCHEMA,
     BP_SAMPLE_SLIDE_OBJECT_TYPE,
     BP_SAMPLE_SPECIMEN_OBJECT_TYPE,
+    BP_SINGLE_OBJECT_TYPES,
     BP_STAINING_OBJECT_TYPE,
     BP_STAINING_SCHEMA,
+    get_xml_object_type_schema,
 )
 from metadata_backend.api.processors.xml.processors import XmlDocumentProcessor, XmlProcessor
 from metadata_backend.api.services.accession import generate_bp_accession_prefix
@@ -353,6 +356,35 @@ async def test_submission_bp(nbis_client):
                     else:
                         # Check that the object has been assigned a new id.
                         assert updated_obj.objectId not in [o.objectId for o in created_objects]
+
+
+async def test_missing_object_type_submission_bp(nbis_client):
+    """Test missing object type in BigPicture submissions."""
+
+    is_datacite = True
+
+    # Test missing mandatory XML.
+
+    for object_type in BP_MANDATORY_OBJECT_TYPES:
+        # Read XML files.
+        submission_name, object_names, files = bp_submission_documents(is_datacite=is_datacite)
+        # Remove XML corresponding to the mandatory object type.
+        del files[get_xml_object_type_schema(object_type) + ".xml"]
+        file_data = prepare_file_data_bp(files)
+        with patch_get_user_projects, patch_verify_user_project, patch_verify_authorization:
+            # Test create submission.
+            response = nbis_client.post(f"{API_PREFIX}/submit", files=file_data)
+            assert response.status_code == 400
+            problem_json = response.json()
+            assert problem_json["detail"] == "User error"
+            assert len(problem_json["errors"]) == 1
+
+            is_single = object_type in BP_SINGLE_OBJECT_TYPES
+
+            assert (
+                problem_json["errors"][0] == f"Expecting {'exactly' if is_single else 'at least'} one '{object_type}' "
+                f"metadata object but found 0."
+            )
 
 
 async def _assert_bp_submission(submission, submission_id, submission_name, is_update: bool = False):
