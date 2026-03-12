@@ -68,7 +68,7 @@ BP_UPDATE_DIR = BP_SUBMISSION_DIR / "update"
 
 TEST_KEYS_DIR = TEST_FILES_ROOT / "keys"
 
-ObjectNames = dict[str, dict[str, dict[str, str]]]
+BigPictureObjectNames = dict[str, dict[str, dict[str, str]]]
 
 
 def bp_objects(is_update: bool) -> tuple[list[ObjectSubmission], dict[str, Path]]:
@@ -95,10 +95,10 @@ def bp_objects(is_update: bool) -> tuple[list[ObjectSubmission], dict[str, Path]
 
 def _bp_submission_documents(
     submission_name: str | None = None,
-    object_names: ObjectNames | None = None,
+    object_names: BigPictureObjectNames | None = None,
     is_update: bool = False,
     is_datacite: bool = False,
-) -> tuple[str, ObjectNames, dict[str, io.BytesIO]]:
+) -> tuple[str, BigPictureObjectNames, dict[str, io.BytesIO]]:
     """Read BP XML test files, assign unique submission name and object names while preserving provided object names.
 
     Assigns a unique submission name and unique object names. The original object names in the
@@ -114,7 +114,7 @@ def _bp_submission_documents(
     objects, files = bp_objects(is_update)
     processor, _ = BigPictureObjectSubmissionService._create_processor(objects)
 
-    new_object_names: ObjectNames = {}
+    new_object_names: BigPictureObjectNames = {}
 
     # Change submission name.
     submission_name = submission_name or f"test_{uuid.uuid4()}"
@@ -191,7 +191,7 @@ def _bp_submission_documents(
 
 def bp_submission_documents(
     *, is_datacite: bool, submission_name: str | None = None
-) -> tuple[str, ObjectNames, dict[str, io.BytesIO]]:
+) -> tuple[str, BigPictureObjectNames, dict[str, io.BytesIO]]:
     """Get BP XML test files for a new submission.
 
     Assigns a unique submission name and object names. The original object names in the
@@ -206,8 +206,8 @@ def bp_submission_documents(
 
 
 def bp_update_documents(
-    submission_name: str, object_names: ObjectNames, is_datacite: bool
-) -> tuple[str, ObjectNames, dict[str, io.BytesIO]]:
+    submission_name: str, object_names: BigPictureObjectNames, is_datacite: bool
+) -> tuple[str, BigPictureObjectNames, dict[str, io.BytesIO]]:
     """Get BP XML test files for a submission update.
 
     Assigns unique names for any new objects. The original object names in the

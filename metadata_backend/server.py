@@ -292,13 +292,24 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
         response_model=PaginatedSubmissions,
         tags=submission_tag,
     )
-    api_router.add_api_route(
-        "/submissions",
-        _submission.create_submission,
-        methods=POST,
-        status_code=status.HTTP_201_CREATED,
-        tags=submission_tag,
-    )
+    if config.DEPLOYMENT == DEPLOYMENT_CSC:
+        # Create, update, delete /submissions endpoints are not supported for NBIS deployment.
+        api_router.add_api_route(
+            "/submissions",
+            _submission.create_submission,
+            methods=POST,
+            status_code=status.HTTP_201_CREATED,
+            tags=submission_tag,
+        )
+        api_router.add_api_route(
+            "/submissions/{submissionId}", _submission.update_submission, methods=PATCH, tags=submission_tag
+        )
+        api_router.add_api_route(
+            "/submissions/{submissionId}",
+            _submission.delete_submission,
+            methods=DELETE,
+            tags=submission_tag,
+        )
     api_router.add_api_route(
         "/submissions/{submissionId}", _submission.get_submission, methods=GET, tags=submission_tag
     )
@@ -308,15 +319,6 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
     api_router.add_api_route(
         "/submissions/{submissionId}/registrations", _submission.get_registrations, methods=GET, tags=submission_tag
     )
-    api_router.add_api_route(
-        "/submissions/{submissionId}", _submission.update_submission, methods=PATCH, tags=submission_tag
-    )  # TODO(improve): consider deprecating endpoint
-    api_router.add_api_route(
-        "/submissions/{submissionId}",
-        _submission.delete_submission,
-        methods=DELETE,
-        tags=submission_tag,
-    )  # TODO(improve): consider deprecating endpoint
 
     # User routes.
     api_router.add_api_route("/users", _user.get_user, methods=GET, tags=user_tag, summary="Get user information")

@@ -136,12 +136,6 @@ async def _mock_rems_create_catalogue_item(
     return mock_rems_catalogue_id
 
 
-def patch_rems_get_discovery_url(url_prefix: str = "test_discovery"):
-    return patch.object(
-        RemsServiceHandler, "get_discovery_url", new=MagicMock(side_effect=lambda id: f"{url_prefix}/{id}")
-    )
-
-
 def patch_rems_get_application_url(url_prefix: str = "test_application"):
     return patch.object(
         RemsServiceHandler,
@@ -193,7 +187,6 @@ def patch_rems_create_catalogue_item():
 
 
 # Apply default Rems service handler patches.
-patch_rems_get_discovery_url().start()
 patch_rems_get_application_url().start()
 patch_rems_get_workflows().start()
 patch_rems_get_workflow().start()

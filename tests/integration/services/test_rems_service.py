@@ -11,6 +11,7 @@ from metadata_backend.api.models.rems import (
     RemsWorkflow,
     RemsWorkflowDetails,
 )
+from metadata_backend.conf.discovery import discovery_config
 
 # Test service: https://rems-test.2.rahtiapp.fi/swagger-ui/index.htm
 # Test data: https://github.com/CSCfi/rems/blob/master/src/clj/rems/service/test_data.clj
@@ -200,7 +201,7 @@ async def test_create_catalogue_item(secret_env):
     resource_id = await handler.create_resource(organization_id="nbn", license_ids=[1], resid=doi)
 
     title = f"test_{uuid.uuid4()}"
-    discovery_url = handler.get_discovery_url(doi)
+    discovery_url = discovery_config().DISCOVERY_URL.format(id=doi)
     item_id = await handler.create_catalogue_item(
         organization_id="nbn", workflow_id=1, resource_id=resource_id, title=title, discovery_url=discovery_url
     )

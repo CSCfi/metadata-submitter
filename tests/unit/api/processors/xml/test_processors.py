@@ -1,11 +1,44 @@
 import uuid
+from io import BytesIO
+from pathlib import Path
 
 import pytest
 
 from metadata_backend.api.processors.models import ObjectIdentifier
 from metadata_backend.api.processors.xml.bigpicture import BP_IMAGE_OBJECT_TYPE, BP_IMAGE_PATH, BP_IMAGE_SCHEMA
+from metadata_backend.api.processors.xml.processors import XmlObjectProcessor
 from metadata_backend.api.services.submission.bigpicture import BigPictureObjectSubmissionService
 from tests.utils import bp_objects
+
+
+def test_parse_xml_with_string():
+    xml = "<root><a>1</a></root>"
+    tree = XmlObjectProcessor.parse_xml(xml)
+    assert tree.getroot().tag == "root"
+    assert tree.getroot()[0].text == "1"
+
+
+def test_parse_xml_with_bytes():
+    xml = b"<root><a>1</a></root>"
+    tree = XmlObjectProcessor.parse_xml(xml)
+    assert tree.getroot().tag == "root"
+    assert tree.getroot()[0].text == "1"
+
+
+def test_parse_xml_with_file_path(tmp_path: Path):
+    xml_file = tmp_path / "test.xml"
+    xml_file.write_text("<root><a>1</a></root>", encoding="utf-8")
+
+    tree = XmlObjectProcessor.parse_xml(xml_file)
+    assert tree.getroot().tag == "root"
+    assert tree.getroot()[0].text == "1"
+
+
+def test_parse_xml_with_io_bytes():
+    xml_io = BytesIO(b"<root><a>1</a></root>")
+    tree = XmlObjectProcessor.parse_xml(xml_io)
+    assert tree.getroot().tag == "root"
+    assert tree.getroot()[0].text == "1"
 
 
 async def test_object_name():

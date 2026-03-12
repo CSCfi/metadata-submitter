@@ -32,17 +32,6 @@ class RemsServiceHandler(ServiceHandler):
         )
 
     @staticmethod
-    def get_discovery_url(id: str) -> str:
-        """
-        Get REMS data discovery URL.
-
-        :param id: The ID.
-        :returns: The REMS data discovery URL.
-        """
-
-        return f"{rems_config().REMS_DISCOVERY_URL.rstrip('/')}/{id}"
-
-    @staticmethod
     def get_application_url(catalogue_id: str) -> str:
         """
         Get REMS data access application URL.

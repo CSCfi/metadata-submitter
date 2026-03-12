@@ -160,8 +160,7 @@ def fega_schema_file_resolver(schema_type: str) -> str:
     return "SRA." + schema_type + ".xsd"
 
 
-# FEGA submission configuration for a full non-incremental submission.
-FEGA_FULL_SUBMISSION_XML_OBJECT_CONFIG = XmlObjectConfig(
+FEGA_XML_OBJECT_CONFIG = XmlObjectConfig(
     schema_dir=str(FEGA_XML_SCHEMA_DIR),
     schema_file_resolver=fega_schema_file_resolver,
     schema_paths=[

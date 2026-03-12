@@ -15,7 +15,6 @@ from metadata_backend.api.processors.xml.bigpicture import (
     BP_ANNOTATION_SCHEMA,
     BP_DATASET_OBJECT_TYPE,
     BP_DATASET_SCHEMA,
-    BP_FULL_SUBMISSION_XML_OBJECT_CONFIG,
     BP_IMAGE_OBJECT_TYPE,
     BP_IMAGE_SCHEMA,
     BP_LANDING_PAGE_OBJECT_TYPE,
@@ -40,6 +39,7 @@ from metadata_backend.api.processors.xml.bigpicture import (
     BP_SINGLE_OBJECT_TYPES,
     BP_STAINING_OBJECT_TYPE,
     BP_STAINING_SCHEMA,
+    BP_XML_OBJECT_CONFIG,
     get_xml_object_type_schema,
 )
 from metadata_backend.api.processors.xml.processors import XmlDocumentProcessor, XmlProcessor
@@ -189,7 +189,7 @@ async def test_submission_bp(nbis_client):
     """Test BigPicture submission."""
 
     project_id = MOCK_PROJECT_ID
-    xml_config = BP_FULL_SUBMISSION_XML_OBJECT_CONFIG
+    xml_config = BP_XML_OBJECT_CONFIG
 
     for is_datacite in [True, False]:
         # Read XML files.

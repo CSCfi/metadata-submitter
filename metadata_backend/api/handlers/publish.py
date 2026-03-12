@@ -8,12 +8,16 @@ from fastapi import Request
 from ...api.dependencies import SubmissionIdPathParam, UserDependency
 from ...conf.conf import DEPLOYMENT_CSC
 from ...conf.deployment import deployment_config
+from ...conf.discovery import discovery_config
 from ...helpers.logger import LOG
 from ..exceptions import SystemException, UserException
 from ..models.datacite import DataCiteMetadata
 from ..models.models import File, Registration, SubmissionId
 from ..models.submission import Rems, Submission, SubmissionMetadata, SubmissionWorkflow
+from ..processors.xml.bigpicture import BP_POLICY_OBJECT_TYPE, BP_XML_OBJECT_CONFIG
+from ..processors.xml.processors import XmlObjectProcessor
 from ..services.datacite import DataciteService
+from ..services.submission.bigpicture import is_clinical_policy
 from .restapi import RESTAPIHandler
 from .submission import SubmissionAPIHandler
 
@@ -21,16 +25,29 @@ from .submission import SubmissionAPIHandler
 class PublishAPIHandler(RESTAPIHandler):
     """Publish API handler."""
 
-    def _get_rems_discovery_url(self, registration: Registration) -> str:
-        """Get REMS discovery url.
+    @staticmethod
+    def get_discovery_url(submission: Submission, registration: Registration) -> str:
+        """Get discovery URL for the submission.
 
+        :param submission: The submission
         :param registration: The registration
         :returns: The discovery URL
         """
-        if self._handlers.metax is not None:
-            return self._handlers.rems.get_discovery_url(registration.metaxId)
+        if submission.workflow == SubmissionWorkflow.BP:
+            # Use dataset id for Bigpicture.
+            _id = submission.submissionId
         else:
-            return self._handlers.rems.get_discovery_url(registration.doi)
+            # Use Metax id if available. Otherwise use DOI, and if that is not available,
+            # use the submission id.
+            if registration.metaxId:
+                _id = registration.metaxId
+            elif registration.doi:
+                _id = registration.doi
+            else:
+                # Use submission id.
+                _id = submission.submissionId
+
+        return discovery_config().DISCOVERY_URL.format(id=_id)
 
     async def _register_draft_doi(self) -> str:
         """Register a draft DOI through Datacite directly or through CSC PID.
@@ -60,14 +77,17 @@ class PublishAPIHandler(RESTAPIHandler):
                 f"Failed to register Metax ID in submission '{submission_id}'. Please try again later."
             ) from ex
 
-    async def _publish_datacite_or_pid(self, registration: Registration, datacite: DataCiteMetadata) -> None:
+    async def _publish_datacite(
+        self, submission: Submission, registration: Registration, datacite: DataCiteMetadata
+    ) -> None:
         """Publish to DataCite or CSC PID.
 
+        :param submission: The submission
         :param registration: The registration
         :param datacite: The DataCite metadata
         """
         try:
-            discovery_url = self._get_rems_discovery_url(registration)
+            discovery_url = self.get_discovery_url(submission, registration)
 
             if not registration.dataciteUrl:
                 publish_service: DataciteService | None = None
@@ -104,36 +124,55 @@ class PublishAPIHandler(RESTAPIHandler):
                 f"Failed to update submission '{registration.submissionId}' in Metax. Please try again later."
             ) from ex
 
-    async def _publish_rems(self, rems: Rems, registration: Registration) -> None:
+    async def _publish_rems(self, submission: Submission, rems: Rems, registration: Registration) -> None:
         """Prepare dictionary with values to be published to REMS. Adds the metax id if available.
 
-        :param rems: The rems data
-        :param registration: The registration
+        :param rems: The submission metadata
+        :param rems: The rems metadata
+            :param registration: The registration
         """
 
         # Check that the workflow exists and get the organisation id.
-        workflow = await self._handlers.rems.get_workflow(rems.organizationId, rems.workflowId)
+        rems_workflow = await self._handlers.rems.get_workflow(rems.organizationId, rems.workflowId)
 
         try:
+            # Create REMS resource.
             if not registration.remsResourceId:
-                # Use the submission ID as the REMS identifier if DOI is not available.
-                resid = registration.doi
-                if resid is None:
+                if submission.workflow == SubmissionWorkflow.BP:
+                    # Use BigPicture dataset id as the REMS resource id.
+                    resid = submission.submissionId
+                elif registration.doi is not None:
+                    # Use DOI as the REMS resource id.
+                    resid = registration.doi
+                else:
+                    # If DOI is unavailable use submission id as the REMS resource id.
                     resid = registration.submissionId
-                resource_id = await self._handlers.rems.create_resource(workflow.organization.id, rems.licenses, resid)
+                resource_id = await self._handlers.rems.create_resource(
+                    rems_workflow.organization.id, rems.licenses, resid
+                )
                 await self._services.registration.update_rems_resource_id(registration.submissionId, str(resource_id))
                 registration.remsResourceId = str(resource_id)
             else:
                 resource_id = int(registration.remsResourceId)
 
-            if not registration.remsCatalogueId:
+            # Create REMS catalogue item.
+            create_catalogue_item = True
+            if submission.workflow == SubmissionWorkflow.BP:
+                # Read policy XML. The BP XML processor guarantees that we have one policy metadata object.
+                async for xml in self._services.object.get_xml_documents(
+                    registration.submissionId, BP_POLICY_OBJECT_TYPE
+                ):
+                    # Create REMS catalogue item only for clinical datasets.
+                    create_catalogue_item = is_clinical_policy(XmlObjectProcessor(BP_XML_OBJECT_CONFIG, xml))
+
+            if create_catalogue_item and not registration.remsCatalogueId:
                 catalogue_id = str(
                     await self._handlers.rems.create_catalogue_item(
-                        workflow.organization.id,
+                        rems_workflow.organization.id,
                         rems.workflowId,
                         resource_id,
                         registration.title,
-                        self._get_rems_discovery_url(registration),
+                        self.get_discovery_url(submission, registration),
                     )
                 )
                 await self._services.registration.update_rems_catalogue_id(registration.submissionId, catalogue_id)
@@ -287,7 +326,18 @@ class PublishAPIHandler(RESTAPIHandler):
             if datacite is not None:
                 # Create DOI if DataCite metadata is available.
                 doi = await self._register_draft_doi()
-            registration = self._create_registration(submission_id, submission.title, submission.description, doi)
+
+            if submission.workflow == SubmissionWorkflow.BP:
+                # The REMS catalogue item title format is:
+                # <dataset short name> (<REMS organisation id>, <dataset id>).
+                # The dataset short name, and dataset id are available from submission
+                # name and id, respectively. The registration title is later used as
+                # the REMS catalogue item title.
+                title = f"{submission.name} ({rems.organizationId}, {submission.submissionId})"
+            else:
+                title = submission.title
+
+            registration = self._create_registration(submission_id, title, submission.description, doi)
             await registration_service.add_registration(registration)
 
         # Register Metax ID. Requires DOI.
@@ -298,7 +348,7 @@ class PublishAPIHandler(RESTAPIHandler):
 
         # Publish to DataCite. Modifies the datacite information.
         if datacite:
-            await self._publish_datacite_or_pid(registration, datacite)
+            await self._publish_datacite(submission, registration, datacite)
 
         # Update Metax with DOI information.
         if self._handlers.metax is not None:
@@ -308,7 +358,7 @@ class PublishAPIHandler(RESTAPIHandler):
             await self._update_metax(registration, metadata)
 
         # Publish to REMS and add REMS URL to Metax draft description.
-        await self._publish_rems(rems, registration)
+        await self._publish_rems(submission, rems, registration)
 
         # Publish to Metax.
         if self._handlers.metax is not None:
