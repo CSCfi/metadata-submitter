@@ -4,7 +4,7 @@ import os
 from abc import ABC, abstractmethod
 from itertools import chain
 from pathlib import Path
-from typing import AsyncIterator, Callable, Iterable, Sequence, cast, override
+from typing import IO, AsyncIterator, Callable, Iterable, Sequence, cast, override
 
 import fsspec
 from lxml import etree
@@ -37,14 +37,29 @@ class XmlProcessor(ABC):
     """Abstract base class for processing XML metadata objects."""
 
     @staticmethod
-    def parse_xml(xml: str | bytes) -> ElementTree:
+    def parse_xml(xml: str | bytes | Path | IO[bytes]) -> ElementTree:
         """
         Parse XML string into an element tree with normalized whitespace.
 
-        :param xml: XML string to parse.
+        :param xml: XML contents or file to parse.
         :return: XML element tree.
         """
+
         parser = etree.XMLParser(remove_blank_text=True, remove_comments=True)
+
+        if isinstance(xml, Path):
+            return etree.parse(str(xml), parser)
+
+        if hasattr(xml, "read"):  # IO[bytes]
+            return etree.parse(xml, parser)
+
+        if isinstance(xml, str):
+            xml = xml.encode("utf-8")
+
+        if isinstance(xml, Path):
+            with xml.open("rb") as f:
+                etree.parse(f, parser=parser, base_url=str(xml))
+
         return etree.ElementTree(etree.fromstring(xml, parser))
 
     @staticmethod
@@ -142,16 +157,20 @@ class XmlObjectProcessor(XmlProcessor, ObjectProcessor):
     Automatically identifies the metadata type.
     """
 
-    def __init__(self, config: XmlObjectConfig, xml: ElementTree) -> None:
+    def __init__(self, config: XmlObjectConfig, xml: ElementTree | str | bytes | Path | IO[bytes]) -> None:
         """
         Process one XML metadata object to inject accession numbers.
 
         Automatically identifies the metadata type.
 
         :param config: Configuration object for XML processing.
-        :param xml: XML element tree.
+        :param xml: XML element tree, XML contents or XML file.
         """
         self.config = config
+
+        if not isinstance(xml, ElementTree):
+            xml = self.parse_xml(xml)
+
         self.xml = xml
 
         self.root_path = f"/{QName(xml.getroot().tag).localname}"
@@ -354,7 +373,9 @@ class XmlObjectProcessor(XmlProcessor, ObjectProcessor):
         return []
 
     @staticmethod
-    def _get_xml_node_value(path: str, xml: ElementTree | Element, *, optional: bool = False) -> str | None:
+    def _get_xml_node_value(
+        path: str, xml: ElementTree | Element, *, optional: bool = False, field_name: str | None = None
+    ) -> str | None:
         """
         Retrieve the value of an XML element or attribute using an XPath expression.
 
@@ -364,6 +385,7 @@ class XmlObjectProcessor(XmlProcessor, ObjectProcessor):
         :param path: XPath expression to locate the element or attribute.
         :param xml: XML element or element tree.
         :param optional: If True, return None instead of raising if the node or value is missing.
+        :param field_name: If provided, used in error messages instead of the XPath expression.
         :return: The text or attribute value as a string, or None if optional and not found.
         """
         if isinstance(xml, ElementTree):
@@ -376,16 +398,18 @@ class XmlObjectProcessor(XmlProcessor, ObjectProcessor):
         except Exception as e:
             raise e
 
+        field_name = field_name or f"XPath '{path}'"
+
         if not result:
             if optional:
                 return None
-            raise ValueError(f"XPath '{path}' not found.")
+            raise ValueError(f"{field_name} not found.")
 
         value = result[0]
         if value is None:
             if optional:
                 return None
-            raise ValueError(f"XPath '{path}' value not found.")
+            raise ValueError(f"{field_name} not found.")
 
         if isinstance(value, str):
             return value
@@ -394,12 +418,13 @@ class XmlObjectProcessor(XmlProcessor, ObjectProcessor):
             if not value.text:
                 if optional:
                     return None
-                raise ValueError(f"XPath '{path}' value not found.")
+                raise ValueError(f"{field_name} not found.")
+
             return cast(str, value.text)
 
-        raise ValueError(f"XPath '{path}' unexpected type: {type(value).__name__}")
+        raise ValueError(f"{field_name} unexpected type: {type(value).__name__}")
 
-    def get_xml_node_value(self, path: str, *, optional: bool = False) -> str | None:
+    def get_xml_node_value(self, path: str, *, optional: bool = False, field_name: str | None = None) -> str | None:
         """
         Retrieve the value of an XML element or attribute using a relative XPath expression.
 
@@ -407,10 +432,11 @@ class XmlObjectProcessor(XmlProcessor, ObjectProcessor):
 
         :param path: XPath expression to locate the element or attribute.
         :param optional: If True, return None instead of raising if the node or value is missing.
+        :param field_name: If provided, used in error messages instead of the XPath expression.
         :return: The text or attribute value as a string, or None if optional and not found.
         """
 
-        return self._get_xml_node_value(path, self.xml.getroot(), optional=optional)
+        return self._get_xml_node_value(path, self.xml.getroot(), optional=optional, field_name=field_name)
 
     @staticmethod
     def _set_xml_node_value(

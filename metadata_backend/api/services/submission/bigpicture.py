@@ -1,5 +1,6 @@
 """Service for processing BigPicture submissions."""
 
+import re
 from typing import override
 
 from ....database.postgres.services.file import FileService
@@ -15,14 +16,16 @@ from ...processors.xml.bigpicture import (
     BP_DATASET_OBJECT_TYPE,
     BP_DATASET_PATH,
     BP_DATASET_SCHEMA,
-    BP_FULL_SUBMISSION_XML_OBJECT_CONFIG,
     BP_IMAGE_PATH,
     BP_IMAGE_SCHEMA,
+    BP_POLICY_PATH,
+    BP_POLICY_SCHEMA,
     BP_REMS_PATH,
     BP_REMS_SCHEMA,
+    BP_XML_OBJECT_CONFIG,
 )
 from ...processors.xml.datacite import read_datacite_xml
-from ...processors.xml.processors import XmlStringDocumentsProcessor
+from ...processors.xml.processors import XmlObjectProcessor, XmlStringDocumentsProcessor
 from ..project import ProjectService
 from .submission import ObjectSubmission, ObjectSubmissionService
 
@@ -43,6 +46,35 @@ BP_FILES = [
     "sample.xml",
     "staining.xml",
 ]
+
+
+def is_clinical_policy(policy_processor: XmlObjectProcessor) -> bool:
+    """
+    Check if the policy is clinical. Raises a ValueError if the 'type of dataset' attribute value
+    is missing or invalid.
+
+    :param policy_processor: The policy XML processor.
+    :return: True if the policy is clinical.
+    """
+
+    # The field name should be descriptive as it is used in error messages.
+    field_name = "'Policy attribute 'type of dataset'"
+    value = policy_processor.get_xml_node_value(
+        './ATTRIBUTES/STRING_ATTRIBUTE[TAG="type_of_dataset"]/VALUE', optional=False, field_name=field_name
+    )
+
+    # Text before first slash '/'.
+    text = value.split("/", 1)[0].strip()
+
+    # Normalize spaces.
+    text = re.sub(r"\s+", " ", text).strip()
+
+    if text == "Clinical":
+        return True
+    if text == "Non-Clinical":
+        return False
+
+    raise ValueError(f"{field_name} must start with 'Clinical' or 'Non-Clinical' before '/', got: '{value}'")
 
 
 class BigPictureObjectSubmissionService(ObjectSubmissionService):
@@ -109,7 +141,7 @@ class BigPictureObjectSubmissionService(ObjectSubmissionService):
             datacite = read_datacite_xml(datacite_object.document)
 
         # Create processor for BigPicture XMLs.
-        processor = XmlStringDocumentsProcessor(BP_FULL_SUBMISSION_XML_OBJECT_CONFIG, [o.document for o in bp_objects])
+        processor = XmlStringDocumentsProcessor(BP_XML_OBJECT_CONFIG, [o.document for o in bp_objects])
         return processor, datacite
 
     @override
@@ -138,15 +170,19 @@ class BigPictureObjectSubmissionService(ObjectSubmissionService):
         :return: The submission document.
         """
 
-        # The BP XML processor guarantees that we have one dataset and rems metadata object.
+        # The BP XML processor guarantees that we have one dataset, rems and policy metadata object.
         dataset_identifiers = self._processor.get_object_identifiers(BP_DATASET_SCHEMA)
         rems_identifiers = self._processor.get_object_identifiers(BP_REMS_SCHEMA)
+        policy_identifiers = self._processor.get_object_identifiers(BP_POLICY_SCHEMA)
 
-        # Get dataset and rems metadata object processor.
+        # Get dataset, rems and policy metadata object processor.
         dataset_processor = self._processor.get_object_processor(
             BP_DATASET_SCHEMA, BP_DATASET_PATH, dataset_identifiers[0].name
         )
         rems_processor = self._processor.get_object_processor(BP_REMS_SCHEMA, BP_REMS_PATH, rems_identifiers[0].name)
+        policy_processor = self._processor.get_object_processor(
+            BP_POLICY_SCHEMA, BP_POLICY_PATH, policy_identifiers[0].name
+        )
 
         # Use dataset short name as the submission name.
         name = dataset_processor.get_xml_node_value("./SHORT_NAME")
@@ -154,6 +190,9 @@ class BigPictureObjectSubmissionService(ObjectSubmissionService):
         # Get REMS.
         workflow_id = int(rems_processor.get_xml_node_value("./WORKFLOW_ID"))
         organization_id = rems_processor.get_xml_node_value("./ORGANISATION_ID")
+
+        # Check policy type.
+        is_clinical_policy(policy_processor)
 
         return Submission(
             projectId=project_id,
@@ -168,6 +207,16 @@ class BigPictureObjectSubmissionService(ObjectSubmissionService):
             ),
             metadata=SubmissionMetadata.from_datacite(self._datacite) if self._datacite else None,
         )
+
+    @override
+    def prepare_update_submission(self, old_submission: Submission) -> Submission:
+        """
+        Prepare submission document.
+
+        :param old_submission: The existing submission.
+        :return: The submission document.
+        """
+        return self.prepare_create_submission(old_submission.projectId, old_submission.submissionId)
 
     @override
     def prepare_files(self, submission_id: str) -> list[File]:

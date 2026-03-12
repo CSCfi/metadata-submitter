@@ -33,7 +33,13 @@ from tests.integration.helpers import (
     delete_bucket,
     get_submission,
 )
-from tests.utils import bp_submission_documents, bp_update_documents, get_test_es256_keypair, sd_submission_document
+from tests.utils import (
+    BigPictureObjectNames,
+    bp_submission_documents,
+    bp_update_documents,
+    get_test_es256_keypair,
+    sd_submission_document,
+)
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
@@ -137,12 +143,12 @@ async def sd_submission_update(sd_client: aiohttp.ClientSession, project_id: str
 class SubmissionCallableBigPicture(Protocol):
     def __call__(
         self, is_datacite: bool
-    ) -> Awaitable[tuple[Submission, dict[str, dict[str]]]]: ...  # submission names, object names
+    ) -> Awaitable[tuple[Submission, BigPictureObjectNames]]: ...  # submission names, object names
 
 
 class SubmissionUpdateCallableBigPicture(Protocol):
     def __call__(
-        self, submission_id: str, submission_name: str, object_names: dict[str, dict[str]], is_datacite: bool
+        self, submission_id: str, submission_name: str, object_names: BigPictureObjectNames, is_datacite: bool
     ) -> Awaitable[Submission]: ...
 
 
@@ -150,7 +156,7 @@ class SubmissionUpdateCallableBigPicture(Protocol):
 async def bp_submission(nbis_client: aiohttp.ClientSession, project_id: str) -> SubmissionCallableBigPicture:
     """Create Bigpicture submission using the /submit endpoint."""
 
-    async def _create(is_datacite: bool = False) -> tuple[Submission, dict[str, dict[str]]]:  # noqa
+    async def _create(is_datacite: bool = False) -> tuple[Submission, BigPictureObjectNames]:  # noqa
         submission_name, object_names, files = bp_submission_documents(is_datacite=is_datacite)
 
         # Post submission.
@@ -172,7 +178,7 @@ async def bp_submission_update(
     """
 
     async def _update(
-        submission_id: str, submission_name: str, object_names: dict[str, dict[str, dict[str, str]]], is_datacite: bool
+        submission_id: str, submission_name: str, object_names: BigPictureObjectNames, is_datacite: bool
     ) -> Submission:  # noqa
         _, _, files = bp_update_documents(submission_name, object_names, is_datacite)
 

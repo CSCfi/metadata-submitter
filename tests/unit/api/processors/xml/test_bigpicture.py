@@ -9,7 +9,6 @@ from metadata_backend.api.processors.xml.bigpicture import (
     BP_DATASET_PATH,
     BP_DATASET_SCHEMA,
     BP_DATASET_SCHEMA_AND_PATH,
-    BP_FULL_SUBMISSION_XML_OBJECT_CONFIG,
     BP_IMAGE_PATH,
     BP_IMAGE_SCHEMA,
     BP_IMAGE_SCHEMA_AND_PATH,
@@ -46,10 +45,12 @@ from metadata_backend.api.processors.xml.bigpicture import (
     BP_STAINING_PATH,
     BP_STAINING_SCHEMA,
     BP_STAINING_SCHEMA_AND_PATH,
+    BP_XML_OBJECT_CONFIG,
     _get_xml_object_type_bp,
     update_landing_page_xml,
 )
-from metadata_backend.api.processors.xml.processors import XmlFileDocumentsProcessor
+from metadata_backend.api.processors.xml.processors import XmlFileDocumentsProcessor, XmlObjectProcessor
+from metadata_backend.api.services.submission.bigpicture import is_clinical_policy
 
 from .test_utils import TEST_FILES_DIR, assert_object, assert_ref, assert_ref_length
 
@@ -66,7 +67,7 @@ async def test_bp_submission():
     """Test self-contained BP submission with alias references."""
 
     processor = XmlFileDocumentsProcessor(
-        BP_FULL_SUBMISSION_XML_OBJECT_CONFIG,
+        BP_XML_OBJECT_CONFIG,
         str(SUBMISSION_DIR),
         [
             "dataset.xml",
@@ -100,7 +101,7 @@ async def test_bp_submission():
     rems_name = "1"
 
     # Test configuration with annotation and sample
-    config = BP_FULL_SUBMISSION_XML_OBJECT_CONFIG
+    config = BP_XML_OBJECT_CONFIG
     annotation_object_type = _get_xml_object_type_bp(BP_ANNOTATION_PATH)
     assert config.get_root_path(annotation_object_type) == BP_ANNOTATION_PATH
     assert config.get_set_path(object_type=annotation_object_type) == BP_ANNOTATION_SET_PATH
@@ -471,6 +472,15 @@ async def test_bp_submission():
     assert_object(processor, BP_REMS_SCHEMA_AND_PATH, rems_name, rems_id)
     assert_ref_length(processor, BP_REMS_SCHEMA_AND_PATH, rems_name, 1)
     assert_ref(processor, BP_REMS_SCHEMA_AND_PATH, rems_name, BP_DATASET_SCHEMA_AND_PATH, dataset_name, dataset_id)
+
+
+def test_is_clinical_policy():
+    clinical_xml = SUBMISSION_DIR / "single" / "policy_clinical.xml"
+    non_clinical_xml = SUBMISSION_DIR / "single" / "policy_non_clinical.xml"
+    clinical_processor = XmlObjectProcessor(BP_XML_OBJECT_CONFIG, clinical_xml)
+    non_clinical_processor = XmlObjectProcessor(BP_XML_OBJECT_CONFIG, non_clinical_xml)
+    assert is_clinical_policy(clinical_processor)
+    assert not is_clinical_policy(non_clinical_processor)
 
 
 def test_update_landing_page_xml():

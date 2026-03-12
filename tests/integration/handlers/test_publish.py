@@ -8,13 +8,14 @@ from aiohttp import ClientSession
 from tests.integration.conf import (
     publish_url,
     submissions_url,
+    submit_url,
 )
 from tests.integration.helpers import (
     get_registrations,
     get_submission,
     publish_submission,
 )
-from tests.utils import sd_submission_dict
+from tests.utils import BigPictureObjectNames, bp_update_documents, sd_submission_dict
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
@@ -52,7 +53,7 @@ async def test_publish_sd(sd_client, sd_submission):
     assert registration.remsCatalogueId is not None
     assert registration.remsUrl is not None
 
-    await assert_immutable_after_publish(sd_client, submission.submissionId)
+    await assert_immutable_after_publish_sd(sd_client, submission.submissionId)
 
 
 async def test_publish_bp(nbis_client, bp_submission):
@@ -60,7 +61,7 @@ async def test_publish_bp(nbis_client, bp_submission):
 
     for is_datacite in [True, False]:
         # Create submission.
-        submission, _ = await bp_submission(is_datacite)
+        submission, object_names = await bp_submission(is_datacite)
         assert submission.submissionId is not None
         assert submission.published is False
         assert submission.datePublished is None
@@ -84,10 +85,10 @@ async def test_publish_bp(nbis_client, bp_submission):
         assert registration.remsCatalogueId is not None
         assert registration.remsUrl is not None
 
-        await assert_immutable_after_publish(nbis_client, submission_id)
+        await assert_immutable_after_publish_bp(nbis_client, submission_id, submission.name, object_names, is_datacite)
 
 
-async def assert_immutable_after_publish(client: ClientSession, submission_id: str):
+async def assert_immutable_after_publish_sd(client: ClientSession, submission_id: str):
     """Assert that the submission can't be changes after publishing."""
 
     # Check that submission can't be changed.
@@ -100,4 +101,27 @@ async def assert_immutable_after_publish(client: ClientSession, submission_id: s
 
     # Check that submission can't be deleted.
     async with client.delete(f"{submissions_url}/{submission_id}") as resp:
+        assert resp.status == 400
+
+
+async def assert_immutable_after_publish_bp(
+    client: ClientSession,
+    submission_id: str,
+    submission_name: str,
+    object_names: BigPictureObjectNames,
+    is_datacite: bool,
+):
+    """Assert that the submission can't be changes after publishing."""
+
+    # Check that submission can't be changed.
+    _, _, files = bp_update_documents(submission_name, object_names, is_datacite)
+    async with client.patch(f"{submit_url}/{submission_id}", data=files) as resp:
+        assert resp.status == 400
+
+    # Check that submission can't be re-published.
+    async with client.patch(f"{publish_url}/{submission_id}") as resp:
+        assert resp.status == 400
+
+    # Check that submission can't be deleted.
+    async with client.delete(f"{submit_url}/{submission_id}") as resp:
         assert resp.status == 400

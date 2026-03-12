@@ -64,6 +64,7 @@ class ObjectSubmissionService(ABC):
         :return: The submission document.
         """
 
+    @abstractmethod
     def prepare_update_submission(self, old_submission: Submission) -> Submission:
         """
         Prepare submission document.
@@ -71,7 +72,6 @@ class ObjectSubmissionService(ABC):
         :param old_submission: The existing submission.
         :return: The submission document.
         """
-        return self.prepare_create_submission(old_submission.projectId, old_submission.submissionId)
 
     @abstractmethod
     def prepare_files(self, submission_id: str) -> list[File]:

@@ -3,10 +3,11 @@
 import uuid
 from unittest.mock import AsyncMock, patch
 
+from metadata_backend.api.handlers.publish import PublishAPIHandler
 from metadata_backend.api.json import to_json_dict
 from metadata_backend.api.models.datacite import Subject
 from metadata_backend.api.models.models import Registration
-from metadata_backend.api.models.submission import Rems, SubmissionMetadata, SubmissionWorkflow
+from metadata_backend.api.models.submission import Rems, Submission, SubmissionMetadata, SubmissionWorkflow
 from metadata_backend.api.services.file import FileProviderService
 from metadata_backend.conf.conf import API_PREFIX
 from metadata_backend.database.postgres.models import FileEntity
@@ -18,6 +19,7 @@ from metadata_backend.services.rems_service import RemsServiceHandler
 from tests.unit.database.postgres.helpers import create_object_entity, create_submission_entity
 from tests.unit.patches.user import patch_verify_authorization, patch_verify_user_project
 
+from ...conftest import TEST_DISCOVERY_URL
 from ...patches.datacite_service import (
     patch_datacite_create_draft_doi,
     patch_datacite_publish,
@@ -157,7 +159,7 @@ async def test_publish_submission_sd(csc_client, submission_repository, object_r
             rems.workflowId,
             mock_rems_resource_id,
             submission_title,
-            RemsServiceHandler().get_discovery_url(metax_id),
+            TEST_DISCOVERY_URL.format(id=metax_id),
         )
 
 
@@ -246,9 +248,13 @@ async def test_publish_submission_bp(nbis_client, submission_repository, object_
         # TODO(improve): BP beacon service not implement
 
         # Assert Rems.
-        mock_rems_create_resource.assert_awaited_once_with(rems.organizationId, rems.licenses, doi)
+        mock_rems_create_resource.assert_awaited_once_with(rems.organizationId, rems.licenses, submission_id)
         mock_rems_create_catalogue_item.assert_awaited_once_with(
-            rems.organizationId, rems.workflowId, 1, dataset_title, RemsServiceHandler().get_discovery_url(doi)
+            rems.organizationId,
+            rems.workflowId,
+            1,  # REMS resource id
+            f"{submission_entity.name} ({rems.organizationId}, {submission_id})",
+            TEST_DISCOVERY_URL.format(id=submission_id),
         )
 
         # Assert registrations.
@@ -264,3 +270,53 @@ async def test_publish_submission_bp(nbis_client, submission_repository, object_
         assert registration.remsResourceId is not None
         assert registration.remsCatalogueId is not None
         assert registration.remsUrl is not None
+
+
+def test_get_discovery_url_csc():
+    submission = Submission(
+        projectId="test1",
+        submissionId="test2",
+        name="test3",
+        title="test4",
+        description="test4",
+        workflow=SubmissionWorkflow.SD,
+    )
+
+    # Metax ID
+
+    registration = Registration(
+        submissionId=submission.submissionId, title="test5", description="test6", doi="test7", metaxId="test8"
+    )
+    assert PublishAPIHandler.get_discovery_url(submission, registration) == TEST_DISCOVERY_URL.format(
+        id=registration.metaxId
+    )
+
+    # DOI
+
+    registration = Registration(submissionId=submission.submissionId, title="test5", description="test6", doi="test7")
+    assert PublishAPIHandler.get_discovery_url(submission, registration) == TEST_DISCOVERY_URL.format(
+        id=registration.doi
+    )
+
+    # submission id
+
+    registration = Registration(submissionId=submission.submissionId, title="test5", description="test6")
+    assert PublishAPIHandler.get_discovery_url(submission, registration) == TEST_DISCOVERY_URL.format(
+        id=submission.submissionId
+    )
+
+
+def test_get_discovery_url_bp():
+    submission = Submission(
+        projectId="test1",
+        submissionId="test2",
+        name="test3",
+        title="test4",
+        description="test4",
+        workflow=SubmissionWorkflow.BP,
+    )
+
+    registration = Registration(submissionId=submission.submissionId, title="test5", description="test6")
+    assert PublishAPIHandler.get_discovery_url(submission, registration) == TEST_DISCOVERY_URL.format(
+        id=submission.submissionId
+    )

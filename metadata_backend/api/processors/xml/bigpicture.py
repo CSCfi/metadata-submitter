@@ -202,8 +202,7 @@ def _xml_ref_path_bp(
     )
 
 
-# BP submission configuration for a full non-incremental submission.
-BP_FULL_SUBMISSION_XML_OBJECT_CONFIG = XmlObjectConfig(
+BP_XML_OBJECT_CONFIG = XmlObjectConfig(
     schema_dir=str(BP_XML_SCHEMA_DIR),
     schema_file_resolver=lambda schema_type: "BP." + schema_type + ".xsd",
     schema_paths=[
@@ -301,7 +300,7 @@ def update_landing_page_xml(xml: str | bytes, *, datacite_url: str | None = None
     """
     xml = XmlProcessor.parse_xml(xml)
 
-    processor = XmlObjectProcessor(BP_FULL_SUBMISSION_XML_OBJECT_CONFIG, xml)
+    processor = XmlObjectProcessor(BP_XML_OBJECT_CONFIG, xml)
 
     root_element = processor.root_element
 

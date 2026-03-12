@@ -3,6 +3,10 @@
         <DATASET_REF alias="1"/>
         <ATTRIBUTES>
             <STRING_ATTRIBUTE>
+                <TAG>type_of_dataset</TAG>
+                <VALUE>Clinical / Anonymized</VALUE>
+            </STRING_ATTRIBUTE>
+            <STRING_ATTRIBUTE>
                 <TAG>test</TAG>
                 <VALUE>test</VALUE>
             </STRING_ATTRIBUTE>

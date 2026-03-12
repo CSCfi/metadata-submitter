@@ -14,7 +14,6 @@ from metadata_backend.api.processors.xml.fega import (
     FEGA_EXPERIMENT_PATH,
     FEGA_EXPERIMENT_SCHEMA,
     FEGA_EXPERIMENT_SCHEMA_AND_PATH,
-    FEGA_FULL_SUBMISSION_XML_OBJECT_CONFIG,
     FEGA_POLICY_PATH,
     FEGA_POLICY_SCHEMA,
     FEGA_POLICY_SCHEMA_AND_PATH,
@@ -30,6 +29,7 @@ from metadata_backend.api.processors.xml.fega import (
     FEGA_SUBMISSION_PATH,
     FEGA_SUBMISSION_SCHEMA,
     FEGA_SUBMISSION_SCHEMA_AND_PATH,
+    FEGA_XML_OBJECT_CONFIG,
     _get_xml_object_type_fega,
 )
 from metadata_backend.api.processors.xml.processors import XmlFileDocumentsProcessor
@@ -49,7 +49,7 @@ async def test_fega_submission():
     """Test self-contained FEGA submission with alias references."""
 
     processor = XmlFileDocumentsProcessor(
-        FEGA_FULL_SUBMISSION_XML_OBJECT_CONFIG,
+        FEGA_XML_OBJECT_CONFIG,
         str(SUBMISSION_DIR),
         [
             "analysis.xml",

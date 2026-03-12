@@ -16,8 +16,8 @@ from ...helpers.logger import LOG
 from ..exceptions import SystemException, UserException
 from ..models.models import Object
 from ..models.submission import Submission, SubmissionWorkflow
-from ..processors.xml.bigpicture import BP_FULL_SUBMISSION_XML_OBJECT_CONFIG
-from ..processors.xml.fega import FEGA_FULL_SUBMISSION_XML_OBJECT_CONFIG
+from ..processors.xml.bigpicture import BP_XML_OBJECT_CONFIG
+from ..processors.xml.fega import FEGA_XML_OBJECT_CONFIG
 from ..processors.xml.models import XmlObjectConfig
 from ..processors.xml.processors import XmlDocumentProcessor
 from ..services.submission.bigpicture import BigPictureObjectSubmissionService
@@ -218,9 +218,9 @@ class ObjectAPIHandler(RESTAPIHandler):
         workflow = await submission_service.get_workflow(submission_id)
 
         if workflow == SubmissionWorkflow.BP:
-            xml_config = BP_FULL_SUBMISSION_XML_OBJECT_CONFIG
+            xml_config = BP_XML_OBJECT_CONFIG
         elif workflow == SubmissionWorkflow.FEGA:
-            xml_config = FEGA_FULL_SUBMISSION_XML_OBJECT_CONFIG
+            xml_config = FEGA_XML_OBJECT_CONFIG
         else:
             raise UserException(f"Unsupported workflow: {workflow.value}")
 
@@ -258,9 +258,9 @@ class ObjectAPIHandler(RESTAPIHandler):
         workflow = await submission_service.get_workflow(submission_id)
 
         if workflow == SubmissionWorkflow.BP:
-            xml_config = BP_FULL_SUBMISSION_XML_OBJECT_CONFIG
+            xml_config = BP_XML_OBJECT_CONFIG
         elif workflow == SubmissionWorkflow.FEGA:
-            xml_config = FEGA_FULL_SUBMISSION_XML_OBJECT_CONFIG
+            xml_config = FEGA_XML_OBJECT_CONFIG
         else:
             raise UserException(f"Unsupported workflow: {workflow.value}")
 

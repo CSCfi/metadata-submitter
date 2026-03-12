@@ -12,6 +12,7 @@ import pytest
 import pytest_asyncio
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
+from pydantic_core import PydanticUndefined
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
@@ -54,22 +55,21 @@ _object_repository: ObjectRepository | None = None
 _file_repository: FileRepository | None = None
 _registration_repository: RegistrationRepository | None = None
 
+TEST_DISCOVERY_URL = "https://test_discovery/{id}"
+
 
 def pytest_configure(config):
     def _init_mandatory_envs(_confs: list[type[BaseModel]]) -> None:
         """
-        Initialize mandatory environmental variables.
-
-        These environmental variables are not meant to configure functional services
-        in unit tests but are required for the associated services to be initialized.
-        These services should be mocked in unit tests and tested fully in integration
-        tests.
+        Initialize mandatory environmental variables that do not have default values.
         """
         for _conf_cls in _confs:
             for _name, _field in _conf_cls.model_fields.items():
                 if _field.annotation is str:
-                    # Initialize mandatory string fields.
-                    os.environ[_name] = "test"
+                    has_default = (_field.default is not PydanticUndefined) or (_field.default_factory is not None)
+                    if not has_default:
+                        # Initialize mandatory string fields.
+                        os.environ[_name] = "test"
 
     _init_mandatory_envs(
         [
@@ -91,6 +91,7 @@ def pytest_configure(config):
     # Initialize mandatory environmental variables with specific validation rules.
     os.environ["CSC_LDAP_HOST"] = "ldap://test"
     os.environ["S3_REGION"] = "us-east-1"
+    os.environ["DISCOVERY_URL"] = TEST_DISCOVERY_URL
 
 
 # Postgres session.

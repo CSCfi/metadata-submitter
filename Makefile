@@ -77,7 +77,7 @@ get_env: ## Get secrets needed for integration tests from vault
 	$(call write_integration_test_secret,REMS_URL,sd-submit/secrets,rems_url) \
 	$(call write_integration_test_secret,REMS_USER,sd-submit/secrets,rems_user) \
 	$(call write_integration_test_secret,REMS_KEY,sd-submit/secrets,rems_key) \
-	$(call write_integration_test_secret,REMS_DISCOVERY_URL,sd-submit/secrets,rems_discovery_url) \
+	$(call write_integration_test_secret,DISCOVERY_URL,sd-submit/secrets,discovery_url) \
 	vault kv get --field=oidc_jwks secret/sd-submit/secrets >> private/private_jwks.json;
 
 	$(call write_line,### VAULT SECRETS END ###)
@@ -121,7 +121,7 @@ get_ci_env: ## Get secrets needed for CI tests from vault
     $(call write_integration_test_secret,REMS_URL,sd-submit/secrets,rems_url) \
     $(call write_integration_test_secret,REMS_USER,sd-submit/secrets,rems_user) \
     $(call write_integration_test_secret,REMS_KEY,sd-submit/secrets,rems_key) \
-    $(call write_integration_test_secret,REMS_DISCOVERY_URL,sd-submit/secrets,rems_discovery_url)
+    $(call write_integration_test_secret,DISCOVERY_URL,sd-submit/secrets,discovery_url)
 
 	$(call write_line,### VAULT SECRETS END ###)
 
