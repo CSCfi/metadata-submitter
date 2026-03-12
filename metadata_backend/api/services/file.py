@@ -9,8 +9,10 @@ from pydantic import BaseModel, RootModel
 
 from ...conf.s3 import s3_config
 from ...helpers.logger import LOG
+from ...services.admin_service import AdminServiceHandler
 from ...services.keystone_service import KeystoneServiceHandler
 from ..exceptions import SystemException, UserException
+from ..models.models import File as SubmissionFile
 
 
 class FileProviderService(ABC):
@@ -117,6 +119,10 @@ class FileProviderService(ABC):
             True if the policy is assigned, False otherwise.
         """
         return await self._verify_bucket_policy(bucket)
+
+    async def check_files_exist(self, user_id: str, files: list[SubmissionFile]) -> list[str]:
+        """Return file paths that are missing from the provider."""
+        raise SystemException("Configured file provider does not support inbox file checks.")
 
     @abstractmethod
     async def _verify_user_file(self, bucket: str, file: str) -> int | None:
@@ -387,12 +393,13 @@ class S3AllasFileProviderService(S3FileProviderService):
 class S3InboxSDAService(FileProviderService):
     """Service to manage S3 buckets in NeIC SDA S3 Inbox."""
 
-    def __init__(self) -> None:
+    def __init__(self, admin_handler: AdminServiceHandler) -> None:
         """Create S3 file service."""
 
         self._config = s3_config()
         self.region = self._config.S3_REGION
         self.endpoint = self._config.S3_ENDPOINT
+        self._admin_handler = admin_handler
 
     async def _verify_user_file(self, bucket: str, file: str) -> int | None:
         """Verify that the file exists in the specified S3 bucket and return its size."""
@@ -418,6 +425,13 @@ class S3InboxSDAService(FileProviderService):
     async def _verify_bucket_policy(self, bucket: str) -> bool:
         """Verify that the read access policy has been assigned to a bucket."""
         return False
+
+    async def check_files_exist(self, user_id: str, files: list[SubmissionFile]) -> list[str]:
+        """Return file paths that are currently missing from the S3 inbox."""
+        # TODO(improve): Check the filepath matches more strictly so that filepath and inbox path are a complete match
+        inbox_files = await self._admin_handler.get_user_files(user_id)
+        inbox_paths = [inbox_file.get("inboxPath", "") for inbox_file in inbox_files]
+        return [file.path for file in files if not any(file.path in inbox_path for inbox_path in inbox_paths)]
 
     async def _add_file_to_bucket(
         self, bucket_name: str, object_key: str, access_key: str, secret_key: str, session_token: str

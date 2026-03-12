@@ -10,6 +10,7 @@ class AdminConfig(BaseSettings):
     model_config = {"extra": "allow"}  # Allow creation using the constructor.
 
     ADMIN_URL: str = Field(description="NeIC SDA Admin API URL")
+    ADMIN_TOKEN: str = Field(description="NeIC SDA Admin API bearer token")
     ADMIN_POLLING_INTERVAL: int = Field(3600, description="NeIC SDA Admin API polling interval")
 
 

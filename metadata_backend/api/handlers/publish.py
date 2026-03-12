@@ -273,8 +273,15 @@ class PublishAPIHandler(RESTAPIHandler):
         elif workflow == SubmissionWorkflow.BP and not no_files:
             submission_files = [file async for file in file_service.get_files(submission_id=submission_id)]
             LOG.info("Found %d files in submission '%s'.", len(submission_files), submission_id)
-            if not await self._check_submission_files_in_inbox(req, user.user_id, submission_files):
-                raise UserException(f"Submission files for '{submission_id}' are missing from the inbox.")
+
+            # Check that all submission files are present in the S3 inbox
+            # TODO(improve): Implement logic to search files from specific directories in the inbox
+            missing_files = await file_provider_service.check_files_exist(user.user_id, submission_files)
+            if missing_files:
+                missing_paths = ", ".join(sorted(missing_files))
+                raise UserException(
+                    f"Submission files for '{submission_id}' are missing from the inbox: {missing_paths}."
+                )
 
         submission = await submission_service.get_submission_by_id(submission_id)
 
@@ -386,17 +393,3 @@ class PublishAPIHandler(RESTAPIHandler):
             description=description,
             doi=doi,
         )
-
-    async def _check_submission_files_in_inbox(self, req: Request, user_id: str, files: list[File]) -> bool:
-        """Check if all submission files are in the inbox.
-
-        :param req: The request
-        :param user_id: The user id
-        :param files: The list of submission files
-        :returns: True if all files are in the inbox, False otherwise"""
-
-        inbox_files = await self._handlers.admin.get_user_files(req, user_id)
-        for file in files:
-            if not any(inbox_file.get("inboxPath") == file.path for inbox_file in inbox_files):
-                return False
-        return True

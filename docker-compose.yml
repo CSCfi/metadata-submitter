@@ -100,6 +100,7 @@ services:
       - "S3_REGION=${S3_REGION}"
       - "S3_ENDPOINT=${S3_ENDPOINT}"
       - "ADMIN_URL=${SDA_API_URL}"
+      - "ADMIN_TOKEN=${ADMIN_TOKEN}"
       - "ALLOW_UNSAFE=${ALLOW_UNSAFE}"
 
   mock-oauth2:
@@ -153,6 +154,7 @@ services:
     environment:
       - "LOG_LEVEL=${LOG_LEVEL}"
       - "OIDC_URL=${OIDC_URL}"
+      - "ADMIN_TOKEN=${ADMIN_TOKEN}"
     profiles:
       - ci
       - dev

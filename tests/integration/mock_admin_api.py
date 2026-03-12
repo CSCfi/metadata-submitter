@@ -22,27 +22,28 @@ LOG = logging.getLogger("server")
 LOG.setLevel(getenv("LOG_LEVEL", "INFO"))
 
 mock_auth_url = getenv("OIDC_URL", "http://localhost:8000")
+admin_token = getenv("ADMIN_TOKEN", "")
 
 admins = ["admin_user@test.what", "mock_user@test.what"]
 files_in_inbox = {
     "mock_user@test.what": [
         {
             "fileID": "12345678-90ab-cdef-1234-567890abcdef",
-            "inboxPath": "test.dcm",
+            "inboxPath": "DATASET_1/IMAGES/IMAGE_1/test.dcm.c4gh",
             "fileStatus": "uploaded",
             "submissionFileSize": 100,
             "createAt": datetime.now().isoformat(),
         },
         {
             "fileID": "22345678-90ab-cdef-1234-567890abcdef",
-            "inboxPath": "test2.dcm",
+            "inboxPath": "DATASET_1/IMAGES/IMAGE_2/test2.dcm.c4gh",
             "fileStatus": "uploaded",
             "submissionFileSize": 200,
             "createAt": datetime.now().isoformat(),
         },
         {
             "fileID": "32345678-90ab-cdef-1234-567890abcdef",
-            "inboxPath": "test.json",
+            "inboxPath": "DATASET_1/ANNOTATIONS/test.json.c4gh",
             "fileStatus": "uploaded",
             "submissionFileSize": 300,
             "createAt": datetime.now().isoformat(),
@@ -110,6 +111,9 @@ def _decode_claims(token: str) -> dict:
 def isAdmin(req: web.Request) -> web.Response | None:
     """Test if subject in jwt is an admin. Assumes jwt is taken from mockauth."""
     auth_header = req.headers.get("Authorization", "")
+    if admin_token and auth_header == f"Bearer {admin_token}":
+        return None
+
     if auth_header and auth_header.startswith("Bearer "):
         token = auth_header.split(" ")[1]
 
@@ -323,6 +327,9 @@ async def get_user_files(req: web.Request) -> web.Response:
 
     username = req.match_info["username"]
     user_files = files_in_inbox.get(username, [])
+    path_prefix = req.query.get("path_prefix")
+    if path_prefix:
+        user_files = [file for file in user_files if file.get("inboxPath", "").startswith(path_prefix)]
 
     return web.json_response(user_files)
 

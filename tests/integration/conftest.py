@@ -252,10 +252,7 @@ async def nbis_client() -> AsyncGenerator[aiohttp.ClientSession]:
     )
 
     bearer_token = f"Bearer {token}"
-    headers = {
-        "Authorization": bearer_token,
-        "X-Authorization": bearer_token,
-    }
+    headers = {"Authorization": bearer_token}
 
     async with aiohttp.ClientSession(base_url=f"{nbis_base_url}/", headers=headers) as client:
         yield client
