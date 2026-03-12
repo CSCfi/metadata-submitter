@@ -28,3 +28,9 @@ services:
   postgres-nbis:
     ports:
       - "5433:5432"
+  mockadmin:
+    ports:
+      - "8004:8004"
+  mockinbox:
+    ports:
+      - "8006:8006"

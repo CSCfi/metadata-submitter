@@ -32,7 +32,7 @@ from .api.middlewares import AuthMiddleware, SessionMiddleware
 from .api.models.app import app_state
 from .api.models.submission import PaginatedSubmissions
 from .api.services.auth import AuthService
-from .api.services.file import S3AllasFileProviderService
+from .api.services.file import S3AllasFileProviderService, S3InboxSDAService
 from .api.services.project import CscProjectService, NbisProjectService, ProjectService
 from .conf.conf import (
     API_PREFIX,
@@ -170,7 +170,7 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
         project_service = CscProjectService()
 
     # Create S3 Allas service.
-    file_provider_service = S3AllasFileProviderService()
+    file_provider_service = S3AllasFileProviderService() if config.DEPLOYMENT == DEPLOYMENT_CSC else S3InboxSDAService()
 
     # Create service handlers.
     def _create_handler(handler: ServiceHandlerType) -> ServiceHandlerType:

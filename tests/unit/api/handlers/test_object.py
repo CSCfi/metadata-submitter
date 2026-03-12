@@ -186,7 +186,7 @@ async def test_submission_sd(csc_client):
 
 
 async def test_submission_bp(nbis_client):
-    """Test BigPicture submission."""
+    """Test Bigpicture submission."""
 
     project_id = MOCK_PROJECT_ID
     xml_config = BP_XML_OBJECT_CONFIG
@@ -359,7 +359,7 @@ async def test_submission_bp(nbis_client):
 
 
 async def test_missing_object_type_submission_bp(nbis_client):
-    """Test missing object type in BigPicture submissions."""
+    """Test missing object type in Bigpicture submissions."""
 
     is_datacite = True
 

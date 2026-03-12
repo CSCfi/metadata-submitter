@@ -2,7 +2,7 @@
 
 from typing import Any
 
-import httpx
+from starlette.requests import Request as StarletteRequest
 from yarl import URL
 
 from ..api.exceptions import UnauthorizedUserException
@@ -26,7 +26,7 @@ class AdminServiceHandler(ServiceHandler):
         )
 
     @staticmethod
-    def get_admin_auth_headers(req: httpx.Request) -> dict[str, str]:
+    def get_admin_auth_headers(req: StarletteRequest) -> dict[str, str]:
         """Get authentication headers for Admin API service.
 
         :param req: HTTP request
@@ -38,7 +38,7 @@ class AdminServiceHandler(ServiceHandler):
             LOG.exception("Missing Authorization header")
             raise UnauthorizedUserException("User is not authorized") from e
 
-    async def ingest_file(self, req: httpx.Request, data: dict[str, str]) -> None:
+    async def ingest_file(self, req: StarletteRequest, data: dict[str, str]) -> None:
         """Start the ingestion of a file.
 
         :param req: HTTP request
@@ -50,7 +50,7 @@ class AdminServiceHandler(ServiceHandler):
         await self._request(method="POST", path="/file/ingest", json_data=ingestion_data, headers=admin_auth_headers)
         LOG.info("File in submission %s with path %r is being ingested", data["submissionId"], data["filepath"])
 
-    async def get_user_files(self, req: httpx.Request, username: str) -> list[dict[str, Any]]:
+    async def get_user_files(self, req: StarletteRequest, username: str) -> list[dict[str, Any]]:
         """Return information on all the user's files in inbox.
 
         :param req: HTTP request
@@ -64,7 +64,7 @@ class AdminServiceHandler(ServiceHandler):
         LOG.info("Fetched files from inbox for user %s", username)
         return user_files
 
-    async def post_accession_id(self, req: httpx.Request, data: dict[str, str]) -> None:
+    async def post_accession_id(self, req: StarletteRequest, data: dict[str, str]) -> None:
         """Assign accession ID to a file.
 
         :param req: HTTP request
@@ -77,7 +77,7 @@ class AdminServiceHandler(ServiceHandler):
         await self._request(method="POST", path="/file/accession", json_data=accession_data, headers=admin_auth_headers)
         LOG.info("Accession ID %s assigned to file %s", accession_data["accession_id"], accession_data["filepath"])
 
-    async def create_dataset(self, req: httpx.Request, data: dict[str, str | list[str]]) -> None:
+    async def create_dataset(self, req: StarletteRequest, data: dict[str, str | list[str]]) -> None:
         """Create dataset for user.
 
         :param req: HTTP request
@@ -89,7 +89,7 @@ class AdminServiceHandler(ServiceHandler):
         await self._request(method="POST", path="/dataset/create", json_data=dataset_data, headers=admin_auth_headers)
         LOG.info("Dataset %s has been created", dataset_data["dataset_id"])
 
-    async def release_dataset(self, req: httpx.Request, dataset: str) -> None:
+    async def release_dataset(self, req: StarletteRequest, dataset: str) -> None:
         """Create dataset for user.
 
         :param req: HTTP request

@@ -20,7 +20,7 @@ from ..processors.xml.bigpicture import BP_XML_OBJECT_CONFIG
 from ..processors.xml.fega import FEGA_XML_OBJECT_CONFIG
 from ..processors.xml.models import XmlObjectConfig
 from ..processors.xml.processors import XmlDocumentProcessor
-from ..services.submission.bigpicture import BigPictureObjectSubmissionService
+from ..services.submission.bigpicture import BigpictureObjectSubmissionService
 from ..services.submission.sensitive_data import SensitiveDataObjectSubmissionService
 from ..services.submission.submission import ObjectSubmission, ObjectSubmissionService
 from .restapi import RESTAPIHandler
@@ -345,7 +345,7 @@ class ObjectAPIHandler(RESTAPIHandler):
                 project_service, submission_service, object_service, file_service
             )
         elif workflow == SubmissionWorkflow.BP:
-            return BigPictureObjectSubmissionService(project_service, submission_service, object_service, file_service)
+            return BigpictureObjectSubmissionService(project_service, submission_service, object_service, file_service)
         else:
             raise UserException(f"Unsupported workflow: {workflow.value}")
 

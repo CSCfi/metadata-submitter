@@ -20,10 +20,6 @@ $ docker compose --profile demo up --build -d
 
 @user_id = {{user_data_req.response.body.user_id}}
 
-###
-curl -sK -L http://localhost:8090/users/test@dummy.org/files
-     -H 'Authorization: Bearer '
-
 ### Get user data
 # @name user_data_req
 curl {{api_url}}/v1/users

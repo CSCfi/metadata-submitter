@@ -95,7 +95,7 @@ curl --request GET "$API_URL/v1/submissions/$SUBMISSION_ID/objects" \
 #### List files in the submission
 
 Retrieve a list of files that have been linked to the submission. The file list is parsed from the uploaded XML files.
- 
+
 ```bash
 curl --request GET "$API_URL/v1/submissions/$SUBMISSION_ID/files" \
      --header "Authorization: Bearer $TOKEN"

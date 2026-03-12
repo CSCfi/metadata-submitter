@@ -70,7 +70,7 @@ def generate_default_accession() -> str:
 
 def generate_bp_accession(object_type: str) -> str:
     """
-    Generate BigPicture accession id.
+    Generate Bigpicture accession id.
 
     The accession id format is lowercased CENTER-TYPE-c{6}-c{6}.
     - CENTER is defined using the BP_CENTER_ID environmental variable.
@@ -78,7 +78,7 @@ def generate_bp_accession(object_type: str) -> str:
     - c{N} is N cryptographically secure random alphanumeric characters excluding i, l, o, 0, 1
 
     :param object_type: the object type
-    :returns: The generated BigPicture accession id
+    :returns: The generated Bigpicture accession id
     """
 
     # https://docs.google.com/document/d/1SSu3wxiCL2-EEWgW77Ob7Kjv9EBmE9zDhUU6DB1gzIM
@@ -90,14 +90,14 @@ def generate_bp_accession(object_type: str) -> str:
 
 def generate_bp_accession_prefix(object_type: str) -> str:
     """
-    Generate the BigPicture accession prefix.
+    Generate the Bigpicture accession prefix.
 
     The accession prefix format is lowercased CENTER-TYPE.
     - CENTER is defined using the BP_CENTER_ID environmental variable.
     - TYPE is the metadata type.
 
     :param object_type: the object type
-    :returns: The BigPicture accession prefix
+    :returns: The Bigpicture accession prefix
     """
 
     if object_type not in BP_OBJECT_TYPES:

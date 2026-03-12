@@ -140,20 +140,20 @@ async def sd_submission_update(sd_client: aiohttp.ClientSession, project_id: str
     return _update
 
 
-class SubmissionCallableBigPicture(Protocol):
+class SubmissionCallableBigpicture(Protocol):
     def __call__(
         self, is_datacite: bool
     ) -> Awaitable[tuple[Submission, BigPictureObjectNames]]: ...  # submission names, object names
 
 
-class SubmissionUpdateCallableBigPicture(Protocol):
+class SubmissionUpdateCallableBigpicture(Protocol):
     def __call__(
         self, submission_id: str, submission_name: str, object_names: BigPictureObjectNames, is_datacite: bool
     ) -> Awaitable[Submission]: ...
 
 
 @pytest.fixture
-async def bp_submission(nbis_client: aiohttp.ClientSession, project_id: str) -> SubmissionCallableBigPicture:
+async def bp_submission(nbis_client: aiohttp.ClientSession, project_id: str) -> SubmissionCallableBigpicture:
     """Create Bigpicture submission using the /submit endpoint."""
 
     async def _create(is_datacite: bool = False) -> tuple[Submission, BigPictureObjectNames]:  # noqa
@@ -171,7 +171,7 @@ async def bp_submission(nbis_client: aiohttp.ClientSession, project_id: str) -> 
 @pytest.fixture
 async def bp_submission_update(
     nbis_client: aiohttp.ClientSession, project_id: str
-) -> SubmissionUpdateCallableBigPicture:
+) -> SubmissionUpdateCallableBigpicture:
     """Update Bigpicture submission using the /submit endpoint.
 
     Uses the same XMLs as the initial submission.
@@ -251,7 +251,11 @@ async def nbis_client() -> AsyncGenerator[aiohttp.ClientSession]:
         algorithm="ES256",
     )
 
-    headers = {"Authorization": f"Bearer {token}"}
+    bearer_token = f"Bearer {token}"
+    headers = {
+        "Authorization": bearer_token,
+        "X-Authorization": bearer_token,
+    }
 
     async with aiohttp.ClientSession(base_url=f"{nbis_base_url}/", headers=headers) as client:
         yield client

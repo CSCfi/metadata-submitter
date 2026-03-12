@@ -53,7 +53,7 @@ from metadata_backend.api.processors.xml.bigpicture import (
     BP_STAINING_PATH,
     BP_STAINING_SCHEMA,
 )
-from metadata_backend.api.services.submission.bigpicture import BigPictureObjectSubmissionService
+from metadata_backend.api.services.submission.bigpicture import BigpictureObjectSubmissionService
 from metadata_backend.api.services.submission.submission import ObjectSubmission
 
 DATACITE_XML = "datacite.xml"
@@ -112,7 +112,7 @@ def _bp_submission_documents(
     """
 
     objects, files = bp_objects(is_update)
-    processor, _ = BigPictureObjectSubmissionService._create_processor(objects)
+    processor, _ = BigpictureObjectSubmissionService._create_processor(objects)
 
     new_object_names: BigPictureObjectNames = {}
 

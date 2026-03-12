@@ -154,7 +154,6 @@ async def delete_bucket(bucket_name, access_key, secret_key, endpoint_url, regio
         aws_access_key_id=access_key,
         aws_secret_access_key=secret_key,
         region_name=region,
-        use_ssl=False,
     ) as s3:
         # First, delete all objects in the bucket
         try:

@@ -245,7 +245,7 @@ class PublishAPIHandler(RESTAPIHandler):
 
         workflow = await self._services.submission.get_workflow(submission_id)
 
-        if not no_files:
+        if workflow == SubmissionWorkflow.SD and not no_files:
             # Add all files in linked bucket to the submission.
             bucket = await submission_service.get_bucket(submission_id)
             if not bucket:
@@ -269,6 +269,12 @@ class PublishAPIHandler(RESTAPIHandler):
             # Check that the submission has at least one file.
             if await file_service.count_files(submission_id) == 0:
                 raise UserException(f"Submission '{submission_id}' does not have any data files.")
+
+        elif workflow == SubmissionWorkflow.BP and not no_files:
+            submission_files = [file async for file in file_service.get_files(submission_id=submission_id)]
+            LOG.info("Found %d files in submission '%s'.", len(submission_files), submission_id)
+            if not await self._check_submission_files_in_inbox(req, user.user_id, submission_files):
+                raise UserException(f"Submission files for '{submission_id}' are missing from the inbox.")
 
         submission = await submission_service.get_submission_by_id(submission_id)
 
@@ -380,3 +386,17 @@ class PublishAPIHandler(RESTAPIHandler):
             description=description,
             doi=doi,
         )
+
+    async def _check_submission_files_in_inbox(self, req: Request, user_id: str, files: list[File]) -> bool:
+        """Check if all submission files are in the inbox.
+
+        :param req: The request
+        :param user_id: The user id
+        :param files: The list of submission files
+        :returns: True if all files are in the inbox, False otherwise"""
+
+        inbox_files = await self._handlers.admin.get_user_files(req, user_id)
+        for file in files:
+            if not any(inbox_file.get("inboxPath") == file.path for inbox_file in inbox_files):
+                return False
+        return True
