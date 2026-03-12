@@ -24,6 +24,12 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- (users) DataCite URL format
+- (users) Registration and rems catalogue title.
+- (users) Create Rems catalogue item only for clinical datasets.
+- (users) Check if Bigpicture policy is clinical or non-clinical, and require this information.
+- (users) Use Bigpicture dataset id as REMS resource id.
+- Hide create, update, delete /submissions endpoints for NBIS deployment.
 - Pouta access token is no longer set as a cookie at login. Instead, the opaque OIDC access token is stored as a cookie and this can be used to access the DPoP-bound OIDC /userinfo endpoint to fetch the pouta access token.
 - Workflow is optional and set automatically based on deployment type.
 - Corrected outdated info in README file
