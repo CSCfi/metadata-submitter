@@ -22,23 +22,30 @@ LOG = logging.getLogger("server")
 LOG.setLevel(getenv("LOG_LEVEL", "INFO"))
 
 mock_auth_url = getenv("OIDC_URL", "http://localhost:8000")
+admin_token = getenv("ADMIN_TOKEN", "")
 
-admins = ["admin_user@test.what"]
+admins = ["admin_user@test.what", "mock_user@test.what"]
 files_in_inbox = {
     "mock_user@test.what": [
         {
-            "inboxPath": "s3://bucket/mock_files/file1.c4gh",
+            "fileID": "12345678-90ab-cdef-1234-567890abcdef",
+            "inboxPath": "DATASET_1/IMAGES/IMAGE_1/test.dcm.c4gh",
             "fileStatus": "uploaded",
+            "submissionFileSize": 100,
             "createAt": datetime.now().isoformat(),
         },
         {
-            "inboxPath": "s3://bucket/mock_files/file2.c4gh",
+            "fileID": "22345678-90ab-cdef-1234-567890abcdef",
+            "inboxPath": "DATASET_1/IMAGES/IMAGE_2/test2.dcm.c4gh",
             "fileStatus": "uploaded",
+            "submissionFileSize": 200,
             "createAt": datetime.now().isoformat(),
         },
         {
-            "inboxPath": "s3://bucket/mock_files/file3.c4gh",
+            "fileID": "32345678-90ab-cdef-1234-567890abcdef",
+            "inboxPath": "DATASET_1/ANNOTATIONS/test.json.c4gh",
             "fileStatus": "uploaded",
+            "submissionFileSize": 300,
             "createAt": datetime.now().isoformat(),
         },
     ]
@@ -86,15 +93,36 @@ class KeyModel(BaseModel):
     description: str
 
 
+def _decode_claims(token: str) -> dict:
+    """Decode JWT claims using configured key or payload-only fallback for integration tests."""
+    try:
+        claims = jwt.decode(token, decryption_key)
+        claims.validate()
+        return dict(claims)
+    except Exception:
+        try:
+            payload_b64 = token.split(".")[1]
+            padded = payload_b64 + "=" * (-len(payload_b64) % 4)
+            return json.loads(base64.urlsafe_b64decode(padded).decode("utf-8"))
+        except Exception as e:
+            raise ValueError(f"Invalid JWT payload: {e}") from e
+
+
 def isAdmin(req: web.Request) -> web.Response | None:
     """Test if subject in jwt is an admin. Assumes jwt is taken from mockauth."""
     auth_header = req.headers.get("Authorization", "")
+    if admin_token and auth_header == f"Bearer {admin_token}":
+        return None
+
     if auth_header and auth_header.startswith("Bearer "):
         token = auth_header.split(" ")[1]
 
         try:
-            claims = jwt.decode(token, decryption_key)
-            claims.validate()
+            claims = _decode_claims(token)
+
+            exp = claims.get("exp")
+            if isinstance(exp, (int, float)) and exp < time.time():
+                raise Exception("token expired")
 
             subject = claims.get("sub")
             if subject not in admins:
@@ -299,6 +327,9 @@ async def get_user_files(req: web.Request) -> web.Response:
 
     username = req.match_info["username"]
     user_files = files_in_inbox.get(username, [])
+    path_prefix = req.query.get("path_prefix")
+    if path_prefix:
+        user_files = [file for file in user_files if file.get("inboxPath", "").startswith(path_prefix)]
 
     return web.json_response(user_files)
 

@@ -49,7 +49,7 @@ Create a new submission by uploading all required metadata XML files with the fo
 document refers to a set of test XML files available in this repository:
 
 ```bash
-export SUBMISSION_ID=$(curl --request POST "$API_URL/v1/submit/Bigpicture" \
+export SUBMISSION_ID=$(curl --request POST "$API_URL/v1/submit" \
      --header "Authorization: Bearer $TOKEN" \
      --form "annotation=@./tests/test_files/xml/bigpicture/annotation.xml;type=text/xml" \
      --form "datacite=@./tests/test_files/xml/bigpicture/datacite.xml;type=text/xml" \
@@ -90,6 +90,15 @@ The output will display all metadata accession IDs:
 ```bash
 curl --request GET "$API_URL/v1/submissions/$SUBMISSION_ID/objects" \
      --header "Authorization: Bearer $TOKEN" | jq
+```
+
+#### List files in the submission
+
+Retrieve a list of files that have been linked to the submission. The file list is parsed from the uploaded XML files.
+
+```bash
+curl --request GET "$API_URL/v1/submissions/$SUBMISSION_ID/files" \
+     --header "Authorization: Bearer $TOKEN"
 ```
 
 #### List all submissions
@@ -141,7 +150,7 @@ You can update an existing dataset submission by uploading modified XML files wi
 For example, to update the image metadata file:
 
 ```bash
-curl --request PATCH "$API_URL/v1/submit/Bigpicture/$SUBMISSION_ID" \
+curl --request PATCH "$API_URL/v1/submit/$SUBMISSION_ID" \
      --header "Authorization: Bearer $TOKEN" \
      --form "image=@./tests/test_files/xml/bigpicture/update/image.xml;type=text/xml" \
      --form "annotation=@./tests/test_files/xml/bigpicture/annotation.xml;type=text/xml" \
@@ -163,7 +172,7 @@ if they have not been altered.
 If you need to remove a submission entirely, you can delete it using the submission ID:
 
 ```bash
-curl --request DELETE "$API_URL/v1/submit/Bigpicture/$SUBMISSION_ID" \
+curl --request DELETE "$API_URL/v1/submit/$SUBMISSION_ID" \
      --header "Authorization: Bearer $TOKEN"
 ```
 

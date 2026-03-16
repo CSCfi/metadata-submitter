@@ -17,7 +17,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from metadata_backend.conf.admin import AdminConfig
-from metadata_backend.conf.bigpicture import BigPictureConfig
+from metadata_backend.conf.bigpicture import BigpictureConfig
 from metadata_backend.conf.conf import DEPLOYMENT_CSC, DEPLOYMENT_NBIS
 from metadata_backend.conf.database import DatabaseConfig
 from metadata_backend.conf.datacite import DataciteConfig
@@ -83,7 +83,7 @@ def pytest_configure(config):
             KeystoneConfig,
             OIDCConfig,
             AdminConfig,
-            BigPictureConfig,
+            BigpictureConfig,
             RorConfig,
         ]
     )
@@ -91,7 +91,11 @@ def pytest_configure(config):
     # Initialize mandatory environmental variables with specific validation rules.
     os.environ["CSC_LDAP_HOST"] = "ldap://test"
     os.environ["S3_REGION"] = "us-east-1"
+    os.environ["ADMIN_TOKEN"] = "test-admin-token"
     os.environ["DISCOVERY_URL"] = TEST_DISCOVERY_URL
+    os.environ["STATIC_S3_ACCESS_KEY_ID"] = "test"
+    os.environ["STATIC_S3_SECRET_ACCESS_KEY"] = "test"
+    os.environ["SD_SUBMIT_PROJECT_ID"] = "test"
 
 
 # Postgres session.

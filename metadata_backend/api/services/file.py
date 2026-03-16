@@ -9,8 +9,10 @@ from pydantic import BaseModel, RootModel
 
 from ...conf.s3 import s3_config
 from ...helpers.logger import LOG
+from ...services.admin_service import AdminServiceHandler
 from ...services.keystone_service import KeystoneServiceHandler
 from ..exceptions import SystemException, UserException
+from ..models.models import File as SubmissionFile
 
 
 class FileProviderService(ABC):
@@ -118,6 +120,10 @@ class FileProviderService(ABC):
         """
         return await self._verify_bucket_policy(bucket)
 
+    async def check_files_exist(self, user_id: str, files: list[SubmissionFile]) -> list[str]:
+        """Return file paths that are missing from the provider."""
+        raise SystemException("Configured file provider does not support inbox file checks.")
+
     @abstractmethod
     async def _verify_user_file(self, bucket: str, file: str) -> int | None:
         """
@@ -186,15 +192,14 @@ class S3FileProviderService(FileProviderService, ABC):
 
         self._config = s3_config()
 
-        # Initialize the base S3 session with static credentials.
-        self._session = aioboto3.Session(
-            aws_access_key_id=self._config.STATIC_S3_ACCESS_KEY_ID,
-            aws_secret_access_key=self._config.STATIC_S3_SECRET_ACCESS_KEY,
-            region_name=self._config.S3_REGION,
-        )
+        # Initialize the base S3 session with static credentials when available.
+        session_kwargs: dict[str, str] = {"region_name": self._config.S3_REGION}
+        if self._config.STATIC_S3_ACCESS_KEY_ID and self._config.STATIC_S3_SECRET_ACCESS_KEY:
+            session_kwargs["aws_access_key_id"] = self._config.STATIC_S3_ACCESS_KEY_ID
+            session_kwargs["aws_secret_access_key"] = self._config.STATIC_S3_SECRET_ACCESS_KEY
+        self._session = aioboto3.Session(**session_kwargs)
         self.region = self._config.S3_REGION
         self.endpoint = self._config.S3_ENDPOINT
-        self.api_project_id = self._config.SD_SUBMIT_PROJECT_ID
 
     async def _verify_user_file(self, bucket: str, file: str) -> int | None:
         """
@@ -207,7 +212,7 @@ class S3FileProviderService(FileProviderService, ABC):
         Returns:
             The file size in bytes if the file exists, otherwise None.
         """
-        async with self._session.client("s3", endpoint_url=self.endpoint, use_ssl=False) as s3:
+        async with self._session.client("s3", endpoint_url=self.endpoint) as s3:
             try:
                 resp = await s3.head_object(
                     Bucket=bucket,
@@ -238,7 +243,6 @@ class S3FileProviderService(FileProviderService, ABC):
             aws_access_key_id=creds.access,
             aws_secret_access_key=creds.secret,
             region_name=self.region,
-            use_ssl=False,
         ) as s3:
             try:
                 response = await s3.list_buckets()
@@ -259,7 +263,7 @@ class S3FileProviderService(FileProviderService, ABC):
         Returns:
             A list of files found.
         """
-        async with self._session.client("s3", endpoint_url=self.endpoint, use_ssl=False) as s3:
+        async with self._session.client("s3", endpoint_url=self.endpoint) as s3:
             try:
                 response = await s3.list_objects_v2(Bucket=bucket)
                 contents = response.get("Contents", [])
@@ -280,6 +284,19 @@ class S3FileProviderService(FileProviderService, ABC):
 class S3AllasFileProviderService(S3FileProviderService):
     """Service to manage S3 buckets in Allas."""
 
+    def __init__(self) -> None:
+        """Create S3 Allas file service."""
+        super().__init__()
+        self.api_project_id = self._config.SD_SUBMIT_PROJECT_ID
+
+    def _require_api_project_id(self) -> str:
+        """Return SD Submit project id or raise if missing."""
+        if not self.api_project_id:
+            reason = "S3 bucket policy operations require SD_SUBMIT_PROJECT_ID (CSC deployment)."
+            LOG.error(reason)
+            raise SystemException(reason)
+        return self.api_project_id
+
     async def _update_bucket_policy(self, bucket: str, creds: KeystoneServiceHandler.EC2Credentials) -> None:
         """
         Assign a read access policy to the specified S3 bucket.
@@ -295,7 +312,6 @@ class S3AllasFileProviderService(S3FileProviderService):
             aws_access_key_id=creds.access,
             aws_secret_access_key=creds.secret,
             region_name=self.region,
-            use_ssl=False,
         ) as s3:
             try:
                 resp = await s3.get_bucket_policy(
@@ -310,6 +326,8 @@ class S3AllasFileProviderService(S3FileProviderService):
             except Exception:
                 statements = []
 
+        api_project_id = self._require_api_project_id()
+
         policy = {
             "Version": "2012-10-17",
             "Statement": [
@@ -317,7 +335,7 @@ class S3AllasFileProviderService(S3FileProviderService):
                     "Sid": "GrantSDSubmitReadAccess",
                     "Effect": "Allow",
                     "Principal": {
-                        "AWS": f"arn:aws:iam::{self.api_project_id}:root",
+                        "AWS": f"arn:aws:iam::{api_project_id}:root",
                     },
                     "Action": ["s3:GetObject", "s3:ListBucket", "s3:GetBucketPolicy"],
                     "Resource": [f"arn:aws:s3:::{bucket}", f"arn:aws:s3:::{bucket}/*"],
@@ -348,7 +366,7 @@ class S3AllasFileProviderService(S3FileProviderService):
             bucket: The name of the S3 bucket.
         Returns:
             True if the policy is assigned, False otherwise."""
-        async with self._session.client("s3", endpoint_url=self.endpoint, use_ssl=False) as s3:
+        async with self._session.client("s3", endpoint_url=self.endpoint) as s3:
             try:
                 resp = await s3.get_bucket_policy(
                     Bucket=bucket,
@@ -360,10 +378,85 @@ class S3AllasFileProviderService(S3FileProviderService):
                 LOG.error("Error verifying bucket policy: %s", e)
                 raise e
 
+        api_project_id = self._require_api_project_id()
+
         policy = ujson.loads(resp["Policy"])
         for statement in policy["Statement"]:
             if statement["Sid"] == "GrantSDSubmitReadAccess":
-                if statement["Principal"]["AWS"] == f"arn:aws:iam::{self.api_project_id}:root":
+                if statement["Principal"]["AWS"] == f"arn:aws:iam::{api_project_id}:root":
                     return True
 
         return False
+
+
+# WIP: to be possibly used for writing XML file to SDA S3 Inbox.
+class S3InboxSDAService(FileProviderService):
+    """Service to manage S3 buckets in NeIC SDA S3 Inbox."""
+
+    def __init__(self, admin_handler: AdminServiceHandler) -> None:
+        """Create S3 file service."""
+
+        self._config = s3_config()
+        self.region = self._config.S3_REGION
+        self.endpoint = self._config.S3_ENDPOINT
+        self._admin_handler = admin_handler
+
+    async def _verify_user_file(self, bucket: str, file: str) -> int | None:
+        """Verify that the file exists in the specified S3 bucket and return its size."""
+        return None
+
+    async def _list_buckets(self, credentials: KeystoneServiceHandler.EC2Credentials) -> list[str]:
+        """List all buckets.
+
+        NBIS submissions use the SDA inbox instead of Allas bucket management.
+        """
+        return []
+
+    async def _list_files_in_bucket(self, bucket: str) -> FileProviderService.Files:
+        """List all files in the specified bucket."""
+        return self.Files([])
+
+    async def _update_bucket_policy(self, bucket: str, creds: KeystoneServiceHandler.EC2Credentials) -> None:
+        """Assign a read access policy to the specified bucket."""
+        reason = "Bucket policy operations are not supported for SDA inbox submissions."
+        LOG.error(reason)
+        raise UserException(reason)
+
+    async def _verify_bucket_policy(self, bucket: str) -> bool:
+        """Verify that the read access policy has been assigned to a bucket."""
+        return False
+
+    async def check_files_exist(self, user_id: str, files: list[SubmissionFile]) -> list[str]:
+        """Return file paths that are currently missing from the S3 inbox."""
+        # TODO(improve): Check the filepath matches more strictly so that filepath and inbox path are a complete match
+        inbox_files = await self._admin_handler.get_user_files(user_id)
+        inbox_paths = [inbox_file.get("inboxPath", "") for inbox_file in inbox_files]
+        return [file.path for file in files if not any(file.path in inbox_path for inbox_path in inbox_paths)]
+
+    async def _add_file_to_bucket(
+        self, bucket_name: str, object_key: str, access_key: str, secret_key: str, session_token: str
+    ) -> None:
+        """Add a new object to S3 bucket using provided credentials.
+
+        :param bucket_name: name of the bucket
+        :param object_key: key for the object to be added
+        :param access_key: S3 access key ID
+        :param secret_key: S3 secret access key
+        :param session_token: S3 session token
+        """
+        # TODO(improve): Add file content as body instead of empty file.
+        session = aioboto3.Session()
+        async with session.client(
+            "s3",
+            endpoint_url=self.endpoint,
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_key,
+            aws_session_token=session_token,  # equivalent to s3cmd access_token
+            region_name=self.region,
+        ) as s3:
+            await s3.put_object(
+                Bucket=bucket_name,
+                Key=object_key,
+                Body="",
+                ContentType="application/json",
+            )

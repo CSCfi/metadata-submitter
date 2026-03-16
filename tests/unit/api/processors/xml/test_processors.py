@@ -7,7 +7,7 @@ import pytest
 from metadata_backend.api.processors.models import ObjectIdentifier
 from metadata_backend.api.processors.xml.bigpicture import BP_IMAGE_OBJECT_TYPE, BP_IMAGE_PATH, BP_IMAGE_SCHEMA
 from metadata_backend.api.processors.xml.processors import XmlObjectProcessor
-from metadata_backend.api.services.submission.bigpicture import BigPictureObjectSubmissionService
+from metadata_backend.api.services.submission.bigpicture import BigpictureObjectSubmissionService
 from tests.utils import bp_objects
 
 
@@ -44,7 +44,7 @@ def test_parse_xml_with_io_bytes():
 async def test_object_name():
     """Test object name functionality."""
     objects, _ = bp_objects(is_update=False)
-    docs_processor, _ = BigPictureObjectSubmissionService._create_processor(objects)
+    docs_processor, _ = BigpictureObjectSubmissionService._create_processor(objects)
 
     schema_type = BP_IMAGE_SCHEMA
     object_type = BP_IMAGE_OBJECT_TYPE

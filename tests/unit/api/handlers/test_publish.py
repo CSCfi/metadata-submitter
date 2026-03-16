@@ -225,6 +225,9 @@ async def test_publish_submission_bp(nbis_client, submission_repository, object_
     with (
         patch_verify_user_project,
         patch_verify_authorization,
+        patch(
+            "metadata_backend.api.services.file.S3InboxSDAService.check_files_exist", new_callable=AsyncMock
+        ) as mock_check_files_exist,
         patch_datacite_create_draft_doi(doi) as mock_datacite_create_draft_doi,
         patch_datacite_publish() as mock_datacite_publish,
         patch_pid_create_draft_doi(doi) as mock_pid_create_draft_doi,
@@ -233,6 +236,8 @@ async def test_publish_submission_bp(nbis_client, submission_repository, object_
         patch_rems_create_resource() as mock_rems_create_resource,
         patch_rems_create_catalogue_item() as mock_rems_create_catalogue_item,
     ):
+        mock_check_files_exist.return_value = []
+
         # Publish submission.
         response = nbis_client.patch(f"{API_PREFIX}/publish/{submission_id}")
         data = response.json()

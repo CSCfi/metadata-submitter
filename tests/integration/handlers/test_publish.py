@@ -68,7 +68,7 @@ async def test_publish_bp(nbis_client, bp_submission):
         submission_id = submission.submissionId
 
         # Publish submission.
-        await publish_submission(nbis_client, submission_id)
+        await publish_submission(nbis_client, submission_id, no_files=False)
 
         # Get published submission.
         published_submission = await get_submission(nbis_client, submission_id)

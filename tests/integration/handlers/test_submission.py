@@ -72,7 +72,7 @@ async def test_sd_bucket(sd_client, sd_submission):
 
 
 async def test_bp_objects_and_docs(nbis_client, sd_submission, project_id, bp_submission):
-    """Test get BigPicture objects and XML docs for NBIS deployment."""
+    """Test get Bigpicture objects and XML docs for NBIS deployment."""
 
     # Create submission.
     submission, object_names = await bp_submission()

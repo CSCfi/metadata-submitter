@@ -186,7 +186,7 @@ async def test_submission_sd(csc_client):
 
 
 async def test_submission_bp(nbis_client):
-    """Test BigPicture submission."""
+    """Test Bigpicture submission."""
 
     project_id = MOCK_PROJECT_ID
     xml_config = BP_XML_OBJECT_CONFIG
@@ -359,7 +359,7 @@ async def test_submission_bp(nbis_client):
 
 
 async def test_missing_object_type_submission_bp(nbis_client):
-    """Test missing object type in BigPicture submissions."""
+    """Test missing object type in Bigpicture submissions."""
 
     is_datacite = True
 
@@ -533,14 +533,14 @@ async def assert_bp_files(nbis_client, submission_id, is_update=False):
     if not is_update:
         _assert_file(
             files,
-            "test.dcm",
+            "test.dcm.c4gh",
             "SHA256",
             "8c3a51adf8f8b1b7a2625d7ac9c12a08dcf9e6a10e87a1f8a215e67f87e7d2a4",
             "8c3a51adf8f8b1b7a2625d7ac9c12a08dcf9e6a10e87a1f8a215e67f87e7d2a4",
         )
         _assert_file(
             files,
-            "test2.dcm",
+            "test2.dcm.c4gh",
             "SHA256",
             "2c3a51adf8f8b1b7a2625d7ac9c12a08dcf9e6a10e87a1f8a215e67f87e7d2a4",
             "2c3a51adf8f8b1b7a2625d7ac9c12a08dcf9e6a10e87a1f8a215e67f87e7d2a4",
@@ -548,14 +548,14 @@ async def assert_bp_files(nbis_client, submission_id, is_update=False):
     else:
         _assert_file(
             files,
-            "test.dcm",
+            "test.dcm.c4gh",
             "SHA256",
             "8c3a51adf8f8b1b7a2625d7ac9c12a08dcf9e6a10e87a1f8a215e67f87e7d2a4",
             "8c3a51adf8f8b1b7a2625d7ac9c12a08dcf9e6a10e87a1f8a215e67f87e7d2a4",
         )
         _assert_file(
             files,
-            "test3.dcm",
+            "test3.dcm.c4gh",
             "SHA256",
             "3c3a51adf8f8b1b7a2625d7ac9c12a08dcf9e6a10e87a1f8a215e67f87e7d2a4",
             "3c3a51adf8f8b1b7a2625d7ac9c12a08dcf9e6a10e87a1f8a215e67f87e7d2a4",
@@ -563,7 +563,7 @@ async def assert_bp_files(nbis_client, submission_id, is_update=False):
 
         # Assert annotation files.
         _assert_file(
-            files, "test.json", "SHA256", "8c3a51adf8f8b1b7a2625d7ac9c12a08dcf9e6a10e87a1f8a215e67f87e7d2a4", None
+            files, "test.json.c4gh", "SHA256", "8c3a51adf8f8b1b7a2625d7ac9c12a08dcf9e6a10e87a1f8a215e67f87e7d2a4", None
         )
 
 

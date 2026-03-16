@@ -245,7 +245,7 @@ class PublishAPIHandler(RESTAPIHandler):
 
         workflow = await self._services.submission.get_workflow(submission_id)
 
-        if not no_files:
+        if workflow == SubmissionWorkflow.SD and not no_files:
             # Add all files in linked bucket to the submission.
             bucket = await submission_service.get_bucket(submission_id)
             if not bucket:
@@ -269,6 +269,19 @@ class PublishAPIHandler(RESTAPIHandler):
             # Check that the submission has at least one file.
             if await file_service.count_files(submission_id) == 0:
                 raise UserException(f"Submission '{submission_id}' does not have any data files.")
+
+        elif workflow == SubmissionWorkflow.BP and not no_files:
+            submission_files = [file async for file in file_service.get_files(submission_id=submission_id)]
+            LOG.info("Found %d files in submission '%s'.", len(submission_files), submission_id)
+
+            # Check that all submission files are present in the S3 inbox
+            # TODO(improve): Implement logic to search files from specific directories in the inbox
+            missing_files = await file_provider_service.check_files_exist(user.user_id, submission_files)
+            if missing_files:
+                missing_paths = ", ".join(sorted(missing_files))
+                raise UserException(
+                    f"Submission files for '{submission_id}' are missing from the inbox: {missing_paths}."
+                )
 
         submission = await submission_service.get_submission_by_id(submission_id)
 

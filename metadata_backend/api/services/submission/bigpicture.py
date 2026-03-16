@@ -1,4 +1,4 @@
-"""Service for processing BigPicture submissions."""
+"""Service for processing Bigpicture submissions."""
 
 import re
 from typing import override
@@ -77,7 +77,7 @@ def is_clinical_policy(policy_processor: XmlObjectProcessor) -> bool:
     raise ValueError(f"{field_name} must start with 'Clinical' or 'Non-Clinical' before '/', got: '{value}'")
 
 
-class BigPictureObjectSubmissionService(ObjectSubmissionService):
+class BigpictureObjectSubmissionService(ObjectSubmissionService):
     """Service for processing BigPicture submissions."""
 
     def __init__(
@@ -88,7 +88,7 @@ class BigPictureObjectSubmissionService(ObjectSubmissionService):
         file_service: FileService,
     ) -> None:
         """
-        Service for processing BigPicture submissions.
+        Service for processing Bigpicture submissions.
 
         :param project_service: The Postgres project service.
         :param submission_service: The Postgres submission service.
@@ -119,7 +119,7 @@ class BigPictureObjectSubmissionService(ObjectSubmissionService):
         :return: the XML documents processor.
         """
 
-        processor, datacite = BigPictureObjectSubmissionService._create_processor(objects)
+        processor, datacite = BigpictureObjectSubmissionService._create_processor(objects)
         self._processor = processor
         self._datacite = datacite
         return self._processor
@@ -127,13 +127,13 @@ class BigPictureObjectSubmissionService(ObjectSubmissionService):
     @staticmethod
     def _create_processor(objects: list[ObjectSubmission]) -> tuple[XmlStringDocumentsProcessor, DataCiteMetadata]:
         """
-        Return XML documents processor for BigPicture XMLs (excl. DataCite XML) and datacite metadata from DataCite XML.
+        Return XML documents processor for Bigpicture XMLs (excl. DataCite XML) and datacite metadata from DataCite XML.
 
         :param objects: The metadata object documents.
         :return: a tuple containing the XML documents processor and the DataCite metadata
         """
 
-        datacite_object, bp_objects = BigPictureObjectSubmissionService._get_objects(objects)
+        datacite_object, bp_objects = BigpictureObjectSubmissionService._get_objects(objects)
 
         # Read DataCite XML.
         datacite = None
@@ -267,10 +267,10 @@ class BigPictureObjectSubmissionService(ObjectSubmissionService):
     @staticmethod
     def _get_objects(objects: list[ObjectSubmission]) -> tuple[ObjectSubmission | None, list[ObjectSubmission]]:
         """
-        Separate Datacite metadata object from BigPicture metadata objects.
+        Separate Datacite metadata object from Bigpicture metadata objects.
 
         :param objects: The metadata object documents.
-        :return: tuple of DataCite metadata object and BigPicture metadata objects.
+        :return: tuple of DataCite metadata object and Bigpicture metadata objects.
         """
         datacite_object = None
         bp_objects = []
