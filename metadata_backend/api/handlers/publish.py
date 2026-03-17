@@ -14,12 +14,34 @@ from ..exceptions import SystemException, UserException
 from ..models.datacite import DataCiteMetadata
 from ..models.models import File, Registration, SubmissionId
 from ..models.submission import Rems, Submission, SubmissionMetadata, SubmissionWorkflow
-from ..processors.xml.bigpicture import BP_POLICY_OBJECT_TYPE, BP_XML_OBJECT_CONFIG
+from ..processors.xml.bigpicture import (
+    BP_ANNOTATION_OBJECT_TYPE,
+    BP_DATASET_OBJECT_TYPE,
+    BP_IMAGE_OBJECT_TYPE,
+    BP_OBSERVATION_OBJECT_TYPE,
+    BP_OBSERVER_OBJECT_TYPE,
+    BP_POLICY_OBJECT_TYPE,
+    BP_SAMPLE_OBJECT_TYPES,
+    BP_STAINING_OBJECT_TYPE,
+    BP_XML_OBJECT_CONFIG,
+)
 from ..processors.xml.processors import XmlObjectProcessor
 from ..services.datacite import DataciteService
+from ..services.file import S3InboxSDAService
 from ..services.submission.bigpicture import is_clinical_policy
 from .restapi import RESTAPIHandler
 from .submission import SubmissionAPIHandler
+
+BP_METADATA_FILES: tuple[tuple[str | tuple[str, ...], str], ...] = (
+    (BP_DATASET_OBJECT_TYPE, "dataset.xml.c4gh"),
+    (BP_POLICY_OBJECT_TYPE, "policy.xml.c4gh"),
+    (BP_IMAGE_OBJECT_TYPE, "image.xml.c4gh"),
+    (BP_ANNOTATION_OBJECT_TYPE, "annotation.xml.c4gh"),
+    (BP_OBSERVATION_OBJECT_TYPE, "observation.xml.c4gh"),
+    (BP_OBSERVER_OBJECT_TYPE, "observer.xml.c4gh"),
+    (tuple(BP_SAMPLE_OBJECT_TYPES), "sample.xml.c4gh"),
+    (BP_STAINING_OBJECT_TYPE, "staining.xml.c4gh"),
+)
 
 
 class PublishAPIHandler(RESTAPIHandler):
@@ -304,6 +326,13 @@ class PublishAPIHandler(RESTAPIHandler):
         if deployment_config().ALLOW_REGISTRATION:
             await self._register_submission(submission, datacite, rems)
 
+        if workflow == SubmissionWorkflow.BP:
+            headers = req.headers
+            jwt = self._services.auth._get_bearer_token(headers)
+            if not jwt:
+                raise UserException("Missing OIDC access token in Authorization bearer header for SDA inbox upload.")
+            await self._upload_bp_metadata_xmls(submission_id, user.user_id, jwt)
+
         # Update submission status to published.
         await submission_service.publish(submission_id)
 
@@ -376,6 +405,32 @@ class PublishAPIHandler(RESTAPIHandler):
         # Publish to Metax.
         if self._handlers.metax is not None:
             await self._publish_metax(registration)
+
+    async def _upload_bp_metadata_xmls(self, submission_id: str, user_id: str, jwt: str) -> None:
+        """Upload encrypted Bigpicture metadata XML files to SDA inbox."""
+        file_provider = self._services.file_provider
+        if not isinstance(file_provider, S3InboxSDAService):
+            raise SystemException("Bigpicture metadata upload requires SDA inbox file provider service.")
+
+        bucket = user_id.replace("@", "_")  # SDA inbox bucket name is the user id with @ replaced by underscore
+        prefix = f"DATASET_{submission_id}/METADATA"
+        for object_type, filename in BP_METADATA_FILES:
+            xml = None
+            async for xml_doc in self._services.object.get_xml_documents(submission_id, object_type):
+                xml = xml_doc
+                break
+            if xml is None:
+                continue
+
+            object_key = f"{prefix}/{filename}"
+            await file_provider._add_file_to_bucket(
+                bucket_name=bucket,
+                object_key=object_key,
+                access_key=user_id,
+                secret_key=user_id,
+                session_token=jwt,
+                body=xml.encode("utf-8"),
+            )
 
     @staticmethod
     def _create_registration(submission_id: str, title: str, description: str, doi: str) -> Registration:

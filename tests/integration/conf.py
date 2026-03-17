@@ -15,7 +15,7 @@ submit_url = f"{API_PREFIX}/submit"
 rems_url = f"{API_PREFIX}/rems"
 publish_url = f"{API_PREFIX}/publish"
 
-mock_s3_url = f"{os.getenv('S3_ENDPOINT', 'http://localhost:8006')}"
+mock_inbox_url = "http://mockinbox:8006" if os.getenv("CICD") == "true" else "http://localhost:8006"
 mock_s3_region = f"{os.getenv('S3_REGION', 'us-east-1')}"
 mock_keystone_url = os.getenv("KEYSTONE_ENDPOINT", "http://localhost:5001")
 

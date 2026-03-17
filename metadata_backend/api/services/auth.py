@@ -10,6 +10,7 @@ from typing import Any
 import jwt
 from fastapi import HTTPException
 from starlette import status
+from starlette.datastructures import Headers
 
 from ...conf.jwt import jwt_config
 from ...database.postgres.models import ApiKeyEntity
@@ -219,3 +220,20 @@ class AuthService:
         """
 
         return await self.__repository.get_api_keys(user_id)
+
+    @staticmethod
+    def _get_bearer_token(headers: Headers) -> str | None:
+        """Get OIDC access token from Authorization bearer header.
+
+        Args:
+            headers: The HTTP headers containing the Authorization bearer token.
+
+        Returns:
+            The OIDC access token if present, None otherwise.
+        """
+        auth_header = headers.get("Authorization", "")
+        if auth_header.lower().startswith("bearer "):
+            token = auth_header[7:].strip()
+            if token:
+                return token
+        return None

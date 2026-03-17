@@ -1,12 +1,18 @@
 """Service to retrieve file and bucket information from a file provider."""
 
+import base64
+import binascii
 from abc import ABC, abstractmethod
+from io import BytesIO
 
 import aioboto3
 import botocore.exceptions
 import ujson
+from crypt4gh.keys import c4gh
+from crypt4gh.lib import encrypt
 from pydantic import BaseModel, RootModel
 
+from ...conf.c4gh import c4gh_config
 from ...conf.s3 import s3_config
 from ...helpers.logger import LOG
 from ...services.admin_service import AdminServiceHandler
@@ -389,7 +395,6 @@ class S3AllasFileProviderService(S3FileProviderService):
         return False
 
 
-# WIP: to be possibly used for writing XML file to SDA S3 Inbox.
 class S3InboxSDAService(FileProviderService):
     """Service to manage S3 buckets in NeIC SDA S3 Inbox."""
 
@@ -433,30 +438,85 @@ class S3InboxSDAService(FileProviderService):
         inbox_paths = [inbox_file.get("inboxPath", "") for inbox_file in inbox_files]
         return [file.path for file in files if not any(file.path in inbox_path for inbox_path in inbox_paths)]
 
+    async def _load_crypt4gh_keys(self) -> tuple[object, object]:
+        """Load Crypt4GH sender secret and recipient public keys from env variables."""
+        conf = c4gh_config()
+        try:
+            sender_key_pem = base64.b64decode(conf.SENDER_SECRET_KEY).decode("utf-8")
+            recipient_key_pem = base64.b64decode(conf.BP_PUBLIC_C4GH_KEY).decode("utf-8")
+        except (binascii.Error, UnicodeDecodeError) as ex:
+            raise SystemException("Invalid base64 in C4GH key environment variables.") from ex
+
+        try:
+            sender_lines = [line.strip().encode("utf-8") for line in sender_key_pem.splitlines() if line.strip()]
+            recipient_lines = [line.strip().encode("utf-8") for line in recipient_key_pem.splitlines() if line.strip()]
+
+            private_data = base64.b64decode(b"".join(sender_lines[1:-1]))
+            public_data = base64.b64decode(b"".join(recipient_lines[1:-1]))
+
+            private_stream = BytesIO(private_data)
+            if private_data.startswith(c4gh.MAGIC_WORD):
+                private_stream.seek(len(c4gh.MAGIC_WORD))
+
+            sender_secret_key = c4gh.parse_private_key(private_stream, lambda: conf.SECRET_KEY_PASSPHRASE)
+            recipient_public_key = public_data
+            return sender_secret_key, recipient_public_key
+        except Exception as ex:
+            raise SystemException("Failed to load Crypt4GH keys for Bigpicture metadata encryption.") from ex
+
+    async def _encrypt_file(self, file: bytes, sender_secret_key: object, recipient_public_key: object) -> bytes:
+        """Encrypt file bytes using crypt4gh and return encrypted payload bytes."""
+        infile = BytesIO(file)
+        outfile = BytesIO()
+        encrypt([(0, sender_secret_key, recipient_public_key)], infile, outfile)
+        return outfile.getvalue()
+
     async def _add_file_to_bucket(
-        self, bucket_name: str, object_key: str, access_key: str, secret_key: str, session_token: str
+        self,
+        bucket_name: str,
+        object_key: str,
+        access_key: str,
+        secret_key: str,
+        session_token: str,
+        body: bytes = b"",
     ) -> None:
-        """Add a new object to S3 bucket using provided credentials.
+        """Put a C4GH encrypted object to S3 bucket using provided credentials.
 
         :param bucket_name: name of the bucket
         :param object_key: key for the object to be added
         :param access_key: S3 access key ID
         :param secret_key: S3 secret access key
         :param session_token: S3 session token
+        :param body: unencrypted object bytes
         """
-        # TODO(improve): Add file content as body instead of empty file.
-        session = aioboto3.Session()
-        async with session.client(
-            "s3",
-            endpoint_url=self.endpoint,
-            aws_access_key_id=access_key,
-            aws_secret_access_key=secret_key,
-            aws_session_token=session_token,  # equivalent to s3cmd access_token
-            region_name=self.region,
-        ) as s3:
-            await s3.put_object(
-                Bucket=bucket_name,
-                Key=object_key,
-                Body="",
-                ContentType="application/json",
+        sender_secret_key, recipient_public_key = await self._load_crypt4gh_keys()
+        encrypted_file = await self._encrypt_file(body, sender_secret_key, recipient_public_key)
+
+        try:
+            session = aioboto3.Session()
+            async with session.client(
+                "s3",
+                endpoint_url=self.endpoint,
+                aws_access_key_id=access_key,
+                aws_secret_access_key=secret_key,
+                aws_session_token=session_token,  # equivalent to s3cmd access_token
+                region_name=self.region,
+            ) as s3:
+                await s3.put_object(
+                    Bucket=bucket_name,
+                    Key=object_key,
+                    Body=encrypted_file,
+                    ContentType="application/octet-stream",
+                )
+        except botocore.exceptions.ClientError as ex:
+            err = ex.response.get("Error", {})
+            code = err.get("Code")
+            msg = err.get("Message")
+            LOG.exception(
+                "Failed to upload encrypted file to SDA inbox bucket '%s' key '%s': %s - %s",
+                bucket_name,
+                object_key,
+                code,
+                msg,
             )
+            raise SystemException("Failed to upload encrypted file to SDA inbox.") from ex

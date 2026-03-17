@@ -98,9 +98,12 @@ services:
       - "DATABASE_URL=${NBIS_DATABASE_URL}"
       - "BP_CENTER_ID=${BP_CENTER_ID}"
       - "S3_REGION=${S3_REGION}"
-      - "S3_ENDPOINT=${S3_ENDPOINT}"
+      - "S3_ENDPOINT=${S3_INBOX_ENDPOINT:?S3_INBOX_ENDPOINT must be defined}"
       - "ADMIN_URL=${SDA_API_URL}"
       - "ADMIN_TOKEN=${ADMIN_TOKEN}"
+      - "BP_PUBLIC_C4GH_KEY=${C4GH_RECIPIENT_PUBLIC_KEY:?C4GH_RECIPIENT_PUBLIC_KEY must be defined}"
+      - "SENDER_SECRET_KEY=${C4GH_SENDER_SECRET_KEY:?C4GH_SENDER_SECRET_KEY must be defined}"
+      - "SECRET_KEY_PASSPHRASE=${C4GH_SECRET_KEY_PASSPHRASE:?C4GH_SECRET_KEY_PASSPHRASE must be defined}"
       - "ALLOW_UNSAFE=${ALLOW_UNSAFE}"
 
   mock-oauth2:
@@ -205,6 +208,12 @@ services:
       - "8006:8006"
     environment:
       - MOTO_PORT=8006
+    healthcheck:
+      test: curl --fail http://127.0.0.1:8006/ || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   postgres-csc:
     image: postgres:18-alpine
@@ -272,3 +281,5 @@ services:
         condition: service_healthy
       mockldap:
         condition: service_started
+      mockinbox:
+        condition: service_healthy
