@@ -442,8 +442,8 @@ class S3InboxSDAService(FileProviderService):
         """Load Crypt4GH sender secret and recipient public keys from env variables."""
         conf = c4gh_config()
         try:
-            sender_key_pem = base64.b64decode(conf.SENDER_SECRET_KEY).decode("utf-8")
-            recipient_key_pem = base64.b64decode(conf.BP_PUBLIC_C4GH_KEY).decode("utf-8")
+            sender_key_pem = base64.b64decode(conf.CRYPT4GH_PRIVATE_KEY).decode("utf-8")
+            recipient_key_pem = base64.b64decode(conf.CRYPT4GH_PUBLIC_KEY).decode("utf-8")
         except (binascii.Error, UnicodeDecodeError) as ex:
             raise SystemException("Invalid base64 in C4GH key environment variables.") from ex
 
@@ -458,7 +458,7 @@ class S3InboxSDAService(FileProviderService):
             if private_data.startswith(c4gh.MAGIC_WORD):
                 private_stream.seek(len(c4gh.MAGIC_WORD))
 
-            sender_secret_key = c4gh.parse_private_key(private_stream, lambda: conf.SECRET_KEY_PASSPHRASE)
+            sender_secret_key = c4gh.parse_private_key(private_stream, lambda: conf.CRYPT4GH_PRIVATE_KEY_PASSPHRASE)
             recipient_public_key = public_data
             return sender_secret_key, recipient_public_key
         except Exception as ex:

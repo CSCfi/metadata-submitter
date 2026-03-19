@@ -152,9 +152,9 @@ async def test_load_crypt4gh_keys_with_generated_keypair(monkeypatch, tmp_path):
     passphrase = "unit-test-passphrase"
     sender_env, recipient_env = generate_crypt4gh_keypair_env_values(tmp_path, passphrase)
 
-    monkeypatch.setenv("SENDER_SECRET_KEY", sender_env)
-    monkeypatch.setenv("BP_PUBLIC_C4GH_KEY", recipient_env)
-    monkeypatch.setenv("SECRET_KEY_PASSPHRASE", passphrase)
+    monkeypatch.setenv("CRYPT4GH_PRIVATE_KEY", sender_env)
+    monkeypatch.setenv("CRYPT4GH_PUBLIC_KEY", recipient_env)
+    monkeypatch.setenv("CRYPT4GH_PRIVATE_KEY_PASSPHRASE", passphrase)
 
     service = S3InboxSDAService(AsyncMock())
     sender_secret_key, recipient_public_key = await service._load_crypt4gh_keys()
@@ -171,9 +171,9 @@ async def test_encrypt_file_roundtrip_with_generated_keys(monkeypatch, tmp_path)
     passphrase = "unit-test-passphrase"
     sender_env, recipient_env = generate_crypt4gh_keypair_env_values(tmp_path, passphrase)
 
-    monkeypatch.setenv("SENDER_SECRET_KEY", sender_env)
-    monkeypatch.setenv("BP_PUBLIC_C4GH_KEY", recipient_env)
-    monkeypatch.setenv("SECRET_KEY_PASSPHRASE", passphrase)
+    monkeypatch.setenv("CRYPT4GH_PRIVATE_KEY", sender_env)
+    monkeypatch.setenv("CRYPT4GH_PUBLIC_KEY", recipient_env)
+    monkeypatch.setenv("CRYPT4GH_PRIVATE_KEY_PASSPHRASE", passphrase)
 
     service = S3InboxSDAService(AsyncMock())
     sender_secret_key, recipient_public_key = await service._load_crypt4gh_keys()

@@ -183,12 +183,14 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
     pid_handler = None
     admin_handler = None
     keystone_handler = None
+    auth_handler = None
 
     if config.DEPLOYMENT == DEPLOYMENT_CSC:
         metax_handler = _create_handler(MetaxServiceHandler())
         ror_handler = _create_handler(RorServiceHandler())
         pid_handler = _create_handler(PIDServiceHandler(metax_handler))
         keystone_handler = _create_handler(KeystoneServiceHandler())
+        auth_handler = _create_handler(AuthServiceHandler())
 
     if config.DEPLOYMENT == DEPLOYMENT_NBIS:
         datacite_handler = _create_handler(DataciteServiceHandler(metax_handler))
@@ -200,7 +202,6 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
     )
 
     rems_handler = _create_handler(RemsServiceHandler())
-    auth_handler = _create_handler(AuthServiceHandler())
 
     # Provide services for FastAPI routes.
     services = RESTAPIServices(

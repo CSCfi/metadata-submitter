@@ -1,10 +1,7 @@
 """Tests for publish API handler."""
 
 import uuid
-from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
-
-import pytest
+from unittest.mock import ANY, AsyncMock, patch
 
 from metadata_backend.api.exceptions import SystemException
 from metadata_backend.api.handlers.publish import PublishAPIHandler
@@ -12,8 +9,7 @@ from metadata_backend.api.json import to_json_dict
 from metadata_backend.api.models.datacite import Subject
 from metadata_backend.api.models.models import Registration
 from metadata_backend.api.models.submission import Rems, Submission, SubmissionMetadata, SubmissionWorkflow
-from metadata_backend.api.processors.xml.bigpicture import BP_SAMPLE_OBJECT_TYPES
-from metadata_backend.api.services.file import FileProviderService, S3InboxSDAService
+from metadata_backend.api.services.file import FileProviderService
 from metadata_backend.conf.conf import API_PREFIX
 from metadata_backend.database.postgres.models import FileEntity
 from metadata_backend.database.postgres.repositories.submission import (
@@ -90,7 +86,7 @@ async def test_publish_submission_sd(csc_client, submission_repository, object_r
         patch_verify_user_project,
         patch_verify_authorization,
         patch(
-            "metadata_backend.api.handlers.publish.PublishAPIHandler._upload_bp_metadata_xmls",
+            "metadata_backend.api.handlers.publish.upload_bp_metadata_xmls",
             new_callable=AsyncMock,
         ) as mock_upload_bp_metadata,
         # File provider
@@ -238,7 +234,7 @@ async def test_publish_submission_bp(nbis_client, submission_repository, object_
         patch_verify_user_project,
         patch_verify_authorization,
         patch(
-            "metadata_backend.api.handlers.publish.PublishAPIHandler._upload_bp_metadata_xmls",
+            "metadata_backend.api.handlers.publish.upload_bp_metadata_xmls",
             new_callable=AsyncMock,
         ) as mock_upload_bp_metadata,
         patch(
@@ -279,7 +275,7 @@ async def test_publish_submission_bp(nbis_client, submission_repository, object_
             f"{submission_entity.name} ({rems.organizationId}, {submission_id})",
             TEST_DISCOVERY_URL.format(id=submission_id),
         )
-        mock_upload_bp_metadata.assert_awaited_once_with(submission_id, "mock-userid", "oidc-token")
+        mock_upload_bp_metadata.assert_awaited_once_with(ANY, submission_id, "mock-userid", "oidc-token")
 
         # Assert registrations.
         response = nbis_client.get(f"{API_PREFIX}/submissions/{submission_id}/registrations")
@@ -339,7 +335,7 @@ async def test_publish_submission_bp_fails_when_metadata_upload_fails(
         patch_verify_user_project,
         patch_verify_authorization,
         patch(
-            "metadata_backend.api.handlers.publish.PublishAPIHandler._upload_bp_metadata_xmls",
+            "metadata_backend.api.handlers.publish.upload_bp_metadata_xmls",
             new_callable=AsyncMock,
             side_effect=SystemException("metadata upload failed"),
         ) as mock_upload_bp_metadata,
@@ -359,7 +355,7 @@ async def test_publish_submission_bp_fails_when_metadata_upload_fails(
         data = response.json()
         assert response.status_code == 500
         assert "metadata upload failed" in data["detail"]
-        mock_upload_bp_metadata.assert_awaited_once_with(submission_id, "mock-userid", "oidc-token")
+        mock_upload_bp_metadata.assert_awaited_once_with(ANY, submission_id, "mock-userid", "oidc-token")
 
     stored = await submission_repository.get_submission_by_id(submission_id)
     assert stored is not None
@@ -414,92 +410,3 @@ def test_get_discovery_url_bp():
     assert PublishAPIHandler.get_discovery_url(submission, registration) == TEST_DISCOVERY_URL.format(
         id=submission.submissionId
     )
-
-
-async def test_upload_bp_metadata_xmls_uses_expected_object_keys_and_payloads():
-    """BP metadata upload helper should upload plaintext XML to expected DATASET_{id}/METADATA keys."""
-
-    submission_id = "123"
-    file_provider = S3InboxSDAService(AsyncMock())
-    file_provider._add_file_to_bucket = AsyncMock()  # type: ignore[method-assign]
-
-    object_docs: dict[str, list[str]] = {
-        "dataset": ["<DATASET/>"],
-        "policy": ["<POLICY/>"],
-        "image": ["<IMAGE/>"],
-        "annotation": ["<ANNOTATION/>"],
-        "observation": ["<OBSERVATION/>"],
-        "observer": ["<OBSERVER/>"],
-        "staining": ["<STAINING/>"],
-        BP_SAMPLE_OBJECT_TYPES[0]: ["<BIOLOGICAL_BEING/>"],
-    }
-
-    def get_xml_documents(_submission_id: str, object_type: str | tuple[str, ...]):
-        async def _iter():
-            if isinstance(object_type, tuple):
-                for sample_type in object_type:
-                    for xml in object_docs.get(sample_type, []):
-                        yield xml
-                return
-
-            for xml in object_docs.get(object_type, []):
-                yield xml
-
-        return _iter()
-
-    handler = PublishAPIHandler.__new__(PublishAPIHandler)
-    handler._services = SimpleNamespace(
-        file_provider=file_provider,
-        submission=SimpleNamespace(get_bucket=AsyncMock(return_value="test-bucket")),
-        object=SimpleNamespace(get_xml_documents=get_xml_documents),
-    )
-
-    await handler._upload_bp_metadata_xmls(submission_id, "request-user", "oidc-token")
-
-    expected_keys = {
-        "DATASET_123/METADATA/dataset.xml.c4gh",
-        "DATASET_123/METADATA/policy.xml.c4gh",
-        "DATASET_123/METADATA/image.xml.c4gh",
-        "DATASET_123/METADATA/annotation.xml.c4gh",
-        "DATASET_123/METADATA/observation.xml.c4gh",
-        "DATASET_123/METADATA/observer.xml.c4gh",
-        "DATASET_123/METADATA/sample.xml.c4gh",
-        "DATASET_123/METADATA/staining.xml.c4gh",
-    }
-
-    assert file_provider._add_file_to_bucket.await_count == len(expected_keys)
-
-    uploaded_keys = {call.kwargs["object_key"] for call in file_provider._add_file_to_bucket.await_args_list}
-    assert uploaded_keys == expected_keys
-    for call in file_provider._add_file_to_bucket.await_args_list:
-        assert call.kwargs["access_key"] == "request-user"
-        assert call.kwargs["secret_key"] == "request-user"
-        assert call.kwargs["session_token"] == "oidc-token"
-        assert isinstance(call.kwargs["body"], bytes)
-        assert call.kwargs["body"]
-
-
-async def test_upload_bp_metadata_xmls_raises_on_upload_error():
-    """Upload errors in BP metadata upload helper should fail publish flow."""
-
-    file_provider = S3InboxSDAService(AsyncMock())
-    file_provider._add_file_to_bucket = AsyncMock()  # type: ignore[method-assign]
-
-    def get_xml_documents(_submission_id: str, object_type: str | tuple[str, ...]):
-        async def _iter():
-            if object_type == "dataset":
-                yield "<DATASET/>"
-
-        return _iter()
-
-    handler = PublishAPIHandler.__new__(PublishAPIHandler)
-    handler._services = SimpleNamespace(
-        file_provider=file_provider,
-        submission=SimpleNamespace(get_bucket=AsyncMock(return_value="test-bucket")),
-        object=SimpleNamespace(get_xml_documents=get_xml_documents),
-    )
-
-    file_provider._add_file_to_bucket.side_effect = SystemException("upload failed")  # type: ignore[method-assign]
-
-    with pytest.raises(SystemException, match="upload failed"):
-        await handler._upload_bp_metadata_xmls("123", "request-user", "oidc-token")

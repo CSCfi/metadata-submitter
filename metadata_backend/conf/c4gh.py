@@ -9,9 +9,9 @@ class Crypt4GHConfig(BaseSettings):
 
     model_config = {"extra": "allow"}  # Allow creation using the constructor.
 
-    SENDER_SECRET_KEY: str = Field(description="Base64 encoded private Crypt4GH key")
-    SECRET_KEY_PASSPHRASE: str = Field(description="Secret key passphrase")
-    BP_PUBLIC_C4GH_KEY: str = Field(description="Base64 encoded public Crypt4GH key for Bigpicture")
+    CRYPT4GH_PRIVATE_KEY: str = Field(description="Base64 encoded private Crypt4GH key")
+    CRYPT4GH_PRIVATE_KEY_PASSPHRASE: str = Field(description="Secret key passphrase")
+    CRYPT4GH_PUBLIC_KEY: str = Field(description="Base64 encoded public Crypt4GH key for Bigpicture")
 
 
 def c4gh_config() -> Crypt4GHConfig:

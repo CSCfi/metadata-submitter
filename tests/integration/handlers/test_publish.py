@@ -19,7 +19,7 @@ from tests.integration.helpers import (
     get_submission,
     publish_submission,
 )
-from tests.utils import BigPictureObjectNames, bp_update_documents, sd_submission_dict
+from tests.utils import BigpictureObjectNames, bp_update_documents, sd_submission_dict
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
@@ -116,7 +116,7 @@ async def assert_immutable_after_publish_bp(
     client: ClientSession,
     submission_id: str,
     submission_name: str,
-    object_names: BigPictureObjectNames,
+    object_names: BigpictureObjectNames,
     is_datacite: bool,
 ):
     """Assert that the submission can't be changes after publishing."""

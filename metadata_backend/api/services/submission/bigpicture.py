@@ -78,7 +78,7 @@ def is_clinical_policy(policy_processor: XmlObjectProcessor) -> bool:
 
 
 class BigpictureObjectSubmissionService(ObjectSubmissionService):
-    """Service for processing BigPicture submissions."""
+    """Service for processing Bigpicture submissions."""
 
     def __init__(
         self,
@@ -140,7 +140,7 @@ class BigpictureObjectSubmissionService(ObjectSubmissionService):
         if datacite_object:
             datacite = read_datacite_xml(datacite_object.document)
 
-        # Create processor for BigPicture XMLs.
+        # Create processor for Bigpicture XMLs.
         processor = XmlStringDocumentsProcessor(BP_XML_OBJECT_CONFIG, [o.document for o in bp_objects])
         return processor, datacite
 
