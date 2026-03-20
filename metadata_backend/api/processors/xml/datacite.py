@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import cast
 
 from lxml.etree import _Element as Element  # noqa
+from lxml.etree import _ElementTree as ElementTree  # noqa
 
 from ...models.datacite import (
     Affiliation,
@@ -38,6 +39,8 @@ DATACITE_XML_SCHEMA_DIR = Path(__file__).parent.parent.parent.parent / "schemas"
 DATACITE_NAMESPACE = {"d": "http://datacite.org/schema/kernel-4"}
 
 DATACITE_PATH = "/d:resource"
+
+DATACITE_OBJECT_TYPE = "datacite"
 
 
 def _elem(node: Element | list[Element] | None) -> Element | None:
@@ -84,11 +87,11 @@ def _attr_text(node: Element | list[Element] | None, attr: str) -> str | None:
     return cast(str, val.strip()) if val else None
 
 
-def read_datacite_xml(source: str | bytes) -> DataCiteMetadata:
-    """Read DataCite XML and return datacite metadata.
+def read_datacite_xml(source: str | bytes) -> tuple[DataCiteMetadata, ElementTree]:
+    """Read DataCite XML and return datacite metadata and and DataCite XML element tree.
 
     :param source: The DataCite XML.
-    :returns: datacite metadata.
+    :returns: datacite metadata and DataCite XML element tree.
     """
     xml = XmlProcessor.parse_xml(source)
 
@@ -386,4 +389,4 @@ def read_datacite_xml(source: str | bytes) -> DataCiteMetadata:
         fundingReferences=funding_references or None,
     )
 
-    return metadata
+    return metadata, xml

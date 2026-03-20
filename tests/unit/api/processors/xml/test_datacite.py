@@ -12,7 +12,7 @@ TEST_FILE = Path(__file__).parent.parent.parent.parent.parent / "test_files" / "
 
 def test_read_datacite_xml():
     xml = TEST_FILE.read_bytes()
-    datacite = read_datacite_xml(xml)
+    datacite, datacite_xml = read_datacite_xml(xml)
     assert_datacite(datacite, saved=False)
 
 

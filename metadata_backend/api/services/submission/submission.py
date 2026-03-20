@@ -4,12 +4,13 @@
 
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from typing import Sequence
+from typing import Sequence, cast
 
+from lxml.etree import _ElementTree as ElementTree  # noqa
 from pydantic import BaseModel, ValidationError
 
 from ....database.postgres.services.file import FileService
-from ....database.postgres.services.object import ObjectService
+from ....database.postgres.services.object import ObjectService, UnknownObjectException
 from ....database.postgres.services.submission import SubmissionService
 from ...exceptions import SystemException, UserException, UserExceptions
 from ...json import to_json_dict
@@ -17,7 +18,7 @@ from ...models.models import File
 from ...models.submission import Submission, SubmissionWorkflow
 from ...processors.models import ObjectIdentifier
 from ...processors.processors import DocumentsProcessor, ObjectProcessor
-from ...processors.xml.processors import XmlObjectProcessor
+from ...processors.xml.processors import XmlObjectProcessor, XmlProcessor
 from ..accession import generate_accession
 from ..project import ProjectService
 
@@ -29,9 +30,6 @@ class ObjectSubmission(BaseModel):
     document: str
 
     model_config = {"frozen": True}
-
-
-# TODO(improve): test update with new and deleted metadata objects
 
 
 class ObjectSubmissionService(ABC):
@@ -131,7 +129,8 @@ class ObjectSubmissionService(ABC):
             processor = self.create_processor(objects)
             object_identifiers: Sequence[ObjectIdentifier] = []
             if processor:
-                # Get metadata object identifiers.
+                # Get metadata object identifiers from the documents processor
+                # that contains all XMLs.
                 object_identifiers = processor.get_object_identifiers()
 
                 # Check that no metadata objects are accessioned.
@@ -189,10 +188,21 @@ class ObjectSubmissionService(ABC):
             if processor:
                 # Add metadata objects.
                 for identifier in object_identifiers:
-                    object_processor = await self._get_object_processor(identifier, processor)
+                    # Get the object processor for each object identifier retrieved
+                    # earlier from the documents processor. One object processor contains
+                    # the XML for one individual accessioned object within an XML document.
+                    object_processor = cast(XmlObjectProcessor, await self._get_object_processor(identifier, processor))
 
-                    await self._add_object(project_id, submission_id, identifier, object_processor)
-
+                    await self._add_object(
+                        project_id,
+                        submission_id,
+                        identifier.name,
+                        identifier.object_type,
+                        identifier.id,
+                        object_processor.get_object_title(),
+                        object_processor.get_object_description(),
+                        object_processor.xml,
+                    )
             # Save files.
             for file in files:
                 await self._file_service.add_file(file, self._workflow)
@@ -350,14 +360,27 @@ class ObjectSubmissionService(ABC):
             if processor:
                 # Add new metadata objects.
                 for identifier in new_object_identifiers:
-                    object_processor = await self._get_object_processor(identifier, processor)
-                    await self._add_object(project_id, submission_id, identifier, object_processor)
+                    object_processor = cast(XmlObjectProcessor, await self._get_object_processor(identifier, processor))
+                    await self._add_object(
+                        project_id,
+                        submission_id,
+                        identifier.name,
+                        identifier.object_type,
+                        identifier.id,
+                        object_processor.get_object_title(),
+                        object_processor.get_object_description(),
+                        object_processor.xml,
+                    )
 
                 # Update existing metadata objects.
                 for identifier in updated_object_identifiers:
-                    object_processor = await self._get_object_processor(identifier, processor)
-                    await self._update_object(identifier, object_processor)
-
+                    object_processor = cast(XmlObjectProcessor, await self._get_object_processor(identifier, processor))
+                    await self._update_object(
+                        identifier.id,
+                        object_processor.get_object_title(),
+                        object_processor.get_object_description(),
+                        object_processor.xml,
+                    )
                 # Delete removed metadata objects.
                 for obj in deleted_objects:
                     await self._object_service.delete_object_by_id(obj.objectId)
@@ -391,50 +414,68 @@ class ObjectSubmissionService(ABC):
         return object_processor
 
     async def _add_object(
-        self, project_id: str, submission_id: str, identifier: ObjectIdentifier, processor: ObjectProcessor
+        self,
+        project_id: str,
+        submission_id: str,
+        name: str,
+        object_type: str,
+        id: str,
+        title: str,
+        description: str,
+        xml: ElementTree,
     ) -> None:
         """
         Add metadata object to the database.
 
         :param project_id: The project id.
         :param submission_id: The submission id.
-        :param identifier: The metadata object identifier.
-        :param processor: The metadata object processor.
+        :param name: The metadata object name.
+        :param object_type: The metadata object type.
+        :param id: The metadata object identifier.
+        :param title: The metadata object title.
+        :param description: The metadata object description.
+        :param xml: The metadata object XML.
         """
 
-        if isinstance(processor, XmlObjectProcessor):
-            saved_object_id = await self._object_service.add_object(
-                project_id,
-                submission_id,
-                identifier.name,
-                identifier.object_type,
-                self._workflow,
-                object_id=identifier.id,
-                title=processor.get_object_title(),
-                description=processor.get_object_description(),
-                xml_document=processor.write_xml(processor.xml),
-            )
-            if saved_object_id != identifier.id:
-                raise SystemException("Failed to save generated object id")
-        else:
-            raise SystemException("Unsupported object processor")
+        saved_object_id = await self._object_service.add_object(
+            project_id,
+            submission_id,
+            name,
+            object_type,
+            self._workflow,
+            object_id=id,
+            title=title,
+            description=description,
+            xml_document=XmlProcessor.write_xml(xml),
+        )
+        if saved_object_id != id:
+            raise SystemException("Failed to save generated object id")
 
-    async def _update_object(self, identifier: ObjectIdentifier, processor: ObjectProcessor) -> None:
+    async def _update_object(self, id: str, title: str, description: str, xml: ElementTree) -> None:
         """
         Update metadata object in the database.
 
-        :param project_id: The project id.
-        :param submission_id: The submission id.
-        :param identifier: The metadata object identifier.
-        :param processor: The metadata object processor.
+        :param id: The metadata object identifier.
+        :param title: The metadata object title.
+        :param description: The metadata object description.
+        :param xml: The metadata object XML.
         """
 
-        if isinstance(processor, XmlObjectProcessor):
-            await self._object_service.update_object(
-                identifier.id,
-                title=processor.get_object_title(),
-                description=processor.get_object_description(),
-                xml_document=processor.write_xml(processor.xml),
-            )
-        else:
-            raise SystemException("Unsupported object processor")
+        await self._object_service.update_object(
+            id,
+            title=title,
+            description=description,
+            xml_document=XmlProcessor.write_xml(xml),
+        )
+
+    async def _delete_object(self, id: str) -> None:
+        """
+        Delete metadata object in the database if it exists.
+
+        :param id: The metadata object identifier.
+        """
+
+        try:
+            await self._object_service.delete_object_by_id(id)
+        except UnknownObjectException:
+            pass
