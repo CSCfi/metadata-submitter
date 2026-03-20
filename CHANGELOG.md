@@ -42,6 +42,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- (users) PATCH /publish endpoint encrypts the submission XML files and uploads them to the SDA S3 inbox
 - Shared code to prepare SD and BP submission documentation between unit, integration and performance tests.
 - XML object are given unique names for BP performance tests to avoid duplicate object errors.
 - Locust performance tests for CSC and NBIS deployments (SD and BP submissions).
