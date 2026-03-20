@@ -6,16 +6,20 @@ import logging
 from aiohttp import ClientSession
 
 from tests.integration.conf import (
+    mock_inbox_url,
+    mock_s3_region,
+    mock_user,
     publish_url,
     submissions_url,
     submit_url,
 )
 from tests.integration.helpers import (
+    add_bucket,
     get_registrations,
     get_submission,
     publish_submission,
 )
-from tests.utils import BigPictureObjectNames, bp_update_documents, sd_submission_dict
+from tests.utils import BigpictureObjectNames, bp_update_documents, sd_submission_dict
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
@@ -58,6 +62,10 @@ async def test_publish_sd(sd_client, sd_submission):
 
 async def test_publish_bp(nbis_client, bp_submission):
     """Test publish BP for NBIS deployment."""
+
+    # Create bucket for the test user in the mock S3 inbox.
+    bucket = mock_user.replace("@", "_")
+    await add_bucket(bucket, mock_user, mock_user, mock_inbox_url, mock_s3_region)
 
     for is_datacite in [True, False]:
         # Create submission.
@@ -108,7 +116,7 @@ async def assert_immutable_after_publish_bp(
     client: ClientSession,
     submission_id: str,
     submission_name: str,
-    object_names: BigPictureObjectNames,
+    object_names: BigpictureObjectNames,
     is_datacite: bool,
 ):
     """Assert that the submission can't be changes after publishing."""

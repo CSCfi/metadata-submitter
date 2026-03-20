@@ -61,6 +61,7 @@ dependencies = [
     "uvicorn>=0.40.0",
     "httpx>=0.28.1",
     "python-multipart>=0.0.22",
+    "crypt4gh==1.7",
 ]
 
 [dependency-groups]

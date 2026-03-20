@@ -14,8 +14,12 @@ from ..exceptions import SystemException, UserException
 from ..models.datacite import DataCiteMetadata
 from ..models.models import File, Registration, SubmissionId
 from ..models.submission import Rems, Submission, SubmissionMetadata, SubmissionWorkflow
-from ..processors.xml.bigpicture import BP_POLICY_OBJECT_TYPE, BP_XML_OBJECT_CONFIG
+from ..processors.xml.bigpicture import (
+    BP_POLICY_OBJECT_TYPE,
+    BP_XML_OBJECT_CONFIG,
+)
 from ..processors.xml.processors import XmlObjectProcessor
+from ..services.bigpicture import upload_bp_metadata_xmls
 from ..services.datacite import DataciteService
 from ..services.submission.bigpicture import is_clinical_policy
 from .restapi import RESTAPIHandler
@@ -139,7 +143,7 @@ class PublishAPIHandler(RESTAPIHandler):
             # Create REMS resource.
             if not registration.remsResourceId:
                 if submission.workflow == SubmissionWorkflow.BP:
-                    # Use BigPicture dataset id as the REMS resource id.
+                    # Use Bigpicture dataset id as the REMS resource id.
                     resid = submission.submissionId
                 elif registration.doi is not None:
                     # Use DOI as the REMS resource id.
@@ -303,6 +307,13 @@ class PublishAPIHandler(RESTAPIHandler):
 
         if deployment_config().ALLOW_REGISTRATION:
             await self._register_submission(submission, datacite, rems)
+
+        if workflow == SubmissionWorkflow.BP:
+            headers = req.headers
+            jwt = self._services.auth._get_bearer_token(headers)
+            if not jwt:
+                raise UserException("Missing OIDC access token in Authorization bearer header for SDA inbox upload.")
+            await upload_bp_metadata_xmls(self._services, submission_id, user.user_id, jwt)
 
         # Update submission status to published.
         await submission_service.publish(submission_id)

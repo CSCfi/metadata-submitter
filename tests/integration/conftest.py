@@ -34,7 +34,7 @@ from tests.integration.helpers import (
     get_submission,
 )
 from tests.utils import (
-    BigPictureObjectNames,
+    BigpictureObjectNames,
     bp_submission_documents,
     bp_update_documents,
     get_test_es256_keypair,
@@ -143,12 +143,12 @@ async def sd_submission_update(sd_client: aiohttp.ClientSession, project_id: str
 class SubmissionCallableBigpicture(Protocol):
     def __call__(
         self, is_datacite: bool
-    ) -> Awaitable[tuple[Submission, BigPictureObjectNames]]: ...  # submission names, object names
+    ) -> Awaitable[tuple[Submission, BigpictureObjectNames]]: ...  # submission names, object names
 
 
 class SubmissionUpdateCallableBigpicture(Protocol):
     def __call__(
-        self, submission_id: str, submission_name: str, object_names: BigPictureObjectNames, is_datacite: bool
+        self, submission_id: str, submission_name: str, object_names: BigpictureObjectNames, is_datacite: bool
     ) -> Awaitable[Submission]: ...
 
 
@@ -156,7 +156,7 @@ class SubmissionUpdateCallableBigpicture(Protocol):
 async def bp_submission(nbis_client: aiohttp.ClientSession, project_id: str) -> SubmissionCallableBigpicture:
     """Create Bigpicture submission using the /submit endpoint."""
 
-    async def _create(is_datacite: bool = False) -> tuple[Submission, BigPictureObjectNames]:  # noqa
+    async def _create(is_datacite: bool = False) -> tuple[Submission, BigpictureObjectNames]:  # noqa
         submission_name, object_names, files = bp_submission_documents(is_datacite=is_datacite)
 
         # Post submission.
@@ -178,7 +178,7 @@ async def bp_submission_update(
     """
 
     async def _update(
-        submission_id: str, submission_name: str, object_names: BigPictureObjectNames, is_datacite: bool
+        submission_id: str, submission_name: str, object_names: BigpictureObjectNames, is_datacite: bool
     ) -> Submission:  # noqa
         _, _, files = bp_update_documents(submission_name, object_names, is_datacite)
 

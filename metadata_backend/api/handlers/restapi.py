@@ -49,7 +49,7 @@ class RESTAPIServiceHandlers(BaseModel):
     ror: RorServiceHandler | None
     rems: RemsServiceHandler
     keystone: KeystoneServiceHandler | None
-    auth: AuthServiceHandler
+    auth: AuthServiceHandler | None
     admin: AdminServiceHandler | None = None
     database: HealthHandler
 

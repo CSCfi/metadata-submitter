@@ -71,6 +71,5 @@ class TestPublicEndpoints:
             assert "metax" not in health.services
             assert "ror" not in health.services
             assert health.services["rems"] == Health.UP
-            assert health.services["auth"] == Health.UP
             assert "keystone" not in health.services
             assert health.services["database"] == Health.UP

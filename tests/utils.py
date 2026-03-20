@@ -2,10 +2,14 @@
 
 import io
 import json
+import os
 import re
 import uuid
+from base64 import b64encode
 from pathlib import Path
 from typing import Any
+
+from crypt4gh.keys.c4gh import generate
 
 from metadata_backend.api.json import to_json
 from metadata_backend.api.models.submission import Submission
@@ -68,7 +72,7 @@ BP_UPDATE_DIR = BP_SUBMISSION_DIR / "update"
 
 TEST_KEYS_DIR = TEST_FILES_ROOT / "keys"
 
-BigPictureObjectNames = dict[str, dict[str, dict[str, str]]]
+BigpictureObjectNames = dict[str, dict[str, dict[str, str]]]
 
 
 def bp_objects(is_update: bool) -> tuple[list[ObjectSubmission], dict[str, Path]]:
@@ -95,10 +99,10 @@ def bp_objects(is_update: bool) -> tuple[list[ObjectSubmission], dict[str, Path]
 
 def _bp_submission_documents(
     submission_name: str | None = None,
-    object_names: BigPictureObjectNames | None = None,
+    object_names: BigpictureObjectNames | None = None,
     is_update: bool = False,
     is_datacite: bool = False,
-) -> tuple[str, BigPictureObjectNames, dict[str, io.BytesIO]]:
+) -> tuple[str, BigpictureObjectNames, dict[str, io.BytesIO]]:
     """Read BP XML test files, assign unique submission name and object names while preserving provided object names.
 
     Assigns a unique submission name and unique object names. The original object names in the
@@ -114,7 +118,7 @@ def _bp_submission_documents(
     objects, files = bp_objects(is_update)
     processor, _ = BigpictureObjectSubmissionService._create_processor(objects)
 
-    new_object_names: BigPictureObjectNames = {}
+    new_object_names: BigpictureObjectNames = {}
 
     # Change submission name.
     submission_name = submission_name or f"test_{uuid.uuid4()}"
@@ -191,7 +195,7 @@ def _bp_submission_documents(
 
 def bp_submission_documents(
     *, is_datacite: bool, submission_name: str | None = None
-) -> tuple[str, BigPictureObjectNames, dict[str, io.BytesIO]]:
+) -> tuple[str, BigpictureObjectNames, dict[str, io.BytesIO]]:
     """Get BP XML test files for a new submission.
 
     Assigns a unique submission name and object names. The original object names in the
@@ -206,8 +210,8 @@ def bp_submission_documents(
 
 
 def bp_update_documents(
-    submission_name: str, object_names: BigPictureObjectNames, is_datacite: bool
-) -> tuple[str, BigPictureObjectNames, dict[str, io.BytesIO]]:
+    submission_name: str, object_names: BigpictureObjectNames, is_datacite: bool
+) -> tuple[str, BigpictureObjectNames, dict[str, io.BytesIO]]:
     """Get BP XML test files for a submission update.
 
     Assigns unique names for any new objects. The original object names in the
@@ -258,3 +262,23 @@ def get_test_es256_keypair() -> tuple[str, str]:
     private_key = (TEST_KEYS_DIR / "es256_private.txt").read_text(encoding="utf-8")
     public_key = (TEST_KEYS_DIR / "es256_public.txt").read_text(encoding="utf-8")
     return private_key, public_key
+
+
+def generate_crypt4gh_keypair_env_values(tmp_path: Path, passphrase: str) -> tuple[str, str]:
+    """Generate a Crypt4GH keypair and return base64-encoded PEM values for env vars."""
+    secret_key_path = tmp_path / "sender.sec"
+    public_key_path = tmp_path / "recipient.pub"
+
+    # crypt4gh changes process umask while generating key files; restore it even if generation fails.
+    current_umask = os.umask(0)
+    os.umask(current_umask)
+    try:
+        generate(str(secret_key_path), str(public_key_path), passphrase=passphrase.encode("utf-8"))
+    finally:
+        os.umask(current_umask)
+
+    sender_key_pem = secret_key_path.read_text(encoding="utf-8")
+    recipient_key_pem = public_key_path.read_text(encoding="utf-8")
+    return b64encode(sender_key_pem.encode("utf-8")).decode("utf-8"), b64encode(
+        recipient_key_pem.encode("utf-8")
+    ).decode("utf-8")
