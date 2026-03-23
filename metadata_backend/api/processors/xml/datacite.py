@@ -88,7 +88,7 @@ def _attr_text(node: Element | list[Element] | None, attr: str) -> str | None:
 
 
 def read_datacite_xml(source: str | bytes) -> tuple[DataCiteMetadata, ElementTree]:
-    """Read DataCite XML and return datacite metadata and and DataCite XML element tree.
+    """Read DataCite XML and return datacite metadata    and DataCite XML element tree.
 
     :param source: The DataCite XML.
     :returns: datacite metadata and DataCite XML element tree.
