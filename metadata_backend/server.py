@@ -352,8 +352,6 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
     auth_router = None
     if config.DEPLOYMENT == DEPLOYMENT_CSC:
         auth_router = APIRouter(tags=["Authentication"])
-        # TODO(improve): deprecate /aai endpoint
-        auth_router.add_api_route(path="/aai", endpoint=_auth.login, methods=GET, include_in_schema=False)
         auth_router.add_api_route(path="/login", endpoint=_auth.login, methods=GET)
         auth_router.add_api_route(path="/callback", endpoint=_auth.callback, methods=GET, include_in_schema=False)
         auth_router.add_api_route(path="/logout", endpoint=_auth.logout, methods=GET)

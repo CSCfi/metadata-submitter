@@ -14,6 +14,8 @@ from ..processors.xml.bigpicture import (
     BP_REMS_OBJECT_TYPE,
     BP_SAMPLE_OBJECT_TYPES,
     BP_STAINING_OBJECT_TYPE,
+    as_xml_set_document,
+    update_landing_page_xml,
 )
 from .file import S3InboxSDAService
 
@@ -30,83 +32,57 @@ BP_METADATA_FILES: tuple[tuple[str | tuple[str, ...], str], ...] = (
 
 BP_LANDING_PAGE: tuple[tuple[str, str], ...] = ((BP_LANDING_PAGE_OBJECT_TYPE, "landing_page.xml.c4gh"),)
 
-BP_PRIVATE_METDATA_FILES: tuple[tuple[str, str], ...] = (
+BP_PRIVATE_METADATA_FILES: tuple[tuple[str, str], ...] = (
     (BP_ORGANISATION_OBJECT_TYPE, "organisation.xml.c4gh"),
     (BP_REMS_OBJECT_TYPE, "rems.xml.c4gh"),
 )
 
 
-async def _upload_xml_documents(
-    services: RESTAPIServices,
-    file_provider: S3InboxSDAService,
-    *,
-    bucket_name: str,
-    prefix: str,
-    object_files: tuple[tuple[str | tuple[str, ...], str], ...],
-    user_id: str,
-    jwt: str,
-    submission_id: str,
-) -> None:
-    for object_type, filename in object_files:
-        xml = None
-        async for xml_doc in services.object.get_xml_documents(submission_id, object_type):
-            xml = xml_doc
-            break
-        if xml is None:
-            continue
-
-        object_key = f"{prefix}/{filename}"
-        await file_provider._add_file_to_bucket(
-            bucket_name=bucket_name,
-            object_key=object_key,
-            access_key=user_id,
-            secret_key=user_id,
-            session_token=jwt,
-            body=xml.encode("utf-8"),
-        )
-
-
 async def upload_bp_metadata_xmls(services: RESTAPIServices, submission_id: str, user_id: str, jwt: str) -> None:
-    """Upload encrypted Bigpicture metadata XML files to SDA inbox."""
+    """Upload encrypted Bigpicture metadata XML files to SDA inbox.
+
+    :param services: REST API services.
+    :param submission_id: Submission ID.
+    :param user_id: User ID.
+    :param jwt: User JWT token.
+    """
     file_provider = services.file_provider
     if not isinstance(file_provider, S3InboxSDAService):
         raise SystemException("Bigpicture metadata upload requires SDA inbox file provider service.")
 
     bucket = user_id.replace("@", "_")  # SDA inbox bucket name is the user id with @ replaced by underscore
+    registration = await services.registration.get_registration(submission_id)  # For landing page XML update
 
-    # Metadata XML files
-    await _upload_xml_documents(
-        services,
-        file_provider,
-        bucket_name=bucket,
-        prefix=f"DATASET_{submission_id}/METADATA",
-        object_files=BP_METADATA_FILES,
-        user_id=user_id,
-        jwt=jwt,
-        submission_id=submission_id,
+    file_prefixes = (
+        (BP_METADATA_FILES, f"DATASET_{submission_id}/METADATA"),  # Metadata XML files
+        (BP_LANDING_PAGE, f"DATASET_{submission_id}/LANDING_PAGE"),  # Landing page XML file
+        (BP_PRIVATE_METADATA_FILES, f"DATASET_{submission_id}/PRIVATE"),  # Private metadata XML files
     )
 
-    # Landing page XML file
-    await _upload_xml_documents(
-        services,
-        file_provider,
-        bucket_name=bucket,
-        prefix=f"DATASET_{submission_id}/LANDING_PAGE",
-        object_files=BP_LANDING_PAGE,
-        user_id=user_id,
-        jwt=jwt,
-        submission_id=submission_id,
-    )
+    for object_files, prefix in file_prefixes:
+        for object_type, filename in object_files:
+            xml_docs = [xml_doc async for xml_doc in services.object.get_xml_documents(submission_id, object_type)]
+            if not xml_docs:
+                continue
 
-    # Private metadata XML files
-    # TODO(improve): Add datacite.xml to private metadata files once datacite.xml is available
-    await _upload_xml_documents(
-        services,
-        file_provider,
-        bucket_name=bucket,
-        prefix=f"DATASET_{submission_id}/PRIVATE",
-        object_files=BP_PRIVATE_METDATA_FILES,
-        user_id=user_id,
-        jwt=jwt,
-        submission_id=submission_id,
-    )
+            # For landing page XML, update the REMS and DOI URL value from the registration.
+            if object_type == BP_LANDING_PAGE_OBJECT_TYPE:
+                xml_docs = [
+                    await update_landing_page_xml(
+                        xml_doc,
+                        datacite_url=registration.dataciteUrl if registration else None,
+                        rems_url=registration.remsUrl if registration else None,
+                    )
+                    for xml_doc in xml_docs
+                ]
+
+            xml = await as_xml_set_document(xml_docs, object_type)
+            object_key = f"{prefix}/{filename}"
+            await file_provider._add_file_to_bucket(
+                bucket_name=bucket,
+                object_key=object_key,
+                access_key=user_id,
+                secret_key=user_id,
+                session_token=jwt,
+                body=xml.encode("utf-8"),
+            )

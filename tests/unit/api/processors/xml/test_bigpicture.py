@@ -2,10 +2,12 @@ import uuid
 
 from metadata_backend.api.processors.models import ObjectIdentifier
 from metadata_backend.api.processors.xml.bigpicture import (
+    BP_ANNOTATION_OBJECT_TYPE,
     BP_ANNOTATION_PATH,
     BP_ANNOTATION_SCHEMA,
     BP_ANNOTATION_SCHEMA_AND_PATH,
     BP_ANNOTATION_SET_PATH,
+    BP_DATASET_OBJECT_TYPE,
     BP_DATASET_PATH,
     BP_DATASET_SCHEMA,
     BP_DATASET_SCHEMA_AND_PATH,
@@ -30,16 +32,21 @@ from metadata_backend.api.processors.xml.bigpicture import (
     BP_REMS_PATH,
     BP_REMS_SCHEMA,
     BP_REMS_SCHEMA_AND_PATH,
+    BP_SAMPLE_BIOLOGICAL_BEING_OBJECT_TYPE,
     BP_SAMPLE_BIOLOGICAL_BEING_PATH,
     BP_SAMPLE_BIOLOGICAL_BEING_SCHEMA_AND_PATH,
+    BP_SAMPLE_BLOCK_OBJECT_TYPE,
     BP_SAMPLE_BLOCK_PATH,
     BP_SAMPLE_BLOCK_SCHEMA_AND_PATH,
+    BP_SAMPLE_CASE_OBJECT_TYPE,
     BP_SAMPLE_CASE_PATH,
     BP_SAMPLE_CASE_SCHEMA_AND_PATH,
     BP_SAMPLE_SCHEMA,
     BP_SAMPLE_SET_PATH,
+    BP_SAMPLE_SLIDE_OBJECT_TYPE,
     BP_SAMPLE_SLIDE_PATH,
     BP_SAMPLE_SLIDE_SCHEMA_AND_PATH,
+    BP_SAMPLE_SPECIMEN_OBJECT_TYPE,
     BP_SAMPLE_SPECIMEN_PATH,
     BP_SAMPLE_SPECIMEN_SCHEMA_AND_PATH,
     BP_STAINING_PATH,
@@ -47,6 +54,7 @@ from metadata_backend.api.processors.xml.bigpicture import (
     BP_STAINING_SCHEMA_AND_PATH,
     BP_XML_OBJECT_CONFIG,
     _get_xml_object_type_bp,
+    as_xml_set_document,
     update_landing_page_xml,
 )
 from metadata_backend.api.processors.xml.processors import XmlFileDocumentsProcessor, XmlObjectProcessor
@@ -483,7 +491,7 @@ def test_is_clinical_policy():
     assert not is_clinical_policy(non_clinical_processor)
 
 
-def test_update_landing_page_xml():
+async def test_update_landing_page_xml():
     xml = """<LANDING_PAGE alias="1">
   <DATASET_REF alias="1"/>
   <ATTRIBUTES>
@@ -513,4 +521,76 @@ def test_update_landing_page_xml():
 </LANDING_PAGE>
 """
 
-    assert expected_xml == update_landing_page_xml(xml, datacite_url=datacite_url, rems_url=rems_url)
+    assert expected_xml == await update_landing_page_xml(xml, datacite_url=datacite_url, rems_url=rems_url)
+
+
+async def test_as_xml_set_document_single_document():
+    """Test aggregating a single XML document into a set element."""
+    xml = """<DATASET alias="dataset_1" accession="BPDST001">
+  <TITLE>Test Dataset</TITLE>
+  <DESCRIPTION>A test dataset</DESCRIPTION>
+</DATASET>"""
+
+    expected_xml = """<?xml version='1.0' encoding='UTF-8'?>
+<DATASET_SET>
+  <DATASET alias="dataset_1" accession="BPDST001">
+    <TITLE>Test Dataset</TITLE>
+    <DESCRIPTION>A test dataset</DESCRIPTION>
+  </DATASET>
+</DATASET_SET>
+"""
+
+    assert expected_xml == await as_xml_set_document([xml], BP_DATASET_OBJECT_TYPE)
+
+
+async def test_as_xml_set_document_single_object_type():
+    """Test aggregating XML documents with a single object type into a set element."""
+    xml1 = """<ANNOTATION alias="ann_1" accession="BPANN001">
+  <DESCRIPTION>Annotation 1</DESCRIPTION>
+</ANNOTATION>"""
+    xml2 = """<ANNOTATION alias="ann_2" accession="BPANN002">
+  <DESCRIPTION>Annotation 2</DESCRIPTION>
+</ANNOTATION>"""
+
+    expected_xml = """<?xml version='1.0' encoding='UTF-8'?>
+<ANNOTATION_SET>
+  <ANNOTATION alias="ann_1" accession="BPANN001">
+    <DESCRIPTION>Annotation 1</DESCRIPTION>
+  </ANNOTATION>
+  <ANNOTATION alias="ann_2" accession="BPANN002">
+    <DESCRIPTION>Annotation 2</DESCRIPTION>
+  </ANNOTATION>
+</ANNOTATION_SET>
+"""
+
+    assert expected_xml == await as_xml_set_document([xml1, xml2], BP_ANNOTATION_OBJECT_TYPE)
+
+
+async def test_as_xml_set_document_tuple_object_type():
+    """Test aggregating XML documents with tuple object type (sample types) into a set element."""
+    xml1 = """<BIOLOGICAL_BEING alias="bb_1" accession="BPBB001">
+  <DESCRIPTION>Biological Being 1</DESCRIPTION>
+</BIOLOGICAL_BEING>"""
+    xml2 = """<SLIDE alias="slide_1" accession="BPSLD001">
+  <DESCRIPTION>Slide 1</DESCRIPTION>
+</SLIDE>"""
+
+    expected_xml = """<?xml version='1.0' encoding='UTF-8'?>
+<SAMPLE_SET>
+  <BIOLOGICAL_BEING alias="bb_1" accession="BPBB001">
+    <DESCRIPTION>Biological Being 1</DESCRIPTION>
+  </BIOLOGICAL_BEING>
+  <SLIDE alias="slide_1" accession="BPSLD001">
+    <DESCRIPTION>Slide 1</DESCRIPTION>
+  </SLIDE>
+</SAMPLE_SET>
+"""
+
+    sample_types = (
+        BP_SAMPLE_BIOLOGICAL_BEING_OBJECT_TYPE,
+        BP_SAMPLE_SLIDE_OBJECT_TYPE,
+        BP_SAMPLE_SPECIMEN_OBJECT_TYPE,
+        BP_SAMPLE_BLOCK_OBJECT_TYPE,
+        BP_SAMPLE_CASE_OBJECT_TYPE,
+    )
+    assert expected_xml == await as_xml_set_document([xml1, xml2], sample_types)
