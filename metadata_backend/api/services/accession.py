@@ -13,6 +13,7 @@ from ..processors.xml.bigpicture import (
     BP_SAMPLE_OBJECT_TYPES,
     BP_SUBMISSION_OBJECT_TYPE,
 )
+from ..processors.xml.datacite import DATACITE_OBJECT_TYPE
 
 
 def generate_accession(workflow: SubmissionWorkflow, object_type: str) -> str:
@@ -100,7 +101,7 @@ def generate_bp_accession_prefix(object_type: str) -> str:
     :returns: The Bigpicture accession prefix
     """
 
-    if object_type not in BP_OBJECT_TYPES:
+    if object_type not in BP_OBJECT_TYPES and object_type != DATACITE_OBJECT_TYPE:
         raise RuntimeError(f"Unsupported object type '{object_type}'.")
 
     if object_type in BP_SAMPLE_OBJECT_TYPES:

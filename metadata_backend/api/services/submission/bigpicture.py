@@ -28,6 +28,7 @@ from ...processors.xml.bigpicture import (
 )
 from ...processors.xml.datacite import DATACITE_OBJECT_TYPE, read_datacite_xml
 from ...processors.xml.processors import XmlObjectProcessor, XmlStringDocumentsProcessor
+from ..accession import generate_bp_accession
 from ..project import ProjectService
 from .submission import ObjectSubmission, ObjectSubmissionService
 
@@ -49,8 +50,6 @@ BP_FILES = [
     "staining.xml",
 ]
 
-DATACITE_OBJECT_ID_SUFFIX = "-datacite"
-DATACITE_OBJECT_NAME = "DataCite"
 DATACITE_OBJECT_TITLE = "DataCite"
 DATACITE_OBJECT_DESCRIPTION = "DataCite"
 
@@ -326,15 +325,16 @@ class BigpictureObjectSubmissionService(ObjectSubmissionService):
 
         # Store DataCite XML.
         if self._datacite_xml is not None:
-            # Object id must be unique. Submission id is used as the dataset id.
-            dataset_id = submission.submissionId + DATACITE_OBJECT_ID_SUFFIX
             # Add DataCite XML.
+            datacite_id = generate_bp_accession(DATACITE_OBJECT_TYPE)
             await self._add_object(
                 project_id,
                 submission.submissionId,
-                DATACITE_OBJECT_NAME,
+                datacite_id,
+                # Use DataCite accession as the name. The name must be unique
+                # and DataCite XML does not have one.
                 DATACITE_OBJECT_TYPE,
-                dataset_id,
+                datacite_id,
                 DATACITE_OBJECT_TITLE,
                 DATACITE_OBJECT_DESCRIPTION,
                 self._datacite_xml,
@@ -359,33 +359,38 @@ class BigpictureObjectSubmissionService(ObjectSubmissionService):
         # Update all other XMLs except DataCite XML.
         submission = await super().update(user_id, project_id, submission_id, objects)
 
+        # Get datacite object if it exists.
+        datacite_object = None
+        for obj in await self._object_service.get_objects(submission_id, DATACITE_OBJECT_TYPE):
+            datacite_object = obj
+
         # Update DataCite XML.
         if self._datacite_xml is not None:
-            # Object id must be unique. Submission id is used as the dataset id.
-            dataset_id = submission.submissionId + DATACITE_OBJECT_ID_SUFFIX
-            if await self._object_service.is_object(dataset_id):
+            if datacite_object is not None:
                 # Update DataCite XML.
                 await self._update_object(
-                    # Object id must be unique. Submission id is used as the dataset id.
-                    dataset_id,
+                    datacite_object.objectId,
                     DATACITE_OBJECT_TITLE,
                     DATACITE_OBJECT_DESCRIPTION,
                     self._datacite_xml,
                 )
             else:
                 # Add DataCite XML.
+                datacite_id = generate_bp_accession(DATACITE_OBJECT_TYPE)
                 await self._add_object(
                     project_id,
                     submission_id,
-                    DATACITE_OBJECT_NAME,
+                    # Use DataCite accession as the name. The name must be unique
+                    # and DataCite XML does not have one.
+                    datacite_id,
                     DATACITE_OBJECT_TYPE,
-                    dataset_id,
+                    datacite_id,
                     DATACITE_OBJECT_TITLE,
                     DATACITE_OBJECT_DESCRIPTION,
                     self._datacite_xml,
                 )
-        else:
+        elif datacite_object is not None:
             # Delete DataCite XML if it exists.
-            await self._delete_object(submission.submissionId + DATACITE_OBJECT_ID_SUFFIX)
+            await self._delete_object(datacite_object.objectId)
 
         return submission
