@@ -14,6 +14,7 @@ from ..processors.xml.bigpicture import (
     BP_REMS_OBJECT_TYPE,
     BP_SAMPLE_OBJECT_TYPES,
     BP_STAINING_OBJECT_TYPE,
+    BP_XML_OBJECT_CONFIG,
     as_xml_set_document,
     update_landing_page_xml,
 )
@@ -76,7 +77,12 @@ async def upload_bp_metadata_xmls(services: RESTAPIServices, submission_id: str,
                     for xml_doc in xml_docs
                 ]
 
-            xml = await as_xml_set_document(xml_docs, object_type)
+            if isinstance(object_type, tuple):
+                schema_type = BP_XML_OBJECT_CONFIG.get_schema_type(object_type[0])
+            else:
+                schema_type = BP_XML_OBJECT_CONFIG.get_schema_type(object_type)
+
+            xml = await as_xml_set_document(xml_docs, schema_type)
             object_key = f"{prefix}/{filename}"
             await file_provider._add_file_to_bucket(
                 bucket_name=bucket,

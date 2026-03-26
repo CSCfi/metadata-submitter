@@ -2,12 +2,10 @@ import uuid
 
 from metadata_backend.api.processors.models import ObjectIdentifier
 from metadata_backend.api.processors.xml.bigpicture import (
-    BP_ANNOTATION_OBJECT_TYPE,
     BP_ANNOTATION_PATH,
     BP_ANNOTATION_SCHEMA,
     BP_ANNOTATION_SCHEMA_AND_PATH,
     BP_ANNOTATION_SET_PATH,
-    BP_DATASET_OBJECT_TYPE,
     BP_DATASET_PATH,
     BP_DATASET_SCHEMA,
     BP_DATASET_SCHEMA_AND_PATH,
@@ -32,21 +30,16 @@ from metadata_backend.api.processors.xml.bigpicture import (
     BP_REMS_PATH,
     BP_REMS_SCHEMA,
     BP_REMS_SCHEMA_AND_PATH,
-    BP_SAMPLE_BIOLOGICAL_BEING_OBJECT_TYPE,
     BP_SAMPLE_BIOLOGICAL_BEING_PATH,
     BP_SAMPLE_BIOLOGICAL_BEING_SCHEMA_AND_PATH,
-    BP_SAMPLE_BLOCK_OBJECT_TYPE,
     BP_SAMPLE_BLOCK_PATH,
     BP_SAMPLE_BLOCK_SCHEMA_AND_PATH,
-    BP_SAMPLE_CASE_OBJECT_TYPE,
     BP_SAMPLE_CASE_PATH,
     BP_SAMPLE_CASE_SCHEMA_AND_PATH,
     BP_SAMPLE_SCHEMA,
     BP_SAMPLE_SET_PATH,
-    BP_SAMPLE_SLIDE_OBJECT_TYPE,
     BP_SAMPLE_SLIDE_PATH,
     BP_SAMPLE_SLIDE_SCHEMA_AND_PATH,
-    BP_SAMPLE_SPECIMEN_OBJECT_TYPE,
     BP_SAMPLE_SPECIMEN_PATH,
     BP_SAMPLE_SPECIMEN_SCHEMA_AND_PATH,
     BP_STAINING_PATH,
@@ -540,7 +533,7 @@ async def test_as_xml_set_document_single_document():
 </DATASET_SET>
 """
 
-    assert expected_xml == await as_xml_set_document([xml], BP_DATASET_OBJECT_TYPE)
+    assert expected_xml == await as_xml_set_document([xml], BP_DATASET_SCHEMA)
 
 
 async def test_as_xml_set_document_single_object_type():
@@ -563,7 +556,7 @@ async def test_as_xml_set_document_single_object_type():
 </ANNOTATION_SET>
 """
 
-    assert expected_xml == await as_xml_set_document([xml1, xml2], BP_ANNOTATION_OBJECT_TYPE)
+    assert expected_xml == await as_xml_set_document([xml1, xml2], BP_ANNOTATION_SCHEMA)
 
 
 async def test_as_xml_set_document_tuple_object_type():
@@ -586,11 +579,4 @@ async def test_as_xml_set_document_tuple_object_type():
 </SAMPLE_SET>
 """
 
-    sample_types = (
-        BP_SAMPLE_BIOLOGICAL_BEING_OBJECT_TYPE,
-        BP_SAMPLE_SLIDE_OBJECT_TYPE,
-        BP_SAMPLE_SPECIMEN_OBJECT_TYPE,
-        BP_SAMPLE_BLOCK_OBJECT_TYPE,
-        BP_SAMPLE_CASE_OBJECT_TYPE,
-    )
-    assert expected_xml == await as_xml_set_document([xml1, xml2], sample_types)
+    assert expected_xml == await as_xml_set_document([xml1, xml2], BP_SAMPLE_SCHEMA)

@@ -342,11 +342,11 @@ async def update_landing_page_xml(
     return XmlProcessor.write_xml(xml)
 
 
-async def as_xml_set_document(xml_docs: list[str], object_type: str | tuple[str, ...]) -> str:
+async def as_xml_set_document(xml_docs: list[str], schema_type: str) -> str:
     """Aggregate XML documents into a properly formatted set element document.
 
     :param xml_docs: List of XML document strings.
-    :param object_type: Object type (string or tuple of strings for sample types).
+    :param schema_type: XML schema type for the set document.
     :returns: Formatted XML document with set wrapper.
     """
 
@@ -354,24 +354,13 @@ async def as_xml_set_document(xml_docs: list[str], object_type: str | tuple[str,
         for xml_doc in xml_docs:
             yield xml_doc
 
-    if isinstance(object_type, tuple):
-        schema_type = BP_XML_OBJECT_CONFIG.get_schema_type(object_type[0])
-        parts = [
-            chunk
-            async for chunk in XmlDocumentProcessor.iter_xml_document(
-                BP_XML_OBJECT_CONFIG,
-                _iter_xml_docs(),
-                schema_type=schema_type,
-            )
-        ]
-    else:
-        parts = [
-            chunk
-            async for chunk in XmlDocumentProcessor.iter_xml_document(
-                BP_XML_OBJECT_CONFIG,
-                _iter_xml_docs(),
-                object_type=object_type,
-            )
-        ]
+    parts = [
+        chunk
+        async for chunk in XmlDocumentProcessor.iter_xml_document(
+            BP_XML_OBJECT_CONFIG,
+            _iter_xml_docs(),
+            schema_type=schema_type,
+        )
+    ]
 
     return b"".join(parts).decode("utf-8")
