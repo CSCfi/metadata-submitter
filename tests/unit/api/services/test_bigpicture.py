@@ -1,7 +1,7 @@
 """Tests for Bigpicture API service."""
 
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -63,7 +63,8 @@ async def test_upload_bp_metadata_xmls_uses_expected_object_keys_and_payloads():
         object=SimpleNamespace(get_xml_documents=get_xml_documents),
     )
 
-    await upload_bp_metadata_xmls(services, submission_id, "request-user", "oidc-token")
+    with patch("metadata_backend.api.services.bigpicture.XmlProcessor.validate_schema"):
+        await upload_bp_metadata_xmls(services, submission_id, "request-user", "oidc-token")
 
     expected_keys = {
         "DATASET_123/METADATA/dataset.xml.c4gh",
@@ -109,7 +110,7 @@ async def test_upload_bp_metadata_xmls_raises_on_upload_error():
 
     def get_xml_documents(_submission_id: str, object_type: str | tuple[str, ...]):
         async def _iter():
-            if object_type == "dataset":
+            if "dataset" in object_type:
                 yield "<DATASET/>"
 
         return _iter()
@@ -123,5 +124,6 @@ async def test_upload_bp_metadata_xmls_raises_on_upload_error():
 
     file_provider._add_file_to_bucket.side_effect = SystemException("upload failed")  # type: ignore[method-assign]
 
-    with pytest.raises(SystemException, match="upload failed"):
-        await upload_bp_metadata_xmls(services, "123", "request-user", "oidc-token")
+    with patch("metadata_backend.api.services.bigpicture.XmlProcessor.validate_schema"):
+        with pytest.raises(SystemException, match="upload failed"):
+            await upload_bp_metadata_xmls(services, "123", "request-user", "oidc-token")
