@@ -63,7 +63,7 @@ async def upload_bp_metadata_xmls(services: RESTAPIServices, submission_id: str,
         for object_type, filename in object_files:
             xml_docs = [xml_doc async for xml_doc in services.object.get_xml_documents(submission_id, object_type)]
             if not xml_docs:
-                continue
+                raise SystemException(f"No XML objects found for object type: {object_type}")
 
             # For landing page XML, update the REMS and DOI URL value from the registration.
             if object_type == BP_LANDING_PAGE_OBJECT_TYPE:
