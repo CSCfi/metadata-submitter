@@ -42,6 +42,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- (users) REMS and DOI values are added to landing page XML before it is uploaded to the S3 inbox
 - (users) PATCH /publish endpoint encrypts the submission XML files and uploads them to the SDA S3 inbox
 - Shared code to prepare SD and BP submission documentation between unit, integration and performance tests.
 - XML object are given unique names for BP performance tests to avoid duplicate object errors.
