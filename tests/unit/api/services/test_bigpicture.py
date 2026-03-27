@@ -1,7 +1,7 @@
 """Tests for Bigpicture API service."""
 
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -26,10 +26,17 @@ async def test_upload_bp_metadata_xmls_uses_expected_object_keys_and_payloads():
         "observation": ["<OBSERVATION/>"],
         "observer": ["<OBSERVER/>"],
         "staining": ["<STAINING/>"],
-        "landing_page": ["<LANDING_PAGE/>"],
+        "landing_page": [
+            '<LANDING_PAGE alias="1"><DATASET_REF alias="1"/><ATTRIBUTES>'
+            "<STRING_ATTRIBUTE><TAG>test</TAG><VALUE>test</VALUE></STRING_ATTRIBUTE>"
+            "</ATTRIBUTES></LANDING_PAGE>"
+        ],
         "organisation": ["<ORGANISATION/>"],
         "rems": ["<REMS/>"],
-        BP_SAMPLE_OBJECT_TYPES[0]: ["<BIOLOGICAL_BEING/>"],
+        BP_SAMPLE_OBJECT_TYPES[0]: ['<BIOLOGICAL_BEING alias="1"/>'],
+        BP_SAMPLE_OBJECT_TYPES[1]: [
+            '<SLIDE alias="1"><CREATED_FROM_REF alias="1"/><STAINING_INFORMATION_REF alias="1"/></SLIDE>'
+        ],
     }
 
     def get_xml_documents(_submission_id: str, object_type: str | tuple[str, ...]):
@@ -48,10 +55,16 @@ async def test_upload_bp_metadata_xmls_uses_expected_object_keys_and_payloads():
     services = SimpleNamespace(
         file_provider=file_provider,
         submission=SimpleNamespace(get_bucket=AsyncMock(return_value="test-bucket")),
+        registration=SimpleNamespace(
+            get_registration=AsyncMock(
+                return_value=SimpleNamespace(dataciteUrl="https://doi.test", remsUrl="https://rems.test")
+            )
+        ),
         object=SimpleNamespace(get_xml_documents=get_xml_documents),
     )
 
-    await upload_bp_metadata_xmls(services, submission_id, "request-user", "oidc-token")
+    with patch("metadata_backend.api.services.bigpicture.XmlProcessor.validate_schema"):
+        await upload_bp_metadata_xmls(services, submission_id, "request-user", "oidc-token")
 
     expected_keys = {
         "DATASET_123/METADATA/dataset.xml.c4gh",
@@ -72,6 +85,22 @@ async def test_upload_bp_metadata_xmls_uses_expected_object_keys_and_payloads():
     uploaded_keys = {call.kwargs["object_key"] for call in file_provider._add_file_to_bucket.await_args_list}
     assert uploaded_keys == expected_keys
 
+    uploaded_by_key = {
+        call.kwargs["object_key"]: call.kwargs["body"].decode("utf-8")
+        for call in file_provider._add_file_to_bucket.await_args_list
+    }
+
+    assert "<DATASET_SET>" in uploaded_by_key["DATASET_123/METADATA/dataset.xml.c4gh"]
+    assert "<SAMPLE_SET>" in uploaded_by_key["DATASET_123/METADATA/sample.xml.c4gh"]
+    assert '<BIOLOGICAL_BEING alias="1"/>' in uploaded_by_key["DATASET_123/METADATA/sample.xml.c4gh"]
+    assert '<SLIDE alias="1">' in uploaded_by_key["DATASET_123/METADATA/sample.xml.c4gh"]
+
+    landing_page_xml = uploaded_by_key["DATASET_123/LANDING_PAGE/landing_page.xml.c4gh"]
+    assert "<LANDING_PAGE_SET>" in landing_page_xml
+    assert "<REMS_ACCESS_LINK>https://rems.test</REMS_ACCESS_LINK>" in landing_page_xml
+    assert "<TAG>doi</TAG>" in landing_page_xml
+    assert "<VALUE>https://doi.test</VALUE>" in landing_page_xml
+
 
 async def test_upload_bp_metadata_xmls_raises_on_upload_error():
     """Upload errors in BP metadata upload helper should fail publish flow."""
@@ -81,7 +110,7 @@ async def test_upload_bp_metadata_xmls_raises_on_upload_error():
 
     def get_xml_documents(_submission_id: str, object_type: str | tuple[str, ...]):
         async def _iter():
-            if object_type == "dataset":
+            if "dataset" in object_type:
                 yield "<DATASET/>"
 
         return _iter()
@@ -89,10 +118,12 @@ async def test_upload_bp_metadata_xmls_raises_on_upload_error():
     services = SimpleNamespace(
         file_provider=file_provider,
         submission=SimpleNamespace(get_bucket=AsyncMock(return_value="test-bucket")),
+        registration=SimpleNamespace(get_registration=AsyncMock(return_value=None)),
         object=SimpleNamespace(get_xml_documents=get_xml_documents),
     )
 
     file_provider._add_file_to_bucket.side_effect = SystemException("upload failed")  # type: ignore[method-assign]
 
-    with pytest.raises(SystemException, match="upload failed"):
-        await upload_bp_metadata_xmls(services, "123", "request-user", "oidc-token")
+    with patch("metadata_backend.api.services.bigpicture.XmlProcessor.validate_schema"):
+        with pytest.raises(SystemException, match="upload failed"):
+            await upload_bp_metadata_xmls(services, "123", "request-user", "oidc-token")

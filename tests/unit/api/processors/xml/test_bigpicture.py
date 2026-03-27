@@ -47,6 +47,7 @@ from metadata_backend.api.processors.xml.bigpicture import (
     BP_STAINING_SCHEMA_AND_PATH,
     BP_XML_OBJECT_CONFIG,
     _get_xml_object_type_bp,
+    as_xml_set_document,
     update_landing_page_xml,
 )
 from metadata_backend.api.processors.xml.processors import XmlFileDocumentsProcessor, XmlObjectProcessor
@@ -483,7 +484,7 @@ def test_is_clinical_policy():
     assert not is_clinical_policy(non_clinical_processor)
 
 
-def test_update_landing_page_xml():
+async def test_update_landing_page_xml():
     xml = """<LANDING_PAGE alias="1">
   <DATASET_REF alias="1"/>
   <ATTRIBUTES>
@@ -513,4 +514,69 @@ def test_update_landing_page_xml():
 </LANDING_PAGE>
 """
 
-    assert expected_xml == update_landing_page_xml(xml, datacite_url=datacite_url, rems_url=rems_url)
+    assert expected_xml == await update_landing_page_xml(xml, datacite_url=datacite_url, rems_url=rems_url)
+
+
+async def test_as_xml_set_document_single_document():
+    """Test aggregating a single XML document into a set element."""
+    xml = """<DATASET alias="dataset_1" accession="BPDST001">
+  <TITLE>Test Dataset</TITLE>
+  <DESCRIPTION>A test dataset</DESCRIPTION>
+</DATASET>"""
+
+    expected_xml = """<?xml version='1.0' encoding='UTF-8'?>
+<DATASET_SET>
+  <DATASET alias="dataset_1" accession="BPDST001">
+    <TITLE>Test Dataset</TITLE>
+    <DESCRIPTION>A test dataset</DESCRIPTION>
+  </DATASET>
+</DATASET_SET>
+"""
+
+    assert expected_xml == await as_xml_set_document([xml], BP_DATASET_SCHEMA)
+
+
+async def test_as_xml_set_document_single_object_type():
+    """Test aggregating XML documents with a single object type into a set element."""
+    xml1 = """<ANNOTATION alias="ann_1" accession="BPANN001">
+  <DESCRIPTION>Annotation 1</DESCRIPTION>
+</ANNOTATION>"""
+    xml2 = """<ANNOTATION alias="ann_2" accession="BPANN002">
+  <DESCRIPTION>Annotation 2</DESCRIPTION>
+</ANNOTATION>"""
+
+    expected_xml = """<?xml version='1.0' encoding='UTF-8'?>
+<ANNOTATION_SET>
+  <ANNOTATION alias="ann_1" accession="BPANN001">
+    <DESCRIPTION>Annotation 1</DESCRIPTION>
+  </ANNOTATION>
+  <ANNOTATION alias="ann_2" accession="BPANN002">
+    <DESCRIPTION>Annotation 2</DESCRIPTION>
+  </ANNOTATION>
+</ANNOTATION_SET>
+"""
+
+    assert expected_xml == await as_xml_set_document([xml1, xml2], BP_ANNOTATION_SCHEMA)
+
+
+async def test_as_xml_set_document_tuple_object_type():
+    """Test aggregating XML documents with tuple object type (sample types) into a set element."""
+    xml1 = """<BIOLOGICAL_BEING alias="bb_1" accession="BPBB001">
+  <DESCRIPTION>Biological Being 1</DESCRIPTION>
+</BIOLOGICAL_BEING>"""
+    xml2 = """<SLIDE alias="slide_1" accession="BPSLD001">
+  <DESCRIPTION>Slide 1</DESCRIPTION>
+</SLIDE>"""
+
+    expected_xml = """<?xml version='1.0' encoding='UTF-8'?>
+<SAMPLE_SET>
+  <BIOLOGICAL_BEING alias="bb_1" accession="BPBB001">
+    <DESCRIPTION>Biological Being 1</DESCRIPTION>
+  </BIOLOGICAL_BEING>
+  <SLIDE alias="slide_1" accession="BPSLD001">
+    <DESCRIPTION>Slide 1</DESCRIPTION>
+  </SLIDE>
+</SAMPLE_SET>
+"""
+
+    assert expected_xml == await as_xml_set_document([xml1, xml2], BP_SAMPLE_SCHEMA)

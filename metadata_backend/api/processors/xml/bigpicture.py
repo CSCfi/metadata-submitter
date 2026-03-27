@@ -1,10 +1,11 @@
+from collections.abc import AsyncIterator
 from pathlib import Path
 
 from lxml import etree
 from lxml.etree import _Element as Element  # noqa
 
 from .models import XmlIdentifierPath, XmlObjectConfig, XmlObjectPaths, XmlReferencePaths, xml_schema_path
-from .processors import XmlObjectProcessor, XmlProcessor
+from .processors import XmlDocumentProcessor, XmlObjectProcessor, XmlProcessor
 
 BP_XML_SCHEMA_DIR = Path(__file__).parent.parent.parent.parent / "schemas" / "xml" / "bigpicture"
 
@@ -289,9 +290,10 @@ BP_XML_OBJECT_CONFIG = XmlObjectConfig(
 )
 
 
-def update_landing_page_xml(xml: str | bytes, *, datacite_url: str | None = None, rems_url: str | None = None) -> str:
-    """
-    Update landing page XML and return updated XML.
+async def update_landing_page_xml(
+    xml: str | bytes, *, datacite_url: str | None = None, rems_url: str | None = None
+) -> str:
+    """Update landing page XML and return updated XML.
 
     :param xml: The landing page XML.
     :param datacite_url: The DataCite URL.
@@ -338,3 +340,27 @@ def update_landing_page_xml(xml: str | bytes, *, datacite_url: str | None = None
         attribute_elem.append(value_elem)
 
     return XmlProcessor.write_xml(xml)
+
+
+async def as_xml_set_document(xml_docs: list[str], schema_type: str) -> str:
+    """Aggregate XML documents into a properly formatted set element document.
+
+    :param xml_docs: List of XML document strings.
+    :param schema_type: XML schema type for the set document.
+    :returns: Formatted XML document with set wrapper.
+    """
+
+    async def _iter_xml_docs() -> AsyncIterator[str]:
+        for xml_doc in xml_docs:
+            yield xml_doc
+
+    parts = [
+        chunk
+        async for chunk in XmlDocumentProcessor.iter_xml_document(
+            BP_XML_OBJECT_CONFIG,
+            _iter_xml_docs(),
+            schema_type=schema_type,
+        )
+    ]
+
+    return b"".join(parts).decode("utf-8")
