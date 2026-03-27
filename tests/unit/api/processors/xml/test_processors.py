@@ -44,7 +44,7 @@ def test_parse_xml_with_io_bytes():
 async def test_object_name():
     """Test object name functionality."""
     objects, _ = bp_objects(is_update=False)
-    docs_processor, _ = BigpictureObjectSubmissionService._create_processor(objects)
+    docs_processor, _, _ = BigpictureObjectSubmissionService._create_processor(objects)
 
     schema_type = BP_IMAGE_SCHEMA
     object_type = BP_IMAGE_OBJECT_TYPE

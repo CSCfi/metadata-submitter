@@ -42,6 +42,7 @@ from metadata_backend.api.processors.xml.bigpicture import (
     BP_XML_OBJECT_CONFIG,
     get_xml_object_type_schema,
 )
+from metadata_backend.api.processors.xml.datacite import DATACITE_OBJECT_TYPE
 from metadata_backend.api.processors.xml.processors import XmlDocumentProcessor, XmlProcessor
 from metadata_backend.api.services.accession import generate_bp_accession_prefix
 from metadata_backend.conf.conf import API_PREFIX
@@ -324,7 +325,7 @@ async def test_submission_bp(nbis_client):
 
             # Assert that non-image and non-dataset metadata object rows have not been changed.
             for created_obj in created_objects:
-                if created_obj.objectType not in [BP_DATASET_OBJECT_TYPE, BP_IMAGE_OBJECT_TYPE]:
+                if created_obj.objectType not in [BP_DATASET_OBJECT_TYPE, BP_IMAGE_OBJECT_TYPE, DATACITE_OBJECT_TYPE]:
                     updated_obj = updated_object_lookup.get((created_obj.objectType, created_obj.name))
                     assert updated_obj is not None, (
                         f"Updated '{created_obj.objectType}' metadata object '{created_obj.name}' not found"

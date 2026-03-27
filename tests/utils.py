@@ -116,7 +116,7 @@ def _bp_submission_documents(
     """
 
     objects, files = bp_objects(is_update)
-    processor, _ = BigpictureObjectSubmissionService._create_processor(objects)
+    processor, _, _ = BigpictureObjectSubmissionService._create_processor(objects)
 
     new_object_names: BigpictureObjectNames = {}
 
