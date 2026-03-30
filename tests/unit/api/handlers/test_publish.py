@@ -10,7 +10,7 @@ from metadata_backend.api.models.datacite import Subject
 from metadata_backend.api.models.models import Registration
 from metadata_backend.api.models.submission import Rems, Submission, SubmissionMetadata, SubmissionWorkflow
 from metadata_backend.api.services.file import FileProviderService
-from metadata_backend.conf.conf import API_PREFIX
+from metadata_backend.conf.deployment import deployment_config
 from metadata_backend.database.postgres.models import FileEntity
 from metadata_backend.database.postgres.repositories.submission import (
     SUB_FIELD_METADATA,
@@ -49,6 +49,7 @@ from .common import SUBMISSION_METADATA
 
 async def test_publish_submission_sd(csc_client, submission_repository, object_repository, file_repository):
     """Test publishing of CSC submission."""
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
 
     # REMS information.
     rems = Rems(
@@ -75,7 +76,7 @@ async def test_publish_submission_sd(csc_client, submission_repository, object_r
         # Create submission without bucket.
         submission_entity = create_submission_entity()
         submission_id = await submission_repository.add_submission(submission_entity)
-        response = csc_client.patch(f"{API_PREFIX}/publish/{submission_id}")
+        response = csc_client.patch(f"{api_prefix_v1}/publish/{submission_id}")
         data = response.json()
         assert response.status_code == 400
         assert data["detail"] == f"Submission '{submission_id}' is not linked to any bucket."
@@ -114,7 +115,7 @@ async def test_publish_submission_sd(csc_client, submission_repository, object_r
         # Test edge case where file service has not received any files.
         submission_id = await submission_repository.add_submission(submission_entity)
         mock_file_provider.return_value = FileProviderService.Files(root=[])
-        response = csc_client.patch(f"{API_PREFIX}/publish/{submission_id}")
+        response = csc_client.patch(f"{api_prefix_v1}/publish/{submission_id}")
         data = response.json()
         assert response.status_code == 400
         assert data["detail"] == f"Submission '{submission_id}' does not have any data files."
@@ -125,7 +126,7 @@ async def test_publish_submission_sd(csc_client, submission_repository, object_r
         )
 
         # Publish submission.
-        response = csc_client.patch(f"{API_PREFIX}/publish/{submission_id}")
+        response = csc_client.patch(f"{api_prefix_v1}/publish/{submission_id}")
         data = response.json()
         assert response.status_code == 200
         assert data == {"submissionId": submission_id}
@@ -173,6 +174,7 @@ async def test_publish_submission_sd(csc_client, submission_repository, object_r
 
 async def test_publish_submission_bp(nbis_client, submission_repository, object_repository, file_repository):
     """Test publishing of BP submission."""
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
 
     # REMS information.
     rems = Rems(
@@ -252,7 +254,7 @@ async def test_publish_submission_bp(nbis_client, submission_repository, object_
 
         # Publish submission.
         response = nbis_client.patch(
-            f"{API_PREFIX}/publish/{submission_id}", headers={"Authorization": "Bearer oidc-token"}
+            f"{api_prefix_v1}/publish/{submission_id}", headers={"Authorization": "Bearer oidc-token"}
         )
         data = response.json()
         assert response.status_code == 200
@@ -278,7 +280,7 @@ async def test_publish_submission_bp(nbis_client, submission_repository, object_
         mock_upload_bp_metadata.assert_awaited_once_with(ANY, submission_id, "mock-userid", "oidc-token")
 
         # Assert registrations.
-        response = nbis_client.get(f"{API_PREFIX}/submissions/{submission_id}/registrations")
+        response = nbis_client.get(f"{api_prefix_v1}/submissions/{submission_id}/registrations")
         data = response.json()
         assert response.status_code == 200
         registration = Registration.model_validate(data)
@@ -296,6 +298,7 @@ async def test_publish_submission_bp_fails_when_metadata_upload_fails(
     nbis_client, submission_repository, object_repository, file_repository
 ):
     """BP publish should fail and remain unpublished if metadata encryption/upload fails."""
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
 
     rems = Rems(
         organizationId=MOCK_REMS_DEFAULT_ORGANISATION_ID,
@@ -350,7 +353,7 @@ async def test_publish_submission_bp_fails_when_metadata_upload_fails(
         mock_check_files_exist.return_value = []
 
         response = nbis_client.patch(
-            f"{API_PREFIX}/publish/{submission_id}", headers={"Authorization": "Bearer oidc-token"}
+            f"{api_prefix_v1}/publish/{submission_id}", headers={"Authorization": "Bearer oidc-token"}
         )
         data = response.json()
         assert response.status_code == 500

@@ -3,7 +3,7 @@
 from unittest.mock import patch
 
 from metadata_backend.api.services.file import FileProviderService
-from metadata_backend.conf.conf import API_PREFIX
+from metadata_backend.conf.deployment import deployment_config
 from tests.unit.patches.keystone_service import (
     patch_keystone_delete_ec2,
     patch_keystone_get_ec2,
@@ -15,6 +15,7 @@ from tests.unit.patches.user import patch_verify_authorization, patch_verify_use
 async def test_get_project_buckets(csc_client) -> None:
     """Test getting project buckets."""
 
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
     project_id = "PRJ123"
 
     with (
@@ -33,7 +34,7 @@ async def test_get_project_buckets(csc_client) -> None:
         ),
     ):
         response = csc_client.get(
-            f"{API_PREFIX}/buckets?projectId={project_id}",
+            f"{api_prefix_v1}/buckets?projectId={project_id}",
             cookies={"oidc_access_token": "oidc-token"},
         )
         assert response.status_code == 200
@@ -46,6 +47,7 @@ async def test_get_project_buckets(csc_client) -> None:
 async def test_get_files_in_bucket(csc_client) -> None:
     """Test getting files in a bucket."""
 
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
     project_id = "PRJ123"
     bucket_name = "bucket1"
     file1 = FileProviderService.File(path="S3://bucket1/file1.txt", bytes=100)
@@ -59,7 +61,7 @@ async def test_get_files_in_bucket(csc_client) -> None:
             return_value=False,
         ),
     ):
-        response = csc_client.get(f"{API_PREFIX}/buckets/{bucket_name}/files?projectId={project_id}")
+        response = csc_client.get(f"{api_prefix_v1}/buckets/{bucket_name}/files?projectId={project_id}")
         assert response.status_code == 400
 
     with (
@@ -70,7 +72,7 @@ async def test_get_files_in_bucket(csc_client) -> None:
             return_value=FileProviderService.Files([file1, file2]),
         ),
     ):
-        response = csc_client.get(f"{API_PREFIX}/buckets/{bucket_name}/files?projectId={project_id}")
+        response = csc_client.get(f"{api_prefix_v1}/buckets/{bucket_name}/files?projectId={project_id}")
         assert response.status_code == 200
 
         files = response.json()
@@ -82,6 +84,7 @@ async def test_get_files_in_bucket(csc_client) -> None:
 async def test_grant_access_to_bucket(csc_client) -> None:
     """Test granting access to a bucket."""
 
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
     project_id = "PRJ123"
     bucket_name = "bucket1"
 
@@ -101,7 +104,7 @@ async def test_grant_access_to_bucket(csc_client) -> None:
         ),
     ):
         response = csc_client.put(
-            f"{API_PREFIX}/buckets/{bucket_name}?projectId={project_id}",
+            f"{api_prefix_v1}/buckets/{bucket_name}?projectId={project_id}",
             cookies={"oidc_access_token": "oidc-token"},
         )
         assert response.status_code == 200
@@ -110,6 +113,7 @@ async def test_grant_access_to_bucket(csc_client) -> None:
 async def test_check_bucket_access(csc_client) -> None:
     """Test checking access to a bucket."""
 
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
     project_id = "PRJ123"
     bucket_name = "bucket1"
 
@@ -121,7 +125,7 @@ async def test_check_bucket_access(csc_client) -> None:
             return_value=True,
         ),
     ):
-        response = csc_client.head(f"{API_PREFIX}/buckets/{bucket_name}?projectId={project_id}")
+        response = csc_client.head(f"{api_prefix_v1}/buckets/{bucket_name}?projectId={project_id}")
         assert response.status_code == 200
 
     with (
@@ -132,5 +136,5 @@ async def test_check_bucket_access(csc_client) -> None:
             return_value=False,
         ),
     ):
-        response = csc_client.head(f"{API_PREFIX}/buckets/{bucket_name}?projectId={project_id}")
+        response = csc_client.head(f"{api_prefix_v1}/buckets/{bucket_name}?projectId={project_id}")
         assert response.status_code == 400

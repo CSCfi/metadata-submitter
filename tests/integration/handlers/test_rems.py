@@ -3,7 +3,7 @@
 import logging
 
 from metadata_backend.api.models.rems import Organization
-from tests.integration.conf import rems_url
+from metadata_backend.conf.deployment import deployment_config
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
@@ -12,7 +12,7 @@ LOG.setLevel(logging.DEBUG)
 async def test_rems(sd_client, secret_env):
     """Test REMS handler."""
 
-    async with sd_client.get(f"{rems_url}?") as resp:
+    async with sd_client.get(f"{deployment_config().API_PREFIX_V1}/rems?") as resp:
         result = await resp.json()
         organisations = [Organization.model_validate(o) for o in result]
 

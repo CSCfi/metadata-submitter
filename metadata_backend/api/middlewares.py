@@ -13,7 +13,7 @@ from ..api.errors import problem_response
 from ..api.exceptions import AppException, SystemException, UnauthorizedUserException
 from ..api.models.models import User
 from ..api.services.auth import AuthService
-from ..conf.conf import API_PREFIX
+from ..conf.deployment import deployment_config
 from ..helpers.logger import LOG
 from .models.app import app_state
 
@@ -35,6 +35,7 @@ class SessionMiddleware:
     def __init__(self, app: ASGIApp, session_context: ContextVar[AsyncSession]):
         self.app = app
         self.session_context = session_context
+        self.api_prefix_v1 = deployment_config().API_PREFIX_V1
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         path = scope.get("path", "")
@@ -43,7 +44,7 @@ class SessionMiddleware:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
         # Only intercept API requests.
-        elif not path.startswith(API_PREFIX):
+        elif not path.startswith(self.api_prefix_v1):
             await self.app(scope, receive, send)
         else:
             method = scope["method"]
@@ -115,6 +116,7 @@ class AuthMiddleware:
     def __init__(self, app: ASGIApp, auth_service: AuthService):
         self.app = app
         self.auth_service = auth_service
+        self.api_prefix_v1 = deployment_config().API_PREFIX_V1
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         path = scope.get("path", "")
@@ -123,7 +125,7 @@ class AuthMiddleware:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
         # Only intercept API requests.
-        elif not path.startswith(API_PREFIX):
+        elif not path.startswith(self.api_prefix_v1):
             await self.app(scope, receive, send)
         else:
             method = scope["method"]

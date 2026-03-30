@@ -45,7 +45,7 @@ from metadata_backend.api.processors.xml.bigpicture import (
 from metadata_backend.api.processors.xml.datacite import DATACITE_OBJECT_TYPE
 from metadata_backend.api.processors.xml.processors import XmlDocumentProcessor, XmlProcessor
 from metadata_backend.api.services.accession import generate_bp_accession_prefix
-from metadata_backend.conf.conf import API_PREFIX
+from metadata_backend.conf.deployment import deployment_config
 from tests.unit.patches.user import (
     MOCK_PROJECT_ID,
     patch_get_user_projects,
@@ -79,6 +79,7 @@ def prepare_file_data_bp(_files) -> list[tuple[str, tuple[str, BinaryIO, str]]]:
 async def test_submission_sd(csc_client):
     """Test SD submission."""
 
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
     project_id = MOCK_PROJECT_ID
 
     submission_dict = sd_submission_dict()
@@ -88,13 +89,13 @@ async def test_submission_sd(csc_client):
 
     with patch_verify_user_project, patch_verify_authorization:
         # Check that submission does not exists.
-        response = csc_client.head(f"{API_PREFIX}/submit/{submission_name}?projectId={project_id}")
+        response = csc_client.head(f"{api_prefix_v1}/submit/{submission_name}?projectId={project_id}")
         assert response.status_code == 404
 
         # Test create submission.
         #
 
-        response = csc_client.post(f"{API_PREFIX}/submit?projectId={project_id}", files=file_data)
+        response = csc_client.post(f"{api_prefix_v1}/submit?projectId={project_id}", files=file_data)
         assert response.status_code == 200
         submission = Submission.model_validate(response.json())
 
@@ -113,7 +114,7 @@ async def test_submission_sd(csc_client):
         assert_datacite(submission.metadata, saved=True)
 
         # Test get submission document.
-        response = csc_client.get(f"{API_PREFIX}/submissions/{submission_id}")
+        response = csc_client.get(f"{api_prefix_v1}/submissions/{submission_id}")
         assert response.status_code == 200
         assert submission == Submission.model_validate(response.json())
 
@@ -134,10 +135,10 @@ async def test_submission_sd(csc_client):
 
         file_data = prepare_file_data_sd(submission_dict)
 
-        response = csc_client.patch(f"{API_PREFIX}/submit/{submission_id}?projectId={project_id}", files=file_data)
+        response = csc_client.patch(f"{api_prefix_v1}/submit/{submission_id}?projectId={project_id}", files=file_data)
         assert response.status_code == 200
 
-        response = csc_client.get(f"{API_PREFIX}/submissions/{submission_id}")
+        response = csc_client.get(f"{api_prefix_v1}/submissions/{submission_id}")
         assert response.status_code == 200
         await _assert_update(response.json())
 
@@ -147,27 +148,27 @@ async def test_submission_sd(csc_client):
 
         file_data = prepare_file_data_sd({"title": submission.title, "description": submission.description})
 
-        response = csc_client.patch(f"{API_PREFIX}/submit/{submission_id}?projectId={project_id}", files=file_data)
+        response = csc_client.patch(f"{api_prefix_v1}/submit/{submission_id}?projectId={project_id}", files=file_data)
         assert response.status_code == 200
 
-        response = csc_client.get(f"{API_PREFIX}/submissions/{submission_id}")
+        response = csc_client.get(f"{api_prefix_v1}/submissions/{submission_id}")
         assert response.status_code == 200
         await _assert_update(response.json())
 
         # Test set submission bucket.
 
         file_data = prepare_file_data_sd({"bucket": f"bucket_{uuid.uuid4()}"})
-        response = csc_client.patch(f"{API_PREFIX}/submit/{submission_id}?projectId={project_id}", files=file_data)
+        response = csc_client.patch(f"{api_prefix_v1}/submit/{submission_id}?projectId={project_id}", files=file_data)
         assert response.status_code == 200
 
-        response = csc_client.get(f"{API_PREFIX}/submissions/{submission_id}")
+        response = csc_client.get(f"{api_prefix_v1}/submissions/{submission_id}")
         assert response.status_code == 200
         await _assert_update(response.json())
 
         # Test update of submission bucket (not allowed).
 
         file_data = prepare_file_data_sd({"bucket": f"bucket_{uuid.uuid4()}"})
-        response = csc_client.patch(f"{API_PREFIX}/submit/{submission_id}?projectId={project_id}", files=file_data)
+        response = csc_client.patch(f"{api_prefix_v1}/submit/{submission_id}?projectId={project_id}", files=file_data)
         await _assert_not_allowed(response)
 
         # Test update of workflow (not allowed).
@@ -177,18 +178,19 @@ async def test_submission_sd(csc_client):
                 "workflow": SubmissionWorkflow.BP.value,
             }
         )
-        response = csc_client.patch(f"{API_PREFIX}/submit/{submission_id}?projectId={project_id}", files=file_data)
+        response = csc_client.patch(f"{api_prefix_v1}/submit/{submission_id}?projectId={project_id}", files=file_data)
         await _assert_not_allowed(response)
 
         # Test update of project id (not allowed).
         file_data = prepare_file_data_sd({"projectId": f"project_{uuid.uuid4()}"})
-        response = csc_client.patch(f"{API_PREFIX}/submit/{submission_id}?projectId={project_id}", files=file_data)
+        response = csc_client.patch(f"{api_prefix_v1}/submit/{submission_id}?projectId={project_id}", files=file_data)
         await _assert_not_allowed(response)
 
 
 async def test_submission_bp(nbis_client):
     """Test Bigpicture submission."""
 
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
     project_id = MOCK_PROJECT_ID
     xml_config = BP_XML_OBJECT_CONFIG
 
@@ -226,11 +228,11 @@ async def test_submission_bp(nbis_client):
 
         with patch_get_user_projects, patch_verify_user_project, patch_verify_authorization:
             # Check that submission does not exists.
-            response = nbis_client.head(f"{API_PREFIX}/submit/{submission_name}")
+            response = nbis_client.head(f"{api_prefix_v1}/submit/{submission_name}")
             assert response.status_code == 404
 
             # Test create submission.
-            response = nbis_client.post(f"{API_PREFIX}/submit", files=file_data)
+            response = nbis_client.post(f"{api_prefix_v1}/submit", files=file_data)
             assert response.status_code == 200
             submission = Submission.model_validate(response.json())
             submission_id = submission.submissionId
@@ -266,10 +268,10 @@ async def test_submission_bp(nbis_client):
                 object_names[BP_IMAGE_SCHEMA][BP_IMAGE_OBJECT_TYPE]["3"],
             ]
 
-            response = nbis_client.patch(f"{API_PREFIX}/submit/{submission_id}", files=file_data)
+            response = nbis_client.patch(f"{api_prefix_v1}/submit/{submission_id}", files=file_data)
             assert response.status_code == 200
 
-            response = nbis_client.get(f"{API_PREFIX}/submissions/{submission_id}")
+            response = nbis_client.get(f"{api_prefix_v1}/submissions/{submission_id}")
             assert response.status_code == 200
             submission = Submission.model_validate(response.json())
 
@@ -362,6 +364,7 @@ async def test_submission_bp(nbis_client):
 async def test_missing_object_type_submission_bp(nbis_client):
     """Test missing object type in Bigpicture submissions."""
 
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
     is_datacite = True
 
     # Test missing mandatory XML.
@@ -374,7 +377,7 @@ async def test_missing_object_type_submission_bp(nbis_client):
         file_data = prepare_file_data_bp(files)
         with patch_get_user_projects, patch_verify_user_project, patch_verify_authorization:
             # Test create submission.
-            response = nbis_client.post(f"{API_PREFIX}/submit", files=file_data)
+            response = nbis_client.post(f"{api_prefix_v1}/submit", files=file_data)
             assert response.status_code == 400
             problem_json = response.json()
             assert problem_json["detail"] == "User error"
@@ -405,6 +408,7 @@ async def assert_bp_rems(submission):
 
 
 async def assert_bp_metadata_objects(nbis_client, expected_submission, object_types, sample_object_types, xml_config):
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
     project_id = expected_submission.projectId
     submission_id = expected_submission.submissionId
     submission_name = expected_submission.name
@@ -442,7 +446,7 @@ async def assert_bp_metadata_objects(nbis_client, expected_submission, object_ty
             raise e
 
     # Test get submission document.
-    response = nbis_client.get(f"{API_PREFIX}/submissions/{submission_id}")
+    response = nbis_client.get(f"{api_prefix_v1}/submissions/{submission_id}")
     assert response.status_code == 200
     assert expected_submission == Submission.model_validate(response.json())
 
@@ -461,9 +465,9 @@ async def assert_bp_metadata_objects(nbis_client, expected_submission, object_ty
             assert set(object_names) == set(o.name for o in objects if o.objectType == object_type)
 
         if is_submission_name:
-            docs_url = f"{API_PREFIX}/submissions/{submission_id_or_name}/objects/docs?projectId={project_id}&"
+            docs_url = f"{api_prefix_v1}/submissions/{submission_id_or_name}/objects/docs?projectId={project_id}&"
         else:
-            docs_url = f"{API_PREFIX}/submissions/{submission_id_or_name}/objects/docs?"
+            docs_url = f"{api_prefix_v1}/submissions/{submission_id_or_name}/objects/docs?"
 
         for object_type, object_names in object_types.items():
             schema_type = xml_config.get_schema_type(object_type)
@@ -513,7 +517,8 @@ async def assert_bp_metadata_objects(nbis_client, expected_submission, object_ty
 
 
 async def assert_bp_files(nbis_client, submission_id, is_update=False):
-    files_url = f"{API_PREFIX}/submissions/{submission_id}/files"
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+    files_url = f"{api_prefix_v1}/submissions/{submission_id}/files"
     response = nbis_client.get(files_url)
     assert response.status_code == 200
     files = Files.model_validate(response.json()).root
@@ -569,10 +574,11 @@ async def assert_bp_files(nbis_client, submission_id, is_update=False):
 
 
 async def list_metadata_objects(client, project_id, is_submission_name, submission_id_or_name) -> list[Object]:
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
     if is_submission_name:
-        objects_url = f"{API_PREFIX}/submissions/{submission_id_or_name}/objects?projectId={project_id}"
+        objects_url = f"{api_prefix_v1}/submissions/{submission_id_or_name}/objects?projectId={project_id}"
     else:
-        objects_url = f"{API_PREFIX}/submissions/{submission_id_or_name}/objects"
+        objects_url = f"{api_prefix_v1}/submissions/{submission_id_or_name}/objects"
     response = client.get(objects_url)
     assert response.status_code == 200
     objects = Objects.model_validate(response.json()).root

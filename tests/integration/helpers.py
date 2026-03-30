@@ -10,11 +10,7 @@ import aiohttp
 
 from metadata_backend.api.models.models import Objects, Registration
 from metadata_backend.api.models.submission import Submission
-
-from .conf import (
-    publish_url,
-    submissions_url,
-)
+from metadata_backend.conf.deployment import deployment_config
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
@@ -22,7 +18,8 @@ LOG.setLevel(logging.DEBUG)
 
 async def patch_submission(sess: aiohttp.ClientSession, submission_id: str, submission_dict: dict[str, Any]):
     """Change submission document using /submissions endpoint."""
-    async with sess.patch(f"{submissions_url}/{submission_id}", json=submission_dict) as resp:
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+    async with sess.patch(f"{api_prefix_v1}/submissions/{submission_id}", json=submission_dict) as resp:
         assert resp.status == 200
         ans_patch = await resp.json()
         assert ans_patch["submissionId"] == submission_id, "submission ID error"
@@ -36,7 +33,8 @@ async def patch_submission_bucket(sess: aiohttp.ClientSession, submission_id: st
 
 async def publish_submission(sess: aiohttp.ClientSession, submission_id: str, *, no_files: bool = True):
     """Publish submission."""
-    async with sess.patch(f"{publish_url}/{submission_id}?no_files={str(no_files).lower()}") as resp:
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+    async with sess.patch(f"{api_prefix_v1}/publish/{submission_id}?no_files={str(no_files).lower()}") as resp:
         result = await resp.json()
         assert resp.status == 200, f"Publish failed with status {resp.status}: {result}"
         assert result["submissionId"] == submission_id
@@ -44,7 +42,8 @@ async def publish_submission(sess: aiohttp.ClientSession, submission_id: str, *,
 
 async def get_submission(sess: aiohttp.ClientSession, submission_id: str) -> Submission:
     """Get submission document with the given submission id."""
-    async with sess.get(f"{submissions_url}/{submission_id}") as resp:
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+    async with sess.get(f"{api_prefix_v1}/submissions/{submission_id}") as resp:
         data = await resp.json()
         assert resp.status == 200, f"Expected status 200, got {resp.status}: {data}"
         return Submission.model_validate(data)
@@ -52,7 +51,8 @@ async def get_submission(sess: aiohttp.ClientSession, submission_id: str) -> Sub
 
 async def get_objects(sess: aiohttp.ClientSession, submission_id: str) -> Objects:
     """Get submission objects with the given submission id."""
-    async with sess.get(f"{submissions_url}/{submission_id}/objects") as resp:
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+    async with sess.get(f"{api_prefix_v1}/submissions/{submission_id}/objects") as resp:
         data = await resp.json()
         assert resp.status == 200, f"Expected status 200, got {resp.status}: {data}"
         return Objects.model_validate(data)
@@ -69,6 +69,7 @@ async def get_docs(
 ) -> str:
     """Get submission documents with the given submission id."""
 
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
     params = {
         "objectType": object_type,
         "schemaType": schema_type,
@@ -77,7 +78,7 @@ async def get_docs(
     }
     params = {k: v for k, v in params.items() if v is not None}
 
-    async with sess.get(f"{submissions_url}/{submission_id}/objects/docs", params=params) as resp:
+    async with sess.get(f"{api_prefix_v1}/submissions/{submission_id}/objects/docs", params=params) as resp:
         data = await resp.text()
         assert resp.status == 200
         return data
@@ -85,7 +86,8 @@ async def get_docs(
 
 async def get_registrations(sess: aiohttp.ClientSession, submission_id: str) -> Registration:
     """Get registrations with the given submission id."""
-    async with sess.get(f"{submissions_url}/{submission_id}/registrations") as resp:
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+    async with sess.get(f"{api_prefix_v1}/submissions/{submission_id}/registrations") as resp:
         data = await resp.json()
         assert resp.status == 200, f"Expected status 200, got {resp.status}: {data}"
         return Registration.model_validate(data)

@@ -6,7 +6,7 @@ from typing import Any
 
 from fastapi.testclient import TestClient
 
-from metadata_backend.conf.conf import API_PREFIX
+from metadata_backend.conf.deployment import deployment_config
 from tests.unit.patches.user import patch_verify_authorization, patch_verify_user_project
 
 SUBMISSION_METADATA = {
@@ -70,7 +70,7 @@ async def sd_submission(
             submission["description"] = description
             submission["projectId"] = project_id
 
-        response = client.post(f"{API_PREFIX}/submissions", json=submission)
+        response = client.post(f"{deployment_config().API_PREFIX_V1}/submissions", json=submission)
         response.raise_for_status()
 
         submission_id = response.json()["submissionId"]
@@ -86,6 +86,6 @@ async def get_submission(client: TestClient, submission_id) -> dict[str, Any]:
         patch_verify_user_project,
         patch_verify_authorization,
     ):
-        response = client.get(f"{API_PREFIX}/submissions/{submission_id}")
+        response = client.get(f"{deployment_config().API_PREFIX_V1}/submissions/{submission_id}")
         response.raise_for_status()
         return response.json()

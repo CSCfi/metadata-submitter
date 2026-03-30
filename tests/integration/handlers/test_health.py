@@ -3,6 +3,7 @@
 import logging
 
 from metadata_backend.api.models.health import Health, ServiceHealth
+from metadata_backend.conf.deployment import deployment_config
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
@@ -14,7 +15,7 @@ class TestPublicEndpoints:
     async def test_healthcheck_csc(self, sd_client, monkeypatch):
         """Test healthcheck endpoint for CSC deployment."""
 
-        async with sd_client.get("/health") as resp:
+        async with sd_client.get(f"{deployment_config().API_PREFIX}/health") as resp:
             assert resp.status == 200
             result = await resp.json()
             health = ServiceHealth.model_validate(result)
@@ -47,7 +48,7 @@ class TestPublicEndpoints:
 
         monkeypatch.setenv("DEPLOYMENT", "NBIS")
 
-        async with nbis_client.get("/health") as resp:
+        async with nbis_client.get(f"{deployment_config().API_PREFIX}/health") as resp:
             assert resp.status == 200
             result = await resp.json()
             health = ServiceHealth.model_validate(result)

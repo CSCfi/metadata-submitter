@@ -8,11 +8,12 @@ from starlette import status
 
 from metadata_backend.api.models.models import Project, User
 from metadata_backend.api.services.project import CscProjectService
-from metadata_backend.conf.conf import API_PREFIX
+from metadata_backend.conf.deployment import deployment_config
 from tests.unit.patches.user import MOCK_PROJECT_ID, MOCK_USER_ID, MOCK_USER_NAME, patch_verify_authorization
 
 
 async def test_get_user_csc(csc_client) -> None:
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
     mock_connection = MagicMock()
     mock_connection.__enter__.return_value = mock_connection  # context manager support
     mock_connection.__exit__.return_value = None
@@ -34,7 +35,7 @@ async def test_get_user_csc(csc_client) -> None:
         ),
         patch.object(CscProjectService, "_get_connection", return_value=mock_connection),
     ):
-        response = csc_client.get(f"{API_PREFIX}/users")
+        response = csc_client.get(f"{api_prefix_v1}/users")
         assert response.status_code == status.HTTP_200_OK
 
         user = User(**response.json())
@@ -44,8 +45,9 @@ async def test_get_user_csc(csc_client) -> None:
 
 
 async def test_get_user_nbis(nbis_client) -> None:
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
     with patch_verify_authorization:
-        response = nbis_client.get(f"{API_PREFIX}/users")
+        response = nbis_client.get(f"{api_prefix_v1}/users")
         assert response.status_code == status.HTTP_200_OK
 
         user = User(**response.json())

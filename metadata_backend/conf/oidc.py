@@ -5,6 +5,8 @@ from urllib.parse import urljoin
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
+from metadata_backend.conf.deployment import deployment_config
+
 
 class OIDCConfig(BaseSettings):
     """OIDC external service configuration."""
@@ -34,7 +36,7 @@ class OIDCConfig(BaseSettings):
     @property
     def callback_url(self) -> str:
         """Get callback URL."""
-        return urljoin(self.BASE_URL, "callback")
+        return urljoin(self.BASE_URL, f"{deployment_config().API_PREFIX}/callback")
 
 
 def oidc_config() -> OIDCConfig:

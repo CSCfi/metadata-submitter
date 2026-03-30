@@ -3,7 +3,7 @@
 import logging
 
 from metadata_backend.api.models.rems import Organization
-from metadata_backend.conf.conf import API_PREFIX
+from metadata_backend.conf.deployment import deployment_config
 from tests.unit.patches.user import patch_verify_authorization, patch_verify_user_project
 
 from ...patches.rems_service import patch_rems_get_licenses, patch_rems_get_workflows
@@ -15,6 +15,7 @@ LOG.setLevel(logging.DEBUG)
 
 async def test_rems(csc_client):
     """Test /rems endpoint."""
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
 
     rems_workflows, rems_licenses = create_workflow_and_license()
 
@@ -24,7 +25,7 @@ async def test_rems(csc_client):
         patch_rems_get_workflows(rems_workflows),
         patch_rems_get_licenses(rems_licenses),
     ):
-        response = csc_client.get(f"{API_PREFIX}/rems")
+        response = csc_client.get(f"{api_prefix_v1}/rems")
         result = response.json()
         assert response.status_code == 200
 
