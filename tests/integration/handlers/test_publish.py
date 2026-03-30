@@ -5,13 +5,11 @@ import logging
 
 from aiohttp import ClientSession
 
+from metadata_backend.conf.deployment import deployment_config
 from tests.integration.conf import (
     mock_inbox_url,
     mock_s3_region,
     mock_user,
-    publish_url,
-    submissions_url,
-    submit_url,
 )
 from tests.integration.helpers import (
     add_bucket,
@@ -99,16 +97,20 @@ async def test_publish_bp(nbis_client, bp_submission):
 async def assert_immutable_after_publish_sd(client: ClientSession, submission_id: str):
     """Assert that the submission can't be changes after publishing."""
 
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+
     # Check that submission can't be changed.
-    async with client.patch(f"{submissions_url}/{submission_id}", data=json.dumps({"name": "new_name"})) as resp:
+    async with client.patch(
+        f"{api_prefix_v1}/submissions/{submission_id}", data=json.dumps({"name": "new_name"})
+    ) as resp:
         assert resp.status == 400
 
     # Check that submission can't be re-published.
-    async with client.patch(f"{publish_url}/{submission_id}") as resp:
+    async with client.patch(f"{api_prefix_v1}/publish/{submission_id}") as resp:
         assert resp.status == 400
 
     # Check that submission can't be deleted.
-    async with client.delete(f"{submissions_url}/{submission_id}") as resp:
+    async with client.delete(f"{api_prefix_v1}/submissions/{submission_id}") as resp:
         assert resp.status == 400
 
 
@@ -121,15 +123,17 @@ async def assert_immutable_after_publish_bp(
 ):
     """Assert that the submission can't be changes after publishing."""
 
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+
     # Check that submission can't be changed.
     _, _, files = bp_update_documents(submission_name, object_names, is_datacite)
-    async with client.patch(f"{submit_url}/{submission_id}", data=files) as resp:
+    async with client.patch(f"{api_prefix_v1}/submit/{submission_id}", data=files) as resp:
         assert resp.status == 400
 
     # Check that submission can't be re-published.
-    async with client.patch(f"{publish_url}/{submission_id}") as resp:
+    async with client.patch(f"{api_prefix_v1}/publish/{submission_id}") as resp:
         assert resp.status == 400
 
     # Check that submission can't be deleted.
-    async with client.delete(f"{submit_url}/{submission_id}") as resp:
+    async with client.delete(f"{api_prefix_v1}/submit/{submission_id}") as resp:
         assert resp.status == 400

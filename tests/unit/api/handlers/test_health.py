@@ -5,6 +5,7 @@ import uuid
 from unittest.mock import AsyncMock, patch
 
 from metadata_backend.api.models.health import Health, ServiceHealth
+from metadata_backend.conf.deployment import deployment_config
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
@@ -12,6 +13,7 @@ LOG.setLevel(logging.DEBUG)
 
 async def test_get_health(csc_client):
     """Test health check endpoint."""
+    api_prefix = deployment_config().API_PREFIX
 
     # Test mock response.
 
@@ -25,7 +27,7 @@ async def test_get_health(csc_client):
             new_callable=AsyncMock,
             side_effect=mock_get_handler_health,
         ):
-            response = csc_client.get("/health")
+            response = csc_client.get(f"{api_prefix}/health")
             assert response.status_code == 200
             result = response.json()
             health = ServiceHealth.model_validate(result)
@@ -35,7 +37,7 @@ async def test_get_health(csc_client):
 
     # Test real response.
 
-    response = csc_client.get("/health")
+    response = csc_client.get(f"{api_prefix}/health")
     assert response.status_code == 200
     result = response.json()
     health = ServiceHealth.model_validate(result)

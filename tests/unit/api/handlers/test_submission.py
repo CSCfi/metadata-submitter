@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 
 from metadata_backend.api.handlers.submission import SubmissionAPIHandler
-from metadata_backend.conf.conf import API_PREFIX
+from metadata_backend.conf.deployment import deployment_config
 from tests.unit.patches.user import patch_verify_authorization, patch_verify_user_project
 from tests.utils import sd_submission_dict
 
@@ -16,6 +16,8 @@ from .common import get_submission, sd_submission
 
 async def test_post_get_delete_submission(csc_client):
     """Test that submission post and get works."""
+
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
 
     # Test valid submission.
 
@@ -43,7 +45,7 @@ async def test_post_get_delete_submission(csc_client):
         patch_verify_user_project,
         patch_verify_authorization,
     ):
-        response = csc_client.delete(f"{API_PREFIX}/submissions/{submission_id}")
+        response = csc_client.delete(f"{api_prefix_v1}/submissions/{submission_id}")
         assert response.status_code == 204
 
     # Get submission.
@@ -52,12 +54,14 @@ async def test_post_get_delete_submission(csc_client):
         patch_verify_user_project,
         patch_verify_authorization,
     ):
-        response = csc_client.get(f"{API_PREFIX}/submissions/{submission_id}")
+        response = csc_client.get(f"{api_prefix_v1}/submissions/{submission_id}")
         assert response.status_code == 404
 
 
 async def test_post_submission_fails_with_missing_fields(csc_client):
     """Test that submission creation fails with missing fields."""
+
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
 
     data = {
         "name": f"name_{uuid.uuid4()}",
@@ -70,7 +74,7 @@ async def test_post_submission_fails_with_missing_fields(csc_client):
     async def assert_missing_field(field: str):
         _data = {k: v for k, v in data.items() if k != field}
         with patch_verify_authorization:
-            response = csc_client.post(f"{API_PREFIX}/submissions", json=_data)
+            response = csc_client.post(f"{api_prefix_v1}/submissions", json=_data)
             assert response.status_code == 400
 
     await assert_missing_field("name")
@@ -80,13 +84,14 @@ async def test_post_submission_fails_with_missing_fields(csc_client):
 
 async def test_post_submission_fails_with_empty_body(csc_client):
     """Test that submission creation fails when no data in request."""
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
     with patch_verify_authorization:
-        response = csc_client.post(f"{API_PREFIX}/submissions")
+        response = csc_client.post(f"{api_prefix_v1}/submissions")
         result = response.json()
         assert result == {
             "detail": "Validation error",
             "errors": [{"field": "body", "message": "Field required"}],
-            "instance": "/v1/submissions",
+            "instance": f"{api_prefix_v1}/submissions",
             "status": 400,
             "title": "Bad Request",
             "type": "about:blank",
@@ -95,6 +100,7 @@ async def test_post_submission_fails_with_empty_body(csc_client):
 
 async def test_post_submission_fails_with_duplicate_name(csc_client):
     """Test that submission creation fails if the submission name already exists in the project."""
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
     name = f"name_{uuid.uuid4()}"
     project_id = f"project_{uuid.uuid4()}"
 
@@ -112,7 +118,7 @@ async def test_post_submission_fails_with_duplicate_name(csc_client):
         patch_verify_user_project,
         patch_verify_authorization,
     ):
-        response = csc_client.post(f"{API_PREFIX}/submissions", json=data)
+        response = csc_client.post(f"{api_prefix_v1}/submissions", json=data)
         json_resp = response.json()
         assert response.status_code == 400
         assert f"Submission with name '{name}' already exists in project {project_id}" == json_resp["detail"]
@@ -121,6 +127,7 @@ async def test_post_submission_fails_with_duplicate_name(csc_client):
 async def test_get_submissions(csc_client):
     """Test that get submissions works."""
 
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
     name_1 = f"name_{uuid.uuid4()}"
     name_2 = f"name_{uuid.uuid4()}"
     project_id = f"project_{uuid.uuid4()}"
@@ -139,7 +146,7 @@ async def test_get_submissions(csc_client):
         patch_verify_user_project,
         patch_verify_authorization,
     ):
-        response = csc_client.get(f"{API_PREFIX}/submissions?projectId={project_id}")
+        response = csc_client.get(f"{api_prefix_v1}/submissions?projectId={project_id}")
         assert response.status_code == 200
         result = response.json()
 
@@ -184,6 +191,7 @@ async def test_get_submissions(csc_client):
 async def test_get_submissions_by_name(csc_client):
     """Test that get submissions by name works."""
 
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
     name_1 = f"name_{uuid.uuid4()}"
     name_2 = f"{uuid.uuid4()}"
     name_3 = f"{uuid.uuid4()} name"
@@ -198,7 +206,7 @@ async def test_get_submissions_by_name(csc_client):
         patch_verify_user_project,
         patch_verify_authorization,
     ):
-        response = csc_client.get(f"{API_PREFIX}/submissions?projectId={project_id}&name=name")
+        response = csc_client.get(f"{api_prefix_v1}/submissions?projectId={project_id}&name=name")
         assert response.status_code == 200
         result = response.json()
         assert len(result["submissions"]) == 2
@@ -209,6 +217,7 @@ async def test_get_submissions_by_name(csc_client):
 async def test_get_submissions_by_created(csc_client):
     """Test that get submissions by created date."""
 
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
     project_id = f"project_{uuid.uuid4()}"
     submission_id = await sd_submission(csc_client, project_id=project_id)
 
@@ -226,15 +235,15 @@ async def test_get_submissions_by_created(csc_client):
         async def get_submissions(created_start, created_end):
             if created_start and created_end:
                 response = csc_client.get(
-                    f"{API_PREFIX}/submissions?projectId={project_id}&date_created_start={created_start}&date_created_end={created_end}"
+                    f"{api_prefix_v1}/submissions?projectId={project_id}&date_created_start={created_start}&date_created_end={created_end}"
                 )
             elif created_start:
                 response = csc_client.get(
-                    f"{API_PREFIX}/submissions?projectId={project_id}&date_created_start={created_start}"
+                    f"{api_prefix_v1}/submissions?projectId={project_id}&date_created_start={created_start}"
                 )
             elif created_end:
                 response = csc_client.get(
-                    f"{API_PREFIX}/submissions?projectId={project_id}&date_created_end={created_end}"
+                    f"{api_prefix_v1}/submissions?projectId={project_id}&date_created_end={created_end}"
                 )
             else:
                 assert False
@@ -263,6 +272,7 @@ async def test_get_submissions_by_created(csc_client):
 async def test_get_submissions_by_modified(csc_client):
     """Test that get submissions by modified date."""
 
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
     project_id = f"project_{uuid.uuid4()}"
     submission_id = await sd_submission(csc_client, project_id=project_id)
 
@@ -280,15 +290,15 @@ async def test_get_submissions_by_modified(csc_client):
         async def get_submissions(modified_start, modified_end):
             if modified_start and modified_end:
                 response = csc_client.get(
-                    f"{API_PREFIX}/submissions?projectId={project_id}&date_modified_start={modified_start}&date_modified_end={modified_end}"
+                    f"{api_prefix_v1}/submissions?projectId={project_id}&date_modified_start={modified_start}&date_modified_end={modified_end}"
                 )
             elif modified_start:
                 response = csc_client.get(
-                    f"{API_PREFIX}/submissions?projectId={project_id}&date_modified_start={modified_start}"
+                    f"{api_prefix_v1}/submissions?projectId={project_id}&date_modified_start={modified_start}"
                 )
             elif modified_end:
                 response = csc_client.get(
-                    f"{API_PREFIX}/submissions?projectId={project_id}&date_modified_end={modified_end}"
+                    f"{api_prefix_v1}/submissions?projectId={project_id}&date_modified_end={modified_end}"
                 )
             else:
                 assert False
@@ -316,13 +326,14 @@ async def test_get_submissions_by_modified(csc_client):
 
 async def test_get_submissions_with_no_submissions(csc_client):
     """Test that get submissions works without project id."""
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
     with (
         patch_verify_user_project,
         patch_verify_authorization,
     ):
         project_id = f"project_{uuid.uuid4()}"
 
-        response = csc_client.get(f"{API_PREFIX}/submissions?projectId={project_id}")
+        response = csc_client.get(f"{api_prefix_v1}/submissions?projectId={project_id}")
         assert response.status_code == 200
         result = {
             "page": {
@@ -338,11 +349,12 @@ async def test_get_submissions_with_no_submissions(csc_client):
 
 async def test_get_submissions_invalid_parameters(csc_client):
     """Test that get submissions fails with invalid parameters."""
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
     with (
         patch_verify_user_project,
         patch_verify_authorization,
     ):
-        response = csc_client.get(f"{API_PREFIX}/submissions?page=invalid&projectId=1000")
+        response = csc_client.get(f"{api_prefix_v1}/submissions?page=invalid&projectId=1000")
         assert response.status_code == 400
         resp = response.json()
         assert resp == {
@@ -353,25 +365,25 @@ async def test_get_submissions_invalid_parameters(csc_client):
                     "message": "Input should be a valid integer, unable to parse string as an integer",
                 }
             ],
-            "instance": "/v1/submissions",
+            "instance": f"{api_prefix_v1}/submissions",
             "status": 400,
             "title": "Bad Request",
             "type": "about:blank",
         }
 
-        response = csc_client.get(f"{API_PREFIX}/submissions?page=1&per_page=-100&projectId=1000")
+        response = csc_client.get(f"{api_prefix_v1}/submissions?page=1&per_page=-100&projectId=1000")
         assert response.status_code == 400
         resp = response.json()
         assert resp == {
             "detail": "Validation error",
             "errors": [{"field": "query.per_page", "message": "Input should be greater than or equal to 1"}],
-            "instance": "/v1/submissions",
+            "instance": f"{api_prefix_v1}/submissions",
             "status": 400,
             "title": "Bad Request",
             "type": "about:blank",
         }
 
-        response = csc_client.get(f"{API_PREFIX}/submissions?published=maybe&projectId=1000")
+        response = csc_client.get(f"{api_prefix_v1}/submissions?published=maybe&projectId=1000")
         assert response.status_code == 400
         resp = response.json()
         assert resp == {
@@ -379,7 +391,7 @@ async def test_get_submissions_invalid_parameters(csc_client):
             "errors": [
                 {"field": "query.published", "message": "Input should be a valid boolean, unable to interpret input"}
             ],
-            "instance": "/v1/submissions",
+            "instance": f"{api_prefix_v1}/submissions",
             "status": 400,
             "title": "Bad Request",
             "type": "about:blank",
@@ -388,6 +400,7 @@ async def test_get_submissions_invalid_parameters(csc_client):
 
 async def test_patch_submission(csc_client):
     """Test that submission patch works with correct keys."""
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
     name = f"name_{uuid.uuid4()}"
     project_id = f"project_{uuid.uuid4()}"
     description = f"description_{uuid.uuid4()}"
@@ -403,7 +416,7 @@ async def test_patch_submission(csc_client):
         patch_verify_user_project,
         patch_verify_authorization,
     ):
-        response = csc_client.patch(f"{API_PREFIX}/submissions/{submission_id}", json=data)
+        response = csc_client.patch(f"{api_prefix_v1}/submissions/{submission_id}", json=data)
         assert response.status_code == 200
 
     submission = await get_submission(csc_client, submission_id)
@@ -420,7 +433,7 @@ async def test_patch_submission(csc_client):
         patch_verify_user_project,
         patch_verify_authorization,
     ):
-        response = csc_client.patch(f"{API_PREFIX}/submissions/{submission_id}", json=data)
+        response = csc_client.patch(f"{api_prefix_v1}/submissions/{submission_id}", json=data)
         assert response.status_code == 200
 
     submission = await get_submission(csc_client, submission_id)

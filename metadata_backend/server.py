@@ -35,7 +35,6 @@ from .api.services.auth import AuthService
 from .api.services.file import S3AllasFileProviderService, S3InboxSDAService
 from .api.services.project import CscProjectService, NbisProjectService, ProjectService
 from .conf.conf import (
-    API_PREFIX,
     DEPLOYMENT_CSC,
     DEPLOYMENT_NBIS,
 )
@@ -242,7 +241,7 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
     # API router (authorization required).
     #
 
-    api_router = APIRouter(prefix=API_PREFIX)
+    api_router = APIRouter(prefix=config.API_PREFIX_V1)
 
     openapi_multipart = {
         "requestBody": {
@@ -351,7 +350,7 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
 
     auth_router = None
     if config.DEPLOYMENT == DEPLOYMENT_CSC:
-        auth_router = APIRouter(tags=["Authentication"])
+        auth_router = APIRouter(prefix=config.API_PREFIX, tags=["Authentication"])
         auth_router.add_api_route(path="/login", endpoint=_auth.login, methods=GET)
         auth_router.add_api_route(path="/callback", endpoint=_auth.callback, methods=GET, include_in_schema=False)
         auth_router.add_api_route(path="/logout", endpoint=_auth.logout, methods=GET)
@@ -359,13 +358,13 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
     # Health router (authorization not required).
     #
 
-    health_router = APIRouter(tags=["Health"])
+    health_router = APIRouter(prefix=config.API_PREFIX, tags=["Health"])
     health_router.add_api_route("/health", _health.get_health_status, methods=GET)
 
     # OpenAPI router (authorization not required).
     #
 
-    openapi_router = APIRouter()
+    openapi_router = APIRouter(prefix=config.API_PREFIX)
 
     # OpenAPI redirect.
     @openapi_router.get("/", include_in_schema=False)

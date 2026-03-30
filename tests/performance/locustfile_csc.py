@@ -4,13 +4,22 @@ import json
 import uuid
 from pathlib import Path
 
+from dotenv import dotenv_values
 from locust import HttpUser, between, task
 
 from metadata_backend.api.json import to_json_dict
 from metadata_backend.api.models.submission import Submission
-from metadata_backend.conf.conf import API_PREFIX
 
 TEST_FILES_ROOT = Path(__file__).parent.parent / "test_files"
+
+# Load API prefix from .env.example.
+API_PREFIX = ""
+keys = dotenv_values(Path(__file__).parent.parent / "integration" / ".env.example")
+for key in ["API_PREFIX"]:
+    if key in keys:
+        API_PREFIX = keys[key]
+API_PREFIX_V1 = f"{API_PREFIX}/v1"
+
 
 # locust -f locustfile_csc.py
 
@@ -24,7 +33,7 @@ class CscDeployment(HttpUser):
         """Login the user at the start of the test."""
 
         # Start login
-        resp = self.client.get("/login", allow_redirects=False, name=f"{self.task_name} /login")
+        resp = self.client.get(f"{API_PREFIX}/login", allow_redirects=False, name=f"{self.task_name} /login")
         if resp.status_code not in (302, 303):
             raise Exception("Login failed")
         redirect = resp.headers["Location"]
@@ -66,10 +75,10 @@ class CscDeployment(HttpUser):
 
         # Create new submission
         with self.client.post(
-            f"{API_PREFIX}/submissions",
+            f"{API_PREFIX_V1}/submissions",
             json=to_json_dict(submission),
             catch_response=True,
-            name=f"{self.task_name} {API_PREFIX}/submissions",
+            name=f"{self.task_name} {API_PREFIX_V1}/submissions",
         ) as resp:
             if resp.status_code != 201:
                 self.report_failure(resp, "Submission creation")
@@ -77,10 +86,10 @@ class CscDeployment(HttpUser):
 
         # Create another submission with the same name fails
         with self.client.post(
-            f"{API_PREFIX}/submissions",
+            f"{API_PREFIX_V1}/submissions",
             json=to_json_dict(submission),
             catch_response=True,
-            name=f"{self.task_name} {API_PREFIX}/submissions [same name]",
+            name=f"{self.task_name} {API_PREFIX_V1}/submissions [same name]",
         ) as resp:
             if resp.status_code == 400:
                 resp.success()
@@ -89,9 +98,9 @@ class CscDeployment(HttpUser):
 
         # Get submission
         with self.client.get(
-            f"{API_PREFIX}/submissions/{submission_id}",
+            f"{API_PREFIX_V1}/submissions/{submission_id}",
             catch_response=True,
-            name=f"{self.task_name} {API_PREFIX}/submissions [new]",
+            name=f"{self.task_name} {API_PREFIX_V1}/submissions [new]",
         ) as resp:
             if resp.status_code != 200:
                 self.report_failure(resp, "Get submission [new]")
@@ -105,10 +114,10 @@ class CscDeployment(HttpUser):
         # Update submission
         submission.title = f"name_{uuid.uuid4()}"
         with self.client.patch(
-            f"{API_PREFIX}/submissions/{submission_id}",
+            f"{API_PREFIX_V1}/submissions/{submission_id}",
             json=to_json_dict(submission),
             catch_response=True,
-            name=f"{self.task_name} {API_PREFIX}/submissions [update]",
+            name=f"{self.task_name} {API_PREFIX_V1}/submissions [update]",
         ) as resp:
             if resp.status_code == 200:
                 resp.success()
@@ -117,9 +126,9 @@ class CscDeployment(HttpUser):
 
         # Get submission
         with self.client.get(
-            f"{API_PREFIX}/submissions/{submission_id}",
+            f"{API_PREFIX_V1}/submissions/{submission_id}",
             catch_response=True,
-            name=f"{self.task_name} {API_PREFIX}/submissions [update]",
+            name=f"{self.task_name} {API_PREFIX_V1}/submissions [update]",
         ) as resp:
             if resp.status_code != 200:
                 self.report_failure(resp, "Get submission [update]")

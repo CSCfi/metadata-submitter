@@ -8,6 +8,7 @@ import logging
 import os
 import uuid
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any, AsyncGenerator, Awaitable, Protocol
 
 import aiohttp
@@ -18,14 +19,13 @@ from yarl import URL
 
 from metadata_backend.api.json import to_json_dict
 from metadata_backend.api.models.submission import Submission
+from metadata_backend.conf.deployment import deployment_config
 from tests.integration.conf import (
     auth_url,
     base_url,
     mock_s3_region,
     mock_user,
     nbis_base_url,
-    submissions_url,
-    submit_url,
 )
 from tests.integration.helpers import (
     add_bucket,
@@ -44,9 +44,16 @@ from tests.utils import (
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
 
+# Load API_PREFIX from .env.example into the environment.
+keys = dotenv_values(Path(__file__).parent / ".env.example")
+for key in ["API_PREFIX"]:
+    if key in keys:
+        os.environ[key] = keys[key]
+
 
 @pytest.fixture
 def secret_env(monkeypatch):
+    """Load all variables from .env.secret for the test."""
     base_dir = os.path.dirname(__file__)
     dotenv_path = os.path.join(base_dir, ".env.secret")
     if not os.path.exists(dotenv_path):
@@ -78,6 +85,7 @@ async def sd_submission(sd_client: aiohttp.ClientSession, project_id: str) -> Su
     minimum information. Deletes any existing submission with the same
     name.
     """
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
 
     async def _create(submission_dict: dict[str, Any] | None = None, *, submit_endpoint: bool = False) -> Submission:
         if not submission_dict:
@@ -94,7 +102,7 @@ async def sd_submission(sd_client: aiohttp.ClientSession, project_id: str) -> Su
         # Delete submission if it exists (requires ALLOW_UNSAFE=TRUE).
         # Delete by name is only supported by the new /submit endpoint.
         async with sd_client.delete(
-            f"{submit_url}/{submission.name}?projectId={submission.projectId}&unsafe=true",
+            f"{api_prefix_v1}/submit/{submission.name}?projectId={submission.projectId}&unsafe=true",
         ) as resp:
             data = resp.content
             assert resp.status == 204
@@ -102,13 +110,13 @@ async def sd_submission(sd_client: aiohttp.ClientSession, project_id: str) -> Su
         # Post submission.
         if submit_endpoint:
             data = sd_submission_document(submission)
-            async with sd_client.post(f"{submit_url}?projectId={project_id}", data=data) as resp:
+            async with sd_client.post(f"{api_prefix_v1}/submit?projectId={project_id}", data=data) as resp:
                 data = await resp.json()
                 assert resp.status == 200
                 submission_id = data["submissionId"]
                 return await get_submission(sd_client, submission_id)
         else:
-            async with sd_client.post(f"{submissions_url}", json=to_json_dict(submission)) as resp:
+            async with sd_client.post(f"{api_prefix_v1}/submissions", json=to_json_dict(submission)) as resp:
                 data = await resp.json()
                 assert resp.status == 201
                 submission_id = data["submissionId"]
@@ -121,17 +129,21 @@ async def sd_submission(sd_client: aiohttp.ClientSession, project_id: str) -> Su
 async def sd_submission_update(sd_client: aiohttp.ClientSession, project_id: str) -> SubmissionUpdateCallableSD:
     """Update SD submission using the /submission or /submit endpoint."""
 
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+
     async def _update(
         submission_id: str, submission_dict: dict[str, Any], *, submit_endpoint: bool = False
     ) -> Submission:
         # Patch submission.
         if submit_endpoint:
             data = sd_submission_document(submission_dict)
-            async with sd_client.patch(f"{submit_url}/{submission_id}?projectId={project_id}", data=data) as resp:
+            async with sd_client.patch(
+                f"{api_prefix_v1}/submit/{submission_id}?projectId={project_id}", data=data
+            ) as resp:
                 assert resp.status == 200
                 return await get_submission(sd_client, submission_id)
         else:
-            async with sd_client.patch(f"{submissions_url}/{submission_id}", json=submission_dict) as resp:
+            async with sd_client.patch(f"{api_prefix_v1}/submissions/{submission_id}", json=submission_dict) as resp:
                 data = await resp.json()
                 assert resp.status == 200
                 submission_id = data["submissionId"]
@@ -156,11 +168,13 @@ class SubmissionUpdateCallableBigpicture(Protocol):
 async def bp_submission(nbis_client: aiohttp.ClientSession, project_id: str) -> SubmissionCallableBigpicture:
     """Create Bigpicture submission using the /submit endpoint."""
 
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+
     async def _create(is_datacite: bool = False) -> tuple[Submission, BigpictureObjectNames]:  # noqa
         submission_name, object_names, files = bp_submission_documents(is_datacite=is_datacite)
 
         # Post submission.
-        async with nbis_client.post(f"{submit_url}", data=files) as resp:
+        async with nbis_client.post(f"{api_prefix_v1}/submit", data=files) as resp:
             data = await resp.json()
             assert resp.status == 200
             return Submission.model_validate(data), object_names
@@ -177,13 +191,15 @@ async def bp_submission_update(
     Uses the same XMLs as the initial submission.
     """
 
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+
     async def _update(
         submission_id: str, submission_name: str, object_names: BigpictureObjectNames, is_datacite: bool
     ) -> Submission:  # noqa
         _, _, files = bp_update_documents(submission_name, object_names, is_datacite)
 
         # Patch submission.
-        async with nbis_client.patch(f"{submit_url}/{submission_id}", data=files) as resp:
+        async with nbis_client.patch(f"{api_prefix_v1}/submit/{submission_id}", data=files) as resp:
             assert resp.status == 200
             return await get_submission(nbis_client, submission_id)
 
@@ -201,9 +217,11 @@ async def client() -> AsyncGenerator[aiohttp.ClientSession]:
 async def sd_client() -> AsyncGenerator[aiohttp.ClientSession]:
     """Create CSC submission client using the OIDC standard authentication flow."""
 
+    api_prefix = deployment_config().API_PREFIX
+
     async with aiohttp.ClientSession(base_url=f"{base_url}/") as client:
         # Start OIDC authentication.
-        async with client.get("/login", allow_redirects=False) as resp:
+        async with client.get(f"{api_prefix}/login", allow_redirects=False) as resp:
             assert resp.status in (302, 303)
 
         authorize_redirect = resp.headers["Location"]

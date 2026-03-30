@@ -15,13 +15,15 @@ services:
       postgres-csc:
         condition: service_healthy
     healthcheck:
-      test: curl --fail http://127.0.0.1:5430/health || exit 1
+      test: >
+        bash -c 'curl --fail "http://127.0.0.1:5430${API_PREFIX:-}/health" || exit 1'
       interval: 10s
       timeout: 5s
       retries: 10
       start_period: 30s
     environment:
       - "DEPLOYMENT=CSC"
+      - "API_PREFIX=${API_PREFIX}"
       - "OIDC_CLIENT_SECRET=${SDS_AAI_CLIENT_SECRET:-${OIDC_CLIENT_SECRET:?OIDC_CLIENT_SECRET must be defined}}"
       - "OIDC_CLIENT_ID=${SDS_AAI_CLIENT_ID:-${OIDC_CLIENT_ID:?OIDC_CLIENT_ID must be defined}}"
       - "OIDC_URL=${SDS_AAI_URL:-${OIDC_URL:?OIDC_URL must be defined}}"
@@ -68,13 +70,15 @@ services:
       postgres-nbis:
         condition: service_healthy
     healthcheck:
-      test: curl --fail http://127.0.0.1:5431/health || exit 1
+      test: >
+        bash -c 'curl --fail "http://127.0.0.1:5431${API_PREFIX:-}/health" || exit 1'
       interval: 10s
       timeout: 5s
       retries: 10
       start_period: 30s
     environment:
       - "DEPLOYMENT=NBIS"
+      - "API_PREFIX=${API_PREFIX}"
       - "BASE_URL=http://sd-submit-api-nbis:5431"
       - "OIDC_REDIRECT_URL=${OIDC_REDIRECT_URL}"
       - "OIDC_SECURE_COOKIE=${OIDC_SECURE_COOKIE}"

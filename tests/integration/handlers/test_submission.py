@@ -4,12 +4,12 @@ import logging
 import uuid
 
 from metadata_backend.api.json import to_json_dict
+from metadata_backend.conf.deployment import deployment_config
 from tests.integration.helpers import (
     get_docs,
     get_objects,
     get_submission,
     patch_submission_bucket,
-    submissions_url,
 )
 
 LOG = logging.getLogger(__name__)
@@ -19,12 +19,14 @@ LOG.setLevel(logging.DEBUG)
 async def test_sd_submission(sd_client, sd_submission, sd_submission_update):
     """Test post, get and delete SD submission using /submissions endpoint."""
 
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+
     # Create submission.
     submission = await sd_submission()
     submission_id = submission.submissionId
 
     # Create another submission with the same name fails.
-    async with sd_client.post(f"{submissions_url}", json=to_json_dict(submission)) as resp:
+    async with sd_client.post(f"{api_prefix_v1}/submissions", json=to_json_dict(submission)) as resp:
         res = await resp.json()
         assert resp.status == 400
         assert (
@@ -45,21 +47,22 @@ async def test_sd_submission(sd_client, sd_submission, sd_submission_update):
     assert updated_submission.title == updated_title
 
     # Delete submission.
-    async with sd_client.delete(f"{submissions_url}/{submission_id}") as resp:
+    async with sd_client.delete(f"{api_prefix_v1}/submissions/{submission_id}") as resp:
         assert resp.status == 204
 
     # Get submission.
-    async with sd_client.get(f"{submissions_url}/{submission_id}") as resp:
+    async with sd_client.get(f"{api_prefix_v1}/submissions/{submission_id}") as resp:
         assert resp.status == 404
 
 
 async def test_sd_bucket(sd_client, sd_submission):
     """Test that a bucket name can be linked to a submission."""
 
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
     submission = await sd_submission()
     submission_id = submission.submissionId
 
-    async with sd_client.get(f"{submissions_url}/{submission_id}") as resp:
+    async with sd_client.get(f"{api_prefix_v1}/submissions/{submission_id}") as resp:
         assert resp.status == 200
 
     submission = await get_submission(sd_client, submission_id)

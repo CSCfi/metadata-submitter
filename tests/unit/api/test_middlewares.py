@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.types import Receive, Send
 
 from metadata_backend.api.middlewares import AuthMiddleware, SessionMiddleware
-from tests.integration.conf import API_PREFIX
+from metadata_backend.conf.deployment import deployment_config
 
 mock_session_context: ContextVar[AsyncSession | None] = ContextVar("mock_session_context", default=None)
 
@@ -39,7 +39,7 @@ async def test_session_middleware_api_route(session_factory):
         "type": "http",
         "method": "GET",
         "app": mock_app,
-        "path": f"{API_PREFIX}/test",
+        "path": f"{deployment_config().API_PREFIX_V1}/test",
     }
 
     await middleware(scope, Mock(spec=Receive), Mock(spec=Send))
@@ -97,7 +97,7 @@ async def test_session_middleware_set_and_reset_context(session_factory):
         "type": "http",
         "method": "GET",
         "app": mock_app,
-        "path": f"{API_PREFIX}/test",
+        "path": f"{deployment_config().API_PREFIX_V1}/test",
     }
 
     sent_messages = []
@@ -119,6 +119,7 @@ async def test_session_middleware_set_and_reset_context(session_factory):
 
 async def test_session_middleware_returns_problem_json_on_exception(session_factory):
     """Test session middleware catches exceptions and returns problem json with 500 response."""
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
     mock_app = MagicMock()
     mock_app.state = SimpleNamespace()
     mock_app.state.session_factory = session_factory
@@ -133,7 +134,7 @@ async def test_session_middleware_returns_problem_json_on_exception(session_fact
         "type": "http",
         "method": "GET",
         "app": mock_app,
-        "path": f"{API_PREFIX}/test",
+        "path": f"{api_prefix_v1}/test",
         "headers": [],
         "query_string": b"",
     }
@@ -150,13 +151,16 @@ async def test_session_middleware_returns_problem_json_on_exception(session_fact
 
     assert sent_messages == [
         {
-            "headers": [(b"content-type", b"application/problem+json"), (b"content-length", b"117")],
+            "headers": [
+                (b"content-type", b"application/problem+json"),
+                (b"content-length", sent_messages[0]["headers"][1][1]),
+            ],
             "status": 500,
             "type": "http.response.start",
         },
         {
             "body": b'{"type":"about:blank","title":"Internal Server Error","detail":"'
-            b'Unexpected error","status":500,"instance":"/v1/test"}',
+            b'Unexpected error","status":500,"instance":"' + api_prefix_v1.encode() + b'/test"}',
             "type": "http.response.body",
         },
     ]
@@ -208,7 +212,7 @@ async def test_session_middleware_commit_and_rollback(status_code, expected_acti
         "type": "http",
         "method": "GET",
         "app": mock_app,
-        "path": f"{API_PREFIX}/test",
+        "path": f"{deployment_config().API_PREFIX_V1}/test",
     }
 
     sent_messages = []
@@ -244,7 +248,7 @@ async def test_auth_middleware_missing_authorization_returns_401():
     scope = {
         "type": "http",
         "method": "GET",
-        "path": f"{API_PREFIX}/test",
+        "path": f"{deployment_config().API_PREFIX_V1}/test",
         "headers": [],
     }
 

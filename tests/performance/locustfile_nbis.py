@@ -2,13 +2,22 @@
 
 from pathlib import Path
 
+from dotenv import dotenv_values
 from locust import HttpUser, between, task
 
 from metadata_backend.api.models.submission import Submission
-from metadata_backend.conf.conf import API_PREFIX
 from tests.utils import bp_submission_documents, bp_update_documents
 
 TEST_FILES_ROOT = Path(__file__).parent.parent / "test_files"
+
+# Load API prefix from .env.example.
+API_PREFIX = ""
+keys = dotenv_values(Path(__file__).parent.parent / "integration" / ".env.example")
+for key in ["API_PREFIX"]:
+    if key in keys:
+        API_PREFIX = keys[key]
+API_PREFIX_V1 = f"{API_PREFIX}/v1"
+
 
 # locust -f locustfile_nbis.py -u 2
 
@@ -23,8 +32,10 @@ class NbisDeployment(HttpUser):
     def on_start(self):
         """Login the user at the start of the test."""
 
+        # TODO(improve): use token instead of /login
+
         # Start login
-        resp = self.client.get("/login", allow_redirects=False, name=f"{self.task_name} /login")
+        resp = self.client.get(f"{API_PREFIX}/login", allow_redirects=False, name=f"{self.task_name} /login")
         if resp.status_code not in (302, 303):
             raise Exception("Login failed")
         redirect = resp.headers["Location"]
@@ -65,10 +76,10 @@ class NbisDeployment(HttpUser):
         # Create new submission
         submission_name, object_names, files = bp_submission_documents(is_datacite=is_datacite)
         with self.client.post(
-            f"{API_PREFIX}/submit",
+            f"{API_PREFIX_V1}/submit",
             files={name: (name, file) for name, file in files.items()},
             catch_response=True,
-            name=f"{self.task_name} {API_PREFIX}/submit",
+            name=f"{self.task_name} {API_PREFIX_V1}/submit",
         ) as resp:
             if resp.status_code != 200:
                 self.report_failure(resp, "Submission creation")
@@ -77,10 +88,10 @@ class NbisDeployment(HttpUser):
         # Create another submission with the same submission name
         _, _, files = bp_submission_documents(is_datacite=is_datacite, submission_name=submission_name)
         with self.client.post(
-            f"{API_PREFIX}/submit",
+            f"{API_PREFIX_V1}/submit",
             files={name: (name, file) for name, file in files.items()},
             catch_response=True,
-            name=f"{self.task_name} {API_PREFIX}/submit [same name]",
+            name=f"{self.task_name} {API_PREFIX_V1}/submit [same name]",
         ) as resp:
             if resp.status_code == 400:
                 resp.success()
@@ -89,9 +100,9 @@ class NbisDeployment(HttpUser):
 
         # Get submission
         with self.client.get(
-            f"{API_PREFIX}/submissions/{submission_id}",
+            f"{API_PREFIX_V1}/submissions/{submission_id}",
             catch_response=True,
-            name=f"{self.task_name} {API_PREFIX}/submissions [new]",
+            name=f"{self.task_name} {API_PREFIX_V1}/submissions [new]",
         ) as resp:
             if resp.status_code != 200:
                 self.report_failure(resp, "Get submission [new]")
@@ -105,10 +116,10 @@ class NbisDeployment(HttpUser):
             # Update submission
             _, _, files = bp_update_documents(submission_name, object_names, is_datacite=is_datacite)
             with self.client.patch(
-                f"{API_PREFIX}/submit/{submission_id}",
+                f"{API_PREFIX_V1}/submit/{submission_id}",
                 files={name: (name, file) for name, file in files.items()},
                 catch_response=True,
-                name=f"{self.task_name} {API_PREFIX}/submit [update]",
+                name=f"{self.task_name} {API_PREFIX_V1}/submit [update]",
             ) as resp:
                 if resp.status_code != 200:
                     print(resp.json())
