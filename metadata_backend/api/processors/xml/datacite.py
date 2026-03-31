@@ -40,6 +40,7 @@ DATACITE_NAMESPACE = {"d": "http://datacite.org/schema/kernel-4"}
 
 DATACITE_PATH = "/d:resource"
 
+DATACITE_SCHEMA = "datacite"
 DATACITE_OBJECT_TYPE = "datacite"
 
 
