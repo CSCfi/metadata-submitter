@@ -42,7 +42,7 @@ from metadata_backend.api.processors.xml.bigpicture import (
     BP_XML_OBJECT_CONFIG,
     get_xml_object_type_schema,
 )
-from metadata_backend.api.processors.xml.datacite import DATACITE_OBJECT_TYPE
+from metadata_backend.api.processors.xml.datacite import DATACITE_OBJECT_TYPE, DATACITE_SCHEMA, read_datacite_xml
 from metadata_backend.api.processors.xml.processors import XmlDocumentProcessor, XmlProcessor
 from metadata_backend.api.services.accession import generate_bp_accession_prefix
 from metadata_backend.conf.deployment import deployment_config
@@ -225,6 +225,8 @@ async def test_submission_bp(nbis_client):
             BP_STAINING_OBJECT_TYPE: [object_names[BP_STAINING_SCHEMA][BP_STAINING_OBJECT_TYPE]["1"]],
             **sample_object_types,
         }
+        if is_datacite:
+            object_types[DATACITE_OBJECT_TYPE] = None  # DataCite does not have an object name.
 
         with patch_get_user_projects, patch_verify_user_project, patch_verify_authorization:
             # Check that submission does not exists.
@@ -462,7 +464,8 @@ async def assert_bp_metadata_objects(nbis_client, expected_submission, object_ty
 
         # Assert object names.
         for object_type, object_names in object_types.items():
-            assert set(object_names) == set(o.name for o in objects if o.objectType == object_type)
+            if object_names is not None:
+                assert set(object_names) == set(o.name for o in objects if o.objectType == object_type)
 
         if is_submission_name:
             docs_url = f"{api_prefix_v1}/submissions/{submission_id_or_name}/objects/docs?projectId={project_id}&"
@@ -470,50 +473,65 @@ async def assert_bp_metadata_objects(nbis_client, expected_submission, object_ty
             docs_url = f"{api_prefix_v1}/submissions/{submission_id_or_name}/objects/docs?"
 
         for object_type, object_names in object_types.items():
-            schema_type = xml_config.get_schema_type(object_type)
+            if object_type == DATACITE_OBJECT_TYPE:
+                schema_type = DATACITE_SCHEMA
+            else:
+                schema_type = xml_config.get_schema_type(object_type)
 
             # Test get metadata documents by object type.
             response = nbis_client.get(f"{docs_url}objectType={object_type}")
-            # Multiple documents may be returned.
-            await _assert_xml_objects(response, {k: v for k, v in object_types.items() if object_type == k}, object_ids)
-
-            # Test get metadata documents by schema type.
-            response = nbis_client.get(f"{docs_url}schemaType={schema_type}")
-            if object_type in sample_object_types:
-                # Multiple sample documents of different object types may be returned.
-                await _assert_xml_objects(response, {k: v for k, v in sample_object_types.items()}, object_ids)
+            if object_type == DATACITE_OBJECT_TYPE:
+                assert response.status_code == 200
+                # Read and validate DataCite XML.
+                read_datacite_xml(response.content)
             else:
                 # Multiple documents may be returned.
                 await _assert_xml_objects(
                     response, {k: v for k, v in object_types.items() if object_type == k}, object_ids
                 )
 
-            for object_name in object_names:
-                object_id = object_ids[object_type][object_name]
+            # Test get metadata documents by schema type.
+            response = nbis_client.get(f"{docs_url}schemaType={schema_type}")
+            if object_type in sample_object_types:
+                # Multiple sample documents of different object types may be returned.
+                await _assert_xml_objects(response, {k: v for k, v in sample_object_types.items()}, object_ids)
+            elif object_type == DATACITE_OBJECT_TYPE:
+                assert response.status_code == 200
+                # Read and validate DataCite XML.
+                read_datacite_xml(response.content)
+            else:
+                # Multiple documents may be returned.
+                await _assert_xml_objects(
+                    response, {k: v for k, v in object_types.items() if object_type == k}, object_ids
+                )
 
-                # Test get metadata documents by object type and object name.
-                response = nbis_client.get(f"{docs_url}objectType={object_type}&objectName={object_name}")
-                await _assert_xml_objects(response, {object_type: [object_name]}, object_ids)
+            if object_names:
+                for object_name in object_names:
+                    object_id = object_ids[object_type][object_name]
 
-                # Test get metadata documents by object type and object id.
-                response = nbis_client.get(f"{docs_url}objectType={object_type}&objectId={object_id}")
-                await _assert_xml_objects(response, {object_type: [object_name]}, object_ids)
-
-                # Test get metadata documents by schema type and object name.
-                response = nbis_client.get(f"{docs_url}schemaType={schema_type}&objectName={object_name}")
-                if object_type in sample_object_types:
-                    # Multiple sample documents of different object types may be returned.
-                    await _assert_xml_objects(
-                        response,
-                        {k: [object_name] for k, v in sample_object_types.items() if object_name in v},
-                        object_ids,
-                    )
-                else:
+                    # Test get metadata documents by object type and object name.
+                    response = nbis_client.get(f"{docs_url}objectType={object_type}&objectName={object_name}")
                     await _assert_xml_objects(response, {object_type: [object_name]}, object_ids)
 
-                # Test get metadata documents by schema type and object id. Returns a single document.
-                response = nbis_client.get(f"{docs_url}schemaType={schema_type}&objectId={object_id}")
-                await _assert_xml_objects(response, {object_type: [object_name]}, object_ids)
+                    # Test get metadata documents by object type and object id.
+                    response = nbis_client.get(f"{docs_url}objectType={object_type}&objectId={object_id}")
+                    await _assert_xml_objects(response, {object_type: [object_name]}, object_ids)
+
+                    # Test get metadata documents by schema type and object name.
+                    response = nbis_client.get(f"{docs_url}schemaType={schema_type}&objectName={object_name}")
+                    if object_type in sample_object_types:
+                        # Multiple sample documents of different object types may be returned.
+                        await _assert_xml_objects(
+                            response,
+                            {k: [object_name] for k, v in sample_object_types.items() if object_name in v},
+                            object_ids,
+                        )
+                    else:
+                        await _assert_xml_objects(response, {object_type: [object_name]}, object_ids)
+
+                    # Test get metadata documents by schema type and object id. Returns a single document.
+                    response = nbis_client.get(f"{docs_url}schemaType={schema_type}&objectId={object_id}")
+                    await _assert_xml_objects(response, {object_type: [object_name]}, object_ids)
 
 
 async def assert_bp_files(nbis_client, submission_id, is_update=False):

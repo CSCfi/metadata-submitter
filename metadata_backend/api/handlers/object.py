@@ -17,6 +17,7 @@ from ..exceptions import SystemException, UserException
 from ..models.models import Object
 from ..models.submission import Submission, SubmissionWorkflow
 from ..processors.xml.bigpicture import BP_XML_OBJECT_CONFIG
+from ..processors.xml.datacite import DATACITE_OBJECT_TYPE, DATACITE_SCHEMA
 from ..processors.xml.fega import FEGA_XML_OBJECT_CONFIG
 from ..processors.xml.models import XmlObjectConfig
 from ..processors.xml.processors import XmlDocumentProcessor
@@ -267,9 +268,19 @@ class ObjectAPIHandler(RESTAPIHandler):
         if not (schema_type is not None) ^ (object_type is not None):
             raise UserException("Either objectType or schemaType must be defined.")
 
+        # The submission service has been designed to process XMLs
+        # that have aliases, ids, and that reference each other.
+        # DataCite XML does not meet these requirements and is
+        # handled separately from these XMLs.
+        is_datacite = object_type == DATACITE_OBJECT_TYPE or schema_type == DATACITE_SCHEMA
+
         async def xmls() -> AsyncIterator[str]:
-            # Get object types.
-            object_types = self._get_xml_object_types(xml_config, object_type, schema_type)
+
+            if is_datacite:
+                object_types: Sequence[str] = [DATACITE_OBJECT_TYPE]
+            else:
+                # Get object types.
+                object_types = self._get_xml_object_types(xml_config, object_type, schema_type)
 
             # Get objects.
             objects = await object_service.get_objects(
@@ -287,13 +298,17 @@ class ObjectAPIHandler(RESTAPIHandler):
                 yield xml
 
         async def xml_stream() -> AsyncGenerator[bytes]:
-            async for xml in XmlDocumentProcessor.iter_xml_document(
-                xml_config,
-                xmls(),
-                object_type=object_type,
-                schema_type=schema_type,
-            ):
-                yield xml
+            if is_datacite:
+                async for x in xmls():
+                    yield x.encode("utf-8")
+            else:
+                async for xml in XmlDocumentProcessor.iter_xml_document(
+                    xml_config,
+                    xmls(),
+                    object_type=object_type,
+                    schema_type=schema_type,
+                ):
+                    yield xml
 
         return StreamingResponse(
             xml_stream(),
