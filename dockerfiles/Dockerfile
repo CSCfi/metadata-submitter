@@ -17,23 +17,28 @@ COPY metadata_backend ./metadata_backend
 RUN uv sync
 
 #=======================
-FROM ghcr.io/astral-sh/uv:python3.14-trixie
+FROM ghcr.io/astral-sh/uv:python3.14-trixie-slim
 #=======================
 
 LABEL maintainer="CSC Developers"
 LABEL org.label-schema.schema-version="1.0"
 LABEL org.label-schema.vcs-url="https://github.com/CSCfi/metadata-submitter"
 
+# Setup the working directory
 WORKDIR /app
 
-COPY --from=BUILD-BACKEND /app .
-COPY ./deploy/app.sh .
-RUN chmod +x /app/app.sh
-
+# Add the user and group
 RUN groupadd -r -g 998 submitter \
-  && useradd -r -g 998 -u 998  -m submitter \
-  && chown -R 998:998 /app
+  && useradd -r -g 998 -u 998  -m submitter
 
-ENV PATH="/app/uv:$PATH"
+# Copy the application
+COPY --chown=998:998 --from=BUILD-BACKEND  /app .
+
+# Copy the launcher
+COPY --chown=998:998 ./deploy/app.sh /app/app.sh
+
+# Setup the user and PATH
 USER 998
+ENV PATH="/app/uv:$PATH"
+
 ENTRYPOINT ["uv", "run", "metadata_submitter"]
