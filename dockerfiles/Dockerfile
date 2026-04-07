@@ -27,9 +27,10 @@ LABEL org.label-schema.vcs-url="https://github.com/CSCfi/metadata-submitter"
 # Setup the working directory
 WORKDIR /app
 
-# Add the user and group
+# Add the user and group, and make it own /app
 RUN groupadd -r -g 998 submitter \
-  && useradd -r -g 998 -u 998  -m submitter
+  && useradd -r -g 998 -u 998  -m submitter \
+  && chown -R 998:998 /app
 
 # Copy the application
 COPY --chown=998:998 --from=BUILD-BACKEND  /app .
