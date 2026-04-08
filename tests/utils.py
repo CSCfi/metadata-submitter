@@ -179,6 +179,23 @@ def _bp_submission_documents(
     change_object_name(BP_REMS_SCHEMA, BP_REMS_OBJECT_TYPE, BP_REMS_PATH, "1")
     change_object_name(BP_ORGANISATION_SCHEMA, BP_ORGANISATION_OBJECT_TYPE, BP_ORGANISATION_PATH, "1")
 
+    # Keep image file directory names aligned with renamed image aliases.
+    for image_processor in processor.get_xml_object_processors(BP_IMAGE_SCHEMA, BP_IMAGE_PATH):
+        alias = image_processor.xml.getroot().get("alias")
+        if alias is None:
+            continue
+
+        for file_elem in image_processor.xml.xpath("/IMAGE/FILES/FILE"):
+            filename = file_elem.get("filename")
+            if not filename:
+                continue
+
+            _, sep, file_part = filename.rpartition("/")
+            if not sep:
+                continue
+
+            file_elem.set("filename", f"IMAGES/IMAGE_{alias}/{file_part}")
+
     data = {}
     for doc_processor in processor.xml_processors:
         xml = doc_processor.xml

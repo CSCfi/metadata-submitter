@@ -54,7 +54,12 @@ get_env: ## Get secrets needed for integration tests from vault
 	$(call write_secret,SDS_AAI_CLIENT_SECRET,sd-submit/secrets,sds_aai_secret) \
 	$(call write_secret,SDS_AAI_URL,sd-submit/secrets,sds_aai_url) \
 	$(call write_secret,KEYSTONE_ENDPOINT,sd-submit/secrets,pouta_host) \
-	$(call write_secret,NBIS_JWT_PUBLIC_KEY,sd-submit/secrets,nbis_jwt_public_key) \
+	$(call write_secret,JWT_PUBLIC_KEY,sd-submit/secrets,nbis_jwt_public_key) \
+	$(call write_secret,JWT_ISSUER,sd-submit/secrets,nbis_jwt_issuer) \
+	$(call write_secret,SDA_API_URL,sd-submit/secrets,sda_api_url) \
+	$(call write_secret,ADMIN_TOKEN,sd-submit/secrets,sda_admin_token) \
+	$(call write_secret,S3_INBOX_ENDPOINT,sd-submit/secrets,sda_inbox_url) \
+	$(call write_secret,C4GH_RECIPIENT_PUBLIC_KEY,sd-submit/secrets,bp_c4gh_public_key) \
 	$(call write_integration_test_secret,DATACITE_API,sd-submit/datacite_test,DOI_API) \
 	$(call write_integration_test_secret,DATACITE_USER,sd-submit/datacite_test,DOI_USER) \
 	$(call write_integration_test_secret,DATACITE_KEY,sd-submit/datacite_test,DOI_KEY) \

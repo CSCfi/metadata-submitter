@@ -13,7 +13,7 @@ $ docker compose --profile dev up --build -d
 $ python tests/http/_login.py
 
 
-@api_url = http://localhost:5430
+@api_url = http://localhost:5430/api
 @token = {{$dotenv ACCESS_TOKEN}}
 @oidc_token = {{$dotenv OIDC_ACCESS_TOKEN}}
 

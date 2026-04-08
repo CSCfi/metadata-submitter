@@ -9,6 +9,8 @@ from crypt4gh.lib import decrypt
 from moto.server import ThreadedMotoServer
 
 from metadata_backend.api.exceptions import UserException
+from metadata_backend.api.models.models import File as SubmissionFile
+from metadata_backend.api.models.sda import FileItem
 from metadata_backend.api.services.file import S3AllasFileProviderService, S3InboxSDAService
 from metadata_backend.conf.s3 import s3_config
 from metadata_backend.services.keystone_service import KeystoneServiceHandler
@@ -232,3 +234,80 @@ async def test_sda_inbox_add_file_to_bucket_uploads_payload(s3_endpoint):
 
     assert body_bytes == encrypted_body
     assert response["ContentType"] == "application/octet-stream"
+
+
+@pytest.mark.asyncio
+async def test_find_missing_files():
+    # All submission files present in inbox.
+    admin_handler = AsyncMock()
+    admin_handler.get_user_files.return_value = [
+        FileItem(
+            fileID="12345678-1234-4234-8234-1234567890ab",
+            inboxPath="DATASET_1/IMAGES/IMAGE_1/img1.dcm",
+            fileStatus="uploaded",
+            createAt="2024-01-01T00:00:00Z",
+        )
+    ]
+
+    service = S3InboxSDAService(admin_handler)
+    submission_files = [SubmissionFile(path="DATASET_1/IMAGES/IMAGE_1/img1.dcm", bytes=100)]
+    missing = await service.find_missing_files("user1", "1", submission_files)
+
+    assert missing == []
+    admin_handler.get_user_files.assert_awaited_once_with("user1", "1")
+
+    # Submission references a file that does not exist in inbox.
+    admin_handler = AsyncMock()
+    admin_handler.get_user_files.return_value = []
+
+    service = S3InboxSDAService(admin_handler)
+    submission_files = [SubmissionFile(path="DATASET_1/IMAGES/IMAGE_1/img1.dcm", bytes=100)]
+    missing = await service.find_missing_files("user1", "1", submission_files)
+
+    assert missing == ["DATASET_1/IMAGES/IMAGE_1/img1.dcm"]
+    admin_handler.get_user_files.assert_awaited_once_with("user1", "1")
+
+
+@pytest.mark.asyncio
+async def test_find_orphaned_files():
+    # All files in inbox as expected
+    admin_handler = AsyncMock()
+    admin_handler.get_user_files.return_value = [
+        FileItem(
+            fileID="12345678-1234-4234-8234-1234567890ab",
+            inboxPath="DATASET_1/METADATA/dataset.xml.c4gh",
+            fileStatus="uploaded",
+            createAt="2024-01-01T00:00:00Z",
+        )
+    ]
+
+    service = S3InboxSDAService(admin_handler)
+    submission_files = [SubmissionFile(path="DATASET_1/METADATA/dataset.xml.c4gh", bytes=10)]
+    orphaned = await service.find_orphaned_files("user1", "1", submission_files)
+
+    assert orphaned == []
+    admin_handler.get_user_files.assert_awaited_once_with("user1", "1")
+
+    # Unexpected extra file in inbox.
+    admin_handler = AsyncMock()
+    admin_handler.get_user_files.return_value = [
+        FileItem(
+            fileID="12345678-1234-4234-8234-1234567890ab",
+            inboxPath="DATASET_1/IMAGES/IMAGE_1/img1.dcm",
+            fileStatus="uploaded",
+            createAt="2024-01-01T00:00:00Z",
+        ),
+        FileItem(
+            fileID="22345678-1234-4234-8234-1234567890ab",
+            inboxPath="DATASET_1/IMAGES/IMAGE_1/img2.dcm",
+            fileStatus="uploaded",
+            createAt="2024-01-01T00:00:00Z",
+        ),
+    ]
+
+    service = S3InboxSDAService(admin_handler)
+    submission_files = [SubmissionFile(path="DATASET_1/IMAGES/IMAGE_1/img1.dcm", bytes=100)]
+    orphaned = await service.find_orphaned_files("user1", "1", submission_files)
+
+    assert orphaned == ["DATASET_1/IMAGES/IMAGE_1/img2.dcm"]
+    admin_handler.get_user_files.assert_awaited_once_with("user1", "1")

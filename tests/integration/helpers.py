@@ -1,8 +1,11 @@
 """Helper functions for the integration tests."""
 
 import hashlib
+import json
 import logging
 import os
+import time
+from base64 import urlsafe_b64encode
 from typing import Any
 
 import aioboto3
@@ -56,6 +59,15 @@ async def get_objects(sess: aiohttp.ClientSession, submission_id: str) -> Object
         data = await resp.json()
         assert resp.status == 200, f"Expected status 200, got {resp.status}: {data}"
         return Objects.model_validate(data)
+
+
+async def get_files(sess: aiohttp.ClientSession, submission_id: str) -> list[dict[str, Any]]:
+    """Get submission files with the given submission id."""
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+    async with sess.get(f"{api_prefix_v1}/submissions/{submission_id}/files") as resp:
+        data = await resp.json()
+        assert resp.status == 200, f"Expected status 200, got {resp.status}: {data}"
+        return data
 
 
 async def get_docs(
@@ -113,7 +125,7 @@ async def add_bucket(bucket_name, access_key, secret_key, endpoint_url, region):
         await s3.create_bucket(Bucket=bucket_name)
 
 
-async def add_file_to_bucket(bucket_name, object_key, access_key, secret_key, endpoint_url, region):
+async def add_file_to_bucket(bucket_name, object_key, access_key, secret_key, endpoint_url, region, session_token=None):
     """Add a new object to S3 bucket using provided credentials.
 
     :param bucket_name: name of the bucket
@@ -130,6 +142,7 @@ async def add_file_to_bucket(bucket_name, object_key, access_key, secret_key, en
         endpoint_url=endpoint_url,
         aws_access_key_id=access_key,
         aws_secret_access_key=secret_key,
+        aws_session_token=session_token,
         region_name=region,
     ) as s3:
         await s3.put_object(
@@ -168,3 +181,47 @@ async def delete_bucket(bucket_name, access_key, secret_key, endpoint_url, regio
 
         # Then delete the bucket
         await s3.delete_bucket(Bucket=bucket_name)
+
+
+async def seed_mock_admin_files(client: aiohttp.ClientSession, user_id: str, submission_id: str) -> None:
+    """Add existing submission data file paths to mock Admin inbox state for integration tests."""
+    admin_url = "http://mockadmin:8004" if os.getenv("CICD") == "true" else "http://localhost:8004"
+    admin_token = os.getenv("ADMIN_TOKEN", "")
+    if admin_token:
+        auth_value = f"Bearer {admin_token}"
+    else:
+        header = (
+            urlsafe_b64encode(json.dumps({"alg": "none", "typ": "JWT"}).encode("utf-8")).decode("utf-8").rstrip("=")
+        )
+        payload = (
+            urlsafe_b64encode(json.dumps({"sub": user_id, "exp": int(time.time()) + 3600}).encode("utf-8"))
+            .decode("utf-8")
+            .rstrip("=")
+        )
+        auth_value = f"Bearer {header}.{payload}.signature"
+
+    headers = {"Authorization": auth_value}
+
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+    async with client.get(f"{api_prefix_v1}/submissions/{submission_id}/files") as resp:
+        assert resp.status == 200
+        submission_files = await resp.json()
+
+    inbox_paths = {
+        file["path"] for file in submission_files if isinstance(file, dict) and isinstance(file.get("path"), str)
+    }
+
+    async with aiohttp.ClientSession(base_url=admin_url, headers=headers) as admin_client:
+        for inbox_path in sorted(inbox_paths):
+            payload = {"user": user_id, "filepath": inbox_path}
+            async with admin_client.post("/file/create", json=payload) as resp:
+                assert resp.status == 201
+
+
+async def get_user_id(sess: aiohttp.ClientSession):
+    """Get user ID from /users/me endpoint."""
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+    async with sess.get(f"{api_prefix_v1}/users/") as resp:
+        data = await resp.json()
+        assert resp.status == 200, f"Expected status 200, got {resp.status}: {data}"
+        return data["user_id"]

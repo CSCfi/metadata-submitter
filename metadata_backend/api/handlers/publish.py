@@ -21,6 +21,7 @@ from ..processors.xml.bigpicture import (
 from ..processors.xml.processors import XmlObjectProcessor
 from ..services.bigpicture import upload_bp_metadata_xmls
 from ..services.datacite import DataciteService
+from ..services.ingest import IngestService
 from ..services.submission.bigpicture import is_clinical_policy
 from .restapi import RESTAPIHandler
 from .submission import SubmissionAPIHandler
@@ -278,13 +279,25 @@ class PublishAPIHandler(RESTAPIHandler):
             submission_files = [file async for file in file_service.get_files(submission_id=submission_id)]
             LOG.info("Found %d files in submission '%s'.", len(submission_files), submission_id)
 
-            # Check that all submission files are present in the S3 inbox
-            # TODO(improve): Implement logic to search files from specific directories in the inbox
-            missing_files = await file_provider_service.check_files_exist(user.user_id, submission_files)
+            # Check that all submission files are present in the S3 inbox.
+            missing_files = await file_provider_service.find_missing_files(
+                user.user_id, submission_id, submission_files
+            )
             if missing_files:
                 missing_paths = ", ".join(sorted(missing_files))
                 raise UserException(
                     f"Submission files for '{submission_id}' are missing from the inbox: {missing_paths}."
+                )
+
+            # Check that the dataset directory in the inbox doesn't have extra files,
+            # which are not referenced in the XMLs.
+            unexpected_files = await file_provider_service.find_orphaned_files(
+                user.user_id, submission_id, submission_files
+            )
+            if unexpected_files:
+                unexpected_paths = ", ".join(sorted(unexpected_files))
+                raise UserException(
+                    f"Unexpected files found in the inbox for submission '{submission_id}': {unexpected_paths}."
                 )
 
         submission = await submission_service.get_submission_by_id(submission_id)
@@ -308,12 +321,18 @@ class PublishAPIHandler(RESTAPIHandler):
         if deployment_config().ALLOW_REGISTRATION:
             await self._register_submission(submission, datacite, rems)
 
+        # Upload Bigpicture metadata XML files to SDA inbox.
         if workflow == SubmissionWorkflow.BP:
             headers = req.headers
             jwt = self._services.auth._get_bearer_token(headers)
             if not jwt:
                 raise UserException("Missing OIDC access token in Authorization bearer header for SDA inbox upload.")
             await upload_bp_metadata_xmls(self._services, submission_id, user.user_id, jwt)
+
+        # Start Bigpicture ingestion workflow in background.
+        if workflow == SubmissionWorkflow.BP and not no_files:
+            ingest_service = IngestService(self._services, self._handlers)
+            await ingest_service.trigger_ingest(user_id=user.user_id, submission_id=submission_id)
 
         # Update submission status to published.
         await submission_service.publish(submission_id)

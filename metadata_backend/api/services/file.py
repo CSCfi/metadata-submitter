@@ -19,6 +19,7 @@ from ...services.admin_service import AdminServiceHandler
 from ...services.keystone_service import KeystoneServiceHandler
 from ..exceptions import SystemException, UserException
 from ..models.models import File as SubmissionFile
+from ..models.sda import FileItem
 
 
 class FileProviderService(ABC):
@@ -126,9 +127,13 @@ class FileProviderService(ABC):
         """
         return await self._verify_bucket_policy(bucket)
 
-    async def check_files_exist(self, user_id: str, files: list[SubmissionFile]) -> list[str]:
+    async def find_missing_files(self, user_id: str, submission_id: str, files: list[SubmissionFile]) -> list[str]:
         """Return file paths that are missing from the provider."""
         raise SystemException("Configured file provider does not support inbox file checks.")
+
+    async def find_orphaned_files(self, user_id: str, submission_id: str, files: list[SubmissionFile]) -> list[str]:
+        """Return file paths that are present in the provider but not referenced in the submission files."""
+        raise SystemException("Configured file provider does not support orphaned file checks.")
 
     @abstractmethod
     async def _verify_user_file(self, bucket: str, file: str) -> int | None:
@@ -431,12 +436,31 @@ class S3InboxSDAService(FileProviderService):
         """Verify that the read access policy has been assigned to a bucket."""
         return False
 
-    async def check_files_exist(self, user_id: str, files: list[SubmissionFile]) -> list[str]:
-        """Return file paths that are currently missing from the S3 inbox."""
-        # TODO(improve): Check the filepath matches more strictly so that filepath and inbox path are a complete match
-        inbox_files = await self._admin_handler.get_user_files(user_id)
-        inbox_paths = [inbox_file.get("inboxPath", "") for inbox_file in inbox_files]
-        return [file.path for file in files if not any(file.path in inbox_path for inbox_path in inbox_paths)]
+    async def find_missing_files(self, user_id: str, submission_id: str, files: list[SubmissionFile]) -> list[str]:
+        """Return file paths that are currently missing from the S3 inbox.
+
+        :param user_id: The ID of the user
+        :param submission_id: The ID of the submission (= dataset accession ID)
+        :param files: The list of submission files
+        :returns: The list of any missing file paths
+        """
+        inbox_files: list[FileItem] = await self._admin_handler.get_user_files(user_id, submission_id)
+        inbox_paths = {inbox_file.inbox_path for inbox_file in inbox_files}
+        # We assume that the path value of submission files are a precise match with the paths listed in the inbox
+        return [file.path for file in files if file.path not in inbox_paths]
+
+    async def find_orphaned_files(self, user_id: str, submission_id: str, files: list[SubmissionFile]) -> list[str]:
+        """Return file paths that are present in the S3 inbox but not referenced in the submission files.
+
+        :param user_id: The ID of the user
+        :param submission_id: The ID of the submission (= dataset accession ID)
+        :param files: The list of submission files
+        :returns: The list of any orphaned file paths
+        """
+        inbox_files: list[FileItem] = await self._admin_handler.get_user_files(user_id, submission_id)
+        inbox_paths = {inbox_file.inbox_path for inbox_file in inbox_files}
+        submission_paths = {file.path for file in files}
+        return [inbox_path for inbox_path in inbox_paths if inbox_path not in submission_paths]
 
     async def _load_crypt4gh_keys(self) -> tuple[object, object]:
         """Load Crypt4GH sender secret and recipient public keys from env variables."""

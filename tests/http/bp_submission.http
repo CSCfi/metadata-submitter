@@ -7,7 +7,7 @@
 $ make get_env_demo
 
 # Add the JWT public key to the .env file in this way:
-# NBIS_JWT_PUBLIC_KEY=-----BEGIN PUBLIC KEY-----\n...[rest of the key]...\n-----END PUBLIC KEY-----\n
+# JWT_PUBLIC_KEY=-----BEGIN PUBLIC KEY-----...[rest of the key]...-----END PUBLIC KEY-----
 
 # Run this to launch the API service locally:
 $ docker compose --profile demo up --build -d
@@ -16,7 +16,7 @@ $ docker compose --profile demo up --build -d
 # Copy the uploading access token for and paste it in the variable below
 @bearer_token = ...
 
-@api_url = http://localhost:5431
+@api_url = http://localhost:5431/api
 
 @user_id = {{user_data_req.response.body.user_id}}
 

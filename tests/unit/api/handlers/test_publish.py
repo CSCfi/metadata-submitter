@@ -86,6 +86,7 @@ async def test_publish_submission_sd(csc_client, submission_repository, object_r
     with (
         patch_verify_user_project,
         patch_verify_authorization,
+        patch("metadata_backend.api.handlers.publish.IngestService.trigger_ingest", new_callable=AsyncMock),
         patch(
             "metadata_backend.api.handlers.publish.upload_bp_metadata_xmls",
             new_callable=AsyncMock,
@@ -236,12 +237,18 @@ async def test_publish_submission_bp(nbis_client, submission_repository, object_
         patch_verify_user_project,
         patch_verify_authorization,
         patch(
+            "metadata_backend.api.handlers.publish.IngestService.trigger_ingest", new_callable=AsyncMock
+        ) as mock_trigger_ingest,
+        patch(
             "metadata_backend.api.handlers.publish.upload_bp_metadata_xmls",
             new_callable=AsyncMock,
         ) as mock_upload_bp_metadata,
         patch(
-            "metadata_backend.api.services.file.S3InboxSDAService.check_files_exist", new_callable=AsyncMock
-        ) as mock_check_files_exist,
+            "metadata_backend.api.services.file.S3InboxSDAService.find_missing_files", new_callable=AsyncMock
+        ) as mock_find_missing_files,
+        patch(
+            "metadata_backend.api.services.file.S3InboxSDAService.find_orphaned_files", new_callable=AsyncMock
+        ) as mock_find_orphaned_files,
         patch_datacite_create_draft_doi(doi) as mock_datacite_create_draft_doi,
         patch_datacite_publish() as mock_datacite_publish,
         patch_pid_create_draft_doi(doi) as mock_pid_create_draft_doi,
@@ -250,7 +257,8 @@ async def test_publish_submission_bp(nbis_client, submission_repository, object_
         patch_rems_create_resource() as mock_rems_create_resource,
         patch_rems_create_catalogue_item() as mock_rems_create_catalogue_item,
     ):
-        mock_check_files_exist.return_value = []
+        mock_find_missing_files.return_value = []
+        mock_find_orphaned_files.return_value = []
 
         # Publish submission.
         response = nbis_client.patch(
@@ -278,6 +286,7 @@ async def test_publish_submission_bp(nbis_client, submission_repository, object_
             TEST_DISCOVERY_URL.format(id=submission_id),
         )
         mock_upload_bp_metadata.assert_awaited_once_with(ANY, submission_id, "mock-userid", "oidc-token")
+        mock_trigger_ingest.assert_awaited_once_with(user_id="mock-userid", submission_id=submission_id)
 
         # Assert registrations.
         response = nbis_client.get(f"{api_prefix_v1}/submissions/{submission_id}/registrations")
@@ -343,14 +352,18 @@ async def test_publish_submission_bp_fails_when_metadata_upload_fails(
             side_effect=SystemException("metadata upload failed"),
         ) as mock_upload_bp_metadata,
         patch(
-            "metadata_backend.api.services.file.S3InboxSDAService.check_files_exist", new_callable=AsyncMock
-        ) as mock_check_files_exist,
-        patch_datacite_create_draft_doi("10.1/test") as _mock_datacite_create_draft_doi,
-        patch_datacite_publish() as _mock_datacite_publish,
-        patch_rems_create_resource() as _mock_rems_create_resource,
-        patch_rems_create_catalogue_item() as _mock_rems_create_catalogue_item,
+            "metadata_backend.api.services.file.S3InboxSDAService.find_missing_files", new_callable=AsyncMock
+        ) as mock_find_missing_files,
+        patch(
+            "metadata_backend.api.services.file.S3InboxSDAService.find_orphaned_files", new_callable=AsyncMock
+        ) as mock_find_orphaned_files,
+        patch_datacite_create_draft_doi("10.1/test"),
+        patch_datacite_publish(),
+        patch_rems_create_resource(),
+        patch_rems_create_catalogue_item(),
     ):
-        mock_check_files_exist.return_value = []
+        mock_find_missing_files.return_value = []
+        mock_find_orphaned_files.return_value = []
 
         response = nbis_client.patch(
             f"{api_prefix_v1}/publish/{submission_id}", headers={"Authorization": "Bearer oidc-token"}

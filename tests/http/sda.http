@@ -1,0 +1,70 @@
+@admin_token = ... # Fill in admin token here
+@staging_api_url = https://staging-api.bp.nbis.se
+
+@user_token = ... # Fill in user token here
+@api_url = http://localhost:5431/api
+@user_id = {{user_data_req.response.body.user_id}}
+
+# SD Submit API Calls
+
+### Get user data
+# @name user_data_req
+GET {{api_url}}/v1/users
+Authorization: Bearer {{user_token}}
+
+### List all submissions
+GET {{api_url}}/v1/submissions?projectId={{user_id}}
+Authorization: Bearer {{user_token}}
+
+# Write submission_id here after creating submission:
+@submission_id =
+### Get submission by ID
+GET {{api_url}}/v1/submissions/{{submission_id}}
+Authorization: Bearer {{user_token}}
+
+### List files in the submission
+GET {{api_url}}/v1/submissions/{{submission_id}}/files
+Authorization: Bearer {{user_token}}
+
+
+# SDA Admin API Calls
+
+### Get users
+GET {{staging_api_url}}/users
+Authorization: Bearer {{admin_token}}
+
+### Get user files
+GET {{staging_api_url}}/users/{{user_id}}/files?path_prefix=DATASET_{{submission_id}}
+Authorization: Bearer {{admin_token}}
+
+
+### Ingest file
+@file_uuid = ... # Fill in file UUID here
+POST {{staging_api_url}}/file/ingest?fileid={{file_uuid}}
+Authorization: Bearer {{admin_token}}
+
+
+### Assign accession ID to file
+@accession_id = ... # Fill in accession ID here
+POST {{staging_api_url}}/file/accession?fileid={{file_uuid}}&accessionid={{accession_id}}
+Authorization: Bearer {{admin_token}}
+
+### Create dataset
+@dataset_id = ... # Fill in dataset ID here
+POST {{staging_api_url}}/dataset/create
+Authorization: Bearer {{admin_token}}
+
+{
+     "accession_ids": ["{{accession_id}}"],
+     "dataset_id": "{{dataset_id}}",
+     "user": "{{user_id}}"
+}
+
+### Release dataset
+POST {{staging_api_url}}/dataset/release/{{dataset_id}}
+Authorization: Bearer {{admin_token}}
+
+
+### List datasets
+GET {{staging_api_url}}/datasets/list
+Authorization: Bearer {{admin_token}}

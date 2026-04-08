@@ -2,7 +2,7 @@
     <ANNOTATION alias="1">
         <IMAGE_REF alias="1"/>
         <FILES>
-            <FILE filename="test.json.c4gh" checksum_method="SHA256"
+            <FILE filename="ANNOTATIONS/test.geojson.c4gh" checksum_method="SHA256"
                   checksum="8c3a51adf8f8b1b7a2625d7ac9c12a08dcf9e6a10e87a1f8a215e67f87e7d2a4" filetype="json"/>
         </FILES>
         <ATTRIBUTES>

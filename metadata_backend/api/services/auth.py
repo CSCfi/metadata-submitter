@@ -101,7 +101,7 @@ class AuthService:
         Raises:
             HTTPUnauthorized: If the token is expired, malformed, or fails verification.
         """
-        key = jwt_config().JWT_KEY.replace("\\n", "\n").strip()  # Handle escaped newlines in environment variable
+        key = jwt_config().JWT_KEY
         decoded = jwt.decode(token, key, algorithms=[jwt_config().JWT_ALGORITHM], issuer=jwt_config().JWT_ISSUER)
         return str(decoded["sub"]), str(decoded.get("user_name", decoded["sub"]))
 
