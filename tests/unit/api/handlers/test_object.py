@@ -253,7 +253,7 @@ async def test_submission_bp(nbis_client):
             await assert_bp_metadata_objects(nbis_client, submission, object_types, sample_object_types, xml_config)
 
             # Assert files.
-            await assert_bp_files(nbis_client, submission_id)
+            await assert_bp_files(nbis_client, submission_id, object_types[BP_IMAGE_OBJECT_TYPE])
 
             created_objects = await list_metadata_objects(nbis_client, project_id, True, submission_name)
 
@@ -293,7 +293,12 @@ async def test_submission_bp(nbis_client):
             )
 
             # Assert files.
-            await assert_bp_files(nbis_client, submission_id, is_update=True)
+            await assert_bp_files(
+                nbis_client,
+                submission_id,
+                updated_object_types[BP_IMAGE_OBJECT_TYPE],
+                is_update=True,
+            )
 
             def _assert_unchanged_object(_created_obj, _updated_obj):
                 assert _created_obj.objectId == _updated_obj.objectId
@@ -320,7 +325,12 @@ async def test_submission_bp(nbis_client):
             )
 
             # Assert files.
-            await assert_bp_files(nbis_client, submission_id, is_update=True)
+            await assert_bp_files(
+                nbis_client,
+                submission_id,
+                updated_object_types[BP_IMAGE_OBJECT_TYPE],
+                is_update=True,
+            )
 
             updated_objects = await list_metadata_objects(nbis_client, project_id, True, submission_name)
 
@@ -534,7 +544,7 @@ async def assert_bp_metadata_objects(nbis_client, expected_submission, object_ty
                     await _assert_xml_objects(response, {object_type: [object_name]}, object_ids)
 
 
-async def assert_bp_files(nbis_client, submission_id, is_update=False):
+async def assert_bp_files(nbis_client, submission_id, image_aliases: list[str], is_update=False):
     api_prefix_v1 = deployment_config().API_PREFIX_V1
     files_url = f"{api_prefix_v1}/submissions/{submission_id}/files"
     response = nbis_client.get(files_url)
@@ -557,14 +567,14 @@ async def assert_bp_files(nbis_client, submission_id, is_update=False):
     if not is_update:
         _assert_file(
             files,
-            "test.dcm.c4gh",
+            f"DATASET_{submission_id}/IMAGES/IMAGE_{image_aliases[0]}/test.dcm.c4gh",
             "SHA256",
             "8c3a51adf8f8b1b7a2625d7ac9c12a08dcf9e6a10e87a1f8a215e67f87e7d2a4",
             "8c3a51adf8f8b1b7a2625d7ac9c12a08dcf9e6a10e87a1f8a215e67f87e7d2a4",
         )
         _assert_file(
             files,
-            "test2.dcm.c4gh",
+            f"DATASET_{submission_id}/IMAGES/IMAGE_{image_aliases[1]}/test2.dcm.c4gh",
             "SHA256",
             "2c3a51adf8f8b1b7a2625d7ac9c12a08dcf9e6a10e87a1f8a215e67f87e7d2a4",
             "2c3a51adf8f8b1b7a2625d7ac9c12a08dcf9e6a10e87a1f8a215e67f87e7d2a4",
@@ -572,14 +582,14 @@ async def assert_bp_files(nbis_client, submission_id, is_update=False):
     else:
         _assert_file(
             files,
-            "test.dcm.c4gh",
+            f"DATASET_{submission_id}/IMAGES/IMAGE_{image_aliases[0]}/test.dcm.c4gh",
             "SHA256",
             "8c3a51adf8f8b1b7a2625d7ac9c12a08dcf9e6a10e87a1f8a215e67f87e7d2a4",
             "8c3a51adf8f8b1b7a2625d7ac9c12a08dcf9e6a10e87a1f8a215e67f87e7d2a4",
         )
         _assert_file(
             files,
-            "test3.dcm.c4gh",
+            f"DATASET_{submission_id}/IMAGES/IMAGE_{image_aliases[1]}/test3.dcm.c4gh",
             "SHA256",
             "3c3a51adf8f8b1b7a2625d7ac9c12a08dcf9e6a10e87a1f8a215e67f87e7d2a4",
             "3c3a51adf8f8b1b7a2625d7ac9c12a08dcf9e6a10e87a1f8a215e67f87e7d2a4",
@@ -587,7 +597,11 @@ async def assert_bp_files(nbis_client, submission_id, is_update=False):
 
         # Assert annotation files.
         _assert_file(
-            files, "test.json.c4gh", "SHA256", "8c3a51adf8f8b1b7a2625d7ac9c12a08dcf9e6a10e87a1f8a215e67f87e7d2a4", None
+            files,
+            f"DATASET_{submission_id}/ANNOTATIONS/test.geojson.c4gh",
+            "SHA256",
+            "8c3a51adf8f8b1b7a2625d7ac9c12a08dcf9e6a10e87a1f8a215e67f87e7d2a4",
+            None,
         )
 
 

@@ -7,6 +7,8 @@ from pydantic import BaseModel
 from ...helpers.logger import LOG
 from ..exceptions import SystemException
 from ..handlers.restapi import RESTAPIServices
+from ..models.models import File
+from ..models.submission import SubmissionWorkflow
 from ..processors.xml.bigpicture import (
     BP_ANNOTATION_OBJECT_TYPE,
     BP_DATASET_OBJECT_TYPE,
@@ -23,6 +25,7 @@ from ..processors.xml.bigpicture import (
     as_xml_set_document,
     update_landing_page_xml,
 )
+from ..processors.xml.datacite import DATACITE_OBJECT_TYPE, DATACITE_XML_SCHEMA_DIR
 from ..processors.xml.processors import XmlProcessor
 from .file import S3InboxSDAService
 
@@ -78,8 +81,7 @@ XML_OUTPUT_FILES: list[XmlOutputDir] = [
         files=[
             XmlOutputFile(name="organisation.xml.c4gh", object_types=[BP_ORGANISATION_OBJECT_TYPE]),
             XmlOutputFile(name="rems.xml.c4gh", object_types=[BP_REMS_OBJECT_TYPE]),
-            # TODO(improve): Add datacite XML file when datacite XML metadata is available
-            # XmlOutputFile(name="datacite.xml.c4gh", object_types=[DATACITE_OBJECT_TYPE]),
+            XmlOutputFile(name="datacite.xml.c4gh", object_types=[DATACITE_OBJECT_TYPE], mandatory=False),
         ],
     ),
 ]
@@ -126,33 +128,55 @@ async def upload_bp_metadata_xmls(services: RESTAPIServices, submission_id: str,
                     for xml_doc in xml_docs
                 ]
 
-            # Compile the XML documents into a single XML document.
-            schema_type = BP_XML_OBJECT_CONFIG.get_schema_type(file.object_types[0])
-            xml = await as_xml_set_document(xml_docs, schema_type)
-
-            # Validate the new XML document
-            try:
-                parsed_xml = XmlProcessor.parse_xml(xml)
-                XmlProcessor.validate_schema(
-                    parsed_xml,
-                    BP_XML_OBJECT_CONFIG.schema_dir,
-                    schema_type,
-                    BP_XML_OBJECT_CONFIG.schema_file_resolver,
-                )
-            except Exception as ex:
-                reason = f"Generated XML document is not valid for {file.name}"
-                LOG.error(f"reason: {str(ex)}")
-                raise SystemException(reason)
+            # Compile and validate the XML document.
+            if DATACITE_OBJECT_TYPE in file.object_types:
+                # DataCite XML is a single standalone namespaced document and is handled differently.
+                if len(xml_docs) != 1:
+                    reason = f"Expected exactly one DataCite XML document but found {len(xml_docs)}"
+                    LOG.error(reason)
+                    raise SystemException(reason)
+                xml = xml_docs[0]
+                try:
+                    parsed_xml = XmlProcessor.parse_xml(xml)
+                    XmlProcessor.validate_schema(parsed_xml, str(DATACITE_XML_SCHEMA_DIR), "metadata.xsd")
+                except Exception as ex:
+                    reason = f"Generated XML document is not valid for {file.name}"
+                    LOG.error(f"reason: {str(ex)}")
+                    raise SystemException(reason)
+            else:
+                # BP XML types are wrapped in a set element and validated via BP_XML_OBJECT_CONFIG.
+                schema_type = BP_XML_OBJECT_CONFIG.get_schema_type(file.object_types[0])
+                xml = await as_xml_set_document(xml_docs, schema_type)
+                try:
+                    parsed_xml = XmlProcessor.parse_xml(xml)
+                    XmlProcessor.validate_schema(
+                        parsed_xml,
+                        BP_XML_OBJECT_CONFIG.schema_dir,
+                        schema_type,
+                        BP_XML_OBJECT_CONFIG.schema_file_resolver,
+                    )
+                except Exception as ex:
+                    reason = f"Generated XML document is not valid for {file.name}"
+                    LOG.error(f"reason: {str(ex)}")
+                    raise SystemException(reason)
 
             # Upload the XML document to SDA inbox.
             LOG.info(f"Uploading XML document for {file.name} in submission {submission_id} to SDA inbox.")
             prefix = xml_output_dir.get_full_dir(submission_id)
             object_key = f"{prefix}/{file.name}"
+            xml_bytes = xml.encode("utf-8")
             await file_provider._add_file_to_bucket(
                 bucket_name=bucket,
                 object_key=object_key,
-                access_key=user_id,
-                secret_key=user_id,
+                access_key=bucket,
+                secret_key=bucket,
                 session_token=jwt,
-                body=xml.encode("utf-8"),
+                body=xml_bytes,
             )
+
+            # Add uploaded XML artifacts to submission file records for ingestion workflow.
+            if not await services.file.is_file_by_path(submission_id, object_key):
+                await services.file.add_file(
+                    File(submissionId=submission_id, path=object_key, bytes=len(xml_bytes)),
+                    SubmissionWorkflow.BP,
+                )

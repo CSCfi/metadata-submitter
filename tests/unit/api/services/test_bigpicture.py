@@ -33,6 +33,7 @@ async def test_upload_bp_metadata_xmls_uses_expected_object_keys_and_payloads():
         ],
         "organisation": ["<ORGANISATION/>"],
         "rems": ["<REMS/>"],
+        "datacite": ["<resource/>"],
         BP_SAMPLE_OBJECT_TYPES[0]: ['<BIOLOGICAL_BEING alias="1"/>'],
         BP_SAMPLE_OBJECT_TYPES[1]: [
             '<SLIDE alias="1"><CREATED_FROM_REF alias="1"/><STAINING_INFORMATION_REF alias="1"/></SLIDE>'
@@ -54,6 +55,7 @@ async def test_upload_bp_metadata_xmls_uses_expected_object_keys_and_payloads():
 
     services = SimpleNamespace(
         file_provider=file_provider,
+        file=SimpleNamespace(is_file_by_path=AsyncMock(return_value=False), add_file=AsyncMock()),
         submission=SimpleNamespace(get_bucket=AsyncMock(return_value="test-bucket")),
         registration=SimpleNamespace(
             get_registration=AsyncMock(
@@ -78,12 +80,17 @@ async def test_upload_bp_metadata_xmls_uses_expected_object_keys_and_payloads():
         "DATASET_123/LANDING_PAGE/landing_page.xml.c4gh",
         "DATASET_123/PRIVATE/organisation.xml.c4gh",
         "DATASET_123/PRIVATE/rems.xml.c4gh",
+        "DATASET_123/PRIVATE/datacite.xml.c4gh",
     }
 
     assert file_provider._add_file_to_bucket.await_count == len(expected_keys)
 
     uploaded_keys = {call.kwargs["object_key"] for call in file_provider._add_file_to_bucket.await_args_list}
     assert uploaded_keys == expected_keys
+
+    assert services.file.add_file.await_count == len(expected_keys)
+    added_paths = {call.args[0].path for call in services.file.add_file.await_args_list}
+    assert added_paths == expected_keys
 
     uploaded_by_key = {
         call.kwargs["object_key"]: call.kwargs["body"].decode("utf-8")
@@ -117,6 +124,7 @@ async def test_upload_bp_metadata_xmls_raises_on_upload_error():
 
     services = SimpleNamespace(
         file_provider=file_provider,
+        file=SimpleNamespace(is_file_by_path=AsyncMock(return_value=False), add_file=AsyncMock()),
         submission=SimpleNamespace(get_bucket=AsyncMock(return_value="test-bucket")),
         registration=SimpleNamespace(get_registration=AsyncMock(return_value=None)),
         object=SimpleNamespace(get_xml_documents=get_xml_documents),
@@ -127,3 +135,5 @@ async def test_upload_bp_metadata_xmls_raises_on_upload_error():
     with patch("metadata_backend.api.services.bigpicture.XmlProcessor.validate_schema"):
         with pytest.raises(SystemException, match="upload failed"):
             await upload_bp_metadata_xmls(services, "123", "request-user", "oidc-token")
+
+    services.file.add_file.assert_not_awaited()

@@ -165,7 +165,7 @@ class SubmissionUpdateCallableBigpicture(Protocol):
 
 
 @pytest.fixture
-async def bp_submission(nbis_client: aiohttp.ClientSession, project_id: str) -> SubmissionCallableBigpicture:
+async def bp_submission(nbis_client: aiohttp.ClientSession) -> SubmissionCallableBigpicture:
     """Create Bigpicture submission using the /submit endpoint."""
 
     api_prefix_v1 = deployment_config().API_PREFIX_V1
@@ -183,9 +183,7 @@ async def bp_submission(nbis_client: aiohttp.ClientSession, project_id: str) -> 
 
 
 @pytest.fixture
-async def bp_submission_update(
-    nbis_client: aiohttp.ClientSession, project_id: str
-) -> SubmissionUpdateCallableBigpicture:
+async def bp_submission_update(nbis_client: aiohttp.ClientSession) -> SubmissionUpdateCallableBigpicture:
     """Update Bigpicture submission using the /submit endpoint.
 
     Uses the same XMLs as the initial submission.
@@ -253,21 +251,23 @@ async def sd_client() -> AsyncGenerator[aiohttp.ClientSession]:
 async def nbis_client() -> AsyncGenerator[aiohttp.ClientSession]:
     """Create NBIS Bigpicture submission client using Bearer JWT authorization."""
 
-    # Create a similar JWT token as the user would get from the NBIS Bigpicture login portal
-    private_key, _ = get_test_es256_keypair()
-    issuer = os.getenv("NBIS_JWT_ISSUER", "https://login.bp.nbis.se")
-    user_id = mock_user
-    now = datetime.now(timezone.utc)
-    token = jwt.encode(
-        {
-            "sub": user_id,
-            "iss": issuer,
-            "iat": now - timedelta(minutes=1),
-            "exp": now + timedelta(minutes=30),
-        },
-        private_key,
-        algorithm="ES256",
-    )
+    token = os.getenv("NBIS_JWT")
+    if not token:
+        # Create a similar JWT token as the user would get from the NBIS Bigpicture login portal
+        private_key, _ = get_test_es256_keypair()
+        issuer = os.getenv("NBIS_JWT_ISSUER", "https://login.bp.nbis.se")
+        user_id = mock_user
+        now = datetime.now(timezone.utc)
+        token = jwt.encode(
+            {
+                "sub": user_id,
+                "iss": issuer,
+                "iat": now - timedelta(minutes=1),
+                "exp": now + timedelta(minutes=30),
+            },
+            private_key,
+            algorithm="ES256",
+        )
 
     bearer_token = f"Bearer {token}"
     headers = {"Authorization": bearer_token}

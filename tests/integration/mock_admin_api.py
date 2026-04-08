@@ -6,6 +6,7 @@ import json
 import logging
 import re
 import time
+import uuid
 from datetime import datetime
 from os import getenv
 
@@ -43,7 +44,7 @@ files_in_inbox = {
         },
         {
             "fileID": "32345678-90ab-cdef-1234-567890abcdef",
-            "inboxPath": "DATASET_1/ANNOTATIONS/test.json.c4gh",
+            "inboxPath": "DATASET_1/ANNOTATIONS/test.geojson.c4gh",
             "fileStatus": "uploaded",
             "submissionFileSize": 300,
             "createAt": datetime.now().isoformat(),
@@ -163,10 +164,19 @@ async def ingest_file(req: web.Request) -> web.Response:
 
             return web.HTTPOk()
 
-    return web.json_response(
-        {"error": f"file {ingestion_data.filepath} not found for user {ingestion_data.user}", "status": 400},
-        status=400,
+    # For integration tests, ingesting an unknown path implicitly creates it in inbox first
+    # (equivalent to calling /file/create and then /file/ingest).
+    files_in_inbox.setdefault(ingestion_data.user, []).append(
+        {
+            "fileID": str(uuid.uuid4()),
+            "inboxPath": ingestion_data.filepath,
+            "fileStatus": "verified",
+            "createAt": datetime.now().isoformat(),
+        }
     )
+    LOG.info("Created and ingested missing file %s", ingestion_data.filepath)
+
+    return web.HTTPOk()
 
 
 async def post_accession_id(req: web.Request) -> web.Response:
@@ -235,8 +245,9 @@ async def create_file(req: web.Request) -> web.Response:
             status=400,
         )
 
-    files_in_inbox[file_data.user].append(
+    files_in_inbox.setdefault(file_data.user, []).append(
         {
+            "fileID": str(uuid.uuid4()),
             "inboxPath": file_data.filepath,
             "fileStatus": "uploaded",
             "createAt": datetime.now().isoformat(),

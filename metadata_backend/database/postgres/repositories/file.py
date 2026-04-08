@@ -65,14 +65,14 @@ class FileRepository:
         self, *, submission_id: str | None = None, ingest_statuses: Sequence[IngestStatus] | None = None
     ) -> AsyncIterator[FileEntity]:
         """
-        Get file entities associated with the submission..
+        Get file entities associated with the submission.
 
         Args:
             submission_id: filter by submission id.
             ingest_statuses: filter by ingest statuses.
 
         Returns:
-            Asynchronous interator of file entities.
+            Asynchronous iterator of file entities.
         """
 
         # Apply filters.

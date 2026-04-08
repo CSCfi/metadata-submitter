@@ -247,12 +247,27 @@ class BigpictureObjectSubmissionService(ObjectSubmissionService):
         for image_processor in image_processors:
             object_id = image_processor.get_xml_object_identifier().id
             xml = image_processor.xml
+            root = xml.getroot()
+
+            # Validate the image file paths and extensions
+            alias = root.get("alias")
+            expected_dir = f"IMAGES/IMAGE_{alias}"
             for file_elem in xml.xpath("/IMAGE/FILES/FILE"):
+                filename = file_elem.get("filename")
+                dir_part, _, file_part = filename.rpartition("/")  # "IMAGES/IMAGE_{alias}", "/", "*.dcm.c4gh"
+                if dir_part != expected_dir:
+                    raise UserException(f"Image file '{filename}' must be in directory '{expected_dir}'.")
+                if not file_part.removesuffix(".c4gh").endswith(".dcm"):
+                    raise UserException(f"Image file '{filename}' must have a .dcm extension.")
+
+                # User is expected to upload the image files to the S3 inbox using
+                # the DATASET_{submission_id} path prefix where the submission_id is
+                # the same as the newly generated dataset accession ID.
                 files.append(
                     File(
                         submissionId=submission_id,
                         objectId=object_id,
-                        path=file_elem.get("filename"),
+                        path=f"DATASET_{submission_id}/{filename}",
                         checksumMethod=file_elem.get("checksum_method"),
                         unencryptedChecksum=file_elem.get("unencrypted_checksum"),
                         encryptedChecksum=file_elem.get("checksum"),
@@ -262,12 +277,20 @@ class BigpictureObjectSubmissionService(ObjectSubmissionService):
         for annotation_processor in annotation_processors:
             object_id = annotation_processor.get_xml_object_identifier().id
             xml = annotation_processor.xml
+
+            # Validate the annotation file paths and extensions
             for file_elem in xml.xpath("/ANNOTATION/FILES/FILE"):
+                filename = file_elem.get("filename")
+                dir_part, _, file_part = filename.rpartition("/")  # "ANNOTATIONS", "/", "*.geojson.c4gh"
+                if dir_part != "ANNOTATIONS":
+                    raise UserException(f"Annotation file '{filename}' must be in directory 'ANNOTATIONS'.")
+                if not file_part.removesuffix(".c4gh").endswith(".geojson"):
+                    raise UserException(f"Annotation file '{filename}' must have a .geojson extension.")
                 files.append(
                     File(
                         submissionId=submission_id,
                         objectId=object_id,
-                        path=file_elem.get("filename"),
+                        path=f"DATASET_{submission_id}/{filename}",
                         checksumMethod=file_elem.get("checksum_method"),
                         unencryptedChecksum=file_elem.get("unencrypted_checksum"),
                         encryptedChecksum=file_elem.get("checksum"),

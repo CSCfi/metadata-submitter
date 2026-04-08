@@ -156,7 +156,7 @@ class FileService:
             ingest_statuses: filter by ingest statuses.
 
         Returns:
-            Asynchronous interator of files.
+            Asynchronous iterator of files.
         """
         async for obj in self.__repository.get_files(submission_id=submission_id, ingest_statuses=ingest_statuses):
             yield self.convert_from_entity(obj)
