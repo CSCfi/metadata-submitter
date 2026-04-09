@@ -42,6 +42,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- (users) Bigpicture mandatory constraint 1, 5, 7. For mandatory constraint 5, any missing references are automatically added.
 - (users) Publishing a submission now triggers dataset ingestion in the SDA pipeline and releases the dataset
 - (users) REMS and DOI values are added to landing page XML before it is uploaded to the S3 inbox
 - (users) PATCH /publish endpoint encrypts the submission XML files and uploads them to the SDA S3 inbox
