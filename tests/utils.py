@@ -7,7 +7,7 @@ import re
 import uuid
 from base64 import b64encode
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from crypt4gh.keys.c4gh import generate
 
@@ -57,6 +57,7 @@ from metadata_backend.api.processors.xml.bigpicture import (
     BP_STAINING_PATH,
     BP_STAINING_SCHEMA,
 )
+from metadata_backend.api.processors.xml.processors import XmlDocumentsProcessor
 from metadata_backend.api.services.submission.bigpicture import BigpictureObjectSubmissionService
 from metadata_backend.api.services.submission.submission import ObjectSubmission
 
@@ -69,16 +70,18 @@ SD_SUBMISSION = TEST_FILES_ROOT / "submission" / "submission.json"
 
 BP_SUBMISSION_DIR = TEST_FILES_ROOT / "xml" / "bigpicture"
 BP_UPDATE_DIR = BP_SUBMISSION_DIR / "update"
+BP_FIX_DIR = BP_SUBMISSION_DIR / "fix"
 
 TEST_KEYS_DIR = TEST_FILES_ROOT / "keys"
 
 BigpictureObjectNames = dict[str, dict[str, dict[str, str]]]
 
 
-def bp_objects(is_update: bool) -> tuple[list[ObjectSubmission], dict[str, Path]]:
+def bp_objects(is_update: bool, is_fix: bool = False) -> tuple[list[ObjectSubmission], dict[str, Path]]:
     """Get BP XML test files.
 
     :param is_update: If true then updated XML files are used.
+    :param is_fix: If true then fixable XML files are used.
     :return: ObjectSubmission list, and list of file names and paths.
     """
 
@@ -86,6 +89,9 @@ def bp_objects(is_update: bool) -> tuple[list[ObjectSubmission], dict[str, Path]
     if is_update:
         # Use update files.
         files.update({p.name: p for p in BP_UPDATE_DIR.iterdir() if p.is_file()})
+    if is_fix:
+        # Use fixable files.
+        files.update({p.name: p for p in BP_FIX_DIR.iterdir() if p.is_file()})
 
     # Changes other XML files except Datacite XML.
     objects: list[ObjectSubmission] = []
@@ -98,10 +104,13 @@ def bp_objects(is_update: bool) -> tuple[list[ObjectSubmission], dict[str, Path]
 
 
 def _bp_submission_documents(
+    *,
     submission_name: str | None = None,
     object_names: BigpictureObjectNames | None = None,
     is_update: bool = False,
+    is_fix: bool = False,
     is_datacite: bool = False,
+    processor_callback: Callable[[XmlDocumentsProcessor], None] | None = None,
 ) -> tuple[str, BigpictureObjectNames, dict[str, io.BytesIO]]:
     """Read BP XML test files, assign unique submission name and object names while preserving provided object names.
 
@@ -111,11 +120,12 @@ def _bp_submission_documents(
     :param submission_name: Use the provided submission name instead of generating a new one.
     :param object_names: Use the provided object names instead of generating a new ones
     :param is_update: If true then updated XML files are used.
+    :param is_fix: If true then fixable XML files are used.
     :param is_datacite: If true then returns the Datacite XML file.
     :return: submission name, object_names, and dictionary of file names and IO bytes.
     """
 
-    objects, files = bp_objects(is_update)
+    objects, files = bp_objects(is_update, is_fix)
     processor, _, _ = BigpictureObjectSubmissionService._create_processor(objects)
 
     new_object_names: BigpictureObjectNames = {}
@@ -179,7 +189,11 @@ def _bp_submission_documents(
     change_object_name(BP_REMS_SCHEMA, BP_REMS_OBJECT_TYPE, BP_REMS_PATH, "1")
     change_object_name(BP_ORGANISATION_SCHEMA, BP_ORGANISATION_OBJECT_TYPE, BP_ORGANISATION_PATH, "1")
 
-    # Keep image file directory names aligned with renamed image aliases.
+    # Call processor callback to make any other changes to the XML files.
+    if processor_callback is not None:
+        processor_callback(processor)
+
+        # Keep image file directory names aligned with renamed image aliases.
     for image_processor in processor.get_xml_object_processors(BP_IMAGE_SCHEMA, BP_IMAGE_PATH):
         alias = image_processor.xml.getroot().get("alias")
         if alias is None:
@@ -211,23 +225,39 @@ def _bp_submission_documents(
 
 
 def bp_submission_documents(
-    *, is_datacite: bool, submission_name: str | None = None
+    *,
+    is_datacite: bool,
+    is_fix: bool = False,
+    submission_name: str | None = None,
+    processor_callback: Callable[[XmlDocumentsProcessor], None] | None = None,
 ) -> tuple[str, BigpictureObjectNames, dict[str, io.BytesIO]]:
     """Get BP XML test files for a new submission.
 
     Assigns a unique submission name and object names. The original object names in the
     XML files are suffixed with an underscore and a generated UUID4.
 
-    :param submission_name: The submission name.
     :param is_datacite: If true then returns the Datacite XML file.
+    :param is_fix: If true then fixable XML files are used.
+    :param submission_name: The submission name.
+    :param processor_callback: Callback to make changes to the XML documents.
     :return: submission name, object_names, and dictionary of file names and IO bytes.
     """
 
-    return _bp_submission_documents(submission_name=submission_name, is_update=False, is_datacite=is_datacite)
+    return _bp_submission_documents(
+        submission_name=submission_name,
+        is_update=False,
+        is_fix=is_fix,
+        is_datacite=is_datacite,
+        processor_callback=processor_callback,
+    )
 
 
 def bp_update_documents(
-    submission_name: str, object_names: BigpictureObjectNames, is_datacite: bool
+    submission_name: str,
+    object_names: BigpictureObjectNames,
+    is_datacite: bool,
+    is_fix: bool = False,
+    processor_callback: Callable[[XmlDocumentsProcessor], None] | None = None,
 ) -> tuple[str, BigpictureObjectNames, dict[str, io.BytesIO]]:
     """Get BP XML test files for a submission update.
 
@@ -237,10 +267,19 @@ def bp_update_documents(
     :param submission_name: The submission name.
     :param object_names: The object names in the original submission.
     :param is_datacite: If true then returns the Datacite XML file.
+    :param is_fix: If true then fixable XML files are used.
+    :param processor_callback: Callback to make changes to the XML documents.
     :return: submission name, object_names, and dictionary of file names and IO bytes.
     """
 
-    return _bp_submission_documents(submission_name, object_names, is_update=True, is_datacite=is_datacite)
+    return _bp_submission_documents(
+        submission_name=submission_name,
+        object_names=object_names,
+        is_update=True,
+        is_fix=is_fix,
+        is_datacite=is_datacite,
+        processor_callback=processor_callback,
+    )
 
 
 def sd_submission_document(submission: Submission | dict[str, Any] | None = None) -> dict[str, io.BytesIO]:
