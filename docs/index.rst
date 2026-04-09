@@ -9,9 +9,6 @@ Metadata Submitter
 Metadata Submission service to handle submissions of metadata, either as JSON, XML files or via form submissions via the
 Single Page Application frontend.
 
-Metadata Submitter is divided intro :ref:`backend` and :ref:`frontend`, both of them coming together in a Single Page Application
-that aims to streamline  working with metadata and providing a submission process through which researchers can submit and publish metadata.
-
 The application's intended use is with `NeIC SDA (Sensitive Data Archive) <https://neic-sda.readthedocs.io/>`_ stand-alone version, and it
 consists out of the box includes the `ENA (European Nucleotide Archive) <https://ena-docs.readthedocs.io>`_ metadata model,
 model which is used also by the  `European Genome-phenome Archive (EGA) <https://ega-archive.org/>`_.
@@ -32,7 +29,6 @@ Out of the box the ``metadata-submitter`` offers:
    :maxdepth: 2
    :caption: Contents:
 
-   Backend <submitter>
    Frontend <frontend>
    Deployment <deploy>
    Testing  <test>

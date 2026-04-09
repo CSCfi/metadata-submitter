@@ -1,3 +1,35 @@
+# Bigpicture submission API
+
+## Environmental variables
+
+| Variable                        | Description                                                                                                                                                                                    |
+|---------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| DEPLOYMENT                      | Deployment configuration ("NBIS").                                                                                                                                                             |
+| API_PREFIX                      | API root path (default value "").                                                                                                                                                              |
+| BP_CENTER_ID                    | Center ID used in Bigpicture IDs assigned by the API.                                                                                                                                          |
+| S3_ENDPOINT                     | Bigpicture Inbox S3 bucket.                                                                                                                                                                    |
+| S3_REGION                       | Bigpicture Inbox S3 bucket region.                                                                                                                                                             |
+| CRYPT4GH_PUBLIC_KEY             | Recipient's public key used when encrypting XML files before they are written to the Bigpicture Inbox S3 bucket.                                                                               |
+| CRYPT4GH_PRIVATE_KEY            | Private key used to encrypt XML files before they are written to the Bigpicture Inbox S3 bucket.                                                                                               |
+| CRYPT4GH_PRIVATE_KEY_PASSPHRASE | Passphrase that protects the private key.                                                                                                                                                      |
+| ADMIN_URL                       | NeIC SDA Admin API URL.                                                                                                                                                                        |
+| ADMIN_TOKEN                     | NeIC SDA Admin API token.                                                                                                                                                                      |
+| JWT_ISSUER                      | User's JWT token issuer.                                                                                                                                                                       |
+| JWT_ALGORITHM                   | Algorithm used to sign and verify user's JWT.                                                                                                                                                  |
+| JWT_KEY                         | Public key used to verify the user's JWT signature.                                                                                                                                            |
+| DATABASE_URL                    | Submit API database URL (postgresql+asyncpg:://username:password@host:port/database). *1                                                                                                       |
+| DISCOVERY_URL                   | URL used by REMS and DataCite to direct users to the dataset. Must include the placeholder {id}, which is replaced with the dataset ID (e.g., https://datasets.bp.nbis.se/datasets/{id}.html). |
+| DATACITE_API                    | DataCite API URL.                                                                                                                                                                              |
+| DATACITE_USER                   | DataCite user.                                                                                                                                                                                 |
+| DATACITE_KEY                    | DataCite key                                                                                                                                                                                   |
+| DATACITE_DOI_PREFIX             | DataCite DOI prefix.                                                                                                                                                                           |
+| REMS_URL                        | REMS API URL.                                                                                                                                                                                  |
+| REMS_USER                       | REMS API user.                                                                                                                                                                                 |
+| REMS_KEY                        | REMS API key.                                                                                                                                                                                  |
+
+*1 The database schema is automatically created if it does not already exist or it can
+be created by executing the SQL statements in metadata_backend/database/postgres/schema/create.sql.
+
 ## Bigpicture Submission Workflow with SD Submit API
 
 SD Submit API supports the submission of Bigpicture datasets.
