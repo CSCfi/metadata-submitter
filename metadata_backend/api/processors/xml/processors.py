@@ -1107,6 +1107,17 @@ class XmlDocumentsProcessor(XmlProcessor, DocumentsProcessor):
 
         return XmlDocumentProcessor.get_xml_object_processors(self.xml_processor, schema_type, root_path)
 
+    def get_xml_object_count(self, schema_type: str, root_path: str) -> int:
+        """
+        Get the number of metadata objects.
+
+        :param schema_type: The schema type.
+        :param root_path: The metadata object root path.
+        :return: the number of metadata objects.
+        """
+
+        return len(self.get_xml_object_processors(schema_type, root_path))
+
     def get_object_identifiers(self, schema_type: str | None = None) -> Sequence[ObjectIdentifier]:
         """
         Retrieve the metadata object identifiers.

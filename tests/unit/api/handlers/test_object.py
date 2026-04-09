@@ -21,6 +21,7 @@ from metadata_backend.api.processors.xml.bigpicture import (
     BP_LANDING_PAGE_SCHEMA,
     BP_MANDATORY_OBJECT_TYPES,
     BP_OBSERVATION_OBJECT_TYPE,
+    BP_OBSERVATION_PATH,
     BP_OBSERVATION_SCHEMA,
     BP_OBSERVER_OBJECT_TYPE,
     BP_OBSERVER_SCHEMA,
@@ -43,7 +44,12 @@ from metadata_backend.api.processors.xml.bigpicture import (
     get_xml_object_type_schema,
 )
 from metadata_backend.api.processors.xml.datacite import DATACITE_OBJECT_TYPE, DATACITE_SCHEMA, read_datacite_xml
-from metadata_backend.api.processors.xml.processors import XmlDocumentProcessor, XmlProcessor
+from metadata_backend.api.processors.xml.processors import (
+    XmlDocumentProcessor,
+    XmlDocumentsProcessor,
+    XmlObjectProcessor,
+    XmlProcessor,
+)
 from metadata_backend.api.services.accession import generate_bp_accession_prefix
 from metadata_backend.conf.deployment import deployment_config
 from tests.unit.patches.user import (
@@ -195,182 +201,249 @@ async def test_submission_bp(nbis_client):
     xml_config = BP_XML_OBJECT_CONFIG
 
     for is_datacite in [True, False]:
-        # Read XML files.
-        submission_name, object_names, files = bp_submission_documents(is_datacite=is_datacite)
-        file_data = prepare_file_data_bp(files)
-
-        sample_object_types = {
-            BP_SAMPLE_BIOLOGICAL_BEING_OBJECT_TYPE: ["1"],
-            BP_SAMPLE_SLIDE_OBJECT_TYPE: ["1"],
-            BP_SAMPLE_SPECIMEN_OBJECT_TYPE: ["1"],
-            BP_SAMPLE_BLOCK_OBJECT_TYPE: ["1"],
-            BP_SAMPLE_CASE_OBJECT_TYPE: ["1"],
-        }
-        for object_type, original_names in sample_object_types.items():
-            sample_object_types[object_type] = [object_names[BP_SAMPLE_SCHEMA][object_type][original_names[0]]]
-
-        object_types = {
-            BP_ANNOTATION_OBJECT_TYPE: [object_names[BP_ANNOTATION_SCHEMA][BP_ANNOTATION_OBJECT_TYPE]["1"]],
-            BP_DATASET_OBJECT_TYPE: [object_names[BP_DATASET_SCHEMA][BP_DATASET_OBJECT_TYPE]["1"]],
-            BP_IMAGE_OBJECT_TYPE: [
-                object_names[BP_IMAGE_SCHEMA][BP_IMAGE_OBJECT_TYPE]["1"],
-                object_names[BP_IMAGE_SCHEMA][BP_IMAGE_OBJECT_TYPE]["2"],
-            ],
-            BP_LANDING_PAGE_OBJECT_TYPE: [object_names[BP_LANDING_PAGE_SCHEMA][BP_LANDING_PAGE_OBJECT_TYPE]["1"]],
-            BP_OBSERVATION_OBJECT_TYPE: [object_names[BP_OBSERVATION_SCHEMA][BP_OBSERVATION_OBJECT_TYPE]["1"]],
-            BP_OBSERVER_OBJECT_TYPE: [object_names[BP_OBSERVER_SCHEMA][BP_OBSERVER_OBJECT_TYPE]["1"]],
-            BP_ORGANISATION_OBJECT_TYPE: [object_names[BP_ORGANISATION_SCHEMA][BP_ORGANISATION_OBJECT_TYPE]["1"]],
-            BP_POLICY_OBJECT_TYPE: [object_names[BP_POLICY_SCHEMA][BP_POLICY_OBJECT_TYPE]["1"]],
-            BP_REMS_OBJECT_TYPE: [object_names[BP_REMS_SCHEMA][BP_REMS_OBJECT_TYPE]["1"]],
-            BP_STAINING_OBJECT_TYPE: [object_names[BP_STAINING_SCHEMA][BP_STAINING_OBJECT_TYPE]["1"]],
-            **sample_object_types,
-        }
-        if is_datacite:
-            object_types[DATACITE_OBJECT_TYPE] = None  # DataCite does not have an object name.
-
-        with patch_get_user_projects, patch_verify_user_project, patch_verify_authorization:
-            # Check that submission does not exists.
-            response = nbis_client.head(f"{api_prefix_v1}/submit/{submission_name}")
-            assert response.status_code == 404
-
-            # Test create submission.
-            response = nbis_client.post(f"{api_prefix_v1}/submit", files=file_data)
-            assert response.status_code == 200
-            submission = Submission.model_validate(response.json())
-            submission_id = submission.submissionId
-
-            # Assert submission document.
-            await _assert_bp_submission(submission, submission_id, submission_name)
-
-            # Assert rems.
-            await assert_bp_rems(submission)
-
-            # Assert datacite.
-            if is_datacite:
-                assert_datacite(submission.metadata, saved=True)
-
-            # Assert metadata objects.
-            await assert_bp_metadata_objects(nbis_client, submission, object_types, sample_object_types, xml_config)
-
-            # Assert files.
-            await assert_bp_files(nbis_client, submission_id, object_types[BP_IMAGE_OBJECT_TYPE])
-
-            created_objects = await list_metadata_objects(nbis_client, project_id, True, submission_name)
-
-            # Test update submission (dataset and image changes).
-            #
-
+        for is_fix in [True, False]:
             # Read XML files.
-            _, object_names, files = bp_update_documents(submission_name, object_names, is_datacite)
+            submission_name, object_names, files = bp_submission_documents(is_datacite=is_datacite, is_fix=is_fix)
             file_data = prepare_file_data_bp(files)
 
-            updated_object_types = copy.deepcopy(object_types)
-            updated_object_types[BP_IMAGE_OBJECT_TYPE] = [
-                object_names[BP_IMAGE_SCHEMA][BP_IMAGE_OBJECT_TYPE]["1"],
-                object_names[BP_IMAGE_SCHEMA][BP_IMAGE_OBJECT_TYPE]["3"],
-            ]
+            sample_object_types = {
+                BP_SAMPLE_BIOLOGICAL_BEING_OBJECT_TYPE: ["1"],
+                BP_SAMPLE_SLIDE_OBJECT_TYPE: ["1"],
+                BP_SAMPLE_SPECIMEN_OBJECT_TYPE: ["1"],
+                BP_SAMPLE_BLOCK_OBJECT_TYPE: ["1"],
+                BP_SAMPLE_CASE_OBJECT_TYPE: ["1"],
+            }
+            for object_type, original_names in sample_object_types.items():
+                sample_object_types[object_type] = [object_names[BP_SAMPLE_SCHEMA][object_type][original_names[0]]]
 
-            response = nbis_client.patch(f"{api_prefix_v1}/submit/{submission_id}", files=file_data)
-            assert response.status_code == 200
-
-            response = nbis_client.get(f"{api_prefix_v1}/submissions/{submission_id}")
-            assert response.status_code == 200
-            submission = Submission.model_validate(response.json())
-
-            # Assert submission document.
-            await _assert_bp_submission(submission, submission_id, submission_name, is_update=True)
-
-            # Assert rems.
-            await assert_bp_rems(submission)
-
-            # Assert datacite.
+            object_types = {
+                BP_ANNOTATION_OBJECT_TYPE: [object_names[BP_ANNOTATION_SCHEMA][BP_ANNOTATION_OBJECT_TYPE]["1"]],
+                BP_DATASET_OBJECT_TYPE: [object_names[BP_DATASET_SCHEMA][BP_DATASET_OBJECT_TYPE]["1"]],
+                BP_IMAGE_OBJECT_TYPE: [
+                    object_names[BP_IMAGE_SCHEMA][BP_IMAGE_OBJECT_TYPE]["1"],
+                    object_names[BP_IMAGE_SCHEMA][BP_IMAGE_OBJECT_TYPE]["2"],
+                ],
+                BP_LANDING_PAGE_OBJECT_TYPE: [object_names[BP_LANDING_PAGE_SCHEMA][BP_LANDING_PAGE_OBJECT_TYPE]["1"]],
+                BP_OBSERVATION_OBJECT_TYPE: [object_names[BP_OBSERVATION_SCHEMA][BP_OBSERVATION_OBJECT_TYPE]["1"]],
+                BP_OBSERVER_OBJECT_TYPE: [object_names[BP_OBSERVER_SCHEMA][BP_OBSERVER_OBJECT_TYPE]["1"]],
+                BP_ORGANISATION_OBJECT_TYPE: [object_names[BP_ORGANISATION_SCHEMA][BP_ORGANISATION_OBJECT_TYPE]["1"]],
+                BP_POLICY_OBJECT_TYPE: [object_names[BP_POLICY_SCHEMA][BP_POLICY_OBJECT_TYPE]["1"]],
+                BP_REMS_OBJECT_TYPE: [object_names[BP_REMS_SCHEMA][BP_REMS_OBJECT_TYPE]["1"]],
+                BP_STAINING_OBJECT_TYPE: [object_names[BP_STAINING_SCHEMA][BP_STAINING_OBJECT_TYPE]["1"]],
+                **sample_object_types,
+            }
             if is_datacite:
-                assert_datacite(submission.metadata, saved=True)
+                object_types[DATACITE_OBJECT_TYPE] = None  # DataCite does not have an object name.
 
-            # Assert metadata objects.
-            await assert_bp_metadata_objects(
-                nbis_client, submission, updated_object_types, sample_object_types, xml_config
-            )
+            with patch_get_user_projects, patch_verify_user_project, patch_verify_authorization:
+                # Check that submission does not exists.
+                response = nbis_client.head(f"{api_prefix_v1}/submit/{submission_name}")
+                assert response.status_code == 404
 
-            # Assert files.
-            await assert_bp_files(
-                nbis_client,
-                submission_id,
-                updated_object_types[BP_IMAGE_OBJECT_TYPE],
-                is_update=True,
-            )
+                # Test create submission.
+                response = nbis_client.post(f"{api_prefix_v1}/submit", files=file_data)
+                assert response.status_code == 200
+                submission = Submission.model_validate(response.json())
+                submission_id = submission.submissionId
 
-            def _assert_unchanged_object(_created_obj, _updated_obj):
-                assert _created_obj.objectId == _updated_obj.objectId
-                assert _created_obj.objectType == _updated_obj.objectType
-                assert _created_obj.submissionId == _updated_obj.submissionId
-                assert _created_obj.title == _updated_obj.title
-                assert _created_obj.description == _updated_obj.description
-                assert _created_obj.created == _updated_obj.created
-                assert _created_obj.modified < _updated_obj.modified
+                # Assert submission document.
+                await _assert_bp_submission(submission, submission_id, submission_name)
 
-            # Assert submission document.
-            await _assert_bp_submission(submission, submission_id, submission_name, is_update=True)
+                # Assert rems.
+                await assert_bp_rems(submission)
 
-            # Assert rems.
-            await assert_bp_rems(submission)
+                # Assert datacite.
+                if is_datacite:
+                    assert_datacite(submission.metadata, saved=True)
 
-            # Assert datacite.
-            if is_datacite:
-                assert_datacite(submission.metadata, saved=True)
+                # Assert metadata objects.
+                await assert_bp_metadata_objects(nbis_client, submission, object_types, sample_object_types, xml_config)
 
-            # Assert metadata objects.
-            await assert_bp_metadata_objects(
-                nbis_client, submission, updated_object_types, sample_object_types, xml_config
-            )
+                # Assert files.
+                await assert_bp_files(nbis_client, submission_id, object_types[BP_IMAGE_OBJECT_TYPE])
 
-            # Assert files.
-            await assert_bp_files(
-                nbis_client,
-                submission_id,
-                updated_object_types[BP_IMAGE_OBJECT_TYPE],
-                is_update=True,
-            )
+                created_objects = await list_metadata_objects(nbis_client, project_id, True, submission_name)
 
-            updated_objects = await list_metadata_objects(nbis_client, project_id, True, submission_name)
+                # Dataset XML specific checks.
 
-            created_object_lookup = {(o.objectType, o.name): o for o in created_objects}
-            updated_object_lookup = {(o.objectType, o.name): o for o in updated_objects}
+                docs_url = f"{api_prefix_v1}/submissions/{submission_id}/objects/docs?"
+                response = nbis_client.get(f"{docs_url}objectType={BP_DATASET_OBJECT_TYPE}")
+                assert response.status_code == 200
+                dataset_processor = XmlDocumentProcessor(
+                    BP_XML_OBJECT_CONFIG, XmlObjectProcessor.parse_xml(response.text)
+                )
 
-            # Assert that non-image and non-dataset metadata object rows have not been changed.
-            for created_obj in created_objects:
-                if created_obj.objectType not in [BP_DATASET_OBJECT_TYPE, BP_IMAGE_OBJECT_TYPE, DATACITE_OBJECT_TYPE]:
-                    updated_obj = updated_object_lookup.get((created_obj.objectType, created_obj.name))
-                    assert updated_obj is not None, (
-                        f"Updated '{created_obj.objectType}' metadata object '{created_obj.name}' not found"
-                    )
-                    _assert_unchanged_object(created_obj, updated_obj)
+                # Check that all image references exist in dataset XML. The
+                # first image alias is 1 and the second image alias is 2.
+                image_refs = dataset_processor.xml.getroot().findall(".//IMAGE_REF")
+                assert len(image_refs) == 2, f"Expected 2 IMAGE_REFs, found {len(image_refs)}"
+                image_aliases = [ref.get("alias", "") for ref in image_refs]
+                image_accessions = [ref.get("accession") for ref in image_refs]
+                assert any(alias.startswith("1") for alias in image_aliases)
+                assert any(a.startswith("2") for a in image_aliases)
+                assert all(accession is not None for accession in image_accessions)
 
-            # Assert image metadata objects.
-            for created_obj in created_objects:
-                if created_obj.objectType == BP_IMAGE_OBJECT_TYPE:
-                    updated_obj = updated_object_lookup.get((created_obj.objectType, created_obj.name))
-                    if created_obj.name in updated_object_types[BP_IMAGE_OBJECT_TYPE]:
-                        # Check that the object still exists.
+                # Check that all annotation references exist in dataset XML.
+                annotation_refs = dataset_processor.xml.getroot().findall(".//ANNOTATION_REF")
+                assert len(annotation_refs) == 1, f"Expected 1 ANNOTATION_REFs, found {len(annotation_refs)}"
+                assert annotation_refs[0].get("alias", "").startswith("1")
+                assert annotation_refs[0].get("accession") is not None
+
+                # Check that all observation references exist in dataset XML.
+                observation_refs = dataset_processor.xml.getroot().findall(".//OBSERVATION_REF")
+                assert len(observation_refs) == 1, f"Expected 1 OBSERVATION_REFs, found {len(observation_refs)}"
+                assert observation_refs[0].get("alias", "").startswith("1")
+                assert observation_refs[0].get("accession") is not None
+
+                # Test update submission (dataset and image changes).
+                #
+
+                # Read XML files.
+                _, object_names, files = bp_update_documents(submission_name, object_names, is_datacite)
+                file_data = prepare_file_data_bp(files)
+
+                updated_object_types = copy.deepcopy(object_types)
+                updated_object_types[BP_IMAGE_OBJECT_TYPE] = [
+                    object_names[BP_IMAGE_SCHEMA][BP_IMAGE_OBJECT_TYPE]["1"],
+                    object_names[BP_IMAGE_SCHEMA][BP_IMAGE_OBJECT_TYPE]["3"],
+                ]
+
+                response = nbis_client.patch(f"{api_prefix_v1}/submit/{submission_id}", files=file_data)
+                assert response.status_code == 200
+
+                response = nbis_client.get(f"{api_prefix_v1}/submissions/{submission_id}")
+                assert response.status_code == 200
+                submission = Submission.model_validate(response.json())
+
+                # Assert submission document.
+                await _assert_bp_submission(submission, submission_id, submission_name, is_update=True)
+
+                # Assert rems.
+                await assert_bp_rems(submission)
+
+                # Assert datacite.
+                if is_datacite:
+                    assert_datacite(submission.metadata, saved=True)
+
+                # Assert metadata objects.
+                await assert_bp_metadata_objects(
+                    nbis_client, submission, updated_object_types, sample_object_types, xml_config
+                )
+
+                # Assert files.
+                await assert_bp_files(
+                    nbis_client,
+                    submission_id,
+                    updated_object_types[BP_IMAGE_OBJECT_TYPE],
+                    is_update=True,
+                )
+
+                def _assert_unchanged_object(_created_obj, _updated_obj):
+                    assert _created_obj.objectId == _updated_obj.objectId
+                    assert _created_obj.objectType == _updated_obj.objectType
+                    assert _created_obj.submissionId == _updated_obj.submissionId
+                    assert _created_obj.title == _updated_obj.title
+                    assert _created_obj.description == _updated_obj.description
+                    assert _created_obj.created == _updated_obj.created
+                    assert _created_obj.modified < _updated_obj.modified
+
+                # Assert submission document.
+                await _assert_bp_submission(submission, submission_id, submission_name, is_update=True)
+
+                # Assert rems.
+                await assert_bp_rems(submission)
+
+                # Assert datacite.
+                if is_datacite:
+                    assert_datacite(submission.metadata, saved=True)
+
+                # Assert metadata objects.
+                await assert_bp_metadata_objects(
+                    nbis_client, submission, updated_object_types, sample_object_types, xml_config
+                )
+
+                # Assert files.
+                await assert_bp_files(
+                    nbis_client,
+                    submission_id,
+                    updated_object_types[BP_IMAGE_OBJECT_TYPE],
+                    is_update=True,
+                )
+
+                updated_objects = await list_metadata_objects(nbis_client, project_id, True, submission_name)
+
+                created_object_lookup = {(o.objectType, o.name): o for o in created_objects}
+                updated_object_lookup = {(o.objectType, o.name): o for o in updated_objects}
+
+                # Assert that non-image and non-dataset metadata object rows have not been changed.
+                for created_obj in created_objects:
+                    if created_obj.objectType not in [
+                        BP_DATASET_OBJECT_TYPE,
+                        BP_IMAGE_OBJECT_TYPE,
+                        DATACITE_OBJECT_TYPE,
+                    ]:
+                        updated_obj = updated_object_lookup.get((created_obj.objectType, created_obj.name))
                         assert updated_obj is not None, (
                             f"Updated '{created_obj.objectType}' metadata object '{created_obj.name}' not found"
                         )
                         _assert_unchanged_object(created_obj, updated_obj)
-                    else:
-                        # Check that the object has been removed.
-                        assert updated_obj is None
-            for updated_obj in updated_objects:
-                if updated_obj.objectType == BP_IMAGE_OBJECT_TYPE:
-                    created_obj = created_object_lookup.get((updated_obj.objectType, updated_obj.name))
-                    if updated_obj.name in object_types[BP_IMAGE_OBJECT_TYPE]:
-                        # Check that the object was created previously.
-                        assert created_obj is not None, (
-                            f"Created '{updated_obj.objectType}' metadata object '{updated_obj.name}' not found"
-                        )
-                        _assert_unchanged_object(created_obj, updated_obj)
-                    else:
-                        # Check that the object has been assigned a new id.
-                        assert updated_obj.objectId not in [o.objectId for o in created_objects]
+
+                # Assert image metadata objects.
+                for created_obj in created_objects:
+                    if created_obj.objectType == BP_IMAGE_OBJECT_TYPE:
+                        updated_obj = updated_object_lookup.get((created_obj.objectType, created_obj.name))
+                        if created_obj.name in updated_object_types[BP_IMAGE_OBJECT_TYPE]:
+                            # Check that the object still exists.
+                            assert updated_obj is not None, (
+                                f"Updated '{created_obj.objectType}' metadata object '{created_obj.name}' not found"
+                            )
+                            _assert_unchanged_object(created_obj, updated_obj)
+                        else:
+                            # Check that the object has been removed.
+                            assert updated_obj is None
+                for updated_obj in updated_objects:
+                    if updated_obj.objectType == BP_IMAGE_OBJECT_TYPE:
+                        created_obj = created_object_lookup.get((updated_obj.objectType, updated_obj.name))
+                        if updated_obj.name in object_types[BP_IMAGE_OBJECT_TYPE]:
+                            # Check that the object was created previously.
+                            assert created_obj is not None, (
+                                f"Created '{updated_obj.objectType}' metadata object '{updated_obj.name}' not found"
+                            )
+                            _assert_unchanged_object(created_obj, updated_obj)
+                        else:
+                            # Check that the object has been assigned a new id.
+                            assert updated_obj.objectId not in [o.objectId for o in created_objects]
+
+                # Dataset XML specific checks.
+
+                docs_url = f"{api_prefix_v1}/submissions/{submission_id}/objects/docs?"
+                response = nbis_client.get(f"{docs_url}objectType={BP_DATASET_OBJECT_TYPE}")
+                assert response.status_code == 200
+                dataset_processor = XmlDocumentProcessor(
+                    BP_XML_OBJECT_CONFIG, XmlObjectProcessor.parse_xml(response.text)
+                )
+
+                # Check that all image references exist in dataset XML. The
+                # first image alias is 1 and the second image alias is 3 after update.
+                image_refs = dataset_processor.xml.getroot().findall(".//IMAGE_REF")
+                assert len(image_refs) == 2, f"Expected 2 IMAGE_REFs, found {len(image_refs)}"
+                image_aliases = [ref.get("alias", "") for ref in image_refs]
+                image_accessions = [ref.get("accession") for ref in image_refs]
+                assert any(alias.startswith("1") for alias in image_aliases)
+                assert any(a.startswith("3") for a in image_aliases)
+                assert all(accession is not None for accession in image_accessions)
+
+                # Check that all annotation references exist in dataset XML.
+                annotation_refs = dataset_processor.xml.getroot().findall(".//ANNOTATION_REF")
+                assert len(annotation_refs) == 1, f"Expected 1 ANNOTATION_REFs, found {len(annotation_refs)}"
+                assert annotation_refs[0].get("alias", "").startswith("1")
+                assert annotation_refs[0].get("accession") is not None
+
+                # Check that all observation references exist in dataset XML.
+                observation_refs = dataset_processor.xml.getroot().findall(".//OBSERVATION_REF")
+                assert len(observation_refs) == 1, f"Expected 1 OBSERVATION_REFs, found {len(observation_refs)}"
+                assert observation_refs[0].get("alias", "").startswith("1")
+                assert observation_refs[0].get("accession") is not None
 
 
 async def test_missing_object_type_submission_bp(nbis_client):
@@ -401,6 +474,35 @@ async def test_missing_object_type_submission_bp(nbis_client):
                 problem_json["errors"][0] == f"Expecting {'exactly' if is_single else 'at least'} one '{object_type}' "
                 f"metadata object but found 0."
             )
+
+
+async def test_mandatory_constraint_7_submission_bp(nbis_client):
+    """Test no observation for observer (mandatory constraint 7) in Bigpicture submissions."""
+
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+    is_datacite = True
+
+    def processor_callback(processor: XmlDocumentsProcessor):
+        # Remove OBSERVER_REF elements from Observations.
+        for observation_processor in processor.get_xml_object_processors(BP_OBSERVATION_SCHEMA, BP_OBSERVATION_PATH):
+            for elem in observation_processor.xml.getroot().findall(".//OBSERVER_REF"):
+                parent = elem.getparent()
+                parent.remove(elem)
+
+    # Read XML files.
+    submission_name, object_names, files = bp_submission_documents(
+        is_datacite=is_datacite, processor_callback=processor_callback
+    )
+
+    file_data = prepare_file_data_bp(files)
+    with patch_get_user_projects, patch_verify_user_project, patch_verify_authorization:
+        # Test create submission.
+        response = nbis_client.post(f"{api_prefix_v1}/submit", files=file_data)
+        assert response.status_code == 400
+        problem_json = response.json()
+        assert problem_json["detail"] == "User error"
+        assert len(problem_json["errors"]) == 1
+        assert str(problem_json["errors"][0]).startswith("1 observers are not associated with observations. Examples:")
 
 
 async def _assert_bp_submission(submission, submission_id, submission_name, is_update: bool = False):

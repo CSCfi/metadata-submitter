@@ -114,6 +114,8 @@ async def test_bp_objects_and_docs(nbis_client, sd_submission, project_id, bp_su
 
     dataset = get_exactly_one("1", "dataset", "dataset")
     image = get_exactly_one("1", "image", "image")
+    # Second image is automatically added to the dataset.
+    image2 = get_exactly_one("2", "image", "image")
     annotation = get_exactly_one("1", "annotation", "annotation")
     observation = get_exactly_one("1", "observation", "observation")
 
@@ -126,6 +128,7 @@ async def test_bp_objects_and_docs(nbis_client, sd_submission, project_id, bp_su
     <VERSION>1</VERSION>
     <METADATA_STANDARD>2.0.0</METADATA_STANDARD>
     <IMAGE_REF alias="{object_names["image"]["image"]["1"]}" accession="{image.objectId}"/>
+    <IMAGE_REF alias="{object_names["image"]["image"]["2"]}" accession="{image2.objectId}"/>
     <ANNOTATION_REF alias="{object_names["annotation"]["annotation"]["1"]}" accession="{annotation.objectId}"/>
     <OBSERVATION_REF alias="{object_names["observation"]["observation"]["1"]}" accession="{observation.objectId}"/>
     <ATTRIBUTES>

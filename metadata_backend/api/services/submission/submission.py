@@ -44,6 +44,14 @@ class ObjectSubmissionService(ABC):
         :return: The documents processor.
         """
 
+    def validate_documents(self) -> None:
+        """
+        Validate documents.
+
+        The validation may change the documents to make them valid.
+        """
+        return None
+
     @abstractmethod
     def assign_submission_accession(self) -> str | None:
         """
@@ -127,6 +135,11 @@ class ObjectSubmissionService(ABC):
             await self._project_service.verify_user_project(user_id, project_id)
 
             processor = self.create_processor(objects)
+
+            if processor:
+                #  Validate documents using workflow specific rules.
+                self.validate_documents()
+
             object_identifiers: Sequence[ObjectIdentifier] = []
             if processor:
                 # Get metadata object identifiers from the documents processor
@@ -244,6 +257,10 @@ class ObjectSubmissionService(ABC):
             deleted_objects = []
 
             processor = self.create_processor(objects)
+
+            if processor:
+                #  Validate XML documents in addition to the XML schema and reference validation.
+                self.validate_documents()
 
             if processor:
                 # Get metadata object identifiers.
