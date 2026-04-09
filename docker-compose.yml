@@ -79,7 +79,6 @@ services:
     environment:
       - "DEPLOYMENT=NBIS"
       - "API_PREFIX=${API_PREFIX}"
-      - "BASE_URL=http://sd-submit-api-nbis:5431"
       - "LOG_LEVEL=${LOG_LEVEL}"
       - "DATACITE_API=${DATACITE_API:?DATACITE_API must be defined}"
       - "DATACITE_USER=${DATACITE_USER:?DATACITE_USER must be defined}"
