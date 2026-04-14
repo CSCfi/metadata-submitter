@@ -158,6 +158,7 @@ integration-test:
   before_script:
     - echo "$ARTIFACTORY_USER_PASSWORD" | sudo docker login --username "$ARTIFACTORY_USER" --password-stdin "$ARTIFACTORY_SERVER"
   script:
+    # Push to Artifactory with the same tag as built in the 1-build-image job
     - |
       if [ "$CI_PIPELINE_SOURCE" = "merge_request_event" ]; then
         export IMAGE_TAG="$(echo ${ENVIRONMENT:-$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME} | tr '/' '-')"
@@ -168,6 +169,18 @@ integration-test:
       fi
     - echo "Pushing image sd-submit-api:${IMAGE_TAG}"
     - docker push "$ARTIFACTORY_SERVER/sds/sd-submit-api:${IMAGE_TAG}"
+
+    # Login to GitHub Container Registry
+    - echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
+
+    # Tag the image for GHCR
+    - docker tag $ARTIFACTORY_SERVER/sds/sd-submit-api:${IMAGE_TAG} ghcr.io/cscfi/metadata-submitter:latest
+    - docker tag $ARTIFACTORY_SERVER/sds/sd-submit-api:${IMAGE_TAG} ghcr.io/cscfi/metadata-submitter:$CI_COMMIT_SHA
+
+    # Push to GHCR
+    - echo "Pushing images ghcr.io/cscfi/metadata-submitter:latest and ghcr.io/cscfi/metadata-submitter:$CI_COMMIT_SHA"
+    - docker push ghcr.io/cscfi/metadata-submitter:latest
+    - docker push ghcr.io/cscfi/metadata-submitter:$CI_COMMIT_SHA
   after_script:
     - |
       if [ "$CI_PIPELINE_SOURCE" = "merge_request_event" ]; then
@@ -178,6 +191,8 @@ integration-test:
         export IMAGE_TAG="$CI_DEFAULT_BRANCH"
       fi
     - docker rmi "$ARTIFACTORY_SERVER/sds/sd-submit-api:${IMAGE_TAG}" || true
+    - docker rmi ghcr.io/cscfi/metadata-submitter:latest || true
+    - docker rmi ghcr.io/cscfi/metadata-submitter:$CI_COMMIT_SHA || true
 
 release-job:
   extends: .automated-release

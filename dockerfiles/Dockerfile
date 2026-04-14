@@ -21,8 +21,12 @@ FROM ghcr.io/astral-sh/uv:python3.14-trixie-slim
 #=======================
 
 LABEL maintainer="CSC Developers"
-LABEL org.label-schema.schema-version="1.0"
-LABEL org.label-schema.vcs-url="https://github.com/CSCfi/metadata-submitter"
+LABEL org.opencontainers.image.authors="CSC"
+LABEL org.opencontainers.image.title="metadata-submitter"
+LABEL org.opencontainers.image.description="SD Submit: sensitive data submission service"
+LABEL org.opencontainers.image.source="https://github.com/CSCfi/metadata-submitter"
+LABEL org.opencontainers.image.url="https://github.com/CSCfi/metadata-submitter"
+LABEL org.opencontainers.image.licenses="MIT"
 
 # Setup the working directory
 WORKDIR /app
@@ -33,7 +37,7 @@ RUN groupadd -r -g 998 submitter \
   && chown -R 998:998 /app
 
 # Copy the application
-COPY --chown=998:998 --from=BUILD-BACKEND  /app .
+COPY --chown=998:998 --from=build-backend  /app .
 
 # Copy the launcher
 COPY --chown=998:998 ./deploy/app.sh /app/app.sh
