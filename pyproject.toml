@@ -73,12 +73,12 @@ dev = [
     # ruff
     "ruff==0.15.7",
     # pytest
-    "pytest==8.4.2",
+    "pytest==9.0.3",
     "pytest-asyncio==1.3.0",
     "pytest-cov==7.0.0",
     "pytest-xdist==3.8.0",
     # other
-    "aiofiles==24.1.0",
+    "aiofiles==25.1.0",
     "authlib==1.6.6",
     "certifi==2026.2.25",
     "honcho==2.0.0",
@@ -111,7 +111,7 @@ verify = [
 
 test = [
     # pytest
-    "pytest==8.4.2",
+    "pytest==9.0.3",
     "pytest-cov==7.0.0",
     "pytest-xdist==3.8.0",
 ]
