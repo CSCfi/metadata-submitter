@@ -105,6 +105,8 @@ async def test_publish_bp(nbis_client, bp_submission):
 
 @pytest.mark.skip(reason="This test is for manual testing against staging environment and requires manual setup.")
 async def test_real_publish_bp(nbis_client, bp_submission, monkeypatch):
+    # To run this test against the staging SDA pipeline
+    # Set NBIS_JWT environment variable to a valid upload JWT token
 
     # Create new submission
     submission, _ = await bp_submission(is_datacite=True)
