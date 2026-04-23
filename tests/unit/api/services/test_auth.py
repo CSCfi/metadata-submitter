@@ -1,4 +1,5 @@
 import os
+from base64 import b64encode
 from datetime import datetime, timedelta, timezone
 from typing import Iterator
 from unittest.mock import patch
@@ -14,6 +15,7 @@ from metadata_backend.api.services.auth import (
     API_KEY_LENGTH,
     AuthService,
 )
+from metadata_backend.conf.jwt import jwt_config as load_jwt_config
 from metadata_backend.database.postgres.repositories.api_key import ApiKeyRepository
 from tests.unit.patches.user import MOCK_USER_ID, MOCK_USER_NAME
 from tests.utils import get_test_es256_keypair
@@ -39,7 +41,12 @@ def jwt_config() -> Iterator[JwtConfig]:
         jwt_algorithm="HS256",
     )
     env_patcher = patch.dict(
-        os.environ, {"JWT_KEY": config.jwt_secret, "JWT_ISSUER": config.issuer, "JWT_ALGORITHM": config.jwt_algorithm}
+        os.environ,
+        {
+            "JWT_KEY": b64encode(config.jwt_secret.encode("utf-8")).decode("ascii"),
+            "JWT_ISSUER": config.issuer,
+            "JWT_ALGORITHM": config.jwt_algorithm,
+        },
     )
     env_patcher.start()
     yield config
@@ -102,7 +109,7 @@ def test_read_nbis_jwt_token_returns_user_id(jwt_config) -> None:
         os.environ,
         {
             "DEPLOYMENT": "NBIS",
-            "JWT_KEY": mock_nbis_public_key,
+            "JWT_KEY": b64encode(mock_nbis_public_key.encode("utf-8")).decode("ascii"),
             "JWT_ISSUER": "nbis-issuer",
             "JWT_ALGORITHM": "ES256",
         },
@@ -149,7 +156,7 @@ def test_read_expired_jwt_token_raises(jwt_config) -> None:
 def test_read_wrong_issuer_jwt_token_raises(jwt_config) -> None:
     token = AuthService.create_jwt_token(jwt_config.user_id, jwt_config.user_name, jwt_config.expiration)
     with pytest.raises(jwt.InvalidIssuerError):
-        jwt.decode(token, os.getenv("JWT_KEY"), algorithms=["HS256"], issuer="invalid")
+        jwt.decode(token, load_jwt_config().JWT_KEY, algorithms=["HS256"], issuer="invalid")
 
 
 async def test_hash_api_key(jwt_config, service) -> None:

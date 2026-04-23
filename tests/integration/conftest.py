@@ -251,6 +251,7 @@ async def sd_client() -> AsyncGenerator[aiohttp.ClientSession]:
 async def nbis_client() -> AsyncGenerator[aiohttp.ClientSession]:
     """Create NBIS Bigpicture submission client using Bearer JWT authorization."""
 
+    # Set NBIS_JWT locally if testing with actual login token
     token = os.getenv("NBIS_JWT")
     if not token:
         # Create a similar JWT token as the user would get from the NBIS Bigpicture login portal

@@ -5,7 +5,7 @@ import json
 import os
 import re
 import uuid
-from base64 import b64encode
+from base64 import b64decode, b64encode
 from pathlib import Path
 from typing import Any, Callable
 
@@ -315,8 +315,8 @@ def get_test_es256_keypair() -> tuple[str, str]:
     :return: Tuple of (private_key, public_key).
     """
 
-    private_key = (TEST_KEYS_DIR / "es256_private.txt").read_text(encoding="utf-8")
-    public_key = (TEST_KEYS_DIR / "es256_public.txt").read_text(encoding="utf-8")
+    private_key = b64decode((TEST_KEYS_DIR / "es256_private.txt").read_text(encoding="utf-8")).decode("utf-8")
+    public_key = b64decode((TEST_KEYS_DIR / "es256_public.txt").read_text(encoding="utf-8")).decode("utf-8")
     return private_key, public_key
 
 

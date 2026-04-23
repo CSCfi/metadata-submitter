@@ -212,7 +212,7 @@ def registration_service() -> RegistrationService:
 @pytest.fixture
 def csc_client(monkeypatch, session) -> Generator[TestClient]:
     monkeypatch.setenv("DEPLOYMENT", DEPLOYMENT_CSC)
-    monkeypatch.setenv("JWT_KEY", "mock-secret")
+    monkeypatch.setenv("JWT_KEY", "bW9jay1zZWNyZXQ=")
     app = create_app(session)
     with TestClient(app) as client:
         yield client
@@ -221,7 +221,7 @@ def csc_client(monkeypatch, session) -> Generator[TestClient]:
 @pytest.fixture
 def nbis_client(monkeypatch, session) -> Generator[TestClient]:
     monkeypatch.setenv("DEPLOYMENT", DEPLOYMENT_NBIS)
-    monkeypatch.setenv("JWT_KEY", "mock-secret")
+    monkeypatch.setenv("JWT_KEY", "bW9jay1zZWNyZXQ=")
     app = create_app(session)
     with TestClient(app) as client:
         yield client
