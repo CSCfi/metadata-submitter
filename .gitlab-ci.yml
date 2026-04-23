@@ -169,18 +169,24 @@ integration-test:
       fi
     - echo "Pushing image sd-submit-api:${IMAGE_TAG}"
     - docker push "$ARTIFACTORY_SERVER/sds/sd-submit-api:${IMAGE_TAG}"
+    - |
+      # We want to only push images to github on release.
+      if [ -n "$CI_COMMIT_TAG" ]; then
+        echo "This is a release (tag: $CI_COMMIT_TAG)"
 
-    # Login to GitHub Container Registry
-    - echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
+        # Login to GitHub Container Registry
+        echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
 
-    # Tag the image for GHCR
-    - docker tag $ARTIFACTORY_SERVER/sds/sd-submit-api:${IMAGE_TAG} ghcr.io/cscfi/metadata-submitter:latest
-    - docker tag $ARTIFACTORY_SERVER/sds/sd-submit-api:${IMAGE_TAG} ghcr.io/cscfi/metadata-submitter:$CI_COMMIT_SHA
+        # Tag the image for GHCR
+        docker tag $ARTIFACTORY_SERVER/sds/sd-submit-api:${IMAGE_TAG} ghcr.io/cscfi/metadata-submitter:latest
+        docker tag $ARTIFACTORY_SERVER/sds/sd-submit-api:${IMAGE_TAG} ghcr.io/cscfi/metadata-submitter:$CI_COMMIT_SHA
 
-    # Push to GHCR
-    - echo "Pushing images ghcr.io/cscfi/metadata-submitter:latest and ghcr.io/cscfi/metadata-submitter:$CI_COMMIT_SHA"
-    - docker push ghcr.io/cscfi/metadata-submitter:latest
-    - docker push ghcr.io/cscfi/metadata-submitter:$CI_COMMIT_SHA
+        # Push to GHCR
+        echo "Pushing images ghcr.io/cscfi/metadata-submitter:latest and ghcr.io/cscfi/metadata-submitter:$CI_COMMIT_SHA"
+        docker push ghcr.io/cscfi/metadata-submitter:latest
+        docker push ghcr.io/cscfi/metadata-submitter:$CI_COMMIT_SHA
+      fi
+
   after_script:
     - |
       if [ "$CI_PIPELINE_SOURCE" = "merge_request_event" ]; then
