@@ -24,6 +24,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- (admins) `JWT_KEY` environment variable should be initially base64 encoded when configured
 - (users) Calling /publish endpoint now checks that submission files exist in the S3inbox and raises an error if the file check fails
 - (users) DataCite URL format
 - (users) Registration and rems catalogue title.
