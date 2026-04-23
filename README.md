@@ -6,8 +6,7 @@
 
 SD Submit API supports sensitive data submissions.
 
-The SD Submit UI is implemented
-here: [metadata-submitter-frontend](https://github.com/CSCfi/metadata-submitter-frontend).
+The SD Submit UI is contained within a separate repository, [metadata-submitter-frontend](https://github.com/CSCfi/metadata-submitter-frontend).
 
 SD Submit API integrates with the following external services:
 
@@ -50,10 +49,12 @@ flowchart LR
 
 <details><summary>Click to expand</summary>
 
+
 ### Prerequisites
 
 - `Docker`
 - [`Vault CLI`](https://developer.hashicorp.com/vault/docs/get-vault)
+
 
 ### Initialise the project for development and testing
 
@@ -112,7 +113,8 @@ Server can then be found from `http://localhost:5430`.
 Alternatively, there is a more convenient method for developing the SD Submit API via a
 _**Python virtual environment using a Procfile**_, which is described here below.
 
-### Developing with Python virtual environment
+
+### Developing with a Python virtual environment
 
 Use `uv` to create and activate the virtual environment for development and testing
 as [instructed above](#initialise-the-project-for-development-and-testing).
@@ -133,6 +135,7 @@ The development server should now be accessible at `localhost:5430`.
 If it doesn't work right away, check your settings in `.env` and restart the servers
 manually if you make changes to `.env` file.
 
+
 ### Keeping Python requirements up to date
 
 The project Python package dependencies are automatically being kept up to date
@@ -143,17 +146,19 @@ file. In the latter case run `uv sync` or `uv sync --dev` to update the `uv.lock
 
 </details>
 
+
 ## 🛠️ Contributing
 
 <details><summary>Click to expand</summary>
 
 Development team members should check
-internal [contributing guidelines for Gitlab](https://gitlab.ci.csc.fi/groups/sds-dev/-/wikis/Guides/Contributing).
+[the internal contributing guidelines for Gitlab](https://gitlab.ci.csc.fi/groups/sds-dev/-/wikis/Guides/Contributing).
 
 If you are not part of CSC and our development team, your help is nevertheless very welcome. Please
 see [contributing guidelines for Github](CONTRIBUTING.md).
 
 </details>
+
 
 ## 🧪 Testing
 
@@ -172,9 +177,10 @@ source .venv/bin/activate  # activate uv virtual env
 A pre-commit hook will execute all linting and unit tests before each commit.
 All tests are also run in the Gitlab CI/CD pipeline for every merge request.
 
+
 ### Linting and Unit tests
 
-Majority of the automated tests (such as unit tests, code style checks etc.)
+The majority of the automated tests (such as unit tests, code style checks etc.)
 can be run with [`tox`](https://tox.wiki/en/4.24.2/) automation with the following command:
 
 ```bash
@@ -186,8 +192,11 @@ tox -p auto
 Integration tests are run with [`pytest`](https://docs.pytest.org/en/stable/)
 after the containerized testing environment has been set up.
 
-Integration tests can be run with the following commands:
+Integration tests may be run with the following commands:
+
 ```bash
+export VAULT_ADDR=https://vault.example.com:8200
+
 # Get secrets and write .env file
 make get_env
 
@@ -214,6 +223,7 @@ and add:
 127.0.0.1   mockauth
 ```
 
+
 ### Performance tests
 
 Performance tests are run with [`locust`](https://locust.io//).
@@ -230,6 +240,7 @@ The CSC and NBIS deployments have their own performance test files. The
 number of users (-u) has to be set to at least two to run all NBIS tests.
 
 </details>
+
 
 ## Resources
 
@@ -253,6 +264,7 @@ uv run metadata_backend/scripts/fetch_metax.py
 
 <details><summary>Click to expand</summary>
 
+
 ### Dockerfile
 
 The Docker image can be built using the Dockerfile located in dockerfiles directory:
@@ -267,11 +279,20 @@ Once built, run the container with:
 docker run -p 5430:5430 cscfi/metadata-submitter
 ```
 
+
 ### Helm charts
 
 > Helm charts for a kubernetes cluster deployment will also be available soon™️.
 
 </details>
+
+
+## Release Process
+
+Tagged releases are made when appropriate, following the [calver](https://calver.org/) versioning scheme, which leads to releases being named YEAR.MONTH.POINT.
+
+Images are internally pushed to artifactory, however they are only pushed to the Github Container Registry when releases are made.
+
 
 ## 📜 License
 
