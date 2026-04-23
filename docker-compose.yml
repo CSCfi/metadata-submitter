@@ -228,8 +228,6 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
-    volumes:
-      - /var/lib/postgresql/data
 
   postgres-nbis:
     image: postgres:18-alpine
@@ -247,8 +245,6 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
-    volumes:
-      - /var/lib/postgresql/data
 
   integration-test-runner:
     build:
