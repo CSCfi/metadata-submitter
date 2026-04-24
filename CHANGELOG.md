@@ -7,6 +7,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ## [Unreleased]
 
+## [2026.4.0] - 2026-04-24
+
 ### Removed
 
 - Unnecessary documentation.
@@ -814,7 +816,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 - Files are also validated during submission process.
 
 
-[Unreleased]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.2.0...HEAD
+[Unreleased]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.4.0...HEAD
+[2026.4.0]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.2.0...2026.4.0
 [2026.2.0]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2025.4.0...2026.2.0
 [2025.4.0]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/-/compare/2024.1.0...2025.4.0
 [2024.01.1]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/-/compare/v0.13.1...2024.01.0
