@@ -19,6 +19,14 @@ printf "%s=%s\n" $(1) "$$secret_value" >> tests/integration/.env; \
 printf "%s=%s\n" $(1) "$$secret_value" >> tests/integration/.env.secret;
 endef
 
+# Write out a set of JSON secrets from a single path
+define write_secret_group
+data=$$(vault kv get -format=json $(1)| jq -r '.data.data | to_entries | .[] | "\(.key)=\(.value)"'); \
+printf "%s\n" "$$data" >> .env; \
+printf "%s\n" "$$data" >> tests/integration/.env; \
+printf "%s\n" "$$data" >> tests/integration/.env.secret
+endef
+
 
 # Default target
 # Print list of available targets. Only rows in the format `target: ## description` are printed
@@ -47,9 +55,7 @@ get_env: ## Get secrets needed for integration tests from vault
 
 	# Write secrets to .env and tests/integration/.env files.
 	@export VAULT_TOKEN=$$(vault login -method=oidc -token-only); \
-	$(call write_secret,CSC_LDAP_HOST,sd-submit/secrets,ldap_host) \
-	$(call write_secret,CSC_LDAP_USER,sd-submit/secrets,ldap_user) \
-	$(call write_secret,CSC_LDAP_PASSWORD,sd-submit/secrets,ldap_password) \
+	$(call write_secret_group,secret/sd-submit/ldap); \
 	$(call write_secret,SDS_AAI_CLIENT_ID,sd-submit/secrets,sds_aai_id) \
 	$(call write_secret,SDS_AAI_CLIENT_SECRET,sd-submit/secrets,sds_aai_secret) \
 	$(call write_secret,SDS_AAI_URL,sd-submit/secrets,sds_aai_url) \
@@ -76,9 +82,7 @@ get_env: ## Get secrets needed for integration tests from vault
 	$(call write_integration_test_secret,SD_SUBMIT_PROJECT_ID,sd-submit/secrets,sd_submit_project_id) \
 	$(call write_integration_test_secret,USER_S3_ACCESS_KEY_ID,sd-submit/secrets,s3_test_user_access_key) \
 	$(call write_integration_test_secret,USER_S3_SECRET_ACCESS_KEY,sd-submit/secrets,s3_test_user_secret_key) \
-	$(call write_integration_test_secret,REMS_URL,sd-submit/secrets,rems_url) \
-	$(call write_integration_test_secret,REMS_USER,sd-submit/secrets,rems_user) \
-	$(call write_integration_test_secret,REMS_KEY,sd-submit/secrets,rems_key) \
+	$(call write_secret_group,secret/sd-submit/rems); \
 	$(call write_integration_test_secret,DISCOVERY_URL,sd-submit/secrets,discovery_url) \
 	vault kv get --field=oidc_jwks secret/sd-submit/secrets >> private/private_jwks.json;
 
@@ -120,10 +124,8 @@ get_ci_env: ## Get secrets needed for CI tests from vault
 	$(call write_integration_test_secret,SD_SUBMIT_PROJECT_ID,sd-submit/secrets,sd_submit_project_id) \
 	$(call write_integration_test_secret,USER_S3_ACCESS_KEY_ID,sd-submit/secrets,s3_test_user_access_key) \
 	$(call write_integration_test_secret,USER_S3_SECRET_ACCESS_KEY,sd-submit/secrets,s3_test_user_secret_key) \
-    $(call write_integration_test_secret,REMS_URL,sd-submit/secrets,rems_url) \
-    $(call write_integration_test_secret,REMS_USER,sd-submit/secrets,rems_user) \
-    $(call write_integration_test_secret,REMS_KEY,sd-submit/secrets,rems_key) \
-    $(call write_integration_test_secret,DISCOVERY_URL,sd-submit/secrets,discovery_url)
+	$(call write_secret_group,secret/sd-submit/rems); \
+	$(call write_integration_test_secret,DISCOVERY_URL,sd-submit/secrets,discovery_url)
 
 	$(call write_line,### VAULT SECRETS END ###)
 
