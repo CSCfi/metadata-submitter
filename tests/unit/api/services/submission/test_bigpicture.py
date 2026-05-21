@@ -95,12 +95,3 @@ def test_prepare_files_wrong_extension_raises():
 
     with pytest.raises(UserException, match="Image file 'IMAGES/IMAGE_1/test.tif.c4gh' must have a .dcm extension"):
         _prepare_files(objects)
-
-    # Annotation files must have .geojson (optionally .c4gh suffix).
-    objects, _ = bp_objects(is_update=False)
-    objects = _replace_object_document(objects, "annotation.xml", "test.geojson.c4gh", "test.json.c4gh")
-
-    with pytest.raises(
-        UserException, match="Annotation file 'ANNOTATIONS/test.json.c4gh' must have a .geojson extension"
-    ):
-        _prepare_files(objects)

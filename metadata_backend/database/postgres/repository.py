@@ -43,7 +43,7 @@ async def create_engine(db_url: str | None = None) -> AsyncEngine:
     if db_url is None:
         db_url = database_config().DATABASE_URL
 
-    engine = create_async_engine(db_url, echo=False)
+    engine = create_async_engine(db_url, pool_pre_ping=True, echo=False)
 
     # Enable foreign keys in SQLite.
     if engine.dialect.name == "sqlite":

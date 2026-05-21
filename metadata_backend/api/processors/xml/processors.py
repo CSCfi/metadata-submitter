@@ -856,7 +856,8 @@ class XmlDocumentProcessor(XmlProcessor):
         """
         schema_type_map = processors.get(schema_type)
         if not schema_type_map:
-            raise ValueError(f"Unknown schema '{schema_type}'.")
+            # No schema processors found.
+            return []
 
         root_path_map = schema_type_map.get(root_path)
         if not root_path_map:

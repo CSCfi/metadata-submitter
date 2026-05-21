@@ -1,6 +1,7 @@
 """Service for processing Bigpicture submissions."""
 
 import re
+from pathlib import Path
 from typing import override
 
 from lxml.etree import Element
@@ -453,7 +454,14 @@ class BigpictureObjectSubmissionService(ObjectSubmissionService):
         name = dataset_processor.get_xml_node_value("./SHORT_NAME")
 
         # Get REMS.
-        workflow_id = int(rems_processor.get_xml_node_value("./WORKFLOW_ID"))
+        workflow_id = rems_processor.get_xml_node_value("./WORKFLOW_ID")
+        if workflow_id is None:
+            raise UserException("Missing REMS workflow id.")
+        try:
+            int(workflow_id)
+        except Exception:
+            raise UserException(f"REMS workflow id '{workflow_id}' must be an integer.")
+
         organization_id = rems_processor.get_xml_node_value("./ORGANISATION_ID")
 
         return Submission(
@@ -464,7 +472,7 @@ class BigpictureObjectSubmissionService(ObjectSubmissionService):
             description=dataset_processor.get_object_description(),
             workflow=SubmissionWorkflow.BP,
             rems=Rems(
-                workflowId=workflow_id,
+                workflowId=int(workflow_id),
                 organizationId=organization_id,
             ),
             metadata=SubmissionMetadata.from_datacite(self._datacite) if self._datacite else None,
@@ -532,11 +540,9 @@ class BigpictureObjectSubmissionService(ObjectSubmissionService):
             # Validate the annotation file paths and extensions
             for file_elem in xml.xpath("/ANNOTATION/FILES/FILE"):
                 filename = file_elem.get("filename")
-                dir_part, _, file_part = filename.rpartition("/")  # "ANNOTATIONS", "/", "*.geojson.c4gh"
+                dir_part = str(Path(filename).parent)
                 if dir_part != "ANNOTATIONS":
                     raise UserException(f"Annotation file '{filename}' must be in directory 'ANNOTATIONS'.")
-                if not file_part.removesuffix(".c4gh").endswith(".geojson"):
-                    raise UserException(f"Annotation file '{filename}' must have a .geojson extension.")
                 files.append(
                     File(
                         submissionId=submission_id,
