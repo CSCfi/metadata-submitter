@@ -47,7 +47,7 @@ class KeystoneServiceHandler(ServiceHandler):
         """Get project entry containing project scoped token with unscoped access token provided by OIDC.
 
         :param project: The project ID.
-        :param userinfo: The OIDC userinfo dictionary.
+        :param access_token: Keystone access token.
         :returns: The ProjectEntry containing scoped token and metadata.
         """
         # First fetch an unscoped user token from Keystone API using the keystone access token

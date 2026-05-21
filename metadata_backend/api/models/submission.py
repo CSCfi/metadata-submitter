@@ -29,7 +29,7 @@ class SubmissionWorkflow(enum.Enum):
 
 
 class Bucket(StrictBaseModel):
-    """`Bucket information."""
+    """Bucket information."""
 
     bucket: str
 
@@ -54,8 +54,7 @@ class SubmissionMetadata(DataCiteMetadata):
         )
 
     def update_datacite(self, datacite: DataCiteMetadata) -> None:
-        """
-        Update datacite metadata in the submission metadata.
+        """Update datacite metadata in the submission metadata.
 
         :param datacite: the new datacite metadata.
         """
@@ -64,8 +63,7 @@ class SubmissionMetadata(DataCiteMetadata):
 
     @staticmethod
     def from_datacite(datacite: DataCiteMetadata) -> SubmissionMetadata:
-        """
-        Create a submission metadata from dataCite metadata.
+        """Create a submission metadata from dataCite metadata.
 
         :param datacite: The datacite metadata
         :return: The submission metadata.

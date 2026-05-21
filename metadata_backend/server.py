@@ -33,6 +33,7 @@ from .api.models.app import app_state
 from .api.models.submission import PaginatedSubmissions
 from .api.services.auth import AuthService
 from .api.services.file import S3AllasFileProviderService, S3InboxSDAService
+from .api.services.ingest import IngestService
 from .api.services.project import CscProjectService, NbisProjectService, ProjectService
 from .conf.conf import (
     DEPLOYMENT_CSC,
@@ -104,7 +105,21 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     # Create database session factory.
     state.session_factory = create_session_factory(engine)
 
+    # Start background ingest scanner task for NBIS deployment.
+    ingest_scanner_task: asyncio.Task[None] | None = None
+    ingest_scanner_service = getattr(app.state, "ingest_scanner_service", None)
+    if ingest_scanner_service is not None:
+        LOG.info("Starting background ingest scanner task")
+        ingest_scanner_task = asyncio.create_task(ingest_scanner_service.run_forever())
+
     yield
+
+    if ingest_scanner_task is not None:
+        ingest_scanner_task.cancel()
+        try:
+            await ingest_scanner_task
+        except asyncio.CancelledError:
+            pass
 
     # Dispose database engine.
     await engine.dispose()
@@ -227,6 +242,15 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
         admin=admin_handler,
         database=DatabaseHealthHandler(lambda: state.session_factory),
     )
+
+    # Provide ingest scanner service for NBIS deployment.
+    app.state.ingest_scanner_service = None
+    if config.DEPLOYMENT == DEPLOYMENT_NBIS and admin_handler is not None and not session:
+        app.state.ingest_scanner_service = IngestService(
+            services,
+            handlers,
+            session_factory_provider=lambda: app_state(app).session_factory,
+        )
 
     _object = ObjectAPIHandler(services, handlers)
     _submission = SubmissionAPIHandler(services, handlers)

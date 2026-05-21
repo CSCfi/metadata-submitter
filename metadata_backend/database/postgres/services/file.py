@@ -3,9 +3,9 @@
 from typing import AsyncIterator, Sequence
 
 from ....api.exceptions import NotFoundUserException
-from ....api.models.models import File
+from ....api.models.models import File, IngestErrorType, IngestFileState, IngestStatus
 from ....api.models.submission import SubmissionWorkflow
-from ..models import FileEntity, IngestErrorType, IngestStatus
+from ..models import FileEntity
 from ..repositories.file import FileRepository
 
 
@@ -194,18 +194,42 @@ class FileService:
         :param ingest_error_type: The ingest error type.
         """
 
+        # Update the ingest status and error fields atomically in the database to avoid race conditions
         def update_callback(file: FileEntity) -> None:
             file.ingest_status = ingest_status
+            if ingest_status != IngestStatus.ERROR:
+                file.ingest_error = None
+                file.ingest_error_type = None
+                file.ingest_error_count = None
+                return
+
+            previous_error_type = file.ingest_error_type
+            previous_error_count = file.ingest_error_count
             file.ingest_error = ingest_error
             file.ingest_error_type = ingest_error_type
-            if file.ingest_error is not None:
-                if file.ingest_error_count is None:
-                    file.ingest_error_count = 1
-                else:
-                    file.ingest_error_count = file.ingest_error_count + 1
+
+            if previous_error_type == ingest_error_type:
+                file.ingest_error_count = (previous_error_count or 0) + 1
+            else:
+                file.ingest_error_count = 1
 
         if await self.__repository.update_file(file_id, update_callback) is None:
             raise UnknownFileException(file_id)
+
+    async def get_ingest_file_states(self, submission_id: str) -> list[IngestFileState]:
+        """Get ingest state fields for files in a submission."""
+        entities = [entity async for entity in self.__repository.get_files(submission_id=submission_id)]
+        return [
+            IngestFileState(
+                file_id=entity.file_id,
+                path=entity.path,
+                ingest_status=entity.ingest_status,
+                ingest_error=entity.ingest_error,
+                ingest_error_type=entity.ingest_error_type,
+                ingest_error_count=entity.ingest_error_count,
+            )
+            for entity in entities
+        ]
 
     async def delete_file_by_id(self, file_id: str) -> None:
         """Delete file with the given file id.

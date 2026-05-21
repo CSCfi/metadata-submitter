@@ -447,6 +447,39 @@ class SubmissionService:
         if await self.repository.update_submission(submission_id, update_callback) is None:
             raise UnknownSubmissionUserException(submission_id)
 
+    async def update_ingested(self, submission_id: str) -> None:
+        """Update submission ingested flag to true.
+
+        :param submission_id: the submission id
+        """
+
+        async def update_callback(submission: SubmissionEntity) -> None:
+            if not submission.is_ingested:
+                submission.is_ingested = True
+
+        if await self.repository.update_submission(submission_id, update_callback) is None:
+            raise UnknownSubmissionUserException(submission_id)
+
+    async def get_submission_ids_for_ingest(self, *, workflow: SubmissionWorkflow | None = None) -> list[str]:
+        """Get submission ids that are published but not ingested.
+
+        :param workflow: optional workflow filter.
+        :returns: matching submission ids.
+        """
+        return await self.repository.get_submission_ids_for_ingest(workflow=workflow)
+
+    async def claim_submission_for_ingest(
+        self, submission_id: str, *, workflow: SubmissionWorkflow | None = None
+    ) -> Submission | None:
+        """Claim a submission row for ingest processing using lock+skip-locked semantics.
+
+        :param submission_id: the submission id
+        :param workflow: optional workflow filter.
+        :returns: claimed submission or None.
+        """
+        entity = await self.repository.claim_submission_for_ingest(submission_id, workflow=workflow)
+        return await self.convert_from_entity(entity)
+
     async def delete_submission(self, submission_id: str) -> None:
         """Delete submission.
 

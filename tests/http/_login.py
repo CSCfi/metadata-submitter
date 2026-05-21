@@ -42,9 +42,10 @@ def load_env_file(env_path: Path) -> dict[str, str]:
 
 def resolve_base_url(args_base_url: Optional[str], env_values: dict[str, str]) -> str:
     base_url = args_base_url or env_values.get("BASE_URL")
+    api_prefix = env_values.get("API_PREFIX")
     if not base_url:
         raise ValueError("Missing BASE_URL.")
-    return base_url.rstrip("/")
+    return base_url + api_prefix if api_prefix else base_url
 
 
 def wait_for_cookies(context, base_url: str, cookie_names: list[str], timeout_seconds: int) -> dict[str, str]:

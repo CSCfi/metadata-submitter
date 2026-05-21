@@ -284,6 +284,28 @@ docker run -p 5430:5430 cscfi/metadata-submitter
 
 > Helm charts for a kubernetes cluster deployment will also be available soon™️.
 
+
+### Database migrations
+
+[Alembic](https://alembic.sqlalchemy.org/en/latest/index.html) is used for versioned PostgreSQL schema upgrades.
+
+Apply all migrations to the database pointed to by `DATABASE_URL` environment variable:
+
+```bash
+make db_upgrade
+```
+
+If an existing database already matches the current schema but has not been versioned by Alembic yet,
+stamp it with the current revision without running migrations:
+
+```bash
+make db_stamp revision=head
+```
+
+Fresh local databases can still be created automatically by the application or with the checked-in
+SQL in `metadata_backend/database/postgres/schema/create.sql`. Alembic is intended for upgrading
+already existing databases and for recording future schema changes.
+
 </details>
 
 

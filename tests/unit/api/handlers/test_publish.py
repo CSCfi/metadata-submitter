@@ -86,7 +86,6 @@ async def test_publish_submission_sd(csc_client, submission_repository, object_r
     with (
         patch_verify_user_project,
         patch_verify_authorization,
-        patch("metadata_backend.api.handlers.publish.IngestService.trigger_ingest", new_callable=AsyncMock),
         patch(
             "metadata_backend.api.handlers.publish.upload_bp_metadata_xmls",
             new_callable=AsyncMock,
@@ -237,9 +236,6 @@ async def test_publish_submission_bp(nbis_client, submission_repository, object_
         patch_verify_user_project,
         patch_verify_authorization,
         patch(
-            "metadata_backend.api.handlers.publish.IngestService.trigger_ingest", new_callable=AsyncMock
-        ) as mock_trigger_ingest,
-        patch(
             "metadata_backend.api.handlers.publish.upload_bp_metadata_xmls",
             new_callable=AsyncMock,
         ) as mock_upload_bp_metadata,
@@ -286,7 +282,6 @@ async def test_publish_submission_bp(nbis_client, submission_repository, object_
             TEST_DISCOVERY_URL.format(id=submission_id),
         )
         mock_upload_bp_metadata.assert_awaited_once_with(ANY, submission_id, "mock-userid", "oidc-token")
-        mock_trigger_ingest.assert_awaited_once_with(user_id="mock-userid", submission_id=submission_id)
 
         # Assert registrations.
         response = nbis_client.get(f"{api_prefix_v1}/submissions/{submission_id}/registrations")

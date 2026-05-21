@@ -21,7 +21,6 @@ from ..processors.xml.bigpicture import (
 from ..processors.xml.processors import XmlObjectProcessor
 from ..services.bigpicture import upload_bp_metadata_xmls
 from ..services.datacite import DataciteService
-from ..services.ingest import IngestService
 from ..services.submission.bigpicture import is_clinical_policy
 from .restapi import RESTAPIHandler
 from .submission import SubmissionAPIHandler
@@ -328,11 +327,6 @@ class PublishAPIHandler(RESTAPIHandler):
             if not jwt:
                 raise UserException("Missing OIDC access token in Authorization bearer header for SDA inbox upload.")
             await upload_bp_metadata_xmls(self._services, submission_id, user.user_id, jwt)
-
-        # Start Bigpicture ingestion workflow in background.
-        if workflow == SubmissionWorkflow.BP and not no_files:
-            ingest_service = IngestService(self._services, self._handlers)
-            await ingest_service.trigger_ingest(user_id=user.user_id, submission_id=submission_id)
 
         # Update submission status to published.
         await submission_service.publish(submission_id)
