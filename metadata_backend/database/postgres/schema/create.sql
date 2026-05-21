@@ -70,7 +70,7 @@ CREATE TABLE files (
 	PRIMARY KEY (file_id),
 	UNIQUE (submission_id, path),
 	CONSTRAINT ck_checksum_method CHECK (checksum_method IN ('MD5', 'SHA256')),
-	CONSTRAINT ck_ingest_status CHECK (ingest_status IN ('submitted', 'verified', 'ready', 'error')),
+	CONSTRAINT ck_ingest_status CHECK (ingest_status IN ('submitted', 'uploaded', 'verified', 'ready', 'error')),
 	CONSTRAINT ck_ingest_error_type CHECK (ingest_error_type IN ('user_error', 'transient_error', 'permanent_error')),
 	FOREIGN KEY(submission_id) REFERENCES submissions (submission_id) ON DELETE CASCADE,
 	FOREIGN KEY(object_id) REFERENCES objects (object_id) ON DELETE CASCADE

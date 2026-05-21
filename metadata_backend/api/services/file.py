@@ -504,7 +504,7 @@ class S3InboxSDAService(FileProviderService):
         session_token: str,
         body: bytes = b"",
     ) -> None:
-        """Put a C4GH encrypted object to S3 bucket using provided credentials.
+        """Upload a C4GH encrypted object to S3 bucket using provided credentials.
 
         :param bucket_name: name of the bucket
         :param object_key: key for the object to be added

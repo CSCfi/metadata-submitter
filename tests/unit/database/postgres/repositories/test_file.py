@@ -186,12 +186,12 @@ async def test_update_ingest_status(
         unencrypted_checksum=unencrypted_checksum,
         encrypted_checksum=encrypted_checksum,
         path=path,
-        ingest_status=IngestStatus.SUBMITTED,
+        ingest_status=IngestStatus.UPLOADED,
     )
 
     file_id = await file_repository.add_file(file_entity, workflow)
 
-    assert (await file_repository.get_file_by_id(file_id)).ingest_status == IngestStatus.SUBMITTED
+    assert (await file_repository.get_file_by_id(file_id)).ingest_status == IngestStatus.UPLOADED
 
     def update_callback(file: FileEntity) -> None:
         file.ingest_status = IngestStatus.READY

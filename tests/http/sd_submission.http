@@ -101,7 +101,6 @@ Cookie: oidc_access_token={{oidc_token}}
 ### Get files in bucket
 GET {{api_url}}/v1/buckets/{{bucket_name}}/files?projectId={{project_id}}
 Cookie: access_token={{token}}
-Cookie: oidc_access_token={{oidc_token}}
 
 ### Update linked bucket
 PATCH {{api_url}}/v1/submissions/{{submission_id}}?projectId={{project_id}}

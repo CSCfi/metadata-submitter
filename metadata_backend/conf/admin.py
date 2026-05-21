@@ -11,7 +11,11 @@ class AdminConfig(BaseSettings):
 
     ADMIN_URL: str = Field(description="NeIC SDA Admin API URL")
     ADMIN_TOKEN: str = Field(description="NeIC SDA Admin API bearer token")
-    ADMIN_POLLING_INTERVAL: int = Field(3600, description="NeIC SDA Admin API polling interval")
+    INGEST_SCAN_INTERVAL: int = Field(
+        60,
+        description="Background ingest scanner interval in seconds.",
+    )
+    INGEST_WORKERS: int = Field(4, description="Maximum number of concurrent background ingest workers.")
 
 
 def admin_config() -> AdminConfig:

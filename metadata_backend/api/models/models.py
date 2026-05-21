@@ -1,5 +1,6 @@
 """Other models."""
 
+import enum
 from datetime import datetime
 from typing import Literal
 
@@ -86,3 +87,32 @@ class Registration(StrictBaseModel):
     remsUrl: str | None = None
     remsResourceId: str | None = None
     remsCatalogueId: str | None = None
+
+
+class IngestStatus(enum.Enum):
+    """API-level file ingest status."""
+
+    SUBMITTED = "submitted"
+    UPLOADED = "uploaded"
+    VERIFIED = "verified"
+    READY = "ready"
+    ERROR = "error"
+
+
+class IngestErrorType(enum.Enum):
+    """API-level file ingest error type."""
+
+    USER_ERROR = "user_error"
+    TRANSIENT_ERROR = "transient_error"
+    PERMANENT_ERROR = "permanent_error"
+
+
+class IngestFileState(StrictBaseModel):
+    """File state fields needed by ingest orchestration."""
+
+    file_id: str
+    path: str
+    ingest_status: IngestStatus
+    ingest_error: str | None = None
+    ingest_error_type: IngestErrorType | None = None
+    ingest_error_count: int | None = None

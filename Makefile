@@ -40,6 +40,12 @@ help:
 	@echo "Available targets:"
 	@awk '/^[a-zA-Z0-9_-]+:.*?## / {printf "  %-20s %s\n", $$1, substr($$0, index($$0, "##") + 3)}' $(MAKEFILE_LIST)
 
+db_upgrade: ## Apply Alembic migrations to the configured database
+	uv run alembic upgrade head
+
+db_stamp: ## Stamp an existing schema with an Alembic revision, usage: make db_stamp revision=head
+	uv run alembic stamp $(if $(revision),$(revision),head)
+
 get_env: ## Get secrets needed for integration tests from vault
 	@vault -v > /dev/null 2>&1 || { echo "Vault CLI is not installed. Aborting."; exit 1; }
 	@if [ -z "$$VAULT_ADDR" ]; then \

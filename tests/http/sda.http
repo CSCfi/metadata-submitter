@@ -13,7 +13,7 @@ GET {{api_url}}/v1/users
 Authorization: Bearer {{user_token}}
 
 ### List all submissions
-GET {{api_url}}/v1/submissions?projectId={{user_id}}
+GET {{api_url}}/v1/submissions
 Authorization: Bearer {{user_token}}
 
 # Write submission_id here after creating submission:

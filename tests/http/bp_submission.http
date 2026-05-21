@@ -6,13 +6,13 @@
 # Get secrets from Vault for local deployment:
 $ make get_env_demo
 
-# Add the JWT public key to the .env file in this way:
-# JWT_PUBLIC_KEY=-----BEGIN PUBLIC KEY-----...[rest of the key]...-----END PUBLIC KEY-----
+# Add the base64 encoded JWT public key to the .env file in this way:
+# JWT_PUBLIC_KEY={base64-encoded-public-key}
 
 # Run this to launch the API service locally:
 $ docker compose --profile demo up --build -d
 
-# Login at: https://login.bp.nbis.se
+# Login at: https://staging-login.bp.nbis.se
 # Copy the uploading access token for and paste it in the variable below
 @bearer_token = ...
 
@@ -26,7 +26,7 @@ curl {{api_url}}/v1/users
      -H 'Authorization: Bearer {{bearer_token}}'
 
 ### List all submissions
-curl {{api_url}}/v1/submissions?projectId={{user_id}}
+curl {{api_url}}/v1/submissions
      -H 'Authorization: Bearer {{bearer_token}}'
 
 

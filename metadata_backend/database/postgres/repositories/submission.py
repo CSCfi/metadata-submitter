@@ -6,7 +6,7 @@ from typing import Awaitable, Callable, Sequence
 
 from sqlalchemy import and_, delete, func, select
 
-from metadata_backend.api.models.submission import Submission
+from metadata_backend.api.models.submission import Submission, SubmissionWorkflow
 from metadata_backend.api.services.accession import generate_submission_accession
 
 from ..models import SubmissionEntity
@@ -200,6 +200,48 @@ class SubmissionRepository:
         Submission.model_validate(submission.document)
 
         return submission
+
+    async def get_submission_ids_for_ingest(self, *, workflow: SubmissionWorkflow | None = None) -> list[str]:
+        """Get submission ids that are published but not ingested.
+
+        :param workflow: optional workflow filter.
+        :returns: matching submission ids.
+        """
+        stmt = select(SubmissionEntity.submission_id).where(
+            SubmissionEntity.is_published.is_(True),
+            SubmissionEntity.is_ingested.is_(False),
+        )
+
+        if workflow is not None:
+            stmt = stmt.where(SubmissionEntity.workflow == workflow)
+
+        result = await session().execute(stmt)
+        return list(result.scalars().all())
+
+    async def claim_submission_for_ingest(
+        self, submission_id: str, *, workflow: SubmissionWorkflow | None = None
+    ) -> SubmissionEntity | None:
+        """Claim submission row for ingest using row lock and skip-locked semantics.
+
+        :param submission_id: The submission id.
+        :param workflow: optional workflow filter.
+        :returns: claimed submission or None when not claimable.
+        """
+        stmt = (
+            select(SubmissionEntity)
+            .where(
+                SubmissionEntity.submission_id == submission_id,
+                SubmissionEntity.is_published.is_(True),
+                SubmissionEntity.is_ingested.is_(False),
+            )
+            .with_for_update(skip_locked=True)
+        )
+
+        if workflow is not None:
+            stmt = stmt.where(SubmissionEntity.workflow == workflow)
+
+        result = await session().execute(stmt)
+        return result.scalar_one_or_none()
 
     async def delete_submission_by_id(self, submission_id: str) -> bool:
         """

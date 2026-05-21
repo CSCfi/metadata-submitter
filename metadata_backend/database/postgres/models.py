@@ -28,7 +28,7 @@ from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import DeclarativeBase, Mapped, Relationship, backref, mapped_column, relationship
 from sqlalchemy.sql.type_api import TypeEngine, UserDefinedType
 
-from ...api.models.models import CHECKSUM_METHOD_TYPES
+from ...api.models.models import CHECKSUM_METHOD_TYPES, IngestErrorType, IngestStatus
 from ...api.models.submission import SubmissionWorkflow
 
 SUBMISSIONS_TABLE = "submissions"
@@ -145,7 +145,7 @@ class SubmissionEntity(Base):
     submission_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     name: Mapped[str] = mapped_column(String, nullable=False)  # User provided name for the submission
     project_id: Mapped[str] = mapped_column(String, nullable=False)
-    bucket: Mapped[str] = mapped_column(String(64), nullable=True)  # Could this be nullable?
+    bucket: Mapped[str] = mapped_column(String(64), nullable=True)
     workflow: Mapped[SubmissionWorkflow] = mapped_column(string_enum(SubmissionWorkflow), nullable=False)
 
     title: Mapped[str] = mapped_column(String, nullable=True)
@@ -238,24 +238,6 @@ class ObjectEntity(Base):
         ),
         passive_deletes=True,  # safe here if ON DELETE CASCADE is set in FK
     )
-
-
-class IngestStatus(enum.Enum):
-    """File ingest status."""
-
-    # The file ingestion statuses are a subset of those defined in NeIC SDA.
-    SUBMITTED = "submitted"  # The file has been submitted and can be ingested once the submission has been published.
-    VERIFIED = "verified"  # File checksums have been verified.
-    READY = "ready"  # The file ingestion has completed.
-    ERROR = "error"  # The file ingestion has failed.
-
-
-class IngestErrorType(enum.Enum):
-    """File ingest error type."""
-
-    USER_ERROR = "user_error"
-    TRANSIENT_ERROR = "transient_error"
-    PERMANENT_ERROR = "permanent_error"
 
 
 class FileEntity(Base):
