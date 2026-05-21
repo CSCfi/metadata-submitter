@@ -7,6 +7,13 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- (users) Automatically recover closed pooled connections.
+- (users) Improved error message if REMS workflow id is not an integer.
+- (users) Annotation files no longer require `.geojson` suffix.
+- (users) XML processor bug that made annotations.xml and observers.xml mandatory.
+
 ## [2026.4.0] - 2026-04-24
 
 ### Removed
