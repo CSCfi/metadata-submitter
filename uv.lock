@@ -570,18 +570,27 @@ wheels = [
 
 [[package]]
 name = "crypt4gh"
-version = "1.7"
+version = "1.8.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bcrypt" },
     { name = "cryptography" },
-    { name = "docopt" },
-    { name = "pynacl" },
-    { name = "pyyaml" },
+    { name = "docopt-ng" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0d/17/f91f2bc504a3b4bd95087b18498f1820b88aef04f830afa13107129a1782/crypt4gh-1.7.tar.gz", hash = "sha256:1569bc4ff9b689c8852e3892ac3f6fea4b31948ca0b1e5bc28d0d2f80def2a28", size = 27000, upload-time = "2024-05-27T10:33:27.682Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b0/5f/fc1eb82143c029f4203ae2ed2080e76b51aec4b2e2c0993be676020240d5/crypt4gh-1.8.6.tar.gz", hash = "sha256:70a1ea13161eae1a6ce040ad61759d11ca10d63ad0441f2a664c0c8f041ab341", size = 944023, upload-time = "2026-05-02T12:20:30.912Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/35/13/6be4ee55292b845c9ed41c666b3941cfaa5b85a6eeb682d5aad7a3b5b691/crypt4gh-1.7-py3-none-any.whl", hash = "sha256:9aeb37065769a560b5bbe8cf67c47eb4d8b53ed36725a8d3fb0385084c682c3c", size = 32270, upload-time = "2024-05-27T10:33:25.874Z" },
+    { url = "https://files.pythonhosted.org/packages/d5/ef/4005e48c53e9ea3e3a46b1d8bd13888f1311c9965e734696be7e3f07b13b/crypt4gh-1.8.6-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:4acaeb99d70da3a290e4d512bd9030a8ad07fb17008c817332afb1fe0f7a4be7", size = 169968, upload-time = "2026-05-02T12:20:01.894Z" },
+    { url = "https://files.pythonhosted.org/packages/fc/1f/019b15fbc29c8b63f3d1c817f8b2fae393a0643eaef6257b0c297b46bbb9/crypt4gh-1.8.6-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:e2478ede6183082c04463ddcc5066720ff95561d9d218a8e5f1c6b0819a34699", size = 126741, upload-time = "2026-05-02T12:20:03.618Z" },
+    { url = "https://files.pythonhosted.org/packages/de/01/1e073e21d2d6649def42df9663efca2c61d87d75c6227667865286e50d8b/crypt4gh-1.8.6-cp314-cp314-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:7100cbf3b827a8b909b083e35bc846b57af94110262cbc12a2e9df151c433db6", size = 184840, upload-time = "2026-05-02T12:20:05.275Z" },
+    { url = "https://files.pythonhosted.org/packages/49/67/b17ae8de40361fd0bb05b1fde2fd1ae5a88ddf7492be25474ec77ec2af9b/crypt4gh-1.8.6-cp314-cp314-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:3d947a954269e94a2ef6b32f53d04479281e59d6ac1a7cf006fb70fc6c654c0c", size = 233361, upload-time = "2026-05-02T12:20:06.629Z" },
+    { url = "https://files.pythonhosted.org/packages/6a/f8/6d5763206bba94d4a644f785d97616bbcde6b90e0e6909e03ef58f5a5345/crypt4gh-1.8.6-cp314-cp314-musllinux_1_2_aarch64.whl", hash = "sha256:e1cc59b06a480905f3df6755724f5ad177b4d2471bc267c14d528e810015d2b0", size = 183552, upload-time = "2026-05-02T12:20:08.373Z" },
+    { url = "https://files.pythonhosted.org/packages/f8/e0/6280d925af3800c96a775edae8c61e32a41b6745eb288bea4d7d15fc2f26/crypt4gh-1.8.6-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:dee626c44d9db07fead9de2a8ebbca4f297dd39c672264d6b8b20bace6afeeb6", size = 232003, upload-time = "2026-05-02T12:20:09.965Z" },
+    { url = "https://files.pythonhosted.org/packages/3c/cf/0ac16b53c4d3ef150b877fe84c3af6bb4018dffc114404afac4b1709d047/crypt4gh-1.8.6-cp314-cp314t-macosx_10_15_x86_64.whl", hash = "sha256:e5df49bdc4c30c67cfe67c9584ce8f1ce97428b775b82c8c63283595cc9b26c9", size = 169970, upload-time = "2026-05-02T12:20:11.3Z" },
+    { url = "https://files.pythonhosted.org/packages/b2/7c/5d08e915d69c5b39cdc6e5bb7fc8945b98a95a88dd985bbbcf89e068254a/crypt4gh-1.8.6-cp314-cp314t-macosx_11_0_arm64.whl", hash = "sha256:6b268260f68fcdfb490923e9a5a2a4ba3476c9d9816db164ecf73a764be49f4b", size = 126759, upload-time = "2026-05-02T12:20:12.661Z" },
+    { url = "https://files.pythonhosted.org/packages/50/d5/17d60372fcd00dc8328d9c3f0263fdc171ea0c3150b6b03536403322db3f/crypt4gh-1.8.6-cp314-cp314t-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:ab08e12d19034b5668b859b1e569469a032bdebc8ad3634b6b4c3182959cf562", size = 184849, upload-time = "2026-05-02T12:20:14.554Z" },
+    { url = "https://files.pythonhosted.org/packages/68/b0/8fdb7e334e38330e3d8d12f1eb50a8bf80a9714b1ce7d013bc101a11554b/crypt4gh-1.8.6-cp314-cp314t-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:64ad13d6501158c278c91530a1b13763645fdf239eaa578c1caaf116d6a58e58", size = 233383, upload-time = "2026-05-02T12:20:16.231Z" },
+    { url = "https://files.pythonhosted.org/packages/74/57/5745adb3c31a36c1c3635ac14d0dd295398e8b2d4a6e42f1ba77700438ea/crypt4gh-1.8.6-cp314-cp314t-musllinux_1_2_aarch64.whl", hash = "sha256:068ed832a16f7417a93a28e2579a191d74c25cf0ecbdee0c3730633a8d0e586a", size = 183590, upload-time = "2026-05-02T12:20:17.728Z" },
+    { url = "https://files.pythonhosted.org/packages/3d/90/203bf4640eeb2be7b02b1bf2a43cd7213f29322b461046f0c684e69499c4/crypt4gh-1.8.6-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:4ccf157e96bc43c21fb46667207bb6b54f025a4fb03f9e2f9cc52f5dbc093c03", size = 232049, upload-time = "2026-05-02T12:20:19.53Z" },
 ]
 
 [[package]]
@@ -639,15 +648,15 @@ wheels = [
 
 [[package]]
 name = "cryptojwt"
-version = "1.10.0"
+version = "1.11.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cryptography" },
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8f/5e/ece75d2a1a8fb5a57176a28c8a84d82fdf808fd0c0dffebfcf6349aea664/cryptojwt-1.10.0.tar.gz", hash = "sha256:12bed4604adedc2f60cc529627b1283cd15abfd6c291efdc0b5225867c39415b", size = 151945, upload-time = "2025-08-25T05:59:16.797Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/73/85/6de1cadaa68324def632982a983f8498a329c2fe29302e9a3d3bec75bdf5/cryptojwt-1.11.0.tar.gz", hash = "sha256:515a345d3fb091606f293834736d9a72cff932a021a1962f8a8bc6dc0358cfb0", size = 153243, upload-time = "2026-03-24T08:48:21.664Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/70/63/e17c67da00f6b601d04f9e8021196feeee6546b1a256a72e5599d3a77831/cryptojwt-1.10.0-py3-none-any.whl", hash = "sha256:060c3a64270d4d9eaa798d070daa4801530389f05649918e167ad38dba1cb4fe", size = 90573, upload-time = "2025-08-25T05:59:15.247Z" },
+    { url = "https://files.pythonhosted.org/packages/a4/f3/815c5e1e110e918c2c431cc9ee0abe79ac24c6a1f012215eb266c5627cad/cryptojwt-1.11.0-py3-none-any.whl", hash = "sha256:156e56b341bb3633e3a0234bab29b3076e3490899510e13b0551dcf0418c814a", size = 90812, upload-time = "2026-03-24T08:48:20.21Z" },
 ]
 
 [[package]]
@@ -690,10 +699,13 @@ wheels = [
 ]
 
 [[package]]
-name = "docopt"
-version = "0.6.2"
+name = "docopt-ng"
+version = "0.9.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/a2/55/8f8cab2afd404cf578136ef2cc5dfb50baa1761b68c9da1fb1e4eed343c9/docopt-0.6.2.tar.gz", hash = "sha256:49b3a825280bd66b3aa83585ef59c4a8c82f2c8a522dbe754a8bc8d08c85c491", size = 25901, upload-time = "2014-06-16T11:18:57.406Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e4/50/8d6806cf13138127692ae6ff79ddeb4e25eb3b0bcc3c1bd033e7e04531a9/docopt_ng-0.9.0.tar.gz", hash = "sha256:91c6da10b5bb6f2e9e25345829fb8278c78af019f6fc40887ad49b060483b1d7", size = 32264, upload-time = "2023-05-30T20:46:25.064Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6c/4a/c3b77fc1a24510b08918b43a473410c0168f6e657118807015f1f1edceea/docopt_ng-0.9.0-py3-none-any.whl", hash = "sha256:bfe4c8b03f9fca424c24ee0b4ffa84bf7391cb18c29ce0f6a8227a3b01b81ff9", size = 16689, upload-time = "2023-05-30T20:46:45.294Z" },
+]
 
 [[package]]
 name = "docutils"
@@ -1355,6 +1367,7 @@ dependencies = [
     { name = "cachetools" },
     { name = "crypt4gh" },
     { name = "cryptography" },
+    { name = "cryptojwt" },
     { name = "datacite" },
     { name = "defusedxml" },
     { name = "fastapi" },
@@ -1438,8 +1451,9 @@ requires-dist = [
     { name = "alembic", specifier = ">=1.17.1" },
     { name = "asyncpg", specifier = ">=0.30.0" },
     { name = "cachetools", specifier = ">=5.5.2" },
-    { name = "crypt4gh", specifier = "==1.7" },
+    { name = "crypt4gh", specifier = "==1.8.6" },
     { name = "cryptography", specifier = "==46.0.7" },
+    { name = "cryptojwt", specifier = "==1.11.0" },
     { name = "datacite", specifier = ">=1.3.1" },
     { name = "defusedxml", specifier = "==0.7.1" },
     { name = "fastapi", specifier = ">=0.128.0" },

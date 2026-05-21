@@ -329,7 +329,7 @@ def generate_crypt4gh_keypair_env_values(tmp_path: Path, passphrase: str) -> tup
     current_umask = os.umask(0)
     os.umask(current_umask)
     try:
-        generate(str(secret_key_path), str(public_key_path), passphrase=passphrase.encode("utf-8"))
+        generate(str(secret_key_path), str(public_key_path), passphrase.encode("utf-8"), None)
     finally:
         os.umask(current_umask)
 

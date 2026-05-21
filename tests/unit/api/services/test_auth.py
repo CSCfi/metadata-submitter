@@ -37,7 +37,7 @@ def jwt_config() -> Iterator[JwtConfig]:
         user_name=MOCK_USER_NAME,
         expiration=timedelta(minutes=10),
         issuer="SD Submit",
-        jwt_secret="mock-secret",
+        jwt_secret="mock-secret-which-is-at-least-32-bytes",
         jwt_algorithm="HS256",
     )
     env_patcher = patch.dict(

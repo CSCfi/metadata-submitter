@@ -33,9 +33,9 @@ async def test_get_project_buckets(csc_client) -> None:
             return_value=["bucket1", "bucket2"],
         ),
     ):
+        csc_client.cookies.set("oidc_access_token", "oidc-token")
         response = csc_client.get(
             f"{api_prefix_v1}/buckets?projectId={project_id}",
-            cookies={"oidc_access_token": "oidc-token"},
         )
         assert response.status_code == 200
 
@@ -103,9 +103,9 @@ async def test_grant_access_to_bucket(csc_client) -> None:
             return_value=None,
         ),
     ):
+        csc_client.cookies.set("oidc_access_token", "oidc-token")
         response = csc_client.put(
             f"{api_prefix_v1}/buckets/{bucket_name}?projectId={project_id}",
-            cookies={"oidc_access_token": "oidc-token"},
         )
         assert response.status_code == 200
 
