@@ -30,11 +30,11 @@ dependencies = [
     "jsonschema==4.26.0",
     "idpyoidc==5.0.0",
     "cryptojwt==1.11.0",
-    "pydantic==2.13.2",
+    "pydantic==2.13.4",
     "pynacl==1.6.2",
     "python-dateutil==2.9.0.post0", # for building swagger html
-    "requests==2.33.1",
-    "ujson==5.12.0",
+    "requests==2.34.2",
+    "ujson==5.12.1",
     "uvloop==0.22.1",
     "xmlschema==4.3.1",
     "typing-extensions==4.15.0",
@@ -69,11 +69,11 @@ dependencies = [
 dev = [
     # mypy
     "mypy>=1.15.0",
-    "types-requests==2.33.0.20260408",
+    "types-requests==2.33.0.20260518",
     "types-ujson==5.10.0.20250822",
     "types-python-dateutil>=2.9.0.20241206",
     # ruff
-    "ruff==0.15.11",
+    "ruff==0.15.14",
     # pytest
     "pytest==9.0.3",
     "pytest-asyncio==1.3.0",
@@ -81,8 +81,8 @@ dev = [
     "pytest-xdist==3.8.0",
     # other
     "aiofiles==25.1.0",
-    "authlib==1.7.0",
-    "certifi==2026.2.25",
+    "authlib==1.7.2",
+    "certifi==2026.5.20",
     "honcho==2.0.0",
     "moto[server]>=5.1.6",
     "pytest-aiohttp>=1.1.0",
@@ -102,11 +102,11 @@ Source = "https://github.com/CSCfi/metadata_submitter"
 verify = [
     # mypy
     "mypy>=1.15.0",
-    "types-requests==2.33.0.20260408",
+    "types-requests==2.33.0.20260518",
     "types-ujson==5.10.0.20250822",
     "types-python-dateutil>=2.9.0.20241206",
     # ruff
-    "ruff==0.15.11",
+    "ruff==0.15.14",
     # vulture
     "vulture>=2.14"
 ]
