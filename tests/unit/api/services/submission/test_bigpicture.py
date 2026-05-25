@@ -95,3 +95,23 @@ def test_prepare_files_wrong_extension_raises():
 
     with pytest.raises(UserException, match="Image file 'IMAGES/IMAGE_1/test.tif.c4gh' must have a .dcm extension"):
         _prepare_files(objects)
+
+
+def test_check_image_file_dir_invalid_dir():
+    alias = "TEST"
+    path = "IMAGES/INVALID/image"
+
+    with pytest.raises(UserException) as exc:
+        BigpictureObjectSubmissionService.check_image_file_dir(alias, path)
+
+    assert f"Image file '{path}' must be in directory 'IMAGES/IMAGE_TEST'" in str(exc.value)
+
+
+def test_check_image_file_dir_correct_dir():
+    alias = "TEST"
+    path = "IMAGES/IMAGE_TEST/image"
+    BigpictureObjectSubmissionService.check_image_file_dir(alias, path)
+
+    alias = "IMAGE_TEST"
+    path = "IMAGES/IMAGE_TEST/image"
+    BigpictureObjectSubmissionService.check_image_file_dir(alias, path)
