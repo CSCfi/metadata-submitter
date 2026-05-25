@@ -510,12 +510,10 @@ class BigpictureObjectSubmissionService(ObjectSubmissionService):
 
             # Validate the image file paths and extensions
             alias = root.get("alias")
-            expected_dir = f"IMAGES/IMAGE_{alias}"
             for file_elem in xml.xpath("/IMAGE/FILES/FILE"):
                 filename = file_elem.get("filename")
+                self.check_image_file_dir(alias, filename)
                 dir_part, _, file_part = filename.rpartition("/")  # "IMAGES/IMAGE_{alias}", "/", "*.dcm.c4gh"
-                if dir_part != expected_dir:
-                    raise UserException(f"Image file '{filename}' must be in directory '{expected_dir}'.")
                 if not file_part.removesuffix(".c4gh").endswith(".dcm"):
                     raise UserException(f"Image file '{filename}' must have a .dcm extension.")
 
@@ -674,3 +672,18 @@ class BigpictureObjectSubmissionService(ObjectSubmissionService):
             await self._delete_object(datacite_object.objectId)
 
         return submission
+
+    @staticmethod
+    def check_image_file_dir(alias: str, image_file_path: str) -> None:
+        """
+        Check if the image file is in the correct directory.
+
+        :param alias: The image metadata object alias.
+        :param image_file_path: The image file path.
+        :raises UserException: If the image file is not in the correct directory.
+        """
+        alias = alias.removeprefix("IMAGE_")  # Alias may contain IMAGE_ prefix.
+        expected_dir = f"IMAGES/IMAGE_{alias}"
+        dir_part, _, _ = image_file_path.rpartition("/")
+        if dir_part != expected_dir:
+            raise UserException(f"Image file '{image_file_path}' must be in directory '{expected_dir}'.")
