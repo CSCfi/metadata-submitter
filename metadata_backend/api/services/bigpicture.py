@@ -16,9 +16,7 @@ from ..processors.xml.bigpicture import (
     BP_LANDING_PAGE_OBJECT_TYPE,
     BP_OBSERVATION_OBJECT_TYPE,
     BP_OBSERVER_OBJECT_TYPE,
-    BP_ORGANISATION_OBJECT_TYPE,
     BP_POLICY_OBJECT_TYPE,
-    BP_REMS_OBJECT_TYPE,
     BP_SAMPLE_OBJECT_TYPES,
     BP_STAINING_OBJECT_TYPE,
     BP_XML_OBJECT_CONFIG,
@@ -74,14 +72,6 @@ XML_OUTPUT_FILES: list[XmlOutputDir] = [
         dir="LANDING_PAGE",
         files=[
             XmlOutputFile(name="landing_page.xml.c4gh", object_types=[BP_LANDING_PAGE_OBJECT_TYPE]),
-        ],
-    ),
-    XmlOutputDir(
-        dir="PRIVATE",
-        files=[
-            XmlOutputFile(name="organisation.xml.c4gh", object_types=[BP_ORGANISATION_OBJECT_TYPE]),
-            XmlOutputFile(name="rems.xml.c4gh", object_types=[BP_REMS_OBJECT_TYPE]),
-            XmlOutputFile(name="datacite.xml.c4gh", object_types=[DATACITE_OBJECT_TYPE], mandatory=False),
         ],
     ),
 ]
