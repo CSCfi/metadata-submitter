@@ -7,7 +7,6 @@ from enum import Enum
 from typing import Any, AsyncGenerator, Final, TypeVar, override
 
 import uvicorn
-import uvloop
 from fastapi import APIRouter, FastAPI, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.openapi.utils import get_openapi
@@ -65,8 +64,6 @@ from .services.pid_service import PIDServiceHandler
 from .services.rems_service import RemsServiceHandler
 from .services.ror_service import RorServiceHandler
 from .services.service_handler import ServiceHandler
-
-asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 ServiceHandlerType = TypeVar("ServiceHandlerType", bound=ServiceHandler)
 
@@ -461,7 +458,7 @@ def main() -> None:
     host = "0.0.0.0"  # nosec
     port = 5430 if config.DEPLOYMENT == DEPLOYMENT_CSC else 5431
 
-    uvicorn.run(create_app(), host=host, port=port)
+    uvicorn.run(create_app(), host=host, port=port, loop="uvloop")
 
 
 if __name__ == "__main__":

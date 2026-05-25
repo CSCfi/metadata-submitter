@@ -14,7 +14,7 @@ COPY README.md .
 COPY metadata_backend ./metadata_backend
 
 # Install dependencies and create virtual environment
-RUN uv sync
+RUN uv sync --frozen
 
 #=======================
 FROM ghcr.io/astral-sh/uv:python3.14-trixie-slim
@@ -46,4 +46,4 @@ COPY --chown=998:998 ./deploy/app.sh /app/app.sh
 USER 998
 ENV PATH="/app/uv:$PATH"
 
-ENTRYPOINT ["uv", "run", "metadata_submitter"]
+ENTRYPOINT ["/app/.venv/bin/metadata_submitter"]
