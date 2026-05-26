@@ -17,6 +17,7 @@ from tests.integration.conf import (
 from tests.integration.helpers import (
     add_bucket,
     get_files,
+    get_objects,
     get_registrations,
     get_submission,
     get_user_id,
@@ -78,6 +79,22 @@ async def test_publish_bp(nbis_client, bp_submission):
         assert submission.published is False
         assert submission.datePublished is None
         submission_id = submission.submissionId
+
+        # Private XMLs should exist as metadata objects in DB.
+        metadata_objects = (await get_objects(nbis_client, submission_id)).root
+        object_types = {obj.objectType for obj in metadata_objects}
+        assert "organisation" in object_types
+        assert "rems" in object_types
+        if is_datacite:
+            assert "datacite" in object_types
+
+        # Private XMLs must not appear in submission files used for inbox upload/ingest.
+        submission_files = await get_files(nbis_client, submission_id)
+        submission_paths = {file["path"] for file in submission_files}
+        assert all("/PRIVATE/" not in path for path in submission_paths)
+        assert all(not path.endswith("/organisation.xml.c4gh") for path in submission_paths)
+        assert all(not path.endswith("/rems.xml.c4gh") for path in submission_paths)
+        assert all(not path.endswith("/datacite.xml.c4gh") for path in submission_paths)
 
         # Mock Admin keeps inbox file state separate from S3; seed file paths for ingest polling.
         await seed_mock_admin_files(nbis_client, mock_user, submission_id)

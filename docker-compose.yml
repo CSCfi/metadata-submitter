@@ -200,8 +200,6 @@ services:
     profiles:
       - ci
       - dev
-    ports:
-      - "8006:8006"
     environment:
       - MOTO_PORT=8006
     healthcheck:

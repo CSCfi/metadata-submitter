@@ -78,9 +78,6 @@ async def test_upload_bp_metadata_xmls_uses_expected_object_keys_and_payloads():
         "DATASET_123/METADATA/sample.xml.c4gh",
         "DATASET_123/METADATA/staining.xml.c4gh",
         "DATASET_123/LANDING_PAGE/landing_page.xml.c4gh",
-        "DATASET_123/PRIVATE/organisation.xml.c4gh",
-        "DATASET_123/PRIVATE/rems.xml.c4gh",
-        "DATASET_123/PRIVATE/datacite.xml.c4gh",
     }
 
     assert file_provider._add_file_to_bucket.await_count == len(expected_keys)
