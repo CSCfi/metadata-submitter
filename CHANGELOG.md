@@ -14,6 +14,10 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 - (users) Annotation files no longer require `.geojson` suffix.
 - (users) XML processor bug that made annotations.xml and observers.xml mandatory.
 
+### Removed
+
+- (users) Private metadata files (organisation, rems and datacite) are no longer uploaded to SDA inbox and ingested upon publish
+
 ## [2026.4.0] - 2026-04-24
 
 ### Removed
