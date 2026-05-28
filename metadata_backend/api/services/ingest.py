@@ -17,7 +17,13 @@ from ..models.submission import SubmissionWorkflow
 
 
 class IngestService:
-    """Background scanner and worker for ingest processing."""
+    """Background service to ingest files."""
+
+    pass
+
+
+class SDAIngestService(IngestService):
+    """Background service to ingest NeIC SDA files using multiple workers."""
 
     def __init__(
         self,
@@ -28,7 +34,14 @@ class IngestService:
         scan_interval_seconds: int | None = None,
         max_workers: int | None = None,
     ) -> None:
-        """Initialise the ingest service."""
+        """Initialise the NeIC SDA ingest service.
+
+        :param services: API services
+        :param handlers: API handlers
+        :param session_factory_provider: Factory to create database sessions.
+        :param scan_interval_seconds: Background ingest scanner interval in seconds.
+        :param max_workers: Maximum number of concurrent background ingest workers.
+        """
         admin_handler = handlers.admin
         if admin_handler is None:
             raise RuntimeError("Admin service handler is not configured")

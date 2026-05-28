@@ -64,8 +64,8 @@ def test_prepare_files_wrong_directory_raises():
     objects = _replace_object_document(
         objects,
         "image.xml",
-        "IMAGES/IMAGE_1/test.dcm.c4gh",
-        "IMAGES/IMAGE_X/test.dcm.c4gh",
+        "IMAGES/IMAGE_1/test.dcm",
+        "IMAGES/IMAGE_X/test.dcm",
     )
 
     with pytest.raises(
@@ -78,8 +78,8 @@ def test_prepare_files_wrong_directory_raises():
     objects = _replace_object_document(
         objects,
         "annotation.xml",
-        "ANNOTATIONS/test.geojson.c4gh",
-        "OTHER_DIR/test.geojson.c4gh",
+        "ANNOTATIONS/test.geojson",
+        "OTHER_DIR/test.geojson",
     )
 
     with pytest.raises(
@@ -88,13 +88,22 @@ def test_prepare_files_wrong_directory_raises():
         _prepare_files(objects)
 
 
-def test_prepare_files_wrong_extension_raises():
-    # Image files must have .dcm (optionally .c4gh suffix).
-    objects, _ = bp_objects(is_update=False)
-    objects = _replace_object_document(objects, "image.xml", "test.dcm.c4gh", "test.tif.c4gh")
+def test_prepare_files_image_file_suffix():
+    # Image files must have .dcm suffix.
+    for invalid_file_path in ["test.tif", "test.tif.c4gh"]:
+        objects, _ = bp_objects(is_update=False)
+        objects = _replace_object_document(objects, "image.xml", "test.dcm", invalid_file_path)
+        prepared_file_path = BigpictureObjectSubmissionService._prepare_file_path(invalid_file_path)
+        with pytest.raises(
+            UserException, match=f"Image file 'IMAGES/IMAGE_1/{prepared_file_path}' must have a .dcm extension"
+        ):
+            _prepare_files(objects)
 
-    with pytest.raises(UserException, match="Image file 'IMAGES/IMAGE_1/test.tif.c4gh' must have a .dcm extension"):
-        _prepare_files(objects)
+
+def test_prepare_file_path_adds_suffix():
+    # Files must have .c4gh suffix.
+    assert "test.c4gh" == BigpictureObjectSubmissionService._prepare_file_path("test")
+    assert "test.c4gh" == BigpictureObjectSubmissionService._prepare_file_path("test.c4gh")
 
 
 def test_check_image_file_dir_invalid_dir():

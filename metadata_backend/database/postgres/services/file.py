@@ -217,7 +217,12 @@ class FileService:
             raise UnknownFileException(file_id)
 
     async def get_ingest_file_states(self, submission_id: str) -> list[IngestFileState]:
-        """Get ingest state fields for files in a submission."""
+        """
+        Get ingest states for files in a submission.
+
+        :param submission_id: the submission id
+        :return: The ingest states for files in a submission.
+        """
         entities = [entity async for entity in self.__repository.get_files(submission_id=submission_id)]
         return [
             IngestFileState(
