@@ -32,7 +32,7 @@ from .api.models.app import app_state
 from .api.models.submission import PaginatedSubmissions
 from .api.services.auth import AuthService
 from .api.services.file import S3AllasFileProviderService, S3InboxSDAService
-from .api.services.ingest import IngestService
+from .api.services.ingest import SDAIngestService
 from .api.services.project import CscProjectService, NbisProjectService, ProjectService
 from .conf.conf import (
     DEPLOYMENT_CSC,
@@ -243,7 +243,7 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
     # Provide ingest scanner service for NBIS deployment.
     app.state.ingest_scanner_service = None
     if config.DEPLOYMENT == DEPLOYMENT_NBIS and admin_handler is not None and not session:
-        app.state.ingest_scanner_service = IngestService(
+        app.state.ingest_scanner_service = SDAIngestService(
             services,
             handlers,
             session_factory_provider=lambda: app_state(app).session_factory,

@@ -8,14 +8,14 @@ import pytest
 
 from metadata_backend.api.models.models import IngestFileState, IngestStatus
 from metadata_backend.api.models.sda import CreateDatasetRequest, FileItem
-from metadata_backend.api.services.ingest import IngestService
+from metadata_backend.api.services.ingest import SDAIngestService
 
 
 def _session_factory_provider():
     return None
 
 
-def _mock_with_session(service: IngestService):
+def _mock_with_session(service: SDAIngestService):
     async def _with_session(action):
         result = action()
         if asyncio.iscoroutine(result):
@@ -26,7 +26,7 @@ def _mock_with_session(service: IngestService):
 
 
 @pytest.mark.asyncio
-async def test_scan_once_processes_candidates_with_worker_bound() -> None:
+async def test_sda_ingest_scan_once_processes_candidates_with_worker_bound() -> None:
     """Scanner should process candidate submissions and respect worker limits."""
     services = SimpleNamespace(
         submission=SimpleNamespace(
@@ -36,7 +36,7 @@ async def test_scan_once_processes_candidates_with_worker_bound() -> None:
         file=SimpleNamespace(),
     )
     handlers = SimpleNamespace(admin=AsyncMock())
-    service = IngestService(
+    service = SDAIngestService(
         services,
         handlers,
         session_factory_provider=_session_factory_provider,
@@ -63,14 +63,14 @@ async def test_scan_once_processes_candidates_with_worker_bound() -> None:
 
 
 @pytest.mark.asyncio
-async def test_ingest_skips_when_submission_not_claimed() -> None:
+async def test_sda_ingest_skips_when_submission_not_claimed() -> None:
     """Ingest returns False when claim fails (locked or already processed)."""
     services = SimpleNamespace(
         submission=SimpleNamespace(claim_submission_for_ingest=AsyncMock(return_value=None)),
         file=SimpleNamespace(),
     )
     handlers = SimpleNamespace(admin=AsyncMock())
-    service = IngestService(
+    service = SDAIngestService(
         services,
         handlers,
         session_factory_provider=_session_factory_provider,
@@ -82,7 +82,7 @@ async def test_ingest_skips_when_submission_not_claimed() -> None:
 
 
 @pytest.mark.asyncio
-async def test_ingest_marks_submission_ingested() -> None:
+async def test_sda_ingest_marks_submission_ingested() -> None:
     """Ingest should sync statuses and mark submission ingested when all files are ready."""
     file_states = {
         "f1": IngestFileState(file_id="id-a", path="f1", ingest_status=IngestStatus.READY),
@@ -130,7 +130,7 @@ async def test_ingest_marks_submission_ingested() -> None:
         ),
     ]
 
-    service = IngestService(
+    service = SDAIngestService(
         services,
         handlers,
         session_factory_provider=_session_factory_provider,
@@ -147,7 +147,7 @@ async def test_ingest_marks_submission_ingested() -> None:
 
 
 @pytest.mark.asyncio
-async def test_ingest_progresses_files_from_uploaded_to_ready() -> None:
+async def test_sda_ingest_progresses_files_from_uploaded_to_ready() -> None:
     """Ingest should process files and progress them from UPLOADED to VERIFIED and VERIFIED to READY."""
     file_states = {
         "f1": IngestFileState(file_id="id-a", path="f1", ingest_status=IngestStatus.UPLOADED),
@@ -221,7 +221,7 @@ async def test_ingest_progresses_files_from_uploaded_to_ready() -> None:
         ),
     ]
 
-    service = IngestService(
+    service = SDAIngestService(
         services,
         handlers,
         session_factory_provider=_session_factory_provider,

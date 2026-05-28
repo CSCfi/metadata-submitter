@@ -489,6 +489,15 @@ class BigpictureObjectSubmissionService(ObjectSubmissionService):
 
         return self.prepare_create_submission(old_submission.projectId, old_submission.submissionId)
 
+    @staticmethod
+    def _prepare_file_path(file_path: str) -> str:
+        """Add .c4gh" suffix to the file path if it is missing.
+
+        :param file_path: the file path.
+        :return: the file path with .c4gh suffix.
+        """
+        return file_path if file_path.endswith(".c4gh") else f"{file_path}.c4gh"
+
     @override
     def prepare_files(self, submission_id: str) -> list[File]:
         """
@@ -511,7 +520,7 @@ class BigpictureObjectSubmissionService(ObjectSubmissionService):
             # Validate the image file paths and extensions
             alias = root.get("alias")
             for file_elem in xml.xpath("/IMAGE/FILES/FILE"):
-                filename = file_elem.get("filename")
+                filename = self._prepare_file_path(file_elem.get("filename"))
                 self.check_image_file_dir(alias, filename)
                 dir_part, _, file_part = filename.rpartition("/")  # "IMAGES/IMAGE_{alias}", "/", "*.dcm.c4gh"
                 if not file_part.removesuffix(".c4gh").endswith(".dcm"):
@@ -537,7 +546,7 @@ class BigpictureObjectSubmissionService(ObjectSubmissionService):
 
             # Validate the annotation file paths and extensions
             for file_elem in xml.xpath("/ANNOTATION/FILES/FILE"):
-                filename = file_elem.get("filename")
+                filename = self._prepare_file_path(file_elem.get("filename"))
                 dir_part = str(Path(filename).parent)
                 if dir_part != "ANNOTATIONS":
                     raise UserException(f"Annotation file '{filename}' must be in directory 'ANNOTATIONS'.")
