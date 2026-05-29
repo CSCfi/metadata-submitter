@@ -239,8 +239,6 @@ class PublishAPIHandler(RESTAPIHandler):
 
         submission_service = self._services.submission
         project_service = self._services.project
-        file_service = self._services.file
-        file_provider_service = self._services.file_provider
 
         # Check that the user can modify this submission.
         await SubmissionAPIHandler.check_submission_modifiable(
@@ -250,58 +248,17 @@ class PublishAPIHandler(RESTAPIHandler):
         workflow = await self._services.submission.get_workflow(submission_id)
 
         if workflow == SubmissionWorkflow.SD and not no_files:
-            # Add all files in linked bucket to the submission.
-            bucket = await submission_service.get_bucket(submission_id)
-            if not bucket:
-                raise UserException(f"Submission '{submission_id}' is not linked to any bucket.")
-            if workflow == SubmissionWorkflow.SD:
-                files = await file_provider_service.list_files_in_bucket(bucket)
-                for file in files.root:
-                    # Check that we have not added the file already.
-                    # For now, accept that file bytes might have changed and some files
-                    # might have been removed if a call to this endpoint has failed before.
-                    if not await file_service.is_file_by_path(submission_id, file.path):
-                        await file_service.add_file(
-                            File(
-                                submissionId=submission_id,
-                                path=file.path,
-                                bytes=file.bytes,
-                            ),
-                            workflow,
-                        )
-
-            # Check that the submission has at least one file.
-            if await file_service.count_files(submission_id) == 0:
-                raise UserException(f"Submission '{submission_id}' does not have any data files.")
+            await self._add_sd_files_for_publish(submission_id)
 
         elif workflow == SubmissionWorkflow.BP and not no_files:
-            # Check if user has uploaded any thumbnail files to the inbox bucket for this submission
-            # and add them as submission files.
-            await self._add_bp_thumbnail_files(submission_id, user.user_id)
+            # Upload Bigpicture submission metadata XML files to SDA inbox.
+            headers = req.headers
+            jwt = self._services.auth._get_bearer_token(headers)
+            if not jwt:
+                raise UserException("Missing OIDC access token in Authorization bearer header for SDA inbox upload.")
+            await upload_bp_metadata_xmls(self._services, submission_id, user.user_id, jwt)
 
-            submission_files = [file async for file in file_service.get_files(submission_id=submission_id)]
-            LOG.info("Found %d files in submission '%s'.", len(submission_files), submission_id)
-
-            # Check that all submission files are present in the S3 inbox.
-            missing_files = await file_provider_service.find_missing_files(
-                user.user_id, submission_id, submission_files
-            )
-            if missing_files:
-                missing_paths = ", ".join(sorted(missing_files))
-                raise UserException(
-                    f"Submission files for '{submission_id}' are missing from the inbox: {missing_paths}."
-                )
-
-            # Check that the dataset directory in the inbox doesn't have extra files,
-            # which are not referenced in the XMLs.
-            unexpected_files = await file_provider_service.find_orphaned_files(
-                user.user_id, submission_id, submission_files
-            )
-            if unexpected_files:
-                unexpected_paths = ", ".join(sorted(unexpected_files))
-                raise UserException(
-                    f"Unexpected files found in the inbox for submission '{submission_id}': {unexpected_paths}."
-                )
+            await self._check_bp_files_for_publish(user.user_id, submission_id)
 
         submission = await submission_service.get_submission_by_id(submission_id)
 
@@ -323,14 +280,6 @@ class PublishAPIHandler(RESTAPIHandler):
 
         if deployment_config().ALLOW_REGISTRATION:
             await self._register_submission(submission, datacite, rems)
-
-        # Upload Bigpicture metadata XML files to SDA inbox.
-        if workflow == SubmissionWorkflow.BP:
-            headers = req.headers
-            jwt = self._services.auth._get_bearer_token(headers)
-            if not jwt:
-                raise UserException("Missing OIDC access token in Authorization bearer header for SDA inbox upload.")
-            await upload_bp_metadata_xmls(self._services, submission_id, user.user_id, jwt)
 
         # Update submission status to published.
         await submission_service.publish(submission_id)
@@ -421,6 +370,58 @@ class PublishAPIHandler(RESTAPIHandler):
             description=description,
             doi=doi,
         )
+
+    async def _add_sd_files_for_publish(self, submission_id: str) -> None:
+        """Add all files from the linked bucket to the submission and validate at least one file exists.
+
+        :param submission_id: The submission id
+        """
+        bucket = await self._services.submission.get_bucket(submission_id)
+        if not bucket:
+            raise UserException(f"Submission '{submission_id}' is not linked to any bucket.")
+
+        files = await self._services.file_provider.list_files_in_bucket(bucket)
+        for file in files.root:
+            # Check that we have not added the file already.
+            # For now, accept that file bytes might have changed and some files
+            # might have been removed if a call to this endpoint has failed before.
+            if not await self._services.file.is_file_by_path(submission_id, file.path):
+                await self._services.file.add_file(
+                    File(submissionId=submission_id, path=file.path, bytes=file.bytes),
+                    SubmissionWorkflow.SD,
+                )
+
+        # Check that the submission has at least one file.
+        if await self._services.file.count_files(submission_id) == 0:
+            raise UserException(f"Submission '{submission_id}' does not have any data files.")
+
+    async def _check_bp_files_for_publish(self, user_id: str, submission_id: str) -> None:
+        """Check files in the S3 inbox for Bigpicture submission and sync with submission files.
+
+        :param user_id: The user id
+        :param submission_id: The submission id
+        """
+        # Add any thumbnail files the user has uploaded to the inbox bucket for the submission as submission files.
+        await self._add_bp_thumbnail_files(submission_id, user_id)
+
+        submission_files = [file async for file in self._services.file.get_files(submission_id=submission_id)]
+        LOG.info("Found %d files in submission '%s'.", len(submission_files), submission_id)
+
+        # Check that all submission files are present in the S3 inbox.
+        missing_files = await self._services.file_provider.find_missing_files(user_id, submission_id, submission_files)
+        if missing_files:
+            missing_paths = ", ".join(sorted(missing_files))
+            raise UserException(f"Submission files for '{submission_id}' are missing from the inbox: {missing_paths}.")
+
+        # Check that the submission directory in the inbox doesn't have unexpected files anymore at this point.
+        unexpected_files = await self._services.file_provider.find_orphaned_files(
+            user_id, submission_id, submission_files
+        )
+        if unexpected_files:
+            unexpected_paths = ", ".join(sorted(unexpected_files))
+            raise UserException(
+                f"Unexpected files found in the inbox for submission '{submission_id}': {unexpected_paths}."
+            )
 
     async def _add_bp_thumbnail_files(self, submission_id: str, user_id: str) -> None:
         """Discover BP thumbnail files from inbox and add missing ones as submission files.
