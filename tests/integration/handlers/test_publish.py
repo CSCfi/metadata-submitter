@@ -88,16 +88,13 @@ async def test_publish_bp(nbis_client, bp_submission):
         if is_datacite:
             assert "datacite" in object_types
 
-        # Private XMLs must not appear in submission files used for inbox upload/ingest.
-        submission_files = await get_files(nbis_client, submission_id)
-        submission_paths = {file["path"] for file in submission_files}
-        assert all("/PRIVATE/" not in path for path in submission_paths)
-        assert all(not path.endswith("/organisation.xml.c4gh") for path in submission_paths)
-        assert all(not path.endswith("/rems.xml.c4gh") for path in submission_paths)
-        assert all(not path.endswith("/datacite.xml.c4gh") for path in submission_paths)
+        thumbnails = {
+            f"DATASET_{submission_id}/LANDING_PAGE/THUMBNAILS/1.jpg.c4gh",
+            f"DATASET_{submission_id}/LANDING_PAGE/THUMBNAILS/2.jpg.c4gh",
+        }
 
         # Mock Admin keeps inbox file state separate from S3; seed file paths for ingest polling.
-        await seed_mock_admin_files(nbis_client, mock_user, submission_id)
+        await seed_mock_admin_files(nbis_client, mock_user, submission_id, extra_inbox_paths=thumbnails)
 
         # Publish submission.
         await publish_submission(nbis_client, submission_id, no_files=False)
@@ -107,6 +104,19 @@ async def test_publish_bp(nbis_client, bp_submission):
         assert published_submission.submissionId == submission_id
         assert published_submission.published is True
         assert published_submission.datePublished is not None
+
+        # Get submission files after publish to check that additional XML and thumbnail files are added
+        published_submission_files = await get_files(nbis_client, submission_id)
+        published_submission_paths = {file["path"] for file in published_submission_files}
+        # 9 XMLs + 2 image files + 1 annotation file + 2 thumbnails = 14 files in total
+        assert len(published_submission_files) == 14
+        assert thumbnails.issubset(published_submission_paths)
+
+        # Private XML files should not be included in published submission files
+        assert all("/PRIVATE/" not in path for path in published_submission_paths)
+        assert all(not path.endswith("/organisation.xml.c4gh") for path in published_submission_paths)
+        assert all(not path.endswith("/rems.xml.c4gh") for path in published_submission_paths)
+        assert all(not path.endswith("/datacite.xml.c4gh") for path in published_submission_paths)
 
         # Get registrations.
         registration = await get_registrations(nbis_client, submission_id)
@@ -163,6 +173,7 @@ async def test_real_publish_bp(nbis_client, bp_submission, monkeypatch):
     assert s3_inbox.endpoint == "https://staging-inbox.bp.nbis.se"
 
     # Upload submission files to S3 inbox in the same way a user would manually before publishing
+    filenames.add(f"DATASET_{submission_id}/LANDING_PAGE/THUMBNAILS/1.jpg.c4gh")
     user = await get_user_id(nbis_client)
     bucket = user.replace("@", "_")
     for file in filenames:

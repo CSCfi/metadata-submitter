@@ -275,6 +275,10 @@ class PublishAPIHandler(RESTAPIHandler):
                 raise UserException(f"Submission '{submission_id}' does not have any data files.")
 
         elif workflow == SubmissionWorkflow.BP and not no_files:
+            # Check if user has uploaded any thumbnail files to the inbox bucket for this submission
+            # and add them as submission files.
+            await self._add_bp_thumbnail_files(submission_id, user.user_id)
+
             submission_files = [file async for file in file_service.get_files(submission_id=submission_id)]
             LOG.info("Found %d files in submission '%s'.", len(submission_files), submission_id)
 
@@ -417,3 +421,29 @@ class PublishAPIHandler(RESTAPIHandler):
             description=description,
             doi=doi,
         )
+
+    async def _add_bp_thumbnail_files(self, submission_id: str, user_id: str) -> None:
+        """Discover BP thumbnail files from inbox and add missing ones as submission files.
+
+        :param submission_id: The submission id
+        :param user_id: The user id
+        """
+        thumbnails_prefix = f"DATASET_{submission_id}/LANDING_PAGE/THUMBNAILS/"
+
+        file_service = self._services.file
+        file_provider_service = self._services.file_provider
+
+        inbox_files = await file_provider_service.list_submission_inbox_files(user_id, submission_id)
+
+        for inbox_file in inbox_files:
+            file_path = inbox_file.inbox_path
+
+            # Skip adding files that may already be added to the submission.
+            if await file_service.is_file_by_path(submission_id, file_path):
+                continue
+
+            # Thumbnail files are expected to be in the LANDING_PAGE/THUMBNAILS directory AND have .jpg.c4gh extension
+            if file_path.startswith(thumbnails_prefix) and file_path.lower().endswith(".jpg.c4gh"):
+                submission_file = File(submissionId=submission_id, path=file_path)
+                await file_service.add_file(submission_file, SubmissionWorkflow.BP)
+                LOG.info("Added thumbnail file '%s' to submission '%s'", file_path, submission_id)
