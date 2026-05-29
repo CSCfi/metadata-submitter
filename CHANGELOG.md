@@ -9,6 +9,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Fixed
 
+- (users) Uploading Bigpicture Landing Page related thumbnail files to the S3 inbox for the submission no longer causes the /publish API call to fail
 - (users) Allow submitted file paths to be missing .c4gh file suffix.
 - (users) Automatically recover closed pooled connections.
 - (users) Improved error message if REMS workflow id is not an integer.
