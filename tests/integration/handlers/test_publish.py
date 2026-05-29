@@ -16,6 +16,8 @@ from tests.integration.conf import (
 )
 from tests.integration.helpers import (
     add_bucket,
+    add_file_to_bucket,
+    get_file_from_bucket,
     get_files,
     get_objects,
     get_registrations,
@@ -88,16 +90,59 @@ async def test_publish_bp(nbis_client, bp_submission):
         if is_datacite:
             assert "datacite" in object_types
 
+        uploaded_metadata_files = {
+            f"DATASET_{submission_id}/METADATA/annotation.xml.c4gh",
+            f"DATASET_{submission_id}/METADATA/dataset.xml.c4gh",
+            f"DATASET_{submission_id}/METADATA/image.xml.c4gh",
+            f"DATASET_{submission_id}/METADATA/observation.xml.c4gh",
+            f"DATASET_{submission_id}/METADATA/observer.xml.c4gh",
+            f"DATASET_{submission_id}/METADATA/policy.xml.c4gh",
+            f"DATASET_{submission_id}/METADATA/sample.xml.c4gh",
+            f"DATASET_{submission_id}/METADATA/staining.xml.c4gh",
+            f"DATASET_{submission_id}/LANDING_PAGE/landing_page.xml.c4gh",
+        }
+
+        # Pre-create stale metadata XML files in inbox so publish must overwrite them.
+        stale_payload = b"stale metadata payload"
+        for metadata_file in uploaded_metadata_files:
+            await add_file_to_bucket(
+                bucket,
+                metadata_file,
+                bucket,
+                bucket,
+                mock_inbox_url,
+                mock_s3_region,
+                body=stale_payload,
+            )
+
         thumbnails = {
             f"DATASET_{submission_id}/LANDING_PAGE/THUMBNAILS/1.jpg.c4gh",
             f"DATASET_{submission_id}/LANDING_PAGE/THUMBNAILS/2.jpg.c4gh",
         }
 
         # Mock Admin keeps inbox file state separate from S3; seed file paths for ingest polling.
-        await seed_mock_admin_files(nbis_client, mock_user, submission_id, extra_inbox_paths=thumbnails)
+        await seed_mock_admin_files(
+            nbis_client,
+            mock_user,
+            submission_id,
+            extra_inbox_paths=uploaded_metadata_files | thumbnails,
+        )
 
         # Publish submission.
         await publish_submission(nbis_client, submission_id, no_files=False)
+
+        # Uploaded metadata XML files should have been replaced by publish.
+        for metadata_file in uploaded_metadata_files:
+            payload, content_type = await get_file_from_bucket(
+                bucket,
+                metadata_file,
+                bucket,
+                bucket,
+                mock_inbox_url,
+                mock_s3_region,
+            )
+            assert payload != stale_payload
+            assert content_type == "application/octet-stream"
 
         # Get published submission.
         published_submission = await get_submission(nbis_client, submission_id)
@@ -174,6 +219,7 @@ async def test_real_publish_bp(nbis_client, bp_submission, monkeypatch):
 
     # Upload submission files to S3 inbox in the same way a user would manually before publishing
     filenames.add(f"DATASET_{submission_id}/LANDING_PAGE/THUMBNAILS/1.jpg.c4gh")
+    filenames.add(f"DATASET_{submission_id}/LANDING_PAGE/landing_page.xml.c4gh")
     user = await get_user_id(nbis_client)
     bucket = user.replace("@", "_")
     for file in filenames:

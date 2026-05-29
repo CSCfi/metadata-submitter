@@ -125,7 +125,16 @@ async def add_bucket(bucket_name, access_key, secret_key, endpoint_url, region):
         await s3.create_bucket(Bucket=bucket_name)
 
 
-async def add_file_to_bucket(bucket_name, object_key, access_key, secret_key, endpoint_url, region, session_token=None):
+async def add_file_to_bucket(
+    bucket_name,
+    object_key,
+    access_key,
+    secret_key,
+    endpoint_url,
+    region,
+    session_token=None,
+    body: bytes | None = None,
+):
     """Add a new object to S3 bucket using provided credentials.
 
     :param bucket_name: name of the bucket
@@ -135,7 +144,8 @@ async def add_file_to_bucket(bucket_name, object_key, access_key, secret_key, en
     :param endpoint_url: S3 endpoint URL
     :param region: S3 region
     """
-    random_bytes = os.urandom(100)  # 100 bytes of random data
+    if body is None:
+        body = os.urandom(100)  # 100 bytes of random data
     session = aioboto3.Session()
     async with session.client(
         "s3",
@@ -148,9 +158,33 @@ async def add_file_to_bucket(bucket_name, object_key, access_key, secret_key, en
         await s3.put_object(
             Bucket=bucket_name,
             Key=object_key,
-            Body=random_bytes,
-            ChecksumSHA256=hashlib.sha256(random_bytes).hexdigest(),
+            Body=body,
+            ChecksumSHA256=hashlib.sha256(body).hexdigest(),
         )
+
+
+async def get_file_from_bucket(
+    bucket_name,
+    object_key,
+    access_key,
+    secret_key,
+    endpoint_url,
+    region,
+    session_token=None,
+) -> tuple[bytes, str | None]:
+    """Read object payload and content type from S3 bucket using provided credentials."""
+    session = aioboto3.Session()
+    async with session.client(
+        "s3",
+        endpoint_url=endpoint_url,
+        aws_access_key_id=access_key,
+        aws_secret_access_key=secret_key,
+        aws_session_token=session_token,
+        region_name=region,
+    ) as s3:
+        resp = await s3.get_object(Bucket=bucket_name, Key=object_key)
+        payload = await resp["Body"].read()
+        return payload, resp.get("ContentType")
 
 
 async def delete_bucket(bucket_name, access_key, secret_key, endpoint_url, region):
