@@ -8,6 +8,7 @@ from metadata_backend.api.handlers.publish import PublishAPIHandler
 from metadata_backend.api.json import to_json_dict
 from metadata_backend.api.models.datacite import Subject
 from metadata_backend.api.models.models import Registration
+from metadata_backend.api.models.sda import FileItem
 from metadata_backend.api.models.submission import Rems, Submission, SubmissionMetadata, SubmissionWorkflow
 from metadata_backend.api.services.file import FileProviderService
 from metadata_backend.conf.deployment import deployment_config
@@ -243,6 +244,9 @@ async def test_publish_submission_bp(nbis_client, submission_repository, object_
             "metadata_backend.api.services.file.S3InboxSDAService.find_missing_files", new_callable=AsyncMock
         ) as mock_find_missing_files,
         patch(
+            "metadata_backend.api.services.file.S3InboxSDAService.list_submission_inbox_files", new_callable=AsyncMock
+        ) as mock_list_submission_inbox_files,
+        patch(
             "metadata_backend.api.services.file.S3InboxSDAService.find_orphaned_files", new_callable=AsyncMock
         ) as mock_find_orphaned_files,
         patch_datacite_create_draft_doi(doi) as mock_datacite_create_draft_doi,
@@ -253,6 +257,7 @@ async def test_publish_submission_bp(nbis_client, submission_repository, object_
         patch_rems_create_resource() as mock_rems_create_resource,
         patch_rems_create_catalogue_item() as mock_rems_create_catalogue_item,
     ):
+        mock_list_submission_inbox_files.return_value = []
         mock_find_missing_files.return_value = []
         mock_find_orphaned_files.return_value = []
 
@@ -281,6 +286,7 @@ async def test_publish_submission_bp(nbis_client, submission_repository, object_
             f"{submission_entity.name} ({rems.organizationId}, {submission_id})",
             TEST_DISCOVERY_URL.format(id=submission_id),
         )
+        mock_list_submission_inbox_files.assert_awaited_once_with("mock-userid", submission_id)
         mock_upload_bp_metadata.assert_awaited_once_with(ANY, submission_id, "mock-userid", "oidc-token")
 
         # Assert registrations.
@@ -350,6 +356,9 @@ async def test_publish_submission_bp_fails_when_metadata_upload_fails(
             "metadata_backend.api.services.file.S3InboxSDAService.find_missing_files", new_callable=AsyncMock
         ) as mock_find_missing_files,
         patch(
+            "metadata_backend.api.services.file.S3InboxSDAService.list_submission_inbox_files", new_callable=AsyncMock
+        ) as mock_list_submission_inbox_files,
+        patch(
             "metadata_backend.api.services.file.S3InboxSDAService.find_orphaned_files", new_callable=AsyncMock
         ) as mock_find_orphaned_files,
         patch_datacite_create_draft_doi("10.1/test"),
@@ -357,6 +366,7 @@ async def test_publish_submission_bp_fails_when_metadata_upload_fails(
         patch_rems_create_resource(),
         patch_rems_create_catalogue_item(),
     ):
+        mock_list_submission_inbox_files.return_value = []
         mock_find_missing_files.return_value = []
         mock_find_orphaned_files.return_value = []
 
@@ -371,6 +381,121 @@ async def test_publish_submission_bp_fails_when_metadata_upload_fails(
     stored = await submission_repository.get_submission_by_id(submission_id)
     assert stored is not None
     assert not stored.is_published
+
+
+async def test_publish_submission_bp_adds_thumbnail_jpgs_before_orphan_check(
+    nbis_client, submission_repository, object_repository, file_repository
+):
+    """BP publish should add landing page thumbnail JPG files to submission but not other unexpected files."""
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+
+    rems = Rems(
+        organizationId=MOCK_REMS_DEFAULT_ORGANISATION_ID,
+        workflowId=MOCK_REMS_DEFAULT_WORKFLOW_ID,
+        licenses=[MOCK_REMS_DEFAULT_LICENSE_ID],
+    )
+
+    submission_entity = create_submission_entity(
+        workflow=SubmissionWorkflow.BP,
+        document={SUB_FIELD_METADATA: SUBMISSION_METADATA, SUB_FIELD_REMS: to_json_dict(rems)},
+        bucket="test-bucket",
+        title="bp-title",
+    )
+    submission_id = await submission_repository.add_submission(submission_entity)
+
+    object_entity = create_object_entity(
+        project_id=submission_entity.project_id,
+        submission_id=submission_id,
+        object_type="dataset",
+        document={},
+        title="bp-title",
+        description="bp-description",
+    )
+    await object_repository.add_object(object_entity, SubmissionWorkflow.BP)
+
+    existing_path = f"{submission_id}/IMAGES/IMAGE_1/img1.dcm.c4gh"
+    thumbnail_jpg_path = f"DATASET_{submission_id}/LANDING_PAGE/THUMBNAILS/thumb.jpg.c4gh"
+    unencrypted_path = f"DATASET_{submission_id}/LANDING_PAGE/THUMBNAILS/thumb.jpg"
+    unexpected_path = f"{submission_id}/LANDING_PAGE/unexpected.txt"
+
+    # File which represents submission file parsed from XML upload and should exist in the inbox at publish time.
+    await file_repository.add_file(
+        FileEntity(
+            submission_id=submission_id,
+            object_id=object_entity.object_id,
+            path=existing_path,
+            bytes=1,
+        ),
+        SubmissionWorkflow.BP,
+    )
+
+    with (
+        patch_verify_user_project,
+        patch_verify_authorization,
+        patch(
+            "metadata_backend.api.handlers.publish.upload_bp_metadata_xmls",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "metadata_backend.api.services.file.S3InboxSDAService.list_submission_inbox_files", new_callable=AsyncMock
+        ) as mock_list_submission_inbox_files,
+        patch(
+            "metadata_backend.api.services.file.S3InboxSDAService.find_missing_files", new_callable=AsyncMock
+        ) as mock_find_missing_files,
+        patch(
+            "metadata_backend.api.services.file.S3InboxSDAService.find_orphaned_files", new_callable=AsyncMock
+        ) as mock_find_orphaned_files,
+        patch_datacite_create_draft_doi("10.1/test"),
+        patch_datacite_publish(),
+        patch_rems_create_resource(),
+        patch_rems_create_catalogue_item(),
+    ):
+        # thumbnail_jpg_path should be added to submission files before the orphaned files check
+        mock_list_submission_inbox_files.return_value = [
+            FileItem(
+                fileID="12345678-1234-4234-8234-1234567890ab",
+                inboxPath=thumbnail_jpg_path,
+                fileStatus="uploaded",
+                createAt="2024-01-01T00:00:00Z",
+            ),
+            FileItem(
+                fileID="22345678-1234-4234-8234-1234567890ab",
+                inboxPath=unencrypted_path,
+                fileStatus="uploaded",
+                createAt="2024-01-01T00:00:00Z",
+            ),
+            FileItem(
+                fileID="32345678-1234-4234-8234-1234567890ab",
+                inboxPath=unexpected_path,
+                fileStatus="uploaded",
+                createAt="2024-01-01T00:00:00Z",
+            ),
+        ]
+        mock_find_missing_files.return_value = []
+        # unencrypted_path and unexpected_path should not be added to submission files and are thus orphaned files
+        mock_find_orphaned_files.side_effect = lambda _user_id, _submission_id, files: [
+            path for path in [unencrypted_path, unexpected_path] if path not in {file.path for file in files}
+        ]
+
+        response = nbis_client.patch(
+            f"{api_prefix_v1}/publish/{submission_id}", headers={"Authorization": "Bearer oidc-token"}
+        )
+        data = response.json()
+
+        assert response.status_code == 400
+        assert data["detail"] == (
+            f"Unexpected files found in the inbox for submission '{submission_id}': "
+            f"{unencrypted_path}, {unexpected_path}."
+        )
+
+        mock_find_missing_files.assert_awaited_once()
+        orphan_call = mock_find_orphaned_files.await_args
+        checked_paths = {file.path for file in orphan_call.args[2]}
+        assert thumbnail_jpg_path in checked_paths
+        assert unencrypted_path not in checked_paths
+
+    assert await file_repository.get_file_by_path(submission_id, thumbnail_jpg_path) is not None
+    assert await file_repository.get_file_by_path(submission_id, unencrypted_path) is None
 
 
 def test_get_discovery_url_csc():

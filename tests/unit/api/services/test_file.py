@@ -310,3 +310,23 @@ async def test__find_orphaned_files():
 
     result = await S3InboxSDAService._find_orphaned_files(inbox_file_paths, file_paths)
     assert result == ["file1.txt.c4gh"]
+
+
+@pytest.mark.asyncio
+async def test_list_submission_inbox_files():
+    admin_handler = AsyncMock()
+    admin_handler.get_user_files.return_value = [
+        FileItem(
+            fileID="12345678-1234-4234-8234-1234567890ab",
+            inboxPath="DATASET_1/LANDING_PAGE/THUMBNAILS/thumb.jpg",
+            fileStatus="uploaded",
+            createAt="2024-01-01T00:00:00Z",
+        )
+    ]
+
+    service = S3InboxSDAService(admin_handler)
+
+    inbox_files = await service.list_submission_inbox_files("user1", "1")
+
+    assert [file.inbox_path for file in inbox_files] == ["DATASET_1/LANDING_PAGE/THUMBNAILS/thumb.jpg"]
+    admin_handler.get_user_files.assert_awaited_once_with("user1", "1")

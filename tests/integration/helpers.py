@@ -183,8 +183,14 @@ async def delete_bucket(bucket_name, access_key, secret_key, endpoint_url, regio
         await s3.delete_bucket(Bucket=bucket_name)
 
 
-async def seed_mock_admin_files(client: aiohttp.ClientSession, user_id: str, submission_id: str) -> None:
-    """Add existing submission data file paths to mock Admin inbox state for integration tests."""
+async def seed_mock_admin_files(
+    client: aiohttp.ClientSession,
+    user_id: str,
+    submission_id: str,
+    *,
+    extra_inbox_paths: set[str] | None = None,
+) -> None:
+    """Add submission file paths (and optional extra paths) to mock Admin inbox state."""
     admin_url = "http://mockadmin:8004" if os.getenv("CICD") == "true" else "http://localhost:8004"
     admin_token = os.getenv("ADMIN_TOKEN", "")
     if admin_token:
@@ -210,6 +216,8 @@ async def seed_mock_admin_files(client: aiohttp.ClientSession, user_id: str, sub
     inbox_paths = {
         file["path"] for file in submission_files if isinstance(file, dict) and isinstance(file.get("path"), str)
     }
+    if extra_inbox_paths:
+        inbox_paths.update(extra_inbox_paths)
 
     async with aiohttp.ClientSession(base_url=admin_url, headers=headers) as admin_client:
         for inbox_path in sorted(inbox_paths):

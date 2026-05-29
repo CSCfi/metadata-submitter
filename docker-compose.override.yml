@@ -24,13 +24,23 @@ services:
   postgres-csc:
     ports:
       - "5432:5432"
+    # Uncomment for using persistent data in local testing when needed
+    # volumes:
+    #   - postgres-csc-data:/var/lib/postgresql
   # Allow connecting to the database outside the docker network.
   postgres-nbis:
     ports:
       - "5433:5432"
+    # Uncomment for using persistent data in local testing when needed
+    # volumes:
+    #   - postgres-nbis-data:/var/lib/postgresql
   mockadmin:
     ports:
       - "8004:8004"
   mockinbox:
     ports:
       - "8006:8006"
+
+volumes:
+  postgres-csc-data:
+  postgres-nbis-data:

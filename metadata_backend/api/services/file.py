@@ -19,6 +19,7 @@ from ...services.admin_service import AdminServiceHandler
 from ...services.keystone_service import KeystoneServiceHandler
 from ..exceptions import SystemException, UserException
 from ..models.models import File as SubmissionFile
+from ..models.sda import FileItem
 
 
 class FileProviderService(ABC):
@@ -127,11 +128,41 @@ class FileProviderService(ABC):
         return await self._verify_bucket_policy(bucket)
 
     async def find_missing_files(self, user_id: str, submission_id: str, files: list[SubmissionFile]) -> list[str]:
-        """Return file paths that are missing from the provider."""
+        """Return file paths that are missing from the provider.
+
+        Args:
+            user_id: The ID of the user.
+            submission_id: The ID of the submission (= dataset accession ID).
+            files: The list of submission files.
+
+        Returns:
+            The list of any missing file paths.
+        """
         raise SystemException("Configured file provider does not support inbox file checks.")
 
+    async def list_submission_inbox_files(self, user_id: str, submission_id: str) -> list[FileItem]:
+        """Return list of files from the inbox specific to the submission.
+
+        Args:
+            user_id: The ID of the user.
+            submission_id: The ID of the submission (= dataset accession ID).
+
+        Returns:
+            The list of files from the inbox specific to the submission.
+        """
+        raise SystemException("Configured file provider does not support inbox file listing.")
+
     async def find_orphaned_files(self, user_id: str, submission_id: str, files: list[SubmissionFile]) -> list[str]:
-        """Return file paths that are present in the provider but not referenced in the submission files."""
+        """Return file paths that are present in the provider but not referenced in the submission files.
+
+        Args:
+            user_id: The ID of the user.
+            submission_id: The ID of the submission (= dataset accession ID).
+            files: The list of submission files.
+
+        Returns:
+            The list of any missing file paths.
+        """
         raise SystemException("Configured file provider does not support orphaned file checks.")
 
     @abstractmethod
@@ -374,8 +405,10 @@ class S3AllasFileProviderService(S3FileProviderService):
 
         Args:
             bucket: The name of the S3 bucket.
+
         Returns:
-            True if the policy is assigned, False otherwise."""
+            True if the policy is assigned, False otherwise.
+        """
         async with self._session.client("s3", endpoint_url=self.endpoint) as s3:
             try:
                 resp = await s3.get_bucket_policy(
@@ -438,10 +471,13 @@ class S3InboxSDAService(FileProviderService):
     async def find_missing_files(self, user_id: str, submission_id: str, files: list[SubmissionFile]) -> list[str]:
         """Return file paths that are missing from the inbox.
 
-        :param user_id: The ID of the user
-        :param submission_id: The ID of the submission (= dataset accession ID)
-        :param files: The list of submission files
-        :returns: The list of any missing file paths
+        Args:
+            user_id: The ID of the user.
+            submission_id: The ID of the submission (= dataset accession ID).
+            files: The list of submission files.
+
+        Returns:
+            The list of any missing file paths.
         """
         inbox_file_paths = {f.inbox_path for f in await self._admin_handler.get_user_files(user_id, submission_id)}
         file_paths = [f.path for f in files]
@@ -451,19 +487,37 @@ class S3InboxSDAService(FileProviderService):
     async def _find_missing_files(inbox_file_paths: set[str], file_paths: list[str]) -> list[str]:
         """Return file paths that are missing from the inbox.
 
-        :param inbox_file_paths: The file paths in the inbox
-        :param file_paths: The files paths in the submission
-        :returns: The list of file paths missing from the inbox
+        Args:
+            inbox_file_paths: The file paths in the inbox.
+            file_paths: The file paths in the submission.
+
+        Returns:
+            The list of file paths missing from the inbox.
         """
         return [f for f in file_paths if f not in inbox_file_paths]
+
+    async def list_submission_inbox_files(self, user_id: str, submission_id: str) -> list[FileItem]:
+        """Return list of files from the S3 inbox bucket specific to the submission.
+
+        Args:
+            user_id: The ID of the user.
+            submission_id: The ID of the submission (= dataset accession ID).
+
+        Returns:
+            The list of files found in the inbox for the submission.
+        """
+        return await self._admin_handler.get_user_files(user_id, submission_id)
 
     async def find_orphaned_files(self, user_id: str, submission_id: str, files: list[SubmissionFile]) -> list[str]:
         """Return submission file paths that are not present in the inbox.
 
-        :param user_id: The ID of the user
-        :param submission_id: The ID of the submission (= dataset accession ID)
-        :param files: The list of submission files
-        :returns: The list of any orphaned file paths
+        Args:
+            user_id: The ID of the user.
+            submission_id: The ID of the submission (= dataset accession ID).
+            files: The list of submission files.
+
+        Returns:
+            The list of any orphaned file paths.
         """
         inbox_file_paths = [f.inbox_path for f in await self._admin_handler.get_user_files(user_id, submission_id)]
         file_paths = {f.path for f in files}
@@ -473,9 +527,12 @@ class S3InboxSDAService(FileProviderService):
     async def _find_orphaned_files(inbox_file_paths: list[str], file_paths: set[str]) -> list[str]:
         """Return submission file paths that are not present in the inbox.
 
-        :param inbox_file_paths: The file paths in the inbox
-        :param file_paths: The files paths in the submission
-        :returns: The list of file paths missing from the submission
+        Args:
+            inbox_file_paths: The file paths in the inbox.
+            file_paths: The file paths in the submission.
+
+        Returns:
+            The list of file paths missing from the submission.
         """
         return [f for f in inbox_file_paths if f not in file_paths]
 
@@ -523,12 +580,13 @@ class S3InboxSDAService(FileProviderService):
     ) -> None:
         """Upload a C4GH encrypted object to S3 bucket using provided credentials.
 
-        :param bucket_name: name of the bucket
-        :param object_key: key for the object to be added
-        :param access_key: S3 access key ID
-        :param secret_key: S3 secret access key
-        :param session_token: S3 session token
-        :param body: unencrypted object bytes
+        Args:
+            bucket_name: Name of the bucket.
+            object_key: Key for the object to be added.
+            access_key: S3 access key ID.
+            secret_key: S3 secret access key.
+            session_token: S3 session token.
+            body: Unencrypted object bytes.
         """
         sender_secret_key, recipient_public_key = await self._load_crypt4gh_keys()
         encrypted_file = await self._encrypt_file(body, sender_secret_key, recipient_public_key)
