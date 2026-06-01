@@ -333,9 +333,8 @@ class S3AllasFileProviderService(S3FileProviderService):
     def _require_api_project_id(self) -> str:
         """Return SD Submit project id or raise if missing."""
         if not self.api_project_id:
-            reason = "S3 bucket policy operations require SD_SUBMIT_PROJECT_ID (CSC deployment)."
-            LOG.error(reason)
-            raise SystemException(reason)
+            LOG.error("Service configuration error: missing required SD_SUBMIT_PROJECT_ID environmental variable.")
+            raise SystemException("Service configuration error.")
         return self.api_project_id
 
     async def _update_bucket_policy(self, bucket: str, creds: KeystoneServiceHandler.EC2Credentials) -> None:
@@ -543,7 +542,11 @@ class S3InboxSDAService(FileProviderService):
             sender_key_pem = base64.b64decode(conf.CRYPT4GH_PRIVATE_KEY).decode("utf-8")
             recipient_key_pem = base64.b64decode(conf.CRYPT4GH_PUBLIC_KEY).decode("utf-8")
         except (binascii.Error, UnicodeDecodeError) as ex:
-            raise SystemException("Invalid base64 in C4GH key environment variables.") from ex
+            LOG.exception(
+                "Service configuration error: invalid base64 value in "
+                "CRYPT4GH_PRIVATE_KEY or CRYPT4GH_PUBLIC_KEY environment variables."
+            )
+            raise SystemException("Service configuration error.") from ex
 
         try:
             sender_lines = [line.strip().encode("utf-8") for line in sender_key_pem.splitlines() if line.strip()]
@@ -560,7 +563,11 @@ class S3InboxSDAService(FileProviderService):
             recipient_public_key = public_data
             return sender_secret_key, recipient_public_key
         except Exception as ex:
-            raise SystemException("Failed to load Crypt4GH keys for Bigpicture metadata encryption.") from ex
+            LOG.exception(
+                "Service configuration error: Failed to load encryption "
+                "key from CRYPT4GH_PRIVATE_KEY_PASSPHRASE environmental variable."
+            )
+            raise SystemException("Service configuration error.") from ex
 
     async def _encrypt_file(self, file: bytes, sender_secret_key: object, recipient_public_key: object) -> bytes:
         """Encrypt file bytes using crypt4gh and return encrypted payload bytes."""
