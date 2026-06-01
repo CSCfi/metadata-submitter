@@ -1,3 +1,8 @@
+### Claude ###
+
+.claude/
+CLAUDE.local.md
+
 ### Secrets ###
 
 tests/integration/.env.secret
