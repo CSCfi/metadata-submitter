@@ -7,6 +7,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ## [Unreleased]
 
+## [2026.6.0] - 2026-06-01
+
 ### Fixed
 
 - (users) Bigpicture submitter is able to upload all dataset files including the original XML files to the S3 inbox without breaking the `/publish` call. Inbox XML files are rewritten with updated XML files.
@@ -20,6 +22,10 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 ### Removed
 
 - (users) Private metadata files (organisation, rems and datacite) are no longer uploaded to SDA inbox and ingested upon publish
+
+### Changed
+
+- (admins) Log sensitive configuration errors and return a generic error to the user.
 
 ## [2026.4.0] - 2026-04-24
 
@@ -830,7 +836,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 - Files are also validated during submission process.
 
 
-[Unreleased]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.4.0...HEAD
+[Unreleased]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.6.0...HEAD
+[2026.6.0]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.4.0...2026.6.0
 [2026.4.0]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.2.0...2026.4.0
 [2026.2.0]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2025.4.0...2026.2.0
 [2025.4.0]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/-/compare/2024.1.0...2025.4.0
