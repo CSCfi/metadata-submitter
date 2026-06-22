@@ -9,12 +9,6 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ## [2026.6.0] - 2026-06-01
 
-### Changed
-
-- (admins) Log sensitive configuration errors and return a generic error to the user.
-
-## [2026.6.0] - 2026-06-01
-
 ### Fixed
 
 - (users) Bigpicture submitter is able to upload all dataset files including the original XML files to the S3 inbox without breaking the `/publish` call. Inbox XML files are rewritten with updated XML files.
