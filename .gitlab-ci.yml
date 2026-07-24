@@ -25,7 +25,7 @@ default:
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-  image: sds-docker.artifactory.ci.csc.fi/sds/sdd-common-ci
+  image: sds-docker.artifactory.ci.csc.fi/sds/sdd-common-ci:1659d8af0e3757081843f2a191cd804de97e94e3
   script:
     # Install uv to /uv and tox uv tool called by pre-commit to /root/.local/bin.
     - curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="/uv" sh
@@ -52,7 +52,7 @@ default:
           - "tox.ini"
           - "uv.lock"
         compare_to: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
-  image: sds-docker.artifactory.ci.csc.fi/sds/sdd-common-ci
+  image: sds-docker.artifactory.ci.csc.fi/sds/sdd-common-ci:1659d8af0e3757081843f2a191cd804de97e94e3
   script:
     # Install uv to /uv and tox uv tool called by pre-commit to /root/.local/bin.
     - curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="/uv" sh
