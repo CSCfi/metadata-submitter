@@ -89,7 +89,6 @@ default:
     VAULT_ROLE_ID: $VAULT_ROLE_ID
     VAULT_SECRET_ID: $VAULT_SECRET_ID
   script:
-    - apt up
     # Get secrets from Vault for testing
     - make get_ci_env
     # Run integration tests with integration-test-runner service in docker-compose
