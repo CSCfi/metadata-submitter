@@ -149,11 +149,12 @@ services:
         echo "** starting mock_auth.py **"
         echo "ls /"
         ls -l /
+        echo "ls /mock_auth.py"
         ls -l /mock_auth.py/
-        if [ /mock_auth.py/mock_auth.py ] ; then
-            uv run /mock_auth/mock_auth.py
+        if [ -e /mock_auth.py/mock_auth.py ] ; then
+            uv run /mock_auth.py/mock_auth.py
         fi
-        if [ /mock_auth.py ] ; then
+        if [ -e /mock_auth.py ] ; then
             uv run /mock_auth.py
         fi
 
@@ -183,12 +184,14 @@ services:
       - -c
       - |
         echo "** starting mock_admin_api.py **"
+        echo "ls -l /"
         ls -l /
+        echo "ls -l /mock_admin_api.py/"
         ls -l /mock_admin_api.py/
-        if [ /mock_admin_api.py/mock_admin_api.py ] ; then
+        if [ -e /mock_admin_api.py/mock_admin_api.py ] ; then
            python /mock_admin_api.py/mock_admin_api.py 0.0.0.08004
         fi
-        if [ /mock_admin_api.py ] ; then
+        if [ -e /mock_admin_api.py ] ; then
            python /mock_admin_api.py 0.0.0.08004
         fi
     depends_on:
