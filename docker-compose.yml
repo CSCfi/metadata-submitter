@@ -113,7 +113,7 @@ services:
       - ci_ui
       - dev
     volumes:
-      - ./tests/integration/mock-auth.json:/config/mock-auth.json:ro
+      - /app/tests/integration/mock-auth.json:/config/mock-auth.json:ro
 
   mockauth:
     build:
@@ -140,16 +140,9 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
-    entrypoint:
-    - sh
-    - -c
-    - |
-      echo "Diagnostics"
-      pwd
-      ls -l
-      docker compose config
-      ls -l tests/integration/
-      exec uv run ./tests/integration/mock_auth.py
+    volumes:
+      - /app/tests/integration/mock_auth.py:/mock_auth.py
+    entrypoint: [ "uv", "run", "/mock_auth.py" ]
 
   mockadmin:
     build:
@@ -170,7 +163,9 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
-    entrypoint: [ "python", "./tests/integration/mock_admin_api.py", "0.0.0.0", "8004" ]
+    volumes:
+      - /app/tests/integration/mock_admin_api.py:/mock_admin_api.py
+    entrypoint: [ "python", "/mock_admin_api.py", "0.0.0.0", "8004" ]
     depends_on:
       mockauth:
         condition: service_started
