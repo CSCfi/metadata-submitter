@@ -105,15 +105,13 @@ services:
   mock-oauth2:
     image: ghcr.io/navikt/mock-oauth2-server:latest
     environment:
-      JSON_CONFIG_PATH: /config/mock-auth.json
+      JSON_CONFIG_PATH: /tests/integration/mock-auth.json
       PORT: 8001
     profiles:
       - ui
       - ci
       - ci_ui
       - dev
-    volumes:
-      - ./tests/integration/mock-auth.json:/config/mock-auth.json:ro
 
   mockauth:
     build:
