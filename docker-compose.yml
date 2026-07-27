@@ -144,7 +144,7 @@ services:
     - sh
     - -c
     - |
-      exec uv run /tests/integration/mock_auth.py
+      exec uv run ./tests/integration/mock_auth.py
 
   mockadmin:
     build:
