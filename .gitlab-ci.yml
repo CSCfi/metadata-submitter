@@ -89,6 +89,13 @@ default:
     VAULT_ROLE_ID: $VAULT_ROLE_ID
     VAULT_SECRET_ID: $VAULT_SECRET_ID
   script:
+    - |
+      echo "Steve Diagnostics"
+      ls -l tests/integration/mock_auth.py
+      ls -l tests/integration/mock_admin_api.py
+      docker context ls
+      docker info
+      echo "DOCKER_HOST=$DOCKER_HOST"
     # Get secrets from Vault for testing
     - make get_ci_env
     # Run integration tests with integration-test-runner service in docker-compose
