@@ -119,7 +119,7 @@ services:
     build:
       dockerfile: ./dockerfiles/Dockerfile-dev
       context: .
-      target: base
+      target: test
     image: cscfi/metadata-submitter-dev
     environment:
       - "LOG_LEVEL=${LOG_LEVEL}"
@@ -140,29 +140,17 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
-    volumes:
-      - ./tests/integration/mock_auth.py:/mock_auth.py
     entrypoint:
       - sh
       - -c
       - |
-        echo "** starting mock_auth.py **"
-        echo "ls /"
-        ls -l /
-        echo "ls /mock_auth.py"
-        ls -l /mock_auth.py/
-        if [ -e /mock_auth.py/mock_auth.py ] ; then
-            uv run /mock_auth.py/mock_auth.py
-        fi
-        if [ -e /mock_auth.py ] ; then
-            uv run /mock_auth.py
-        fi
+        uv run /app/tests/integration/mock_auth.py
 
   mockadmin:
     build:
       dockerfile: ./dockerfiles/Dockerfile-dev
       context: .
-      target: base
+      target: test
     image: cscfi/metadata-submitter-dev
     environment:
       - "LOG_LEVEL=${LOG_LEVEL}"
@@ -177,23 +165,11 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
-    volumes:
-      - ./tests/integration/mock_admin_api.py:/mock_admin_api.py
     entrypoint:
       - sh
       - -c
       - |
-        echo "** starting mock_admin_api.py **"
-        echo "ls -l /"
-        ls -l /
-        echo "ls -l /mock_admin_api.py/"
-        ls -l /mock_admin_api.py/
-        if [ -e /mock_admin_api.py/mock_admin_api.py ] ; then
-           python /mock_admin_api.py/mock_admin_api.py 0.0.0.08004
-        fi
-        if [ -e /mock_admin_api.py ] ; then
-           python /mock_admin_api.py 0.0.0.08004
-        fi
+        python /app/tests/integration/mock_admin_api.py 0.0.0.08004
     depends_on:
       mockauth:
         condition: service_started
