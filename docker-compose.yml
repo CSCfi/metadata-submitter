@@ -113,7 +113,7 @@ services:
       - ci_ui
       - dev
     volumes:
-      - /app/tests/integration/mock-auth.json:/config/mock-auth.json:ro
+      - ./tests/integration/mock-auth.json:/config/mock-auth.json:ro
 
   mockauth:
     build:
@@ -141,8 +141,20 @@ services:
       retries: 5
       start_period: 10s
     volumes:
-      - /app/tests/integration/mock_auth.py:/mock_auth.py
-    entrypoint: [ "uv", "run", "/mock_auth.py" ]
+      - ./tests/integration/mock_auth.py:/mock_auth.py
+    entrypoint:
+      - sh
+      - -c
+      - |
+        echo "** starting mock_auth.py **"
+        echo "ls /"
+        ls -l /
+        if [ /mock_auth.py/mock_auth.py ] ; then
+            uv run /mock_auth/mock_auth.py
+        fi
+        if [ /mock_auth.py ] ; then
+            uv run /mock_auth.py
+        fi
 
   mockadmin:
     build:
@@ -164,8 +176,19 @@ services:
       retries: 5
       start_period: 10s
     volumes:
-      - /app/tests/integration/mock_admin_api.py:/mock_admin_api.py
-    entrypoint: [ "python", "/mock_admin_api.py", "0.0.0.0", "8004" ]
+      - ./tests/integration/mock_admin_api.py:/mock_admin_api.py
+    entrypoint:
+      - sh
+      - -c
+      - |
+        echo "** starting mock_admin_api.py **"
+        ls -l /
+        if [ /mock_admin_api.py/mock_admin_api.py ] ; then
+           python /mock_admin_api.py/mock_admin_api.py 0.0.0.08004
+        fi
+        if [ /mock_admin_api.py ] ; then
+           python /mock_admin_api.py 0.0.0.08004
+        fi
     depends_on:
       mockauth:
         condition: service_started
