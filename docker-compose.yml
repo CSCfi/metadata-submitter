@@ -141,22 +141,12 @@ services:
       retries: 5
       start_period: 10s
     volumes:
-      - ./tests/integration/mock_auth.py:/mock_auth.py
+      - ./
     entrypoint:
     - sh
     - -c
     - |
-      echo "=== whoami ==="
-      id
-      echo "=== file ==="
-      ls -l /mock_auth.py
-      stat /mock_auth.py || true
-
-      echo "=== first line ==="
-      head -1 /mock_auth.py || true
-
-      echo "=== trying python ==="
-      exec uv run /mock_auth.py
+      exec uv run /tests/integration/mock_auth.py
 
   mockadmin:
     build:
