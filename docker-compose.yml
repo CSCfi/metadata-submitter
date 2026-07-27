@@ -144,6 +144,11 @@ services:
     - sh
     - -c
     - |
+      echo "Diagnostics"
+      pwd
+      ls -l
+      docker compose config
+      ls -l tests/integration/
       exec uv run ./tests/integration/mock_auth.py
 
   mockadmin:
