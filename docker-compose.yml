@@ -105,19 +105,21 @@ services:
   mock-oauth2:
     image: ghcr.io/navikt/mock-oauth2-server:latest
     environment:
-      JSON_CONFIG_PATH: /tests/integration/mock-auth.json
+      JSON_CONFIG_PATH: /config/mock-auth.json
       PORT: 8001
     profiles:
       - ui
       - ci
       - ci_ui
       - dev
+    volumes:
+      - ./tests/integration/mock-auth.json:/config/mock-auth.json:ro
 
   mockauth:
     build:
       dockerfile: ./dockerfiles/Dockerfile-dev
       context: .
-      target: test
+      target: base
     image: cscfi/metadata-submitter-dev
     environment:
       - "LOG_LEVEL=${LOG_LEVEL}"
@@ -138,13 +140,15 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
-    entrypoint: [ "uv", "run", "/app/tests/integration/mock_auth.py" ]
+    volumes:
+      - ./tests/integration/mock_auth.py:/mock_auth.py
+    entrypoint: [ "uv", "run", "/mock_auth.py" ]
 
   mockadmin:
     build:
       dockerfile: ./dockerfiles/Dockerfile-dev
       context: .
-      target: test
+      target: base
     image: cscfi/metadata-submitter-dev
     environment:
       - "LOG_LEVEL=${LOG_LEVEL}"
@@ -159,7 +163,9 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
-    entrypoint: [ "python", "/app/tests/integration/mock_admin_api.py", "0.0.0.0", "8004" ]
+    volumes:
+      - ./tests/integration/mock_admin_api.py:/mock_admin_api.py
+    entrypoint: [ "python", "/mock_admin_api.py", "0.0.0.0", "8004" ]
     depends_on:
       mockauth:
         condition: service_started
