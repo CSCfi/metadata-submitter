@@ -9,7 +9,7 @@ class FileItem(BaseModel):
     file_id: UUID4 = Field(..., alias="fileID")
     inbox_path: str = Field(..., alias="inboxPath")
     file_status: str = Field(..., alias="fileStatus")
-    created_at: datetime = Field(..., alias="createAt")
+    created_at: datetime = Field(..., alias="createdAt")
 
 
 class UserFilesResponse(RootModel[list[FileItem]]):

@@ -120,13 +120,13 @@ async def test_sda_ingest_marks_submission_ingested() -> None:
             fileID="12345678-1234-4234-8234-1234567890ab",
             inboxPath="f1",
             fileStatus="ready",
-            createAt="2024-01-01T00:00:00Z",
+            createdAt="2024-01-01T00:00:00Z",
         ),
         FileItem(
             fileID="22345678-1234-4234-8234-1234567890ab",
             inboxPath="f2",
             fileStatus="ready",
-            createAt="2024-01-01T00:00:00Z",
+            createdAt="2024-01-01T00:00:00Z",
         ),
     ]
 
@@ -211,13 +211,13 @@ async def test_sda_ingest_progresses_files_from_uploaded_to_ready() -> None:
             fileID="12345678-1234-4234-8234-1234567890ab",
             inboxPath="f1",
             fileStatus="uploaded",
-            createAt="2024-01-01T00:00:00Z",
+            createdAt="2024-01-01T00:00:00Z",
         ),
         FileItem(
             fileID="22345678-1234-4234-8234-1234567890ab",
             inboxPath="f2",
             fileStatus="verified",
-            createAt="2024-01-01T00:00:00Z",
+            createdAt="2024-01-01T00:00:00Z",
         ),
     ]
 
