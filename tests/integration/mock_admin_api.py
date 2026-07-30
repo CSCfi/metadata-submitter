@@ -33,21 +33,21 @@ files_in_inbox = {
             "inboxPath": "DATASET_1/IMAGES/IMAGE_1/test.dcm.c4gh",
             "fileStatus": "uploaded",
             "submissionFileSize": 100,
-            "createAt": datetime.now().isoformat(),
+            "createdAt": datetime.now().isoformat(),
         },
         {
             "fileID": "22345678-90ab-cdef-1234-567890abcdef",
             "inboxPath": "DATASET_1/IMAGES/IMAGE_2/test2.dcm.c4gh",
             "fileStatus": "uploaded",
             "submissionFileSize": 200,
-            "createAt": datetime.now().isoformat(),
+            "createdAt": datetime.now().isoformat(),
         },
         {
             "fileID": "32345678-90ab-cdef-1234-567890abcdef",
             "inboxPath": "DATASET_1/ANNOTATIONS/test.geojson.c4gh",
             "fileStatus": "uploaded",
             "submissionFileSize": 300,
-            "createAt": datetime.now().isoformat(),
+            "createdAt": datetime.now().isoformat(),
         },
     ]
 }
@@ -171,7 +171,7 @@ async def ingest_file(req: web.Request) -> web.Response:
             "fileID": str(uuid.uuid4()),
             "inboxPath": ingestion_data.filepath,
             "fileStatus": "verified",
-            "createAt": datetime.now().isoformat(),
+            "createdAt": datetime.now().isoformat(),
         }
     )
     LOG.info("Created and ingested missing file %s", ingestion_data.filepath)
@@ -250,7 +250,7 @@ async def create_file(req: web.Request) -> web.Response:
             "fileID": str(uuid.uuid4()),
             "inboxPath": file_data.filepath,
             "fileStatus": "uploaded",
-            "createAt": datetime.now().isoformat(),
+            "createdAt": datetime.now().isoformat(),
         }
     )
 

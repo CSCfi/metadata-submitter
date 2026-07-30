@@ -243,7 +243,7 @@ def get_mock_admin_handler(inbox_file_paths: list[str]) -> AsyncMock:
             fileID="12345678-1234-4234-8234-1234567890ab",
             inboxPath=file_path,
             fileStatus="uploaded",
-            createAt="2024-01-01T00:00:00Z",
+            createdAt="2024-01-01T00:00:00Z",
         )
         for file_path in inbox_file_paths
     ]
@@ -320,7 +320,7 @@ async def test_list_submission_inbox_files():
             fileID="12345678-1234-4234-8234-1234567890ab",
             inboxPath="DATASET_1/LANDING_PAGE/THUMBNAILS/thumb.jpg",
             fileStatus="uploaded",
-            createAt="2024-01-01T00:00:00Z",
+            createdAt="2024-01-01T00:00:00Z",
         )
     ]
 

@@ -456,19 +456,19 @@ async def test_publish_submission_bp_adds_thumbnail_jpgs_before_orphan_check(
                 fileID="12345678-1234-4234-8234-1234567890ab",
                 inboxPath=thumbnail_jpg_path,
                 fileStatus="uploaded",
-                createAt="2024-01-01T00:00:00Z",
+                createdAt="2024-01-01T00:00:00Z",
             ),
             FileItem(
                 fileID="22345678-1234-4234-8234-1234567890ab",
                 inboxPath=unencrypted_path,
                 fileStatus="uploaded",
-                createAt="2024-01-01T00:00:00Z",
+                createdAt="2024-01-01T00:00:00Z",
             ),
             FileItem(
                 fileID="32345678-1234-4234-8234-1234567890ab",
                 inboxPath=unexpected_path,
                 fileStatus="uploaded",
-                createAt="2024-01-01T00:00:00Z",
+                createdAt="2024-01-01T00:00:00Z",
             ),
         ]
         mock_find_missing_files.return_value = []
