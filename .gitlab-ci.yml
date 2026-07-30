@@ -105,11 +105,7 @@ default:
 
 
 #
-# Build, Scan and Upload.
-#
-# I'd like to split this into two stages "build" and "upload", but that fails as the image wouldn't
-# be available to both stages - I can't use "docker save" because the size of the generated docker
-# image exceeds our limit.
+# Build and Scan.
 #
 1-build-image:
   stage: build
