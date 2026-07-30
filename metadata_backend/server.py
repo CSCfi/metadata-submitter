@@ -185,7 +185,7 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
         async def _shutdown() -> None:
             await handler.close()
 
-        app.add_event_handler("shutdown", _shutdown)
+        app.router.add_event_handler("shutdown", _shutdown)
         return handler
 
     metax_handler = None
