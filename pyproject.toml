@@ -73,7 +73,7 @@ dev = [
     "types-ujson==5.10.0.20250822",
     "types-python-dateutil>=2.9.0.20241206",
     # ruff
-    "ruff==0.16.0",
+    "ruff==0.16.1",
     # pytest
     "pytest==9.1.1",
     "pytest-asyncio==1.4.0",
@@ -106,7 +106,7 @@ verify = [
     "types-ujson==5.10.0.20250822",
     "types-python-dateutil>=2.9.0.20241206",
     # ruff
-    "ruff==0.16.0",
+    "ruff==0.16.1",
     # vulture
     "vulture>=2.14"
 ]
