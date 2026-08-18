@@ -20,7 +20,6 @@ class SubmissionSort(enum.Enum):
     """Submission sorting options."""
 
     CREATED_DESC = SubmissionEntity.created.desc()
-    MODIFIED_DESC = SubmissionEntity.modified.desc()
 
 
 class SubmissionRepository:

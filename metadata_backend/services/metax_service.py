@@ -110,18 +110,6 @@ class MetaxServiceHandler(MetaxService, ServiceHandler):
         LOG.debug("Dataset with Metax ID %s and DOI %s has been published to Metax service.", metax_id, doi)
         return published_dataset
 
-    async def delete_dataset(self, metax_id: str) -> None:
-        """
-        Published dataset: Deleting will hide it from listings.
-        Draft dataset: Deleting will removes it permanently.
-
-        :param metax_id: Metax ID
-        """
-        resp: dict[str, Any] = await self._request(method="DELETE", path=f"/datasets/{metax_id}")
-        if resp.get("detail", "No Dataset matches the given query."):
-            raise ValueError(f"Invalid Metax ID: {metax_id}")
-        LOG.debug("Deleted dataset with Metax ID: %s from Metax service", metax_id)
-
     async def _post_draft(self, json_data: dict[str, Any]) -> dict[str, Any]:
         """Post call to Metax REST API.
 

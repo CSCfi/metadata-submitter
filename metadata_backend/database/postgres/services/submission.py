@@ -5,15 +5,10 @@ from typing import Any
 
 from ....api.exceptions import NotFoundUserException, UserException
 from ....api.json import to_json_dict
-from ....api.models.submission import Rems, Submission, SubmissionMetadata, Submissions, SubmissionWorkflow
+from ....api.models.submission import Submission, Submissions, SubmissionWorkflow
 from ..models import SubmissionEntity
 from ..repositories.registration import RegistrationRepository
-from ..repositories.submission import (
-    SUB_FIELD_METADATA,
-    SUB_FIELD_REMS,
-    SubmissionRepository,
-    SubmissionSort,
-)
+from ..repositories.submission import SubmissionRepository, SubmissionSort
 
 
 class UnknownSubmissionUserException(NotFoundUserException):
@@ -192,19 +187,6 @@ class SubmissionService:
         """
         return await self.convert_from_entity(await self.repository.get_submission_by_name(project_id, name))
 
-    async def get_submission_by_id_or_name(self, project_id: str, submission_id_or_name: str) -> Submission | None:
-        """Get the submission using submission id or name.
-
-        :param project_id: the project id
-        :param submission_id_or_name: the submission id or submission name
-        :returns: submission id if the submission exists
-        """
-        submission = await self.get_submission_by_id(submission_id_or_name)
-        if not submission:
-            submission = await self.get_submission_by_name(project_id, submission_id_or_name)
-
-        return submission
-
     async def get_submissions(
         self,
         project_id: str,
@@ -284,18 +266,6 @@ class SubmissionService:
         submission = await self.repository.get_submission_by_name(project_id, name)
         return submission is not None
 
-    async def check_submission_by_name(self, project_id: str, name: str) -> str:
-        """Raise an exception if the submission does not exist.
-
-        :param project_id: the project id
-        :param name: the submission name
-        :returns: The submission id
-        """
-        submission = await self.repository.get_submission_by_name(project_id, name)
-        if not submission:
-            raise UnknownSubmissionUserException(name)
-        return submission.submission_id
-
     async def check_submission_by_id_or_name(self, project_id: str, submission_id_or_name: str) -> str:
         """Raise an exception if the submission does not exist.
 
@@ -355,34 +325,6 @@ class SubmissionService:
             raise UnknownSubmissionUserException(submission_id)
 
         return submission.workflow
-
-    async def get_metadata(self, submission_id: str) -> SubmissionMetadata | None:
-        """Get submission metadata sub-document.
-
-        :param submission_id: the submission id
-        :returns: The submission metadata sub-document.
-        """
-
-        submission = await self.repository.get_submission_by_id(submission_id)
-        if submission is None:
-            raise UnknownSubmissionUserException(submission_id)
-
-        return SubmissionMetadata.model_validate(submission.document[SUB_FIELD_METADATA])
-
-    async def get_rems_document(self, submission_id: str) -> Rems | None:
-        """Get REMS sub-document.
-
-        :param submission_id: the submission id
-        :returns: The REMS sub-document
-        """
-
-        submission = await self.repository.get_submission_by_id(submission_id)
-        if submission is None:
-            raise UnknownSubmissionUserException(submission_id)
-
-        if SUB_FIELD_REMS in submission.document:
-            return Rems.model_validate(submission.document[SUB_FIELD_REMS])
-        return None
 
     async def get_bucket(self, submission_id: str) -> str | None:
         """Get the name of the bucket linked to the submission.

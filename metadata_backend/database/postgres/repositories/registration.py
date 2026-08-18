@@ -1,6 +1,6 @@
 """Repository for the registrations table."""
 
-from typing import Callable, Sequence
+from typing import Callable
 
 from sqlalchemy import select
 
@@ -38,20 +38,6 @@ class RegistrationRepository:
         stmt = select(RegistrationEntity).where(RegistrationEntity.submission_id == submission_id)
         result = await session().execute(stmt)
         return result.scalar_one_or_none()
-
-    async def get_registrations(self, submission_id: str) -> Sequence[RegistrationEntity]:
-        """
-        Get all registrations for the submission.
-
-        Args:
-            submission_id: The submission id.
-
-        Returns:
-            The registrations.
-        """
-        stmt = select(RegistrationEntity).where(RegistrationEntity.submission_id == submission_id)
-        result = await session().execute(stmt)
-        return result.scalars().all()
 
     async def update_registration(
         self, submission_id: str, update_callback: Callable[[RegistrationEntity], None]

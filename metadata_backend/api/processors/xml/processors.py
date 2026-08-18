@@ -20,7 +20,6 @@ from .models import (
     XmlObjectConfig,
     XmlObjectPaths,
     XmlReferencePaths,
-    XmlSchemaPath,
     validate_absolute_path,
     validate_relative_path,
 )
@@ -882,19 +881,6 @@ class XmlDocumentProcessor(XmlProcessor):
         processors[schema_type].setdefault(root_path, {})
         processors[schema_type][root_path][name] = processor
 
-    def get_xml_object_identifier(self, schema_type: str, root_path: str, name: str) -> ObjectIdentifier:
-        """
-        Retrieve the metadata object identifier.
-
-        :param schema_type: The schema type.
-        :param root_path: The metadata object root path.
-        :param name: The unique metadata object name.
-        :return: metadata object identifier.
-        """
-        return self.get_xml_object_processor(
-            self.xml_processor, schema_type, root_path, name
-        ).get_xml_object_identifier()
-
     def set_xml_object_id(self, identifier: ObjectIdentifier) -> None:
         """
         Set the metadata object id.
@@ -1314,9 +1300,3 @@ class XmlFileDocumentsProcessor(XmlDocumentsProcessor):
                         xmls.append(XmlObjectProcessor.parse_xml(f.read()))
 
         super().__init__(config, xmls)
-
-
-def _xml_schema_path(schema_type: str, root_paths: str | list[str], set_path: str) -> XmlSchemaPath:
-    if isinstance(root_paths, str):
-        root_paths = [root_paths]
-    return XmlSchemaPath(set_path=set_path, schema_type=schema_type, root_paths=root_paths)

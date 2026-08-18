@@ -166,24 +166,6 @@ class ObjectService:
 
         return True
 
-    async def check_object(self, object_id: str, *, submission_id: str | None = None) -> None:
-        """Check if the metadata object exists. Raises an exception if it does not.
-
-        Optionally checks if the metadata object is associated with the given submission id.
-
-        :param object_id: the object id
-        :param submission_id: the submission id
-        :returns: True if the metadata object exists. If the submission id is given then returns True
-                  only if the metadata object is associated with the submission.
-        """
-        obj = await self.repository.get_object_by_id(object_id)
-        if obj is None:
-            raise UnknownObjectException(object_id)
-
-        if submission_id is not None:
-            if obj.submission_id != submission_id:
-                raise UnknownObjectException(object_id)
-
     async def count_objects(self, submission_id: str, object_type: str | None = None) -> int:
         """
         Count metadata object entities associated with the given submission.
@@ -295,38 +277,6 @@ class ObjectService:
         """
         async for obj in self.repository.get_objects(submission_id, object_type):
             yield obj.xml_document
-
-    async def get_submission_id(self, object_id: str) -> str:
-        """
-        Get the submission id for the metadata object.
-
-        Args:
-            object_id: The object id.
-
-        Returns:
-            The submission id for the metadata object.
-        """
-        obj = await self.repository.get_object_by_id(object_id)
-        if obj is None:
-            raise UnknownObjectException(object_id)
-
-        return obj.submission_id
-
-    async def get_object_type(self, object_id: str) -> str:
-        """
-        Get the object type the metadata object.
-
-        Args:
-            object_id: The object id.
-
-        Returns:
-            The submission id for the metadata object.
-        """
-        obj = await self.repository.get_object_by_id(object_id)
-        if obj is None:
-            raise UnknownObjectException(object_id)
-
-        return obj.object_type
 
     async def delete_object_by_id(self, object_id: str) -> None:
         """Delete metadata object.
