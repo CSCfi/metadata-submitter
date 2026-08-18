@@ -76,23 +76,6 @@ class SubmissionRepository:
         result = await session().execute(stmt)
         return result.scalar_one_or_none()
 
-    async def get_submission_by_id_or_name(self, project_id: str, submission_id: str) -> SubmissionEntity | None:
-        """
-        Get the submission entity using submission id or name.
-
-        Args:
-            project_id: The project_id.
-            submission_id: The submission id or name.
-
-        Returns:
-            The submission entity.
-        """
-        submission = await self.get_submission_by_id(submission_id)
-        if submission is None:
-            submission = await self.get_submission_by_name(project_id, submission_id)
-
-        return submission
-
     async def get_submissions(
         self,
         project_id: str,
@@ -269,21 +252,3 @@ class SubmissionRepository:
         stmt = delete(SubmissionEntity).where(SubmissionEntity.project_id == project_id, SubmissionEntity.name == name)
         result = await session().execute(stmt)
         return result.rowcount > 0  # type: ignore
-
-    async def delete_submission_by_id_or_name(self, project_id: str, submission_id: str) -> bool:
-        """
-        Delete the submission entity using submission id or name.
-
-        Args:
-            project_id: The project id.
-            submission_id: The submission id or name.
-
-        Returns:
-            True if the submission was deleted, False otherwise.
-        """
-
-        deleted = await self.delete_submission_by_id(submission_id)
-        if not deleted:
-            deleted = await self.delete_submission_by_name(project_id, submission_id)
-
-        return deleted

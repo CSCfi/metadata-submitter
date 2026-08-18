@@ -89,13 +89,6 @@ async def _mock_rems_get_workflow(organization_id: str | None, workflow_id: int)
     return workflow
 
 
-async def _mock_rems_get_license(organization_id: str | None, license_id: int) -> RemsLicense:
-    license = _mock_rems_licenses[license_id]
-    if organization_id and organization_id != license.organization.id:
-        raise UserException(f"REMS license '{license_id}' does not belong to REMS organization '{organization_id}'")
-    return license
-
-
 async def _mock_rems_get_resources(doi: str | None = None) -> list[RemsResource]:
     if doi:
         return [resource for resource in _mock_rems_resources.values() if resource.doi == doi]
@@ -160,10 +153,6 @@ def patch_rems_get_licenses(licenses: list[RemsLicense] | None = None):
     return patch.object(RemsServiceHandler, "get_licenses", new=AsyncMock(return_value=licenses))
 
 
-def patch_rems_get_license():
-    return patch.object(RemsServiceHandler, "get_license", new=AsyncMock(side_effect=_mock_rems_get_license))
-
-
 def patch_rems_get_resources():
     return patch.object(RemsServiceHandler, "get_resources", new=AsyncMock(side_effect=_mock_rems_get_resources))
 
@@ -191,7 +180,6 @@ patch_rems_get_application_url().start()
 patch_rems_get_workflows().start()
 patch_rems_get_workflow().start()
 patch_rems_get_licenses().start()
-patch_rems_get_license().start()
 patch_rems_get_resources().start()
 patch_rems_get_catalogue_item().start()
 patch_rems_create_resource().start()

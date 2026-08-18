@@ -67,26 +67,6 @@ class ObjectRepository:
         result = await session().execute(stmt)
         return result.scalar_one_or_none()
 
-    async def get_object_by_id_or_name(
-        self, project_id: str, object_id_or_name: str, object_type: str
-    ) -> ObjectEntity | None:
-        """
-        Get the object entity using object id or name.
-
-        Args:
-            project_id: The project id.
-            object_id_or_name: The object id or name.
-            object_type: The object type.
-
-        Returns:
-            The object entity.
-        """
-        entity = await self.get_object_by_id(object_id_or_name)
-        if entity is None:
-            entity = await self.get_object_by_name(project_id, object_id_or_name, object_type)
-
-        return entity
-
     async def get_objects(
         self,
         submission_id: str,
@@ -207,21 +187,3 @@ class ObjectRepository:
         stmt = delete(ObjectEntity).where(ObjectEntity.submission_id == submission_id, ObjectEntity.name == name)
         result = await session().execute(stmt)
         return result.rowcount > 0  # type: ignore
-
-    async def delete_object_by_id_or_name(self, submission_id: str, object_id: str) -> bool:
-        """
-        Delete the object entity using object id or name.
-
-        Args:
-            submission_id: The submission id.
-            object_id: The object id or name.
-
-        Returns:
-            True if the object was deleted, False otherwise.
-        """
-
-        deleted = await self.delete_object_by_id(object_id)
-        if not deleted:
-            deleted = await self.delete_object_by_name(submission_id, object_id)
-
-        return deleted
