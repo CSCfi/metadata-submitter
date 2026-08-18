@@ -9,7 +9,6 @@ from ....api.models.submission import Rems, Submission, SubmissionMetadata, Subm
 from ..models import SubmissionEntity
 from ..repositories.registration import RegistrationRepository
 from ..repositories.submission import (
-    SUB_FIELD_BUCKET,
     SUB_FIELD_METADATA,
     SUB_FIELD_REMS,
     SubmissionRepository,
@@ -409,30 +408,6 @@ class SubmissionService:
 
         if await self.repository.update_submission(submission_id, update_callback) is None:
             raise UnknownSubmissionUserException(submission_id)
-
-    async def update_bucket(self, submission_id: str, bucket: str) -> None:
-        """Update submission bucket.
-
-        :param submission_id: the submission id
-        :param bucket: new bucket
-        """
-        await self.update_submission(submission_id, {SUB_FIELD_BUCKET: bucket})
-
-    async def update_metadata(self, submission_id: str, metadata: SubmissionMetadata) -> None:
-        """Update submission metadata sub-document.
-
-        :param submission_id: the submission id
-        :param metadata: new submission metadata
-        """
-        await self.update_submission(submission_id, {SUB_FIELD_METADATA: to_json_dict(metadata)})
-
-    async def update_rems(self, submission_id: str, rems: Rems) -> None:
-        """Update dataset REMS resource information.
-
-        :param submission_id: the submission id
-        :param rems: REMS data.
-        """
-        await self.update_submission(submission_id, {SUB_FIELD_REMS: to_json_dict(rems)})
 
     async def publish(self, submission_id: str) -> None:
         """Publish the submission.

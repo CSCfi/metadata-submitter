@@ -14,7 +14,6 @@ from ..repository import session
 
 SUB_FIELD_METADATA = "metadata"
 SUB_FIELD_REMS = "rems"
-SUB_FIELD_BUCKET = "bucket"
 
 
 class SubmissionSort(enum.Enum):
