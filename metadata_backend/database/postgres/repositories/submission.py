@@ -76,6 +76,23 @@ class SubmissionRepository:
         result = await session().execute(stmt)
         return result.scalar_one_or_none()
 
+    async def get_submission_by_id_or_name(self, project_id: str, submission_id: str) -> SubmissionEntity | None:
+        """
+        Get the submission entity using submission id or name.
+
+        Args:
+            project_id: The project_id.
+            submission_id: The submission id or name.
+
+        Returns:
+            The submission entity.
+        """
+        submission = await self.get_submission_by_id(submission_id)
+        if submission is None:
+            submission = await self.get_submission_by_name(project_id, submission_id)
+
+        return submission
+
     async def get_submissions(
         self,
         project_id: str,

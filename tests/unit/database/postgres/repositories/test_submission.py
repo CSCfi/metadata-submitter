@@ -49,6 +49,10 @@ async def test_add_get_delete_submission(submission_repository: SubmissionReposi
     # Select the submission by name
     assert_submission(await submission_repository.get_submission_by_name(project_id, name))
 
+    # Select the submission by ID, acc or name
+    assert_submission(await submission_repository.get_submission_by_id_or_name(project_id, submission_id))
+    assert_submission(await submission_repository.get_submission_by_id_or_name(project_id, name))
+
     # Delete by id
     assert await submission_repository.delete_submission_by_id(submission_id)
     assert (await submission_repository.get_submission_by_id(submission_id)) is None

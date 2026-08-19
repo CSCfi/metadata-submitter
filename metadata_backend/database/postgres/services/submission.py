@@ -187,6 +187,19 @@ class SubmissionService:
         """
         return await self.convert_from_entity(await self.repository.get_submission_by_name(project_id, name))
 
+    async def get_submission_by_id_or_name(self, project_id: str, submission_id_or_name: str) -> Submission | None:
+        """Get the submission using submission id or name.
+
+        :param project_id: the project id
+        :param submission_id_or_name: the submission id or submission name
+        :returns: submission id if the submission exists
+        """
+        submission = await self.get_submission_by_id(submission_id_or_name)
+        if not submission:
+            submission = await self.get_submission_by_name(project_id, submission_id_or_name)
+
+        return submission
+
     async def get_submissions(
         self,
         project_id: str,

@@ -94,6 +94,30 @@ class RemsServiceHandler(ServiceHandler):
         )
         return [RemsLicense.model_validate(license) for license in response]
 
+    async def get_license(self, organization_id: str | None, license_id: int) -> RemsWorkflow:
+        """
+        Get active REMS license.
+
+        :param organization_id: The REMS organisation id.
+        :param license_id: The REMS license id.
+        :returns: The active REMS license.
+        """
+
+        try:
+            response: dict[str, Any] = await self._request(
+                method="GET",
+                path=f"/licenses/{license_id}",
+                params={"disabled": "false", "archived": "false"},
+            )
+        except httpx.HTTPStatusError as ex:
+            if ex.response.status_code == 404:
+                raise UserException(f"Unknown REMS license '{license_id}''")
+            raise ex
+        license = RemsWorkflow.model_validate(response)
+        if organization_id and license.organization.id != organization_id:
+            raise UserException(f"REMS license '{license_id}' does not belong to REMS organization '{organization_id}'")
+        return license
+
     async def get_resources(self, doi: str | None = None) -> list[RemsResource]:
         """
         Get active REMS resources.
