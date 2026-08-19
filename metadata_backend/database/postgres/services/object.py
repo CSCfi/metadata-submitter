@@ -1,6 +1,5 @@
 """Service for metadata objects."""
 
-import copy
 from datetime import datetime
 from typing import Any, AsyncIterator, Sequence
 
@@ -31,23 +30,6 @@ class ObjectService:
     def __init__(self, repository: ObjectRepository) -> None:
         """Initialize the service."""
         self.repository = repository
-
-    @staticmethod
-    def convert_from_entity(entity: ObjectEntity) -> dict[str, Any] | None:
-        """
-        Convert metadata object JSON document to a metadata object dict.
-
-        :param entity: the metadata object entity
-        :returns: the metadata object dict
-        """
-
-        if entity is None:
-            return None
-
-        # Make a deepcopy to prevent SQLAlchemy from tracking changes to the document.
-        document = copy.deepcopy(entity.document)
-        document["accessionId"] = entity.object_id
-        return document
 
     async def add_object(
         self,
@@ -133,25 +115,6 @@ class ObjectService:
         if await self.repository.update_object(object_id, update_callback) is None:
             raise UnknownObjectException(object_id)
 
-    async def is_object(self, object_id: str, *, submission_id: str | None = None) -> bool:
-        """Check if the metadata object exists.
-
-        Optionally checks if the metadata object is associated with the given submission id.
-
-        :param object_id: the object id
-        :param submission_id: the submission id
-        :returns: True if the metadata object exists. If the submission id is given then returns True
-                  only if the metadata object is associated with the submission.
-        """
-        obj = await self.repository.get_object_by_id(object_id)
-        if obj is None:
-            return False
-
-        if submission_id is not None:
-            return obj.submission_id == submission_id
-
-        return True
-
     async def is_object_by_name(self, project_id: str, name: str, object_type: str) -> bool:
         """Check if the metadata object exists.
 
@@ -165,24 +128,6 @@ class ObjectService:
             return False
 
         return True
-
-    async def check_object(self, object_id: str, *, submission_id: str | None = None) -> None:
-        """Check if the metadata object exists. Raises an exception if it does not.
-
-        Optionally checks if the metadata object is associated with the given submission id.
-
-        :param object_id: the object id
-        :param submission_id: the submission id
-        :returns: True if the metadata object exists. If the submission id is given then returns True
-                  only if the metadata object is associated with the submission.
-        """
-        obj = await self.repository.get_object_by_id(object_id)
-        if obj is None:
-            raise UnknownObjectException(object_id)
-
-        if submission_id is not None:
-            if obj.submission_id != submission_id:
-                raise UnknownObjectException(object_id)
 
     async def count_objects(self, submission_id: str, object_type: str | None = None) -> int:
         """
@@ -244,32 +189,6 @@ class ObjectService:
 
         return objects
 
-    async def get_document(self, object_id: str) -> dict[str, Any]:
-        """
-        Retrieve metadata object JSON document with the given object id.
-
-        :param object_id: The object id.
-        :return: The metadata object document.
-        """
-        obj = await self.repository.get_object_by_id(object_id)
-        if obj is None:
-            raise UnknownObjectException(object_id)
-
-        return self.convert_from_entity(obj)
-
-    async def get_documents(
-        self, submission_id: str, object_type: str | Sequence[str] | None = None
-    ) -> AsyncIterator[dict[str, Any]]:
-        """
-        Retrieve metadata object JSON documents associated with the given submission.
-
-        :param submission_id: The submission id.
-        :param object_type: The metadata object type(s).
-        :return: An asynchronous iterator of dictionaries representing the metadata object JSON documents.
-        """
-        async for obj in self.repository.get_objects(submission_id, object_type):
-            yield self.convert_from_entity(obj)
-
     async def get_xml_document(self, object_id: str) -> str:
         """
         Retrieve metadata object XML document with the given object id.
@@ -295,38 +214,6 @@ class ObjectService:
         """
         async for obj in self.repository.get_objects(submission_id, object_type):
             yield obj.xml_document
-
-    async def get_submission_id(self, object_id: str) -> str:
-        """
-        Get the submission id for the metadata object.
-
-        Args:
-            object_id: The object id.
-
-        Returns:
-            The submission id for the metadata object.
-        """
-        obj = await self.repository.get_object_by_id(object_id)
-        if obj is None:
-            raise UnknownObjectException(object_id)
-
-        return obj.submission_id
-
-    async def get_object_type(self, object_id: str) -> str:
-        """
-        Get the object type the metadata object.
-
-        Args:
-            object_id: The object id.
-
-        Returns:
-            The submission id for the metadata object.
-        """
-        obj = await self.repository.get_object_by_id(object_id)
-        if obj is None:
-            raise UnknownObjectException(object_id)
-
-        return obj.object_type
 
     async def delete_object_by_id(self, object_id: str) -> None:
         """Delete metadata object.

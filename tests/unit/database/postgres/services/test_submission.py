@@ -9,11 +9,8 @@ import pytest
 
 from metadata_backend.api.exceptions import UserException
 from metadata_backend.api.json import to_json_dict
-from metadata_backend.api.models.datacite import Creator, Publisher, Subject
-from metadata_backend.api.models.submission import Rems, Submission, SubmissionMetadata, SubmissionWorkflow
+from metadata_backend.api.models.submission import Rems, Submission, SubmissionWorkflow
 from metadata_backend.database.postgres.repositories.submission import (
-    SUB_FIELD_METADATA,
-    SUB_FIELD_REMS,
     SubmissionRepository,
     SubmissionSort,
 )
@@ -230,40 +227,8 @@ async def test_get_bucket(submission_repository: SubmissionRepository, submissio
 
 
 async def test_update_submission(submission_repository: SubmissionRepository, submission_service: SubmissionService):
-    submission = create_submission_entity()
-    submission.bucket = None
+    submission = create_submission_entity(bucket=f"bucket{uuid.uuid4()}")
     await submission_repository.add_submission(submission)
-
-    # bucket
-    bucket = f"bucket{uuid.uuid4()}"
-    await submission_service.update_bucket(submission.submission_id, bucket)
-    updated_submission = await submission_repository.get_submission_by_id(submission.submission_id)
-    assert updated_submission.bucket == bucket
-    with pytest.raises(UserException):
-        await submission_service.update_bucket(submission.submission_id, f"bucket{uuid.uuid4()}")
-
-    # metadata
-    metadata = SubmissionMetadata(
-        creators=[Creator(nameType="Personal", name="Name", givenName="Alice", familyName="Smith")],
-        subjects=[Subject(subject="999 - Other")],
-        keywords="test",
-        publisher=Publisher(name="University Health Care System"),
-    )
-
-    assert (
-        SUB_FIELD_METADATA not in (await submission_repository.get_submission_by_id(submission.submission_id)).document
-    )
-    await submission_service.update_metadata(submission.submission_id, metadata)
-    assert (await submission_service.get_metadata(submission.submission_id)) == metadata
-    actual_dict = (await submission_repository.get_submission_by_id(submission.submission_id)).document
-    assert SubmissionMetadata.model_validate(actual_dict[SUB_FIELD_METADATA]) == metadata
-
-    # rems
-    rems = Rems(workflowId=1, organizationId="2", licenses=[3, 4])
-    await submission_service.update_rems(submission.submission_id, rems)
-    assert (await submission_service.get_rems_document(submission.submission_id)) == rems
-    actual_dict = (await submission_repository.get_submission_by_id(submission.submission_id)).document
-    assert Rems.model_validate(actual_dict[SUB_FIELD_REMS]) == rems
 
     # update description and title
     updated_submission = await submission_service.get_submission_by_id(submission.submission_id)

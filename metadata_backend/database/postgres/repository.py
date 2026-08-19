@@ -95,16 +95,6 @@ def save_schema(db_url: str = "postgresql+psycopg2://") -> None:
         f.write("\n".join(sqls))
 
 
-def get_postgres_db_url(host: str, port: int, user: str, password: str, database: str) -> str:
-    """
-    Create and return Postgres database url.
-
-    Returns:
-        Postgres database url.
-    """
-    return f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{database}"
-
-
 def get_sqllite_db_url(file: str) -> str:
     """
     Create and return Sqllite database url.

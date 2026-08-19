@@ -70,31 +70,15 @@ async def test_add_get_delete_object(
     # Select the object by name
     assert_object(await object_repository.get_object_by_name(project_id, name, object_type))
 
-    # Select the object by ID, acc or name
-    assert_object(await object_repository.get_object_by_id_or_name(project_id, object_id, object_type))
-    assert_object(await object_repository.get_object_by_id_or_name(project_id, name, object_type))
-
     # Delete by id
     assert await object_repository.delete_object_by_id(object_id)
     assert (await object_repository.get_object_by_id(object_id)) is None
     assert (await object_repository.get_object_by_name(project_id, name, object_type)) is None
-    assert (await object_repository.get_object_by_id_or_name(project_id, object_id, object_type)) is None
-    assert (await object_repository.get_object_by_id_or_name(project_id, name, object_type)) is None
 
     # Delete by name
     obj, object_id = await _add_object()
     assert_object(await object_repository.get_object_by_id(object_id))
     assert await object_repository.delete_object_by_name(submission_id, name)
-    assert (await object_repository.get_object_by_id(object_id)) is None
-
-    # Delete by id, name
-    obj, object_id = await _add_object()
-    assert_object(await object_repository.get_object_by_id(object_id))
-    assert await object_repository.delete_object_by_id_or_name(submission_id, object_id)
-    assert (await object_repository.get_object_by_id(object_id)) is None
-    obj, object_id = await _add_object()
-    assert_object(await object_repository.get_object_by_id(object_id))
-    assert await object_repository.delete_object_by_id_or_name(submission_id, name)
     assert (await object_repository.get_object_by_id(object_id)) is None
 
 

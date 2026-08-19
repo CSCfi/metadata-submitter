@@ -72,8 +72,6 @@ async def test_add_update_delete_object(
     # Add second object to test that it is not returned by get_objects.
     assert await _add_object(name2, object_id2) == object_id2
 
-    assert await object_service.is_object(object_id)
-
     _assert_entity(await object_repository.get_object_by_id(object_id))
     _assert_object(await object_service.get_objects(submission_id, object_type, object_id=object_id))
     _assert_object(await object_service.get_objects(submission_id, object_type, name=name))
@@ -114,8 +112,6 @@ async def test_add_update_delete_object(
         description=description,
     )
 
-    assert await object_service.is_object(object_id)
-
     _assert_entity(await object_repository.get_object_by_id(object_id))
     _assert_object(await object_service.get_objects(submission_id, object_type, object_id=object_id))
     _assert_object(await object_service.get_objects(submission_id, object_type, name=name))
@@ -125,28 +121,11 @@ async def test_add_update_delete_object(
 
     # Delete
 
-    assert await object_service.is_object(object_id)
     await object_service.delete_object_by_id(object_id)
-    assert not await object_service.is_object(object_id)
+    assert await object_repository.get_object_by_id(object_id) is None
 
 
-async def test_is_object(
-    submission_repository: SubmissionRepository,
-    object_repository: ObjectRepository,
-    object_service: ObjectService,
-):
-    submission = create_submission_entity()
-    await submission_repository.add_submission(submission)
-
-    obj = create_object_entity(submission.project_id, submission.submission_id)
-    assert not await object_service.is_object(obj.object_id)
-    await object_repository.add_object(obj, workflow)
-    assert await object_service.is_object(obj.object_id)
-    assert await object_service.is_object(obj.object_id, submission_id=submission.submission_id)
-    assert not await object_service.is_object(obj.object_id, submission_id=submission.submission_id + "other")
-
-
-async def test_get_document(
+async def test_get_xml_document(
     submission_repository: SubmissionRepository,
     object_repository: ObjectRepository,
     object_service: ObjectService,
@@ -157,7 +136,6 @@ async def test_get_document(
     obj = create_object_entity(submission.project_id, submission.submission_id)
     object_id = await object_repository.add_object(obj, workflow)
 
-    assert {**obj.document, "accessionId": object_id} == await object_service.get_document(object_id)
     assert obj.xml_document == await object_service.get_xml_document(object_id)
 
 
@@ -207,7 +185,7 @@ async def test_get_objects(
         assert res.modified is not None
 
 
-async def test_get_documents(
+async def test_get_xml_documents(
     submission_repository: SubmissionRepository,
     object_repository: ObjectRepository,
     object_service: ObjectService,
@@ -224,14 +202,12 @@ async def test_get_documents(
     for obj in objects:
         await object_repository.add_object(obj, workflow)
 
-    # Get documents.
-    documents = [document async for document in object_service.get_documents(submission.submission_id, object_type)]
+    # Get XML documents.
     xml_documents = [
         document async for document in object_service.get_xml_documents(submission.submission_id, object_type)
     ]
 
-    # Assert documents.
-    assert {doc["test"] for doc in documents} == {obj.document["test"] for obj in objects}
+    # Assert XML documents.
     assert set(xml_documents) == {"<test/>"}
 
 

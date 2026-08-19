@@ -1,6 +1,5 @@
 """Metax models"""
 
-import re
 from enum import Enum
 
 from pydantic import (
@@ -74,16 +73,6 @@ class Actor(BaseModel):
     organization: Organization
     roles: list[Roles]
     person: Person | None = None
-
-
-class Date(BaseModel):
-    date: str
-
-    @field_validator("date")
-    def validate_date_format(cls: type["Date"], val: str) -> str:
-        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", val):
-            raise ValueError(f"date must be YYYY-MM-DD, got {val}")
-        return val
 
 
 class Language(Url):

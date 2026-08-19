@@ -40,23 +40,6 @@ async def service(file_repository: FileRepository) -> AsyncGenerator[FileService
     yield service
 
 
-async def test_is_file(
-    submission_repository: SubmissionRepository,
-    object_repository: ObjectRepository,
-    service: FileService,
-):
-    submission = create_submission_entity()
-    await submission_repository.add_submission(submission)
-    obj = create_object_entity(submission.project_id, submission.submission_id)
-    await object_repository.add_object(obj, workflow)
-
-    file = create_file(submission.submission_id, obj.object_id)
-    file_id = await service.add_file(file, workflow)
-    assert await service.is_file(file_id)
-    assert await service.is_file(file_id, submission_id=submission.submission_id)
-    assert not await service.is_file(file_id, submission_id="other")
-
-
 async def test_get_file(
     submission_repository: SubmissionRepository,
     object_repository: ObjectRepository,
@@ -198,9 +181,9 @@ async def test_delete_file_by_id(
     file = create_file(submission.submission_id, obj.object_id)
     file_id = await service.add_file(file, workflow)
 
-    assert await service.is_file(file_id)
     await service.delete_file_by_id(file_id)
-    assert not await service.is_file(file_id)
+    with pytest.raises(UnknownFileException):
+        await service.get_file_by_id(file_id)
 
     with pytest.raises(UnknownFileException):
         await service.delete_file_by_id(file_id)
@@ -219,9 +202,9 @@ async def test_delete_file_by_path(
     file = create_file(submission.submission_id, obj.object_id)
     file_id = await service.add_file(file, workflow)
 
-    assert await service.is_file(file_id)
     await service.delete_file_by_path(submission.submission_id, file.path)
-    assert not await service.is_file(file_id)
+    with pytest.raises(UnknownFileException):
+        await service.get_file_by_id(file_id)
 
     with pytest.raises(UnknownFileException):
         await service.delete_file_by_path(submission.submission_id, file.path)

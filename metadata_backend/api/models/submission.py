@@ -28,12 +28,6 @@ class SubmissionWorkflow(enum.Enum):
         raise ValueError(f"{value!r} is not a valid {cls.__name__}")
 
 
-class Bucket(StrictBaseModel):
-    """Bucket information."""
-
-    bucket: str
-
-
 class Rems(StrictBaseModel):
     """REMS information."""
 

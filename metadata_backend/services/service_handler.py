@@ -64,7 +64,6 @@ class ServiceHandler(HealthHandler):
         # Service handler specific HTTP client. AsyncClient is initialized lazily
         # to ensure it is tied to the correct FastAPI worker event loop.
         self._http_client: httpx.AsyncClient | None = None
-        self.connection_check_url = base_url
         self.http_client_timeout = http_client_timeout
         self.http_client_headers = http_client_headers
         self.healthcheck_url = healthcheck_url

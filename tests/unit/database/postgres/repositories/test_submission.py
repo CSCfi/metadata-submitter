@@ -63,14 +63,6 @@ async def test_add_get_delete_submission(submission_repository: SubmissionReposi
     assert await submission_repository.delete_submission_by_name(project_id, name)
     assert (await submission_repository.get_submission_by_id(submission_id)) is None
 
-    # Delete by id, name
-    submission, submission_id = await _add_submission()
-    assert await submission_repository.delete_submission_by_id_or_name(project_id, submission_id)
-    assert (await submission_repository.get_submission_by_id(submission_id)) is None
-    submission, submission_id = await _add_submission()
-    assert await submission_repository.delete_submission_by_id_or_name(project_id, name)
-    assert (await submission_repository.get_submission_by_id(submission_id)) is None
-
 
 async def test_submitted_ingested_date(submission_repository: SubmissionRepository) -> None:
     name = f"name_{uuid.uuid4()}"

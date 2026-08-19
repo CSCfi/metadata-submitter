@@ -79,25 +79,6 @@ class FileService:
         """
         return await self.__repository.add_file(self.convert_to_entity(file), workflow)
 
-    async def is_file(self, file_id: str, *, submission_id: str | None = None) -> bool:
-        """Check if the file exists.
-
-        Optionally checks if the file is associated with the given submission id.
-
-        :param file_id: the file id
-        :param submission_id: the submission id
-        :returns: True if the file exists. If the submission id is given then returns True
-                  only if the file is associated with the submission.
-        """
-        obj = await self.__repository.get_file_by_id(file_id)
-        if obj is None:
-            return False
-
-        if submission_id is not None:
-            return obj.submission_id == submission_id
-
-        return True
-
     async def is_file_by_path(self, submission_id: str, path: str) -> bool:
         """
         Check if the file exists.

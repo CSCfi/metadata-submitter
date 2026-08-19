@@ -14,14 +14,12 @@ from ..repository import session
 
 SUB_FIELD_METADATA = "metadata"
 SUB_FIELD_REMS = "rems"
-SUB_FIELD_BUCKET = "bucket"
 
 
 class SubmissionSort(enum.Enum):
     """Submission sorting options."""
 
     CREATED_DESC = SubmissionEntity.created.desc()
-    MODIFIED_DESC = SubmissionEntity.modified.desc()
 
 
 class SubmissionRepository:
@@ -271,21 +269,3 @@ class SubmissionRepository:
         stmt = delete(SubmissionEntity).where(SubmissionEntity.project_id == project_id, SubmissionEntity.name == name)
         result = await session().execute(stmt)
         return result.rowcount > 0  # type: ignore
-
-    async def delete_submission_by_id_or_name(self, project_id: str, submission_id: str) -> bool:
-        """
-        Delete the submission entity using submission id or name.
-
-        Args:
-            project_id: The project id.
-            submission_id: The submission id or name.
-
-        Returns:
-            True if the submission was deleted, False otherwise.
-        """
-
-        deleted = await self.delete_submission_by_id(submission_id)
-        if not deleted:
-            deleted = await self.delete_submission_by_name(project_id, submission_id)
-
-        return deleted
