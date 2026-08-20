@@ -6,8 +6,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
+from ldap3.core.exceptions import LDAPBindError, LDAPSocketOpenError
 from starlette import status
 
+from metadata_backend.api.exceptions import LdapSystemException, SystemException
 from metadata_backend.api.models.models import Project
 from metadata_backend.api.services.project import CscProjectService, NbisProjectService
 
@@ -40,6 +42,51 @@ async def test_get_user_projects_csc() -> None:
             assert await service.get_user_projects("test") == [Project(project_id=project_id)]
 
             mock_get_connection.assert_called_once_with(ldap_host, ldap_port, ldap_user, ldap_password, ldap_ssl)
+
+
+async def test_get_user_projects_csc_ldap_timeout() -> None:
+    """Test that an LDAP connection timeout is mapped to a 504, not a bare 500."""
+    service = CscProjectService()
+
+    with patch.dict(
+        os.environ,
+        {"CSC_LDAP_HOST": "ldaps://mockhost", "CSC_LDAP_USER": "mockuser", "CSC_LDAP_PASSWORD": "mockpassword"},
+    ):
+        with patch.object(
+            CscProjectService, "_get_connection", side_effect=LDAPSocketOpenError("connection timed out")
+        ):
+            with pytest.raises(LdapSystemException) as exc_info:
+                await service._get_user_projects("test_user")
+            assert exc_info.value.status_code == status.HTTP_504_GATEWAY_TIMEOUT
+
+
+async def test_get_user_projects_csc_ldap_bind_error() -> None:
+    """Test that a non-timeout LDAP failure is mapped to a 502, not a bare 500."""
+    service = CscProjectService()
+
+    with patch.dict(
+        os.environ,
+        {"CSC_LDAP_HOST": "ldaps://mockhost", "CSC_LDAP_USER": "mockuser", "CSC_LDAP_PASSWORD": "mockpassword"},
+    ):
+        with patch.object(CscProjectService, "_get_connection", side_effect=LDAPBindError("invalid credentials")):
+            with pytest.raises(LdapSystemException) as exc_info:
+                await service._get_user_projects("test_user")
+            assert exc_info.value.status_code == status.HTTP_502_BAD_GATEWAY
+
+
+async def test_get_user_projects_csc_unexpected_error() -> None:
+    """Test that a non-LDAP unexpected error still surfaces as a bare 500, not LdapSystemException."""
+    service = CscProjectService()
+
+    with patch.dict(
+        os.environ,
+        {"CSC_LDAP_HOST": "ldaps://mockhost", "CSC_LDAP_USER": "mockuser", "CSC_LDAP_PASSWORD": "mockpassword"},
+    ):
+        with patch.object(CscProjectService, "_get_connection", side_effect=RuntimeError("boom")):
+            with pytest.raises(SystemException) as exc_info:
+                await service._get_user_projects("test_user")
+            assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+            assert not isinstance(exc_info.value, LdapSystemException)
 
 
 async def test_verify_user_projects_csc() -> None:

@@ -8,11 +8,12 @@ from urllib.parse import urlparse
 from aiocache import SimpleMemoryCache, cached
 from fastapi import HTTPException
 from ldap3 import Connection, Server
+from ldap3.core.exceptions import LDAPExceptionError
 from starlette import status
 
 from ...conf.ldap import csc_ldap_config
 from ...helpers.logger import LOG
-from ..exceptions import SystemException, UserException
+from ..exceptions import LdapSystemException, SystemException, UserException
 from ..models.models import Project
 
 CSC_LDAP_DN = "ou=idm,dc=csc,dc=fi"
@@ -146,7 +147,11 @@ class LdapProjectService(ProjectService):
 
             with self._get_connection(host, port, user, password, use_ssl) as conn:
                 return self._search_user_projects(conn, user_id)
+        except LDAPExceptionError as ex:
+            LOG.warning("LDAP request failed for user '%s' against '%s:%s': %s", user_id, host, port, ex)
+            raise LdapSystemException("Failed to retrieve user projects: upstream LDAP error.", ex) from ex
         except Exception as ex:
+            LOG.exception("Unexpected error retrieving projects for user '%s'.", user_id)
             raise SystemException("Failed to retrieve user projects.") from ex
 
     @override
