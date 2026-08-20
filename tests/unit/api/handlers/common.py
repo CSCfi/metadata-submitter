@@ -80,7 +80,7 @@ async def sd_submission(
         return submission_id
 
 
-async def get_submission(client: TestClient, submission_id) -> dict[str, Any]:
+async def get_submission(client: TestClient, submission_id: str) -> dict[str, Any]:
     """Get a submission."""
     with (
         patch_verify_user_project,

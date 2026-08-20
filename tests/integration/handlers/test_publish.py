@@ -172,7 +172,7 @@ async def test_publish_bp(nbis_client, bp_submission):
         assert registration.remsCatalogueId is not None
         assert registration.remsUrl is not None
 
-        await assert_immutable_after_publish_bp(nbis_client, submission_id, submission.name, object_names, is_datacite)
+        await assert_immutable_after_publish_bp(nbis_client, submission_id, object_names, is_datacite)
 
 
 @pytest.mark.skip(reason="This test is for manual testing against staging environment and requires manual setup.")
@@ -252,7 +252,6 @@ async def assert_immutable_after_publish_sd(client: ClientSession, submission_id
 async def assert_immutable_after_publish_bp(
     client: ClientSession,
     submission_id: str,
-    submission_name: str,
     object_names: BigpictureObjectNames,
     is_datacite: bool,
 ):
@@ -261,7 +260,7 @@ async def assert_immutable_after_publish_bp(
     api_prefix_v1 = deployment_config().API_PREFIX_V1
 
     # Check that submission can't be changed.
-    _, _, files = bp_update_documents(submission_name, object_names, is_datacite)
+    _, files = bp_update_documents(object_names, is_datacite)
     async with client.patch(f"{api_prefix_v1}/submit/{submission_id}", data=files) as resp:
         assert resp.status == 400
 

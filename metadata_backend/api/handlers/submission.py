@@ -7,9 +7,9 @@ from typing import Annotated, Any
 from fastapi import Body, HTTPException, Query, Request, Response, status
 from fastapi.responses import JSONResponse
 
-from ...api.dependencies import SubmissionIdPathParam, UserDependency, WorkflowDependency
+from ...api.dependencies import SubmissionIdOrNamePathParam, SubmissionIdPathParam, UserDependency, WorkflowDependency
 from ...conf.deployment import deployment_config
-from ...database.postgres.services.submission import SubmissionService
+from ...database.postgres.services.submission import SubmissionService, UnknownSubmissionUserException
 from ...helpers.logger import LOG
 from ..exceptions import UserException
 from ..json import to_json_dict
@@ -252,18 +252,34 @@ class SubmissionAPIHandler(RESTAPIHandler):
     async def get_submission(
         self,
         user: UserDependency,
-        submission_id: SubmissionIdPathParam,
+        submission_id: SubmissionIdOrNamePathParam,
+        project_id: ProjectIdQueryParam = None,
     ) -> Submission:
-        """Returns the submission document given a submission id."""
+        """Returns the submission document given a submission id or submission name."""
 
+        user_id = user.user_id
         submission_service = self._services.submission
         project_service = self._services.project
 
-        # Check that the submission can be retrieved by the user.
-        await self.check_submission_retrievable(user.user_id, submission_id, submission_service, project_service)
+        try:
+            submission_id = await self.check_submission_retrievable(
+                user_id, submission_id, submission_service, project_service
+            )
+        except UnknownSubmissionUserException:
+            # Look up by submission name within a specific project if submission ID not known.
+            if not project_id:
+                project_id = await project_service.get_project_id(user_id)
 
-        submission = await submission_service.get_submission_by_id(submission_id)
-        return submission
+            submission_id = await self.check_submission_retrievable(
+                user_id,
+                submission_id,
+                submission_service,
+                project_service,
+                project_id=project_id,
+                search_name=True,
+            )
+
+        return await submission_service.get_submission_by_id(submission_id)
 
     async def update_submission(
         self,

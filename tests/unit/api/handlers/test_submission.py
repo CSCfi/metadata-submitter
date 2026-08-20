@@ -8,7 +8,7 @@ import pytest
 
 from metadata_backend.api.handlers.submission import SubmissionAPIHandler
 from metadata_backend.conf.deployment import deployment_config
-from tests.unit.patches.user import patch_verify_authorization, patch_verify_user_project
+from tests.unit.patches.user import patch_get_user_projects, patch_verify_authorization, patch_verify_user_project
 from tests.utils import sd_submission_dict
 
 from .common import get_submission, sd_submission
@@ -51,7 +51,7 @@ async def test_post_get_delete_submission(csc_client):
     # Get submission.
 
     with (
-        patch_verify_user_project,
+        patch_get_user_projects,
         patch_verify_authorization,
     ):
         response = csc_client.get(f"{api_prefix_v1}/submissions/{submission_id}")
