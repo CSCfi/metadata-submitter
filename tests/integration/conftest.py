@@ -155,12 +155,12 @@ async def sd_submission_update(sd_client: aiohttp.ClientSession, project_id: str
 class SubmissionCallableBigpicture(Protocol):
     def __call__(
         self, is_datacite: bool
-    ) -> Awaitable[tuple[Submission, BigpictureObjectNames]]: ...  # submission names, object names
+    ) -> Awaitable[tuple[Submission, BigpictureObjectNames]]: ...  # submission, object names
 
 
 class SubmissionUpdateCallableBigpicture(Protocol):
     def __call__(
-        self, submission_id: str, submission_name: str, object_names: BigpictureObjectNames, is_datacite: bool
+        self, submission_id: str, object_names: BigpictureObjectNames, is_datacite: bool
     ) -> Awaitable[Submission]: ...
 
 
@@ -171,7 +171,7 @@ async def bp_submission(nbis_client: aiohttp.ClientSession) -> SubmissionCallabl
     api_prefix_v1 = deployment_config().API_PREFIX_V1
 
     async def _create(is_datacite: bool = False) -> tuple[Submission, BigpictureObjectNames]:  # noqa
-        submission_name, object_names, files = bp_submission_documents(is_datacite=is_datacite)
+        object_names, files = bp_submission_documents(is_datacite=is_datacite)
 
         # Post submission.
         async with nbis_client.post(f"{api_prefix_v1}/submit", data=files) as resp:
@@ -191,10 +191,8 @@ async def bp_submission_update(nbis_client: aiohttp.ClientSession) -> Submission
 
     api_prefix_v1 = deployment_config().API_PREFIX_V1
 
-    async def _update(
-        submission_id: str, submission_name: str, object_names: BigpictureObjectNames, is_datacite: bool
-    ) -> Submission:  # noqa
-        _, _, files = bp_update_documents(submission_name, object_names, is_datacite)
+    async def _update(submission_id: str, object_names: BigpictureObjectNames, is_datacite: bool) -> Submission:  # noqa
+        _, files = bp_update_documents(object_names, is_datacite)
 
         # Patch submission.
         async with nbis_client.patch(f"{api_prefix_v1}/submit/{submission_id}", data=files) as resp:

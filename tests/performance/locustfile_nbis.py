@@ -74,7 +74,7 @@ class NbisDeployment(HttpUser):
         is_datacite = True
 
         # Create new submission
-        submission_name, object_names, files = bp_submission_documents(is_datacite=is_datacite)
+        object_names, files = bp_submission_documents(is_datacite=is_datacite)
         with self.client.post(
             f"{API_PREFIX_V1}/submit",
             files={name: (name, file) for name, file in files.items()},
@@ -85,8 +85,8 @@ class NbisDeployment(HttpUser):
                 self.report_failure(resp, "Submission creation")
             submission_id = resp.json()["submissionId"]
 
-        # Create another submission with the same submission name
-        _, _, files = bp_submission_documents(is_datacite=is_datacite, submission_name=submission_name)
+        # Create another submission with the same dataset alias (the submission name)
+        _, files = bp_submission_documents(is_datacite=is_datacite, object_names=object_names)
         with self.client.post(
             f"{API_PREFIX_V1}/submit",
             files={name: (name, file) for name, file in files.items()},
@@ -114,7 +114,7 @@ class NbisDeployment(HttpUser):
                 self.report_failure(resp, "Get submission body [new]")
 
             # Update submission
-            _, _, files = bp_update_documents(submission_name, object_names, is_datacite=is_datacite)
+            _, files = bp_update_documents(object_names, is_datacite=is_datacite)
             with self.client.patch(
                 f"{API_PREFIX_V1}/submit/{submission_id}",
                 files={name: (name, file) for name, file in files.items()},

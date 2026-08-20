@@ -203,8 +203,11 @@ async def test_submission_bp(nbis_client):
     for is_datacite in [True, False]:
         for is_fix in [True, False]:
             # Read XML files.
-            submission_name, object_names, files = bp_submission_documents(is_datacite=is_datacite, is_fix=is_fix)
+            object_names, files = bp_submission_documents(is_datacite=is_datacite, is_fix=is_fix)
             file_data = prepare_file_data_bp(files)
+
+            # The dataset alias is used as the submission name.
+            submission_name = object_names[BP_DATASET_SCHEMA][BP_DATASET_OBJECT_TYPE]["1"]
 
             sample_object_types = {
                 BP_SAMPLE_BIOLOGICAL_BEING_OBJECT_TYPE: ["1"],
@@ -299,7 +302,7 @@ async def test_submission_bp(nbis_client):
                 #
 
                 # Read XML files.
-                _, object_names, files = bp_update_documents(submission_name, object_names, is_datacite)
+                object_names, files = bp_update_documents(object_names, is_datacite)
                 file_data = prepare_file_data_bp(files)
 
                 updated_object_types = copy.deepcopy(object_types)
@@ -446,6 +449,67 @@ async def test_submission_bp(nbis_client):
                 assert observation_refs[0].get("accession") is not None
 
 
+async def test_submission_bp_duplicate_dataset_alias_rejected(nbis_client):
+    """Test that POST /v1/submit rejects a Bigpicture submission whose dataset alias is already in use."""
+
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+
+    object_names, files = bp_submission_documents(is_datacite=False)
+    dataset_alias = object_names[BP_DATASET_SCHEMA][BP_DATASET_OBJECT_TYPE]["1"]
+
+    with patch_get_user_projects, patch_verify_user_project, patch_verify_authorization:
+        # Create the first submission.
+        response = nbis_client.post(f"{api_prefix_v1}/submit", files=prepare_file_data_bp(files))
+        assert response.status_code == 200
+
+        # A second submission whose dataset shares the same alias is rejected, because the
+        # dataset alias is now used as the (project-unique) submission name.
+        _, files = bp_submission_documents(is_datacite=False, object_names=object_names)
+        response = nbis_client.post(f"{api_prefix_v1}/submit", files=prepare_file_data_bp(files))
+        assert response.status_code == 400
+        problem_json = response.json()
+        assert problem_json["detail"] == "User error"
+        assert problem_json["errors"] == [
+            f"Submission with name '{dataset_alias}' already exists in project '{MOCK_PROJECT_ID}'"
+        ]
+
+
+async def test_get_submission_by_id_or_name(nbis_client):
+    """Test retrieving a Bigpicture submission by its submission id or name (the dataset alias)."""
+
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+    other_project_id = f"project_{uuid.uuid4()}"
+
+    object_names, files = bp_submission_documents(is_datacite=False)
+    submission_name = object_names[BP_DATASET_SCHEMA][BP_DATASET_OBJECT_TYPE]["1"]
+    file_data = prepare_file_data_bp(files)
+
+    with patch_get_user_projects, patch_verify_user_project, patch_verify_authorization:
+        # Create the submission in the (mocked) default project.
+        response = nbis_client.post(f"{api_prefix_v1}/submit", files=file_data)
+        assert response.status_code == 200
+        submission = Submission.model_validate(response.json())
+        assert submission.name == submission_name
+
+        # The submission name (the dataset alias) resolves to the submission.
+        response = nbis_client.get(f"{api_prefix_v1}/submissions/{submission_name}")
+        assert response.status_code == 200
+        assert Submission.model_validate(response.json()) == submission
+
+        # The submission id resolves to the submission.
+        response = nbis_client.get(f"{api_prefix_v1}/submissions/{submission.submissionId}")
+        assert response.status_code == 200
+        assert Submission.model_validate(response.json()) == submission
+
+        # The same name is not found when scoped to a different project.
+        response = nbis_client.get(f"{api_prefix_v1}/submissions/{submission_name}?projectId={other_project_id}")
+        assert response.status_code == 404
+
+        # An identifier matching no submission ID or name is not found.
+        response = nbis_client.get(f"{api_prefix_v1}/submissions/unknown_{uuid.uuid4()}")
+        assert response.status_code == 404
+
+
 async def test_missing_object_type_submission_bp(nbis_client):
     """Test missing object type in Bigpicture submissions."""
 
@@ -456,7 +520,7 @@ async def test_missing_object_type_submission_bp(nbis_client):
 
     for object_type in BP_MANDATORY_OBJECT_TYPES:
         # Read XML files.
-        submission_name, object_names, files = bp_submission_documents(is_datacite=is_datacite)
+        _, files = bp_submission_documents(is_datacite=is_datacite)
         # Remove XML corresponding to the mandatory object type.
         del files[get_xml_object_type_schema(object_type) + ".xml"]
         file_data = prepare_file_data_bp(files)
@@ -490,9 +554,7 @@ async def test_mandatory_constraint_7_submission_bp(nbis_client):
                 parent.remove(elem)
 
     # Read XML files.
-    submission_name, object_names, files = bp_submission_documents(
-        is_datacite=is_datacite, processor_callback=processor_callback
-    )
+    _, files = bp_submission_documents(is_datacite=is_datacite, processor_callback=processor_callback)
 
     file_data = prepare_file_data_bp(files)
     with patch_get_user_projects, patch_verify_user_project, patch_verify_authorization:

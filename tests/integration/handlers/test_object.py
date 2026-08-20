@@ -51,11 +51,11 @@ async def test_sd_submission(sd_client, sd_submission, sd_submission_update, pro
         assert resp.status == 204
 
     # Get submission using /submissions endpoint.
-    async with sd_client.get(f"{api_prefix_v1}/submissions/{submission_id}") as resp:
+    async with sd_client.get(f"{api_prefix_v1}/submissions/{submission_id}?projectId={project_id}") as resp:
         assert resp.status == 404
 
 
-async def test_bp_submission(nbis_client, bp_submission, bp_submission_update, project_id):
+async def test_bp_submission(nbis_client, bp_submission, bp_submission_update):
     """Test post, get and delete BP submission using /submit endpoint."""
 
     api_prefix_v1 = deployment_config().API_PREFIX_V1
@@ -73,7 +73,7 @@ async def test_bp_submission(nbis_client, bp_submission, bp_submission_update, p
         assert not saved_submission.published
 
         # Update submission (no XML changes).
-        await bp_submission_update(submission.submissionId, submission.name, object_names, is_datacite)
+        await bp_submission_update(submission.submissionId, object_names, is_datacite)
 
         # Delete submission.
         async with nbis_client.delete(f"{api_prefix_v1}/submit/{submission_id}") as resp:

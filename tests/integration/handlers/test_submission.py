@@ -51,7 +51,7 @@ async def test_sd_submission(sd_client, sd_submission, sd_submission_update):
         assert resp.status == 204
 
     # Get submission.
-    async with sd_client.get(f"{api_prefix_v1}/submissions/{submission_id}") as resp:
+    async with sd_client.get(f"{api_prefix_v1}/submissions/{submission_id}?projectId={submission.projectId}") as resp:
         assert resp.status == 404
 
 
@@ -74,7 +74,7 @@ async def test_sd_bucket(sd_client, sd_submission):
     assert submission.bucket == bucket
 
 
-async def test_bp_objects_and_docs(nbis_client, sd_submission, project_id, bp_submission):
+async def test_bp_objects_and_docs(nbis_client, bp_submission):
     """Test get Bigpicture objects and XML docs for NBIS deployment."""
 
     # Create submission.
@@ -123,7 +123,7 @@ async def test_bp_objects_and_docs(nbis_client, sd_submission, project_id, bp_su
 <DATASET_SET>
   <DATASET alias="{object_names["dataset"]["dataset"]["1"]}" accession="{dataset.objectId}">
     <TITLE>test_title</TITLE>
-    <SHORT_NAME>{submission.name}</SHORT_NAME>
+    <SHORT_NAME>test_short_name</SHORT_NAME>
     <DESCRIPTION>test_description</DESCRIPTION>
     <VERSION>1</VERSION>
     <METADATA_STANDARD>2.0.0</METADATA_STANDARD>
@@ -156,3 +156,23 @@ async def test_bp_objects_and_docs(nbis_client, sd_submission, project_id, bp_su
     # Get dataset document by schema type and id.
     xml = await get_docs(nbis_client, submission_id, schema_type="dataset", object_id=dataset.objectId)
     assert xml == expected_xml
+
+
+async def test_bp_get_submission_by_name(nbis_client, bp_submission):
+    """Test retrieving a Bigpicture submission using its name (the dataset alias)."""
+
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+
+    # Create submission.
+    submission, object_names = await bp_submission()
+    dataset_alias = object_names["dataset"]["dataset"]["1"]
+    assert submission.name == dataset_alias  # The submission name is the dataset alias.
+
+    # The submission name resolves to the submission.
+    saved_submission = await get_submission(nbis_client, submission.name)
+    assert saved_submission.submissionId == submission.submissionId
+    assert saved_submission.name == submission.name
+
+    # An identifier matching no submission ID or name is not found.
+    async with nbis_client.get(f"{api_prefix_v1}/submissions/unknown_{uuid.uuid4()}") as resp:
+        assert resp.status == 404

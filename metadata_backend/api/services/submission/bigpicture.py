@@ -450,8 +450,9 @@ class BigpictureObjectSubmissionService(ObjectSubmissionService):
         )
         rems_processor = self._processor.get_object_processor(BP_REMS_SCHEMA, BP_REMS_PATH, rems_identifiers[0].name)
 
-        # Use dataset short name as the submission name.
-        name = dataset_processor.get_xml_node_value("./SHORT_NAME")
+        # Use dataset alias as the submission name. The alias is the dataset's
+        # unique identifier per the Bigpicture Metadata Standard, unlike SHORT_NAME.
+        name = dataset_identifiers[0].name
 
         # Get REMS.
         workflow_id = rems_processor.get_xml_node_value("./WORKFLOW_ID")

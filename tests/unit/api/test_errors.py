@@ -1,7 +1,7 @@
 """Test API middlewares."""
 
 from metadata_backend.conf.deployment import deployment_config
-from tests.unit.patches.user import patch_verify_authorization
+from tests.unit.patches.user import patch_get_user_projects, patch_verify_authorization
 
 
 def test_fastapi_routing_error(csc_client, nbis_client):
@@ -19,7 +19,7 @@ def test_fastapi_routing_error(csc_client, nbis_client):
 def test_problem_json_get_submissions_error(csc_client, nbis_client):
     """Test middleware converts errors to problem JSON when getting an unknown submission."""
     api_prefix_v1 = deployment_config().API_PREFIX_V1
-    with patch_verify_authorization:
+    with patch_verify_authorization, patch_get_user_projects:
         for client in (csc_client, nbis_client):
             response = client.get(f"{api_prefix_v1}/submissions/unknown")
             data = response.json()

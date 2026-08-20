@@ -105,36 +105,28 @@ def bp_objects(is_update: bool, is_fix: bool = False) -> tuple[list[ObjectSubmis
 
 def _bp_submission_documents(
     *,
-    submission_name: str | None = None,
     object_names: BigpictureObjectNames | None = None,
     is_update: bool = False,
     is_fix: bool = False,
     is_datacite: bool = False,
     processor_callback: Callable[[XmlDocumentsProcessor], None] | None = None,
-) -> tuple[str, BigpictureObjectNames, dict[str, io.BytesIO]]:
-    """Read BP XML test files, assign unique submission name and object names while preserving provided object names.
+) -> tuple[BigpictureObjectNames, dict[str, io.BytesIO]]:
+    """Read BP XML test files, assign unique object names while preserving provided object names.
 
-    Assigns a unique submission name and unique object names. The original object names in the
-    XML files are suffixed with an underscore and a generated UUID4.
+    The original object names in the XML files are suffixed with an underscore and a generated
+    UUID4 when assigning new object names.
 
-    :param submission_name: Use the provided submission name instead of generating a new one.
     :param object_names: Use the provided object names instead of generating a new ones
     :param is_update: If true then updated XML files are used.
     :param is_fix: If true then fixable XML files are used.
     :param is_datacite: If true then returns the Datacite XML file.
-    :return: submission name, object_names, and dictionary of file names and IO bytes.
+    :return: object_names, and dictionary of file names and IO bytes.
     """
 
     objects, files = bp_objects(is_update, is_fix)
     processor, _, _ = BigpictureObjectSubmissionService._create_processor(objects)
 
     new_object_names: BigpictureObjectNames = {}
-
-    # Change submission name.
-    submission_name = submission_name or f"test_{uuid.uuid4()}"
-    dataset_processor = processor.get_object_processor(BP_DATASET_SCHEMA, BP_DATASET_PATH, "1")
-    for elem in dataset_processor.xml.getroot().findall(".//SHORT_NAME"):
-        elem.text = submission_name
 
     def unique_object_name(_name: str) -> str:
         """Extract digits at the start of _id (before optional '_'), append '_' + value, and return the result."""
@@ -221,30 +213,30 @@ def _bp_submission_documents(
     if is_datacite:
         data[DATACITE_XML] = io.BytesIO(files[DATACITE_XML].read_bytes())
 
-    return submission_name, new_object_names, data
+    return new_object_names, data
 
 
 def bp_submission_documents(
     *,
     is_datacite: bool,
     is_fix: bool = False,
-    submission_name: str | None = None,
+    object_names: BigpictureObjectNames | None = None,
     processor_callback: Callable[[XmlDocumentsProcessor], None] | None = None,
-) -> tuple[str, BigpictureObjectNames, dict[str, io.BytesIO]]:
+) -> tuple[BigpictureObjectNames, dict[str, io.BytesIO]]:
     """Get BP XML test files for a new submission.
 
-    Assigns a unique submission name and object names. The original object names in the
-    XML files are suffixed with an underscore and a generated UUID4.
+    Assigns unique object names, unless object_names is given, in which case matching object names
+    (e.g. the dataset alias, which is used as the submission name) are reused instead of regenerated.
 
     :param is_datacite: If true then returns the Datacite XML file.
     :param is_fix: If true then fixable XML files are used.
-    :param submission_name: The submission name.
+    :param object_names: Reuse these object names instead of generating new ones.
     :param processor_callback: Callback to make changes to the XML documents.
-    :return: submission name, object_names, and dictionary of file names and IO bytes.
+    :return: object_names, and dictionary of file names and IO bytes.
     """
 
     return _bp_submission_documents(
-        submission_name=submission_name,
+        object_names=object_names,
         is_update=False,
         is_fix=is_fix,
         is_datacite=is_datacite,
@@ -253,27 +245,24 @@ def bp_submission_documents(
 
 
 def bp_update_documents(
-    submission_name: str,
     object_names: BigpictureObjectNames,
     is_datacite: bool,
     is_fix: bool = False,
     processor_callback: Callable[[XmlDocumentsProcessor], None] | None = None,
-) -> tuple[str, BigpictureObjectNames, dict[str, io.BytesIO]]:
+) -> tuple[BigpictureObjectNames, dict[str, io.BytesIO]]:
     """Get BP XML test files for a submission update.
 
     Assigns unique names for any new objects. The original object names in the
     XML files are suffixed with an underscore and a generated UUID4.
 
-    :param submission_name: The submission name.
     :param object_names: The object names in the original submission.
     :param is_datacite: If true then returns the Datacite XML file.
     :param is_fix: If true then fixable XML files are used.
     :param processor_callback: Callback to make changes to the XML documents.
-    :return: submission name, object_names, and dictionary of file names and IO bytes.
+    :return: object_names, and dictionary of file names and IO bytes.
     """
 
     return _bp_submission_documents(
-        submission_name=submission_name,
         object_names=object_names,
         is_update=True,
         is_fix=is_fix,

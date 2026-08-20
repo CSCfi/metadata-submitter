@@ -43,6 +43,19 @@ def _prepare_files(objects: list[ObjectSubmission], submission_id: str = "SUB_1"
     return service.prepare_files(submission_id)
 
 
+def test_prepare_create_submission_uses_dataset_alias_as_name():
+    """The submission name should be the dataset's unique alias."""
+
+    objects, _ = bp_objects(is_update=False)
+    processor, datacite, _ = BigpictureObjectSubmissionService._create_processor(objects)
+    service = object.__new__(BigpictureObjectSubmissionService)
+    service._processor = processor
+    service._datacite = datacite
+    submission = service.prepare_create_submission("PROJECT_1", "SUB_1")
+
+    assert submission.name == "1"
+
+
 def test_prepare_files_valid_image_and_annotation():
     """Valid BP objects should produce dataset-prefixed image and annotation file paths."""
 
