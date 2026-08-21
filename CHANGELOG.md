@@ -7,6 +7,20 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ## [Unreleased]
 
+## [2026.8.0] - 2026-08-21
+
+### Fixed
+
+- LDAP call failures no longer lead to unexplained HTTP 500 Internal Server Errors
+
+### Changed
+
+- Dependency updates
+
+### Added
+
+- (users) Dataset alias is used as the submission name and querying submissions by the dataset alias is now possible
+
 ## [2026.6.0] - 2026-06-01
 
 ### Fixed
@@ -836,7 +850,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 - Files are also validated during submission process.
 
 
-[Unreleased]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.6.0...HEAD
+[Unreleased]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.8.0...HEAD
+[2026.8.0]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.6.0...2026.8.0
 [2026.6.0]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.6.0...2026.6.0
 [2026.6.0]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.4.0...2026.6.0
 [2026.4.0]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.2.0...2026.4.0
