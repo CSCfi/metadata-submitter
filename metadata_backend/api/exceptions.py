@@ -4,6 +4,7 @@ from abc import ABC
 from typing import Iterable
 
 import httpx
+from ldap3.core.exceptions import LDAPCommunicationError, LDAPResponseTimeoutError
 from starlette import status
 
 
@@ -33,6 +34,17 @@ class ServiceHandlerSystemException(SystemException):
         if exc and isinstance(exc, httpx.TimeoutException):
             status_code = status.HTTP_504_GATEWAY_TIMEOUT
         super().__init__(f"External service error: {service_name}", status_code)
+
+
+class LdapSystemException(SystemException):
+    """Exception raised for LDAP errors that should return HTTP 502 or HTTP 504."""
+
+    def __init__(self, message: str, exc: Exception | None = None) -> None:
+        """Initialize exception."""
+        status_code = status.HTTP_502_BAD_GATEWAY
+        if exc and isinstance(exc, (LDAPCommunicationError, LDAPResponseTimeoutError)):
+            status_code = status.HTTP_504_GATEWAY_TIMEOUT
+        super().__init__(message, status_code)
 
 
 class UserException(AppException):
