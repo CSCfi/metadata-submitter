@@ -25,7 +25,7 @@ default:
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-  image: sds-docker.artifactory.ci.csc.fi/sds/sdd-common-ci:2026.7.1
+  image: sds-docker.artifactory.ci.csc.fi/sds/sdd-common-ci:2026.7.1@sha256:79c007121d538163a41dd2d10600bbbdd0f032216d8d8d43acce091e14ebe11a
   script:
     # Install uv to /uv and tox uv tool called by pre-commit to /root/.local/bin.
     - curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="/uv" sh
@@ -52,7 +52,7 @@ default:
           - "tox.ini"
           - "uv.lock"
         compare_to: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
-  image: sds-docker.artifactory.ci.csc.fi/sds/sdd-common-ci:2026.7.1
+  image: sds-docker.artifactory.ci.csc.fi/sds/sdd-common-ci:2026.7.1@sha256:79c007121d538163a41dd2d10600bbbdd0f032216d8d8d43acce091e14ebe11a
   script:
     # Install uv to /uv and tox uv tool called by pre-commit to /root/.local/bin.
     - curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="/uv" sh
@@ -82,7 +82,7 @@ default:
           - "pyproject.toml"
           - "uv.lock"
         compare_to: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
-  image: sds-docker.artifactory.ci.csc.fi/sds/sdd-common-ci:2026.7.1
+  image: sds-docker.artifactory.ci.csc.fi/sds/sdd-common-ci:2026.7.1@sha256:79c007121d538163a41dd2d10600bbbdd0f032216d8d8d43acce091e14ebe11a
   variables:
     COMPOSE_PROJECT_NAME: $CI_JOB_ID
     VAULT_ADDR: $VAULT_TEST_ADDR
@@ -142,7 +142,7 @@ default:
       artifacts: true
   tags:
     - sds-build
-  image: sds-docker.artifactory.ci.csc.fi/sds/sdd-common-ci:2026.7.1
+  image: sds-docker.artifactory.ci.csc.fi/sds/sdd-common-ci:2026.7.1@sha256:79c007121d538163a41dd2d10600bbbdd0f032216d8d8d43acce091e14ebe11a
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
     - if: '$CI_COMMIT_TAG'
