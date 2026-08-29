@@ -103,7 +103,7 @@ services:
       - "ALLOW_UNSAFE=${ALLOW_UNSAFE}"
 
   mock-oauth2:
-    image: ghcr.io/navikt/mock-oauth2-server:latest
+    image: ghcr.io/navikt/mock-oauth2-server:latest@sha256:b538810afd589d42fbfb856c588c2065eaeed1dc528d6c532972048e67fc2aff
     environment:
       JSON_CONFIG_PATH: /config/mock-auth.json
       PORT: 8001
@@ -182,7 +182,7 @@ services:
       - dev
 
   mockkeystone:
-    image: ghcr.io/cscfi/docker-keystone-swift:latest
+    image: ghcr.io/cscfi/docker-keystone-swift:latest@sha256:e8b1ec21120ab9adc6ac6a2b98785fd273676439a8633fe898e37f2aea7e0712
     profiles:
       - ui
       - ci
@@ -196,7 +196,7 @@ services:
       start_period: 20s
 
   mockinbox:
-    image: motoserver/moto:latest
+    image: motoserver/moto:latest@sha256:91fd602a21f49cf9eb82fdf474015a3c131d40104c8297ea6a2ca920708ae32c
     profiles:
       - ci
       - dev
@@ -210,7 +210,7 @@ services:
       start_period: 10s
 
   postgres-csc:
-    image: postgres:18-alpine
+    image: postgres:18-alpine@sha256:d3e1620b530c944afa6e887d22eb899824da68e19c52024bf98f5220c88a65b2
     profiles:
       - ui
       - ci
@@ -228,7 +228,7 @@ services:
       start_period: 10s
 
   postgres-nbis:
-    image: postgres:18-alpine
+    image: postgres:18-alpine@sha256:d3e1620b530c944afa6e887d22eb899824da68e19c52024bf98f5220c88a65b2
     profiles:
       - ci
       - dev

@@ -1,5 +1,5 @@
 #=======================
-FROM ghcr.io/astral-sh/uv:python3.14-trixie AS build-backend
+FROM ghcr.io/astral-sh/uv:python3.14-trixie@sha256:a8433b4080bfc7d63c803189f90a026acb9b2c8d9a003868236194a839da9a6c AS build-backend
 #=======================
 
 WORKDIR /app
@@ -17,7 +17,7 @@ COPY metadata_backend ./metadata_backend
 RUN uv sync --frozen
 
 #=======================
-FROM ghcr.io/astral-sh/uv:python3.14-trixie-slim
+FROM ghcr.io/astral-sh/uv:python3.14-trixie-slim@sha256:0e664b12a6be9cd16be1015ec5cc3feebdeb42078ab587389707afbdfab8b10f
 #=======================
 
 LABEL maintainer="CSC Developers"
