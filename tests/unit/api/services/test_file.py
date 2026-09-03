@@ -105,10 +105,10 @@ async def test_list_buckets_and_files(s3_endpoint):
         buckets = await service.list_buckets(creds)
         assert buckets[0] == bucket
 
-        # No files in bucket yet
+        # No files in bucket yet - an accessible empty bucket is not an error
         await service.update_bucket_policy(bucket, creds)
-        with pytest.raises(UserException):
-            await service.list_files_in_bucket(bucket)
+        files = await service.list_files_in_bucket(bucket)
+        assert files.root == []
 
         # Add a file
         await s3.put_object(Bucket=bucket, Key=file, Body=content)

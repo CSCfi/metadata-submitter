@@ -64,10 +64,10 @@ async def test_file_provider_service(client, secret_env, s3_manager, monkeypatch
         policy_exists = await service.verify_bucket_policy(test_bucket)
         assert policy_exists is True
 
-        # List files before and after adding files to the bucket
-        with pytest.raises(UserException) as e:
-            files = await service.list_files_in_bucket(test_bucket)
-        assert str(e.value) == f"No files found in bucket '{test_bucket}'."
+        # An accessible but empty bucket is a valid result, not an error.
+        files = await service.list_files_in_bucket(test_bucket)
+        assert isinstance(files.root, list)
+        assert len(files.root) == 0
 
         await s3_manager.add_file_to_bucket(test_bucket, test_file_1)
         await s3_manager.add_file_to_bucket(test_bucket, test_file_2)
