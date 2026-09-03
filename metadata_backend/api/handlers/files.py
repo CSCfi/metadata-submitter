@@ -124,7 +124,7 @@ class FilesAPIHandler(RESTAPIHandler):
         if not has_access:
             detail = f"Bucket {bucket} is not accessible in project {project_id}."
             LOG.error(detail)
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=request)
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
 
         LOG.info("Bucket policy for bucket %s in project %s exists.", bucket, project_id)
         return Response(status_code=status.HTTP_200_OK)
