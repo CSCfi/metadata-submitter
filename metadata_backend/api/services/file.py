@@ -17,7 +17,7 @@ from ...conf.s3 import s3_config
 from ...helpers.logger import LOG
 from ...services.admin_service import AdminServiceHandler
 from ...services.keystone_service import KeystoneServiceHandler
-from ..exceptions import SystemException, UserException
+from ..exceptions import ForbiddenUserException, SystemException, UserException
 from ..models.models import File as SubmissionFile
 from ..models.sda import FileItem
 
@@ -48,7 +48,7 @@ class FileProviderService(ABC):
         if not await self._verify_bucket_policy(bucket):
             reason = f"Bucket '{bucket}' has not been made accessible to SD Submit."
             LOG.error(reason)
-            raise UserException(reason)
+            raise ForbiddenUserException(reason)
 
         size = await self._verify_user_file(bucket, file)
         if size is None:
@@ -61,7 +61,9 @@ class FileProviderService(ABC):
             raise UserException(reason)
         return size
 
-    async def list_buckets(self, credentials: KeystoneServiceHandler.EC2Credentials) -> list[str]:
+    async def list_buckets(
+        self, credentials: KeystoneServiceHandler.EC2Credentials
+    ) -> list[str]:
         """
         List all available buckets.
 
@@ -94,16 +96,14 @@ class FileProviderService(ABC):
         if not await self._verify_bucket_policy(bucket):
             reason = f"Bucket '{bucket}' has not been made accessible to SD Submit."
             LOG.error(reason)
-            raise UserException(reason)
+            raise ForbiddenUserException(reason)
 
-        files = await self._list_files_in_bucket(bucket)
-        if not files.root:
-            reason = f"No files found in bucket '{bucket}'."
-            LOG.error(reason)
-            raise UserException(reason)
-        return files
+        # An accessible bucket with no files is valid.
+        return await self._list_files_in_bucket(bucket)
 
-    async def update_bucket_policy(self, bucket: str, creds: KeystoneServiceHandler.EC2Credentials) -> None:
+    async def update_bucket_policy(
+        self, bucket: str, creds: KeystoneServiceHandler.EC2Credentials
+    ) -> None:
         """
         Assign a read access policy to the specified bucket.
 
@@ -127,7 +127,9 @@ class FileProviderService(ABC):
         """
         return await self._verify_bucket_policy(bucket)
 
-    async def find_missing_files(self, user_id: str, submission_id: str, files: list[SubmissionFile]) -> list[str]:
+    async def find_missing_files(
+        self, user_id: str, submission_id: str, files: list[SubmissionFile]
+    ) -> list[str]:
         """Return file paths that are missing from the provider.
 
         Args:
@@ -138,9 +140,13 @@ class FileProviderService(ABC):
         Returns:
             The list of any missing file paths.
         """
-        raise SystemException("Configured file provider does not support inbox file checks.")
+        raise SystemException(
+            "Configured file provider does not support inbox file checks."
+        )
 
-    async def list_submission_inbox_files(self, user_id: str, submission_id: str) -> list[FileItem]:
+    async def list_submission_inbox_files(
+        self, user_id: str, submission_id: str
+    ) -> list[FileItem]:
         """Return list of files from the inbox specific to the submission.
 
         Args:
@@ -150,9 +156,13 @@ class FileProviderService(ABC):
         Returns:
             The list of files from the inbox specific to the submission.
         """
-        raise SystemException("Configured file provider does not support inbox file listing.")
+        raise SystemException(
+            "Configured file provider does not support inbox file listing."
+        )
 
-    async def find_orphaned_files(self, user_id: str, submission_id: str, files: list[SubmissionFile]) -> list[str]:
+    async def find_orphaned_files(
+        self, user_id: str, submission_id: str, files: list[SubmissionFile]
+    ) -> list[str]:
         """Return file paths that are present in the provider but not referenced in the submission files.
 
         Args:
@@ -163,7 +173,9 @@ class FileProviderService(ABC):
         Returns:
             The list of any missing file paths.
         """
-        raise SystemException("Configured file provider does not support orphaned file checks.")
+        raise SystemException(
+            "Configured file provider does not support orphaned file checks."
+        )
 
     @abstractmethod
     async def _verify_user_file(self, bucket: str, file: str) -> int | None:
@@ -179,7 +191,9 @@ class FileProviderService(ABC):
         """
 
     @abstractmethod
-    async def _list_buckets(self, credentials: KeystoneServiceHandler.EC2Credentials) -> list[str]:
+    async def _list_buckets(
+        self, credentials: KeystoneServiceHandler.EC2Credentials
+    ) -> list[str]:
         """
         List all buckets.
 
@@ -203,7 +217,9 @@ class FileProviderService(ABC):
         """
 
     @abstractmethod
-    async def _update_bucket_policy(self, bucket: str, creds: KeystoneServiceHandler.EC2Credentials) -> None:
+    async def _update_bucket_policy(
+        self, bucket: str, creds: KeystoneServiceHandler.EC2Credentials
+    ) -> None:
         """
         Assign a read access policy to the specified bucket.
 
@@ -235,9 +251,14 @@ class S3FileProviderService(FileProviderService, ABC):
 
         # Initialize the base S3 session with static credentials when available.
         session_kwargs: dict[str, str] = {"region_name": self._config.S3_REGION}
-        if self._config.STATIC_S3_ACCESS_KEY_ID and self._config.STATIC_S3_SECRET_ACCESS_KEY:
+        if (
+            self._config.STATIC_S3_ACCESS_KEY_ID
+            and self._config.STATIC_S3_SECRET_ACCESS_KEY
+        ):
             session_kwargs["aws_access_key_id"] = self._config.STATIC_S3_ACCESS_KEY_ID
-            session_kwargs["aws_secret_access_key"] = self._config.STATIC_S3_SECRET_ACCESS_KEY
+            session_kwargs["aws_secret_access_key"] = (
+                self._config.STATIC_S3_SECRET_ACCESS_KEY
+            )
         self._session = aioboto3.Session(**session_kwargs)
         self.region = self._config.S3_REGION
         self.endpoint = self._config.S3_ENDPOINT
@@ -267,7 +288,9 @@ class S3FileProviderService(FileProviderService, ABC):
                 LOG.error("Error verifying user file: %s", e)
                 raise e
 
-    async def _list_buckets(self, creds: KeystoneServiceHandler.EC2Credentials) -> list[str]:
+    async def _list_buckets(
+        self, creds: KeystoneServiceHandler.EC2Credentials
+    ) -> list[str]:
         """
         List all available S3 buckets with user's project scoped credentials.
 
@@ -308,7 +331,12 @@ class S3FileProviderService(FileProviderService, ABC):
             try:
                 response = await s3.list_objects_v2(Bucket=bucket)
                 contents = response.get("Contents", [])
-                files = [self.File(path=f"S3://{bucket}/{obj['Key']}", bytes=int(obj["Size"])) for obj in contents]
+                files = [
+                    self.File(
+                        path=f"S3://{bucket}/{obj['Key']}", bytes=int(obj["Size"])
+                    )
+                    for obj in contents
+                ]
                 return self.Files(files)
             except botocore.exceptions.ClientError as e:
                 err = e.response.get("Error", {})
@@ -333,11 +361,15 @@ class S3AllasFileProviderService(S3FileProviderService):
     def _require_api_project_id(self) -> str:
         """Return SD Submit project id or raise if missing."""
         if not self.api_project_id:
-            LOG.error("Service configuration error: missing required SD_SUBMIT_PROJECT_ID environmental variable.")
+            LOG.error(
+                "Service configuration error: missing required SD_SUBMIT_PROJECT_ID environmental variable."
+            )
             raise SystemException("Service configuration error.")
         return self.api_project_id
 
-    async def _update_bucket_policy(self, bucket: str, creds: KeystoneServiceHandler.EC2Credentials) -> None:
+    async def _update_bucket_policy(
+        self, bucket: str, creds: KeystoneServiceHandler.EC2Credentials
+    ) -> None:
         """
         Assign a read access policy to the specified S3 bucket.
 
@@ -425,7 +457,10 @@ class S3AllasFileProviderService(S3FileProviderService):
         policy = ujson.loads(resp["Policy"])
         for statement in policy["Statement"]:
             if statement["Sid"] == "GrantSDSubmitReadAccess":
-                if statement["Principal"]["AWS"] == f"arn:aws:iam::{api_project_id}:root":
+                if (
+                    statement["Principal"]["AWS"]
+                    == f"arn:aws:iam::{api_project_id}:root"
+                ):
                     return True
 
         return False
@@ -446,7 +481,9 @@ class S3InboxSDAService(FileProviderService):
         """Verify that the file exists in the specified S3 bucket and return its size."""
         return None
 
-    async def _list_buckets(self, credentials: KeystoneServiceHandler.EC2Credentials) -> list[str]:
+    async def _list_buckets(
+        self, credentials: KeystoneServiceHandler.EC2Credentials
+    ) -> list[str]:
         """List all buckets.
 
         NBIS submissions use the SDA inbox instead of Allas bucket management.
@@ -457,7 +494,9 @@ class S3InboxSDAService(FileProviderService):
         """List all files in the specified bucket."""
         return self.Files([])
 
-    async def _update_bucket_policy(self, bucket: str, creds: KeystoneServiceHandler.EC2Credentials) -> None:
+    async def _update_bucket_policy(
+        self, bucket: str, creds: KeystoneServiceHandler.EC2Credentials
+    ) -> None:
         """Assign a read access policy to the specified bucket."""
         reason = "Bucket policy operations are not supported for SDA inbox submissions."
         LOG.error(reason)
@@ -467,7 +506,9 @@ class S3InboxSDAService(FileProviderService):
         """Verify that the read access policy has been assigned to a bucket."""
         return False
 
-    async def find_missing_files(self, user_id: str, submission_id: str, files: list[SubmissionFile]) -> list[str]:
+    async def find_missing_files(
+        self, user_id: str, submission_id: str, files: list[SubmissionFile]
+    ) -> list[str]:
         """Return file paths that are missing from the inbox.
 
         Args:
@@ -478,12 +519,17 @@ class S3InboxSDAService(FileProviderService):
         Returns:
             The list of any missing file paths.
         """
-        inbox_file_paths = {f.inbox_path for f in await self._admin_handler.get_user_files(user_id, submission_id)}
+        inbox_file_paths = {
+            f.inbox_path
+            for f in await self._admin_handler.get_user_files(user_id, submission_id)
+        }
         file_paths = [f.path for f in files]
         return await self._find_missing_files(inbox_file_paths, file_paths)
 
     @staticmethod
-    async def _find_missing_files(inbox_file_paths: set[str], file_paths: list[str]) -> list[str]:
+    async def _find_missing_files(
+        inbox_file_paths: set[str], file_paths: list[str]
+    ) -> list[str]:
         """Return file paths that are missing from the inbox.
 
         Args:
@@ -495,7 +541,9 @@ class S3InboxSDAService(FileProviderService):
         """
         return [f for f in file_paths if f not in inbox_file_paths]
 
-    async def list_submission_inbox_files(self, user_id: str, submission_id: str) -> list[FileItem]:
+    async def list_submission_inbox_files(
+        self, user_id: str, submission_id: str
+    ) -> list[FileItem]:
         """Return list of files from the S3 inbox bucket specific to the submission.
 
         Args:
@@ -507,7 +555,9 @@ class S3InboxSDAService(FileProviderService):
         """
         return await self._admin_handler.get_user_files(user_id, submission_id)
 
-    async def find_orphaned_files(self, user_id: str, submission_id: str, files: list[SubmissionFile]) -> list[str]:
+    async def find_orphaned_files(
+        self, user_id: str, submission_id: str, files: list[SubmissionFile]
+    ) -> list[str]:
         """Return submission file paths that are not present in the inbox.
 
         Args:
@@ -518,12 +568,17 @@ class S3InboxSDAService(FileProviderService):
         Returns:
             The list of any orphaned file paths.
         """
-        inbox_file_paths = [f.inbox_path for f in await self._admin_handler.get_user_files(user_id, submission_id)]
+        inbox_file_paths = [
+            f.inbox_path
+            for f in await self._admin_handler.get_user_files(user_id, submission_id)
+        ]
         file_paths = {f.path for f in files}
         return await self._find_orphaned_files(inbox_file_paths, file_paths)
 
     @staticmethod
-    async def _find_orphaned_files(inbox_file_paths: list[str], file_paths: set[str]) -> list[str]:
+    async def _find_orphaned_files(
+        inbox_file_paths: list[str], file_paths: set[str]
+    ) -> list[str]:
         """Return submission file paths that are not present in the inbox.
 
         Args:
@@ -540,7 +595,9 @@ class S3InboxSDAService(FileProviderService):
         conf = c4gh_config()
         try:
             sender_key_pem = base64.b64decode(conf.CRYPT4GH_PRIVATE_KEY).decode("utf-8")
-            recipient_key_pem = base64.b64decode(conf.CRYPT4GH_PUBLIC_KEY).decode("utf-8")
+            recipient_key_pem = base64.b64decode(conf.CRYPT4GH_PUBLIC_KEY).decode(
+                "utf-8"
+            )
         except (binascii.Error, UnicodeDecodeError) as ex:
             LOG.exception(
                 "Service configuration error: invalid base64 value in "
@@ -549,8 +606,16 @@ class S3InboxSDAService(FileProviderService):
             raise SystemException("Service configuration error.") from ex
 
         try:
-            sender_lines = [line.strip().encode("utf-8") for line in sender_key_pem.splitlines() if line.strip()]
-            recipient_lines = [line.strip().encode("utf-8") for line in recipient_key_pem.splitlines() if line.strip()]
+            sender_lines = [
+                line.strip().encode("utf-8")
+                for line in sender_key_pem.splitlines()
+                if line.strip()
+            ]
+            recipient_lines = [
+                line.strip().encode("utf-8")
+                for line in recipient_key_pem.splitlines()
+                if line.strip()
+            ]
 
             private_data = base64.b64decode(b"".join(sender_lines[1:-1]))
             public_data = base64.b64decode(b"".join(recipient_lines[1:-1]))
@@ -559,7 +624,9 @@ class S3InboxSDAService(FileProviderService):
             if private_data.startswith(c4gh.MAGIC_WORD):
                 private_stream.seek(len(c4gh.MAGIC_WORD))
 
-            sender_secret_key = c4gh.parse_private_key(private_stream, lambda: conf.CRYPT4GH_PRIVATE_KEY_PASSPHRASE)
+            sender_secret_key = c4gh.parse_private_key(
+                private_stream, lambda: conf.CRYPT4GH_PRIVATE_KEY_PASSPHRASE
+            )
             recipient_public_key = public_data
             return sender_secret_key, recipient_public_key
         except Exception as ex:
@@ -569,7 +636,9 @@ class S3InboxSDAService(FileProviderService):
             )
             raise SystemException("Service configuration error.") from ex
 
-    async def _encrypt_file(self, file: bytes, sender_secret_key: object, recipient_public_key: object) -> bytes:
+    async def _encrypt_file(
+        self, file: bytes, sender_secret_key: object, recipient_public_key: object
+    ) -> bytes:
         """Encrypt file bytes using crypt4gh and return encrypted payload bytes."""
         infile = BytesIO(file)
         outfile = BytesIO()
@@ -596,7 +665,9 @@ class S3InboxSDAService(FileProviderService):
             body: Unencrypted object bytes.
         """
         sender_secret_key, recipient_public_key = await self._load_crypt4gh_keys()
-        encrypted_file = await self._encrypt_file(body, sender_secret_key, recipient_public_key)
+        encrypted_file = await self._encrypt_file(
+            body, sender_secret_key, recipient_public_key
+        )
 
         try:
             session = aioboto3.Session()
@@ -625,4 +696,6 @@ class S3InboxSDAService(FileProviderService):
                 code,
                 msg,
             )
-            raise SystemException("Failed to upload encrypted file to SDA inbox.") from ex
+            raise SystemException(
+                "Failed to upload encrypted file to SDA inbox."
+            ) from ex
