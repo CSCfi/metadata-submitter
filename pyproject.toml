@@ -30,7 +30,7 @@ dependencies = [
     "jsonschema==4.26.0",
     "idpyoidc==5.0.0",
     "cryptojwt==1.11.0",
-    "pydantic==2.13.4",
+    "pydantic==2.13.5",
     "pynacl==1.6.2",
     "python-dateutil==2.9.0.post0", # for building swagger html
     "requests==2.34.2",
@@ -73,7 +73,7 @@ dev = [
     "types-ujson==5.10.0.20250822",
     "types-python-dateutil>=2.9.0.20241206",
     # ruff
-    "ruff==0.16.4",
+    "ruff==0.16.5",
     # pytest
     "pytest==9.1.1",
     "pytest-asyncio==1.4.0",
@@ -81,7 +81,7 @@ dev = [
     "pytest-xdist==3.8.0",
     # other
     "aiofiles==25.1.0",
-    "authlib==1.7.2",
+    "authlib==1.8.0",
     "certifi==2026.7.22",
     "honcho==2.0.0",
     "moto[server]>=5.1.6",
@@ -106,7 +106,7 @@ verify = [
     "types-ujson==5.10.0.20250822",
     "types-python-dateutil>=2.9.0.20241206",
     # ruff
-    "ruff==0.16.4",
+    "ruff==0.16.5",
     # vulture
     "vulture>=2.14"
 ]
