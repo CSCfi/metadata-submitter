@@ -7,6 +7,15 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- (users) Return more appropriate HTTP status codes when buckets are empty, or inaccessible
+
+### Fixed
+
+- (users) Publishing non-clinical Bigpicture submission by removing invalid REMS-related dependency.
+- Upgraded the development image to Debian trixie, whose git can fetch the ldap3 dependency from GitHub.
+
 ## [2026.9.0] - 2026-09-15
 
 ### Added
