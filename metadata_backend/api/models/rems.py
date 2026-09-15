@@ -43,8 +43,6 @@ class RemsLicense(BaseModel):
     licensetype: str
     localizations: dict[str, RemsLicenseLocalization]  # language, localization
     organization: RemsOrganization
-    archived: bool
-    enabled: bool
 
 
 class RemsWorkflowDetails(BaseModel):

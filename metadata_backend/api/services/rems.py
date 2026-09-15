@@ -1,5 +1,8 @@
 """REMS Services."""
 
+from abc import ABC, abstractmethod
+
+from ...services.rems_service import RemsServiceHandler
 from ..models.rems import (
     License,
     Organization,
@@ -10,6 +13,83 @@ from ..models.rems import (
     RemsWorkflow,
     Workflow,
 )
+from ..models.submission import Rems
+
+
+class RemsLicenseProvider(ABC):
+    """Creates a REMS license for the submission, if no licence has been provided."""
+
+    @abstractmethod
+    async def get_license(self, submission_id: str) -> dict[str, RemsLicenseLocalization] | None:
+        """
+        Get the REMS license of a submission.
+
+        :param submission_id: The submission id.
+        :return: The REMS license localisations for each language, keyed by
+            language code, or None if no license can be created.
+        """
+
+
+async def generate_rems_license_id(
+    rems_service: RemsServiceHandler,
+    license_provider: RemsLicenseProvider | None,
+    submission_id: str,
+    organization_id: str,
+) -> int | None:
+    """Generate a REMS license for the submission using its license provider.
+
+    An identical license is reused if REMS already has one, so generating the same license
+    twice gives the same id rather than a duplicate.
+
+    :param rems_service: The REMS service.
+    :param license_provider: The license provider, or None if the deployment has none.
+    :param submission_id: The submission id.
+    :param organization_id: The REMS organization id owning the license.
+    :returns: The REMS license id, or None if the deployment has no license provider or
+        the provider gives no license.
+    """
+
+    if license_provider is None:
+        return None
+
+    localizations = await license_provider.get_license(submission_id)
+    if localizations is None:
+        return None
+
+    return await rems_service.get_or_create_license(organization_id, localizations)
+
+
+async def resolve_rems_license_ids(
+    rems_service: RemsServiceHandler,
+    license_provider: RemsLicenseProvider | None,
+    rems: Rems,
+    submission_id: str,
+    organization_id: str,
+) -> list[int]:
+    """Resolve the REMS license ids to be associated with the REMS resource.
+
+    License ids can be given in the submission. These license ids are
+    validated. If license ids are not given in the submission then
+    a license can be generated using a license provider.
+
+    :param rems_service: The REMS service.
+    :param license_provider: The license provider, or None if the deployment has none.
+    :param rems: The rems metadata.
+    :param submission_id: The submission id.
+    :param organization_id: The REMS organization id owning the licenses.
+    :raises UserException: if a given license id is unknown to REMS.
+    :returns: The REMS license ids, empty if the submission has no license.
+    """
+
+    if rems.licenses:
+        # Validate given license ids.
+        for license_id in rems.licenses:
+            await rems_service.get_license(organization_id, license_id)
+        return list(rems.licenses)
+
+    # Generate license.
+    license_id = await generate_rems_license_id(rems_service, license_provider, submission_id, organization_id)
+    return [license_id] if license_id is not None else []
 
 
 class RemsOrganisationsService:

@@ -1,0 +1,131 @@
+# Bigpicture Policy XML attributes validated and written into the REMS license.
+#
+# Loaded and validated at startup.
+#
+# Fields:
+#   - "tag" is the attribute TAG. It is matched without case, punctuation or whitespace,
+#     and the attribute TAG is changed to match the one defined here.
+#   - "previous_tags" are the TAGs the attribute had in earlier versions of the metadata
+#     standard.
+#   - "attribute_type" is the Bigpicture XML attribute type the value is read from. The
+#     following types are currently supported:
+#       "string" (STRING_ATTRIBUTE)
+#   - "value_type" is one of:
+#       text             any value
+#       controlledValue  one of the controlled values, or their previous values, in the
+#                        "controlled_values" field
+#       boolean          True or False value
+#     A controlledValue is matched without case, punctuation or whitespace,
+#     and the value is changed to match the one defined in "controlled_values" field.
+#   - "mandatory" requires the attribute to be given a value, so it takes no default
+#   - "multiple" allows the attribute to be given more than once
+#   - "default" is the default value
+
+
+# Read from ATTRIBUTES
+attributes:
+  - tag: title
+    attribute_type: string
+    value_type: text
+    default: "Terms of Use"
+
+  - tag: policy_text
+    mandatory: true
+    attribute_type: string
+    value_type: text
+
+  - tag: type_of_dataset
+    mandatory: true
+    attribute_type: string
+    value_type: controlledValue
+    controlled_values:
+    - Non-Clinical/Obscured
+    - Non-Clinical/Cryptonymised
+    - Clinical/Anonymized
+    - Clinical/Pseudonymized
+    # TODO: Clinical/Scrambled is not supported in V3.
+    - Clinical/Scrambled
+
+  - tag: defined_research_question_required
+    mandatory: true
+    attribute_type: string
+    value_type: boolean
+
+  # TODO: Mandatory for Clinical/Pseudonymized
+  - tag: legal_basis_for_sharing_the_data
+    attribute_type: string
+    value_type: text
+
+  - tag: informed_consent_form_defined_use_restrictions
+    attribute_type: string
+    value_type: text
+
+  - tag: custom_use_restrictions
+    attribute_type: string
+    value_type: text
+
+  # Controlled values changed in V3.
+  - tag: allowed_geographical_distribution
+    mandatory: true
+    attribute_type: string
+    value_type: controlledValue
+    controlled_values:
+    - value: European Union and EEA countries (N.B. excl UK)
+      previous_values:
+      - European Union and EEA countries
+    - value: Countries with GDPR adequacy (including UK)
+      previous_values:
+      - Countries with GDPR adequacy
+    - Worldwide
+
+    # Renamed in V3.
+  - tag: duration_of_access
+    previous_tags:
+    - duration_of_use
+    mandatory: true
+    attribute_type: string
+    value_type: controlledValue
+    controlled_values:
+    - Unlimited time
+    - Unlimited time, subject to an underlying sustainability agreement being set-up and agreed on by the contributing Beneficiary
+    - Limited to the IMI Bigpicture project term
+    - Limited to the duration of the purpose of the data access request
+
+  - tag: type_of_access
+    mandatory: true
+    attribute_type: string
+    value_type: text
+
+  - tag: required_bigpicture_acknowledgements
+    attribute_type: string
+    value_type: text
+    default: >-
+      This project has received funding from the Innovative Medicines Initiative 2 Joint
+      Undertaking under grant agreement No 945358. This Joint Undertaking receives support
+      from the European Union’s Horizon 2020 research and innovation program and EFPIA
+
+  - tag: coauthorship
+    attribute_type: string
+    value_type: boolean
+
+  - tag: terms_of_use_version
+    mandatory: true
+    attribute_type: string
+    value_type: text
+
+# Read from ATTRIBUTES/SET_ATTRIBUTE
+set_attributes:
+  - tag: allowed_use
+    attribute_type: string
+    value_type: text
+    multiple: true
+
+  - tag: required_custom_acknowledgment
+    attribute_type: string
+    value_type: text
+    multiple: true
+
+  - tag: required_citation
+    attribute_type: string
+    value_type: text
+    multiple: true

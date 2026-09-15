@@ -1,11 +1,15 @@
 """Internal API exceptions to be converted to HTTP errors."""
 
 from abc import ABC
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import Iterable
 
 import httpx
 from ldap3.core.exceptions import LDAPCommunicationError, LDAPResponseTimeoutError
 from starlette import status
+
+from ..helpers.logger import LOG
 
 
 class AppException(ABC, Exception):
@@ -28,12 +32,18 @@ class SystemException(AppException):
 class ServiceHandlerSystemException(SystemException):
     """Exception raised for system errors that should return HTTP 502 or HTTP 504."""
 
-    def __init__(self, service_name: str, exc: Exception | None = None) -> None:
-        """Initialize exception."""
+    def __init__(self, service_name: str, exc: Exception | None = None, service_status_code: int | None = None) -> None:
+        """Initialize exception.
+
+        :param service_name: The external service.
+        :param exc: The exception the request raised, if it raised one.
+        :param service_status_code: The status code from the external service.
+        """
         status_code = status.HTTP_502_BAD_GATEWAY
         if exc and isinstance(exc, httpx.TimeoutException):
             status_code = status.HTTP_504_GATEWAY_TIMEOUT
         super().__init__(f"External service error: {service_name}", status_code)
+        self.service_status_code = service_status_code
 
 
 class LdapSystemException(SystemException):
@@ -96,3 +106,25 @@ class UserExceptions(UserException):
         """Return all messages joined by newlines."""
 
         return "\n".join(self.messages)
+
+
+@contextmanager
+def external_service_call(message: str) -> Iterator[None]:
+    """Guard a call to an external service, logging and reporting any errors.
+
+    User errors pass through unchanged.
+
+    Anything else is considered a system error. The actual error message is
+    logged while the provided generic message is exposed to the user.
+
+    :param message: The error message exposed to the user, appended with 'Please try again later.'.
+    """
+
+    try:
+        yield
+    except UserException:
+        raise
+    except Exception as ex:
+        LOG.exception(message)
+        status_code = ex.status_code if isinstance(ex, SystemException) else status.HTTP_500_INTERNAL_SERVER_ERROR
+        raise SystemException(f"{message} Please try again later.", status_code) from ex

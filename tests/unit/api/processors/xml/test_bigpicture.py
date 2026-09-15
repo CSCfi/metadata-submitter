@@ -1,5 +1,9 @@
+import re
 import uuid
 
+import pytest
+
+from metadata_backend.api.exceptions import UserException
 from metadata_backend.api.processors.models import ObjectIdentifier
 from metadata_backend.api.processors.xml.bigpicture import (
     BP_ANNOTATION_PATH,
@@ -50,8 +54,20 @@ from metadata_backend.api.processors.xml.bigpicture import (
     as_xml_set_document,
     update_landing_page_xml,
 )
-from metadata_backend.api.processors.xml.processors import XmlFileDocumentsProcessor, XmlObjectProcessor
-from metadata_backend.api.services.submission.bigpicture import is_clinical_policy
+from metadata_backend.api.processors.xml.processors import (
+    XmlFileDocumentsProcessor,
+    XmlObjectProcessor,
+    XmlStringDocumentsProcessor,
+)
+from metadata_backend.api.services.submission.bigpicture import (
+    BP_FILES,
+    BigpictureObjectSubmissionService,
+)
+from metadata_backend.api.services.submission.bigpicture_attributes import (
+    BP_ATTRIBUTE_TYPE_STRING,
+    BigpictureAttributesConfig,
+    BigpictureStringAttribute,
+)
 
 from .test_utils import TEST_FILES_DIR, assert_object, assert_ref, assert_ref_length
 
@@ -475,13 +491,38 @@ async def test_bp_submission():
     assert_ref(processor, BP_REMS_SCHEMA_AND_PATH, rems_name, BP_DATASET_SCHEMA_AND_PATH, dataset_name, dataset_id)
 
 
-def test_is_clinical_policy():
-    clinical_xml = SUBMISSION_DIR / "single" / "policy_clinical.xml"
-    non_clinical_xml = SUBMISSION_DIR / "single" / "policy_non_clinical.xml"
-    clinical_processor = XmlObjectProcessor(BP_XML_OBJECT_CONFIG, clinical_xml)
-    non_clinical_processor = XmlObjectProcessor(BP_XML_OBJECT_CONFIG, non_clinical_xml)
-    assert is_clinical_policy(clinical_processor)
-    assert not is_clinical_policy(non_clinical_processor)
+def _bp_object_xml(*attributes: tuple[str, str], set_attributes: tuple[tuple[str, str], ...] = ()) -> str:
+    """A Bigpicture metadata object with the given attributes."""
+
+    def string_attribute(tag: str, value: str) -> str:
+        return f"<STRING_ATTRIBUTE><TAG>{tag}</TAG><VALUE>{value}</VALUE></STRING_ATTRIBUTE>"
+
+    tags = "".join(string_attribute(tag, value) for tag, value in attributes)
+    tags += "".join(
+        f"<SET_ATTRIBUTE><TAG>{tag}s</TAG><VALUE>{string_attribute(tag, value)}</VALUE></SET_ATTRIBUTE>"
+        for tag, value in set_attributes
+    )
+    return f'<POLICY alias="1"><DATASET_REF alias="1"/><ATTRIBUTES>{tags}</ATTRIBUTES></POLICY>'
+
+
+def _bp_object_processor(
+    *attributes: tuple[str, str], set_attributes: tuple[tuple[str, str], ...] = ()
+) -> XmlObjectProcessor:
+    return XmlObjectProcessor(BP_XML_OBJECT_CONFIG, _bp_object_xml(*attributes, set_attributes=set_attributes))
+
+
+def _string_attribute(tag: str, **fields) -> BigpictureStringAttribute:
+    return BigpictureStringAttribute(tag=tag, attribute_type=BP_ATTRIBUTE_TYPE_STRING, **fields)
+
+
+def _attributes_config(
+    attributes: tuple[BigpictureStringAttribute, ...] = (),
+    set_attributes: tuple[BigpictureStringAttribute, ...] = (),
+) -> BigpictureAttributesConfig:
+    return BigpictureAttributesConfig(attributes=attributes, set_attributes=set_attributes)
+
+
+_OBJECT_NAME = "Policy"
 
 
 async def test_update_landing_page_xml():
@@ -580,3 +621,65 @@ async def test_as_xml_set_document_tuple_object_type():
 """
 
     assert expected_xml == await as_xml_set_document([xml1, xml2], BP_SAMPLE_SCHEMA)
+
+
+def _bp_submission_service() -> BigpictureObjectSubmissionService:
+    """A submission service wired with nothing, as validate_documents uses no service."""
+
+    return BigpictureObjectSubmissionService(None, None, None, None)  # type: ignore[arg-type]
+
+
+def _bp_documents_processor(*, exclude: str | None = None, **policy_values: str) -> XmlStringDocumentsProcessor:
+    """A processor over the whole Bigpicture document set.
+
+    :param exclude: A document left out of the submission.
+    :param policy_values: New values for the named policy STRING_ATTRIBUTE tags.
+    """
+
+    documents = []
+    for name in BP_FILES:
+        path = SUBMISSION_DIR / name
+        if name == exclude or not path.is_file():
+            continue
+        document = path.read_text(encoding="utf-8")
+        if name == "policy.xml":
+            for tag, value in policy_values.items():
+                document, count = re.subn(
+                    rf"(<TAG>{tag}</TAG>\s*<VALUE>)[^<]*(</VALUE>)", rf"\g<1>{value}\g<2>", document
+                )
+                assert count == 1, f"'{tag}' is given {count} times in {name} rather than once"
+        documents.append(document)
+
+    return XmlStringDocumentsProcessor(BP_XML_OBJECT_CONFIG, documents)
+
+
+def test_validate_documents_accepts_the_whole_document_set():
+    """The document set the policy tests alter passes validation unaltered, so a failure
+    below is the alteration rather than the fixture."""
+
+    service = _bp_submission_service()
+    service._processor = _bp_documents_processor()
+
+    service.validate_documents()
+
+
+def test_validate_documents_reports_a_policy_the_license_cannot_be_created_from():
+    """A submitter is told what is wrong with the policy when submitting it, not later
+    when publishing."""
+
+    service = _bp_submission_service()
+    service._processor = _bp_documents_processor(defined_research_question_required="Maybe")
+
+    with pytest.raises(UserException, match="defined_research_question_required"):
+        service.validate_documents()
+
+
+def test_bp_documents_reject_a_missing_mandatory_metadata_object():
+    """A sample document is mandatory for each of the four sample object types that are,
+    which the XML documents processor enforces per object type rather than per schema.
+
+    Reported before any policy problem, since the processor cannot even be built.
+    """
+
+    with pytest.raises(ValueError, match="metadata object but found 0"):
+        _bp_documents_processor(exclude="sample.xml", defined_research_question_required="Maybe")

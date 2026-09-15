@@ -1663,6 +1663,7 @@ dependencies = [
     { name = "gunicorn" },
     { name = "httpx" },
     { name = "idpyoidc" },
+    { name = "jinja2" },
     { name = "jsonschema" },
     { name = "ldap3" },
     { name = "lxml" },
@@ -1675,10 +1676,12 @@ dependencies = [
     { name = "pynacl" },
     { name = "python-dateutil" },
     { name = "python-multipart" },
+    { name = "pyyaml" },
     { name = "rdflib" },
     { name = "requests" },
     { name = "sqlalchemy" },
     { name = "types-cachetools" },
+    { name = "types-pyyaml" },
     { name = "typing-extensions" },
     { name = "ujson" },
     { name = "ulid-py" },
@@ -1749,6 +1752,7 @@ requires-dist = [
     { name = "gunicorn", specifier = "==26.2.0" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "idpyoidc", specifier = "==5.0.0" },
+    { name = "jinja2", specifier = "==3.1.6" },
     { name = "jsonschema", specifier = "==4.26.0" },
     { name = "ldap3", git = "https://github.com/cannatag/ldap3.git?rev=refs%2Fpull%2F983%2Fhead" },
     { name = "lxml", specifier = ">=5.4.0" },
@@ -1765,6 +1769,7 @@ requires-dist = [
     { name = "pytest-xdist", marker = "extra == 'test'", specifier = "==3.8.0" },
     { name = "python-dateutil", specifier = "==2.9.0.post0" },
     { name = "python-multipart", specifier = ">=0.0.22" },
+    { name = "pyyaml", specifier = "==6.0.3" },
     { name = "rdflib", specifier = ">=7.5.0" },
     { name = "requests", specifier = "==2.34.2" },
     { name = "ruff", marker = "extra == 'verify'", specifier = "==0.16.6" },
@@ -1773,6 +1778,7 @@ requires-dist = [
     { name = "sqlalchemy", specifier = ">=2.0.41" },
     { name = "types-cachetools", specifier = ">=5.5.0.20240820" },
     { name = "types-python-dateutil", marker = "extra == 'verify'", specifier = ">=2.9.0.20241206" },
+    { name = "types-pyyaml", specifier = ">=6.0.12" },
     { name = "types-requests", marker = "extra == 'verify'", specifier = "==2.33.0.20260906" },
     { name = "types-ujson", marker = "extra == 'verify'", specifier = "==5.10.0.20250822" },
     { name = "typing-extensions", specifier = "==4.16.0" },
@@ -3138,6 +3144,15 @@ source = { registry = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-py
 sdist = { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/c8/4e/b3fa538f9cb38dfece0d6ccf6d3d0d925bdedb144fb9c8129dfc007cd003/types_python_dateutil-2.9.0.20260807.tar.gz", hash = "sha256:e0b8a90d464c8684c66b7b8e4556d9074afdddcc56ca45323f0987134f9e7034" }
 wheels = [
     { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/e4/5e/3715867caea2f4cea56ccb04c851cde23ed063449c3b004c7a047f20dd48/types_python_dateutil-2.9.0.20260807-py3-none-any.whl", hash = "sha256:54aa3707350ed7a9cc0776fd2f6739679d6967d11b40150985e81edcb86df4db" },
+]
+
+[[package]]
+name = "types-pyyaml"
+version = "6.0.12.20260815"
+source = { registry = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/simple" }
+sdist = { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/9f/72/b56089aeee6c496d969bac42376bedb6e3eeab4682e1018fa3137122f94b/types_pyyaml-6.0.12.20260815.tar.gz", hash = "sha256:28764110c9cf35846e733da32d8d734df7473c5dde9ef67c3b7332ec0e819858" }
+wheels = [
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/08/52/eefeba09be4ef2a1eb989eb92934561e8e502a6ee3c32654996e4be7e399/types_pyyaml-6.0.12.20260815-py3-none-any.whl", hash = "sha256:6f332212b7e191f3afd5016a713c510b6340593b7ebec573c7d5d20aa5386d3b" },
 ]
 
 [[package]]

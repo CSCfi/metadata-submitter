@@ -3,13 +3,89 @@
         <DATASET_REF alias="1"/>
         <ATTRIBUTES>
             <STRING_ATTRIBUTE>
+                <TAG>title</TAG>
+                <VALUE>HUS policy</VALUE>
+            </STRING_ATTRIBUTE>
+            <STRING_ATTRIBUTE>
+                <TAG>policy_text</TAG>
+                <VALUE>DISCLAIMER:
+The use and sharing of Bigpicture data is dictated by the Bigpicture Data Sharing Agreement. The Policy Text comprises a concise overview thereof, however, only the official and formally signed contractual documents have a binding value.
+Clause 6. [Obligations of the Data Users]
+Each Data User processing Data must:
+- Comply with applicable Data Protection Legislation.
+- Follow recognized ethical standards for scientific research.</VALUE>
+            </STRING_ATTRIBUTE>
+            <STRING_ATTRIBUTE>
                 <TAG>type_of_dataset</TAG>
                 <VALUE>Clinical / Anonymized</VALUE>
             </STRING_ATTRIBUTE>
             <STRING_ATTRIBUTE>
-                <TAG>test</TAG>
-                <VALUE>test</VALUE>
+                <TAG>terms_of_use_version</TAG>
+                <VALUE>2026-01-22T15:53:29.760746</VALUE>
             </STRING_ATTRIBUTE>
+            <STRING_ATTRIBUTE>
+                <TAG>allowed_geographical_distribution</TAG>
+                <VALUE>Countries with GDPR adequacy</VALUE>
+            </STRING_ATTRIBUTE>
+            <STRING_ATTRIBUTE>
+                <TAG>duration_of_use</TAG>
+                <VALUE>Limited to the IMI Bigpicture project term</VALUE>
+            </STRING_ATTRIBUTE>
+            <STRING_ATTRIBUTE>
+                <TAG>defined_research_question_required</TAG>
+                <VALUE>True</VALUE>
+            </STRING_ATTRIBUTE>
+            <STRING_ATTRIBUTE>
+                <TAG>coauthorship</TAG>
+                <VALUE>True</VALUE>
+            </STRING_ATTRIBUTE>
+            <STRING_ATTRIBUTE>
+                <TAG>type_of_access</TAG>
+                <VALUE>Direct access</VALUE>
+            </STRING_ATTRIBUTE>
+            <STRING_ATTRIBUTE>
+                <TAG>required_bigpicture_acknowledgements</TAG>
+                <VALUE>This project has received funding from the Innovative Medicines Initiative 2 Joint Undertaking under grant agreement No 945358. This Joint Undertaking receives support from the European Union’s Horizon 2020 research and innovation program and EFPIA</VALUE>
+            </STRING_ATTRIBUTE>
+            <STRING_ATTRIBUTE>
+                <TAG>legal_basis_for_sharing_the_data</TAG>
+                <VALUE>Informed consent form (Biobank consents), Finnish biobank act</VALUE>
+            </STRING_ATTRIBUTE>
+            <STRING_ATTRIBUTE>
+                <TAG>informed_consent_form_defined_use_restrictions</TAG>
+                <VALUE>A placeholder value.</VALUE>
+            </STRING_ATTRIBUTE>
+            <STRING_ATTRIBUTE>
+                <TAG>custom_use_restrictions</TAG>
+                <VALUE>A placeholder value.</VALUE>
+            </STRING_ATTRIBUTE>
+            <SET_ATTRIBUTE>
+                <TAG>allowed_uses</TAG>
+                <VALUE>
+                    <STRING_ATTRIBUTE>
+                        <TAG>allowed_use</TAG>
+                        <VALUE>A placeholder value.</VALUE>
+                    </STRING_ATTRIBUTE>
+                </VALUE>
+            </SET_ATTRIBUTE>
+            <SET_ATTRIBUTE>
+                <TAG>required_custom_acknowledgements</TAG>
+                <VALUE>
+                    <STRING_ATTRIBUTE>
+                        <TAG>required_custom_acknowledgment</TAG>
+                        <VALUE>The samples/data used for the research were obtained from Helsinki Biobank. We thank all study participants for their generous participation in Helsinki Biobank.</VALUE>
+                    </STRING_ATTRIBUTE>
+                </VALUE>
+            </SET_ATTRIBUTE>
+            <SET_ATTRIBUTE>
+                <TAG>required_citations</TAG>
+                <VALUE>
+                    <STRING_ATTRIBUTE>
+                        <TAG>required_citation</TAG>
+                        <VALUE>A placeholder value.</VALUE>
+                    </STRING_ATTRIBUTE>
+                </VALUE>
+            </SET_ATTRIBUTE>
         </ATTRIBUTES>
     </POLICY>
 </POLICY_SET>

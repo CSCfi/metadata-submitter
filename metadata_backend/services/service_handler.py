@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Awaitable, Callable, Optional, override
 
 import httpx
+from starlette import status
 from yarl import URL
 
 from ..api.exceptions import ServiceHandlerSystemException
@@ -13,6 +14,7 @@ from ..helpers.logger import LOG
 
 RETRY_MAX_COUNT = 3
 RETRY_DELAY = 1
+RETRY_STATUS_CODES = frozenset({status.HTTP_408_REQUEST_TIMEOUT, status.HTTP_429_TOO_MANY_REQUESTS})
 
 
 class HealthHandler(ABC):
@@ -171,7 +173,9 @@ class ServiceHandler(HealthHandler):
                     )
                     return content
 
-                if attempt < RETRY_MAX_COUNT:
+                retryable = not response.is_client_error or response.status_code in RETRY_STATUS_CODES
+                retry = attempt < RETRY_MAX_COUNT and retryable
+                if retry:
                     # Failed request with retry attempts remaining.
                     attempt += 1
                     await asyncio.sleep(RETRY_DELAY)
@@ -182,7 +186,7 @@ class ServiceHandler(HealthHandler):
                         f"Service handler {method} request to {self.service_name} path {url} returned: "
                         f"{response.status_code} and content: {content}"
                     )
-                    raise ServiceHandlerSystemException(self.service_name)
+                    raise ServiceHandlerSystemException(self.service_name, service_status_code=response.status_code)
         except ServiceHandlerSystemException as exc:
             raise exc
         except Exception as exc:
