@@ -33,6 +33,10 @@ printf "%s\n" "$$data" >> tests/integration/.env; \
 printf "%s\n" "$$data" >> tests/integration/.env.secret;
 endef
 
+define write_secret_to_file
+mkdir -p "$$(dirname "$(1)")" && \
+(umask 077; vault kv get --field="$(3)" "secret/$(2)" > "$(1)") || (rm -f "$(1)"; exit 1);
+endef
 
 # Default target
 # Print list of available targets. Only rows in the format `target: ## description` are printed
@@ -84,6 +88,8 @@ get_env: ## Get secrets needed for integration tests from vault
 	$(call write_integration_test_secret_group,secret/sd-submit/s3) \
 	$(call write_integration_test_secret_group,secret/sd-submit/rems) \
 	$(call write_integration_test_secret,DISCOVERY_URL,sd-submit/secrets,discovery_url) \
+	$(call write_integration_test_secret_group,secret/sd-submit/uv) \
+	$(call write_secret_to_file,$$HOME/.config/pnpm/auth.ini,artifactory,npmrc) \
 	vault kv get --field=oidc_jwks secret/sd-submit/secrets >> private/private_jwks.json;
 
 	$(call write_line,### VAULT SECRETS END ###)
@@ -116,7 +122,8 @@ get_ci_env: ## Get secrets needed for CI tests from vault
 	$(call write_integration_test_secret,SD_SUBMIT_PROJECT_ID,sd-submit/secrets,sd_submit_project_id) \
 	$(call write_integration_test_secret_group,secret/sd-submit/s3) \
 	$(call write_integration_test_secret_group,secret/sd-submit/rems) \
-	$(call write_integration_test_secret,DISCOVERY_URL,sd-submit/secrets,discovery_url)
+	$(call write_integration_test_secret,DISCOVERY_URL,sd-submit/secrets,discovery_url) \
+	$(call write_integration_test_secret_group,secret/sd-submit/uv)
 
 	$(call write_line,### VAULT SECRETS END ###)
 

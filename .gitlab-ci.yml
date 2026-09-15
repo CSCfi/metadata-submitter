@@ -1,6 +1,8 @@
 stages:
   - test
+  - audit
   - build
+  - scan
   - upload
   - release
 
@@ -13,6 +15,7 @@ include:
 # Make all jobs interruptible by default
 default:
   interruptible: true
+  image: "${ARTIFACTORY_SERVER}/sds/sdd-common-ci:2026.9.3"
 
 
 #
@@ -25,12 +28,7 @@ default:
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-  image: sds-docker.artifactory.ci.csc.fi/sds/sdd-common-ci:2026.9.1@sha256:c2456df13517f71acc115b7a9739ea2c3f9b14869198f8995f29425d25000884
   script:
-    # Install uv to /uv and tox uv tool called by pre-commit to /root/.local/bin.
-    - curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="/uv" sh
-    - export PATH="/uv:/root/.local/bin:$PATH"
-    - uv tool install tox --with tox-uv
     - SKIP=test uv tool run pre-commit run --all-files -c .pre-commit-config.yaml --show-diff-on-failure --color never
 
 2-unit-test:
@@ -52,12 +50,7 @@ default:
           - "tox.ini"
           - "uv.lock"
         compare_to: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
-  image: sds-docker.artifactory.ci.csc.fi/sds/sdd-common-ci:2026.9.1@sha256:c2456df13517f71acc115b7a9739ea2c3f9b14869198f8995f29425d25000884
   script:
-    # Install uv to /uv and tox uv tool called by pre-commit to /root/.local/bin.
-    - curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="/uv" sh
-    - export PATH="/uv:/root/.local/bin:$PATH"
-    - uv tool install tox --with tox-uv
     - uv tool run pre-commit run test --all-files -c .pre-commit-config.yaml --show-diff-on-failure --color never
     - uv tool run coverage report --precision=1
   coverage: '/TOTAL.*?([\d.]+%)/'
@@ -68,6 +61,7 @@ default:
     - job: 1-verify
   tags:
     - sds-test
+  retry: 2
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
@@ -82,15 +76,13 @@ default:
           - "pyproject.toml"
           - "uv.lock"
         compare_to: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
-  image: sds-docker.artifactory.ci.csc.fi/sds/sdd-common-ci:2026.9.1@sha256:c2456df13517f71acc115b7a9739ea2c3f9b14869198f8995f29425d25000884
   variables:
     COMPOSE_PROJECT_NAME: $CI_JOB_ID
     VAULT_ADDR: $VAULT_TEST_ADDR
-    VAULT_ROLE_ID: $VAULT_ROLE_ID
-    VAULT_SECRET_ID: $VAULT_SECRET_ID
-  script:
+  before_script:
     # Get secrets from Vault for testing
     - make get_ci_env
+  script:
     # Run integration tests with integration-test-runner service in docker-compose
     - docker compose -f docker-compose.yml --env-file tests/integration/.env --profile ci run --build integration-test-runner || export TEST_FAILED=1
     - |
@@ -105,132 +97,165 @@ default:
 
 
 #
-# Build and Scan.
+# Audit
+#
+1-python-jf-audit:
+  stage: audit
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      variables:
+        WATCH: sds-watch
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $GITLAB_USER_NAME != "renovate-bot"'
+      variables:
+        WATCH: sds-watch
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $GITLAB_USER_NAME == "renovate-bot"'
+      variables:
+        WATCH: sds-renovate
+  before_script:
+    - jf config import "${JF_CONFIG_READ_ONLY}"
+  script:
+    # jf audit does not yet support uv
+    - uv export --format requirements.txt --output-file requirements.txt
+    - jf audit --pip --extended-table --watches=$WATCH
+
+
+#
+# Build stage
 #
 1-build-image:
   stage: build
   tags:
     - sds-build
-  needs: []
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      variables:
+        IMAGE_TAG: $CI_DEFAULT_BRANCH_SLUG
     - if: '$CI_COMMIT_TAG'
+      variables:
+        IMAGE_TAG: $CI_COMMIT_TAG
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-      when: manual
-      allow_failure: true
+      variables:
+        IMAGE_TAG: $CI_COMMIT_REF_SLUG
+  variables:
+    VAULT_ADDR: $VAULT_TEST_ADDR
+    REGISTRY_IMAGE: "${CONTAINER_REGISTRY_ADDRESS}/sds/sd-submit-api:${IMAGE_TAG}"
+  before_script:
+    - make get_ci_env
   script:
-    - |
-      if [ "$CI_PIPELINE_SOURCE" = "merge_request_event" ]; then
-        export IMAGE_TAG="$(echo ${ENVIRONMENT:-$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME} | tr '/' '-')"
-      elif [ "$CI_COMMIT_TAG" ]; then
-        export IMAGE_TAG="$CI_COMMIT_TAG"
-      else
-        export IMAGE_TAG="$CI_DEFAULT_BRANCH"
-      fi
     - echo "Building image sd-submit-api:${IMAGE_TAG}"
-    - docker buildx build -t "$ARTIFACTORY_SERVER/sds/sd-submit-api:${IMAGE_TAG}" -f dockerfiles/Dockerfile .
-    - docker save "$ARTIFACTORY_SERVER/sds/sd-submit-api:${IMAGE_TAG}" | gzip > image.tar.gz
+    - docker buildx build -t "${REGISTRY_IMAGE}" --iidfile iid.out --secret id=vault_secrets,src=.env -f dockerfiles/Dockerfile .
+    - docker push "${REGISTRY_IMAGE}"
+    # Save digest as a dotenv artifact
+    - echo "IMAGE_DIGEST=$(cat iid.out)" >> build.env
   artifacts:
-    paths:
-      - image.tar.gz
-    expire_in: 1 day
+    reports:
+      dotenv: build.env
 
-2-scan-image:
-  stage: build
-  needs:
-    - job: 1-build-image
-      artifacts: true
+
+#
+# Scan stage
+#
+1-scan-image:
+  stage: scan
   tags:
-    - sds-build
-  image: sds-docker.artifactory.ci.csc.fi/sds/sdd-common-ci:2026.9.1@sha256:c2456df13517f71acc115b7a9739ea2c3f9b14869198f8995f29425d25000884
+    - sds-test
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
-    - if: '$CI_COMMIT_TAG'
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-      allow_failure: true
+      variables:
+        WATCH: sds-watch
+        IMAGE_TAG: $CI_DEFAULT_BRANCH_SLUG
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $GITLAB_USER_NAME != "renovate-bot"'
+      variables:
+        WATCH: sds-watch
+        IMAGE_TAG: $CI_COMMIT_REF_SLUG
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $GITLAB_USER_NAME == "renovate-bot"'
+      variables:
+        WATCH: sds-renovate
+        IMAGE_TAG: $CI_COMMIT_REF_SLUG
+  variables:
+    REGISTRY_IMAGE: "${CONTAINER_REGISTRY_ADDRESS}/sds/sd-submit-api:${IMAGE_TAG}"
+  before_script:
+    - jf config import "${JF_CONFIG_READ_ONLY}"
   script:
-    - gunzip -c image.tar.gz | docker load
-    - jf config import "${JF_CONFIG}"
-    - |
-      if [ "$CI_PIPELINE_SOURCE" = "merge_request_event" ]; then
-        export IMAGE_TAG="$(echo ${ENVIRONMENT:-$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME} | tr '/' '-')"
-      elif [ "$CI_COMMIT_TAG" ]; then
-        export IMAGE_TAG="$CI_COMMIT_TAG"
-      else
-        export IMAGE_TAG="$CI_DEFAULT_BRANCH"
-      fi
-    - jf docker scan --licenses --extended-table --min-severity=Medium $ARTIFACTORY_SERVER/sds/sd-submit-api:${IMAGE_TAG}
+    - docker pull "${REGISTRY_IMAGE}"@${IMAGE_DIGEST}
+    - docker tag "${REGISTRY_IMAGE}@${IMAGE_DIGEST}" "${REGISTRY_IMAGE}"
+    - jf docker scan --extended-table --watches=$WATCH "${REGISTRY_IMAGE}"
 
-1-upload-image:
+
+#
+# Upload stage
+#
+1-upload-jfrog-image:
   stage: upload
-  needs:
-    - job: 1-build-image
-      artifacts: true
-    - job: 2-scan-image
   tags:
     - sds-upload
   rules:
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
     - if: '$CI_COMMIT_TAG'
+      variables:
+        IMAGE_TAG: $CI_COMMIT_TAG
+        JFROG_CLI_BUILD_NUMBER: $CI_COMMIT_TAG
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: manual
       allow_failure: true
+      variables:
+        IMAGE_TAG: $CI_COMMIT_REF_SLUG
+        JFROG_CLI_BUILD_NUMBER: $CI_COMMIT_REF_SLUG
+  variables:
+    REGISTRY_IMAGE: "${CONTAINER_REGISTRY_ADDRESS}/sds/sd-submit-api:${IMAGE_TAG}"
+    JFROG_CLI_BUILD_NAME: sd-submit-api
+    JFROG_CLI_BUILD_PROJECT: sds
+  before_script:
+    - jf config import "${JF_CONFIG}"
+  script:
+    # Push to Artifactory with the same tag as built in the 1-build-image job
+    - echo "Pushing image sd-submit-api:${IMAGE_TAG}"
+    - docker pull "${REGISTRY_IMAGE}@${IMAGE_DIGEST}"
+    - docker tag "${REGISTRY_IMAGE}@${IMAGE_DIGEST}" "${ARTIFACTORY_SERVER}/${REGISTRY_IMAGE#*/}"
+    - jf docker push "${ARTIFACTORY_SERVER}/${REGISTRY_IMAGE#*/}"
+    - jf rt build-publish
+
+2-upload-ghcr-image:
+  stage: upload
+  tags:
+    - sds-upload
+  rules:
+    - if: '$CI_COMMIT_TAG'
   variables:
     DOCKER_CONFIG: "$CI_PROJECT_DIR/.docker"
+    REGISTRY_IMAGE: "${CONTAINER_REGISTRY_ADDRESS}/sds/sd-submit-api:${CI_COMMIT_TAG}"
   before_script:
+    # Login to GitHub Container Registry
     - mkdir -p "$DOCKER_CONFIG"
-    - echo "$ARTIFACTORY_USER_PASSWORD" | docker login --username "$ARTIFACTORY_USER" --password-stdin "$ARTIFACTORY_SERVER"
+    - echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
   script:
-    - gunzip -c image.tar.gz | docker load
-    # Push to Artifactory with the same tag as built in the 1-build-image job
-    # - |
-    #   if [ "$CI_PIPELINE_SOURCE" = "merge_request_event" ]; then
-    #     export IMAGE_TAG="$(echo ${ENVIRONMENT:-$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME} | tr '/' '-')"
-    #   elif [ "$CI_COMMIT_TAG" ]; then
-    #     export IMAGE_TAG="$CI_COMMIT_TAG"
-    #   else
-    #     export IMAGE_TAG="$CI_DEFAULT_BRANCH"
-    #   fi
-    # - echo "Pushing image sd-submit-api:${IMAGE_TAG}"
-    # - |
-    #   max_retries=150
-    #   retry=1
-
-    #   until docker push "$ARTIFACTORY_SERVER/sds/sd-submit-api:${IMAGE_TAG}" ; do
-    #     if [ "$retry" -ge "$max_retries" ]; then
-    #        echo "docker push failed after $max_retries attempts"
-    #        exit 1
-    #     fi
-
-    #     echo "Attempt $retry failed, retrying in 10 seconds..."
-    #     retry=$((retry + 1))
-    #     sleep 10
-    #   done
     - |
-      # We want to only push images to github on release.
-      if [ -n "$CI_COMMIT_TAG" ]; then
-        echo "This is a release (tag: $CI_COMMIT_TAG)"
+      echo "This is a release (tag: $CI_COMMIT_TAG)"
 
-        # Login to GitHub Container Registry
-        echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
+      # Pull image from our container registry
+      docker pull "${REGISTRY_IMAGE}@${IMAGE_DIGEST}"
 
-        # Tag the image for GHCR
-        docker tag $ARTIFACTORY_SERVER/sds/sd-submit-api:${IMAGE_TAG} ghcr.io/cscfi/metadata-submitter:latest
-        docker tag $ARTIFACTORY_SERVER/sds/sd-submit-api:${IMAGE_TAG} ghcr.io/cscfi/metadata-submitter:$CI_COMMIT_SHA
-        docker tag $ARTIFACTORY_SERVER/sds/sd-submit-api:${IMAGE_TAG} ghcr.io/cscfi/metadata-submitter:$CI_COMMIT_TAG
+      # Tag the image for GHCR
+      docker tag "${REGISTRY_IMAGE}@${IMAGE_DIGEST}" ghcr.io/cscfi/metadata-submitter:latest
+      docker tag "${REGISTRY_IMAGE}@${IMAGE_DIGEST}" ghcr.io/cscfi/metadata-submitter:$CI_COMMIT_SHA
+      docker tag "${REGISTRY_IMAGE}@${IMAGE_DIGEST}" ghcr.io/cscfi/metadata-submitter:$CI_COMMIT_TAG
 
-        # Push to GHCR
-        echo "Pushing images ghcr.io/cscfi/metadata-submitter:latest"
-        docker push ghcr.io/cscfi/metadata-submitter:latest
-        echo "Pushing image ghcr.io/cscfi/metadata-submitter:$CI_COMMIT_SHA"
-        docker push ghcr.io/cscfi/metadata-submitter:$CI_COMMIT_SHA
-        echo "Pushing image ghcr.io/cscfi/metadata-submitter:$CI_COMMIT_TAG"
-        docker push ghcr.io/cscfi/metadata-submitter:$CI_COMMIT_TAG
-      fi
+      # Push to GHCR
+      echo "Pushing images ghcr.io/cscfi/metadata-submitter:latest"
+      docker push ghcr.io/cscfi/metadata-submitter:latest
+      echo "Pushing image ghcr.io/cscfi/metadata-submitter:$CI_COMMIT_SHA"
+      docker push ghcr.io/cscfi/metadata-submitter:$CI_COMMIT_SHA
+      echo "Pushing image ghcr.io/cscfi/metadata-submitter:$CI_COMMIT_TAG"
+      docker push ghcr.io/cscfi/metadata-submitter:$CI_COMMIT_TAG
 
 release-job:
   extends: .automated-release
   release:
     description: $(cat release_changes.md)
+    assets:
+      links:
+        - name: "${ARTIFACTORY_SERVER}/sds/sd-submit-api:${RELEASE_VERSION}"
+          url: "https://${ARTIFACTORY_SERVER}/artifactory/sds-docker/sds/sd-submit-api/${RELEASE_VERSION}"
+          link_type: image
 
 # This is a manual dry-run for developers to run in the merge request
 update-versions-dryrun:
