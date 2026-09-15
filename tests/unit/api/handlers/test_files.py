@@ -62,7 +62,7 @@ async def test_get_files_in_bucket(csc_client) -> None:
         ),
     ):
         response = csc_client.get(f"{api_prefix_v1}/buckets/{bucket_name}/files?projectId={project_id}")
-        assert response.status_code == 400
+        assert response.status_code == 403
 
     with (
         patch_verify_authorization,
@@ -137,4 +137,4 @@ async def test_check_bucket_access(csc_client) -> None:
         ),
     ):
         response = csc_client.head(f"{api_prefix_v1}/buckets/{bucket_name}?projectId={project_id}")
-        assert response.status_code == 400
+        assert response.status_code == 403

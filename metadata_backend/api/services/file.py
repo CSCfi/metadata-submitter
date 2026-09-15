@@ -17,7 +17,7 @@ from ...conf.s3 import s3_config
 from ...helpers.logger import LOG
 from ...services.admin_service import AdminServiceHandler
 from ...services.keystone_service import KeystoneServiceHandler
-from ..exceptions import SystemException, UserException
+from ..exceptions import ForbiddenUserException, SystemException, UserException
 from ..models.models import File as SubmissionFile
 from ..models.sda import FileItem
 
@@ -48,7 +48,7 @@ class FileProviderService(ABC):
         if not await self._verify_bucket_policy(bucket):
             reason = f"Bucket '{bucket}' has not been made accessible to SD Submit."
             LOG.error(reason)
-            raise UserException(reason)
+            raise ForbiddenUserException(reason)
 
         size = await self._verify_user_file(bucket, file)
         if size is None:
@@ -94,14 +94,10 @@ class FileProviderService(ABC):
         if not await self._verify_bucket_policy(bucket):
             reason = f"Bucket '{bucket}' has not been made accessible to SD Submit."
             LOG.error(reason)
-            raise UserException(reason)
+            raise ForbiddenUserException(reason)
 
-        files = await self._list_files_in_bucket(bucket)
-        if not files.root:
-            reason = f"No files found in bucket '{bucket}'."
-            LOG.error(reason)
-            raise UserException(reason)
-        return files
+        # An accessible bucket with no files is valid.
+        return await self._list_files_in_bucket(bucket)
 
     async def update_bucket_policy(self, bucket: str, creds: KeystoneServiceHandler.EC2Credentials) -> None:
         """
