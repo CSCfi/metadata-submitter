@@ -1,10 +1,18 @@
 services:
-  sd-submit-api-csc:
+  build-reference:
     build:
       dockerfile: ./dockerfiles/Dockerfile-dev
       context: .
       target: test
+      secrets:
+        - vault_secrets
     image: cscfi/metadata-submitter-dev
+    pull_policy: never
+    command: ["true"]
+
+  sd-submit-api-csc:
+    image: cscfi/metadata-submitter-dev
+    pull_policy: never
     profiles:
       - ui
       - ci
@@ -12,6 +20,8 @@ services:
       - dev
     command: [ "uv", "run", "metadata_submitter" ]
     depends_on:
+      build-reference:
+        condition: service_started
       postgres-csc:
         condition: service_healthy
     healthcheck:
@@ -56,19 +66,19 @@ services:
       - "ALLOW_UNSAFE=${ALLOW_UNSAFE}"
 
   sd-submit-api-nbis:
-    build:
-      dockerfile: ./dockerfiles/Dockerfile-dev
-      context: .
-      target: test
     image: cscfi/metadata-submitter-dev
+    pull_policy: never
     profiles:
       - ci
       - dev
       - demo
     command: [ "uv", "run", "metadata_submitter" ]
     depends_on:
+      build-reference:
+        condition: service_started
       postgres-nbis:
         condition: service_healthy
+
     healthcheck:
       test: >
         bash -c 'curl --fail "http://127.0.0.1:5431${API_PREFIX:-}/health" || exit 1'
@@ -103,7 +113,7 @@ services:
       - "ALLOW_UNSAFE=${ALLOW_UNSAFE}"
 
   mock-oauth2:
-    image: ghcr.io/navikt/mock-oauth2-server:latest@sha256:b538810afd589d42fbfb856c588c2065eaeed1dc528d6c532972048e67fc2aff
+    image: ghcr.io/navikt/mock-oauth2-server:6.0.2
     environment:
       JSON_CONFIG_PATH: /config/mock-auth.json
       PORT: 8001
@@ -116,11 +126,8 @@ services:
       - ./tests/integration/mock-auth.json:/config/mock-auth.json:ro
 
   mockauth:
-    build:
-      dockerfile: ./dockerfiles/Dockerfile-dev
-      context: .
-      target: base
     image: cscfi/metadata-submitter-dev
+    pull_policy: never
     environment:
       - "LOG_LEVEL=${LOG_LEVEL}"
       - "KEYSTONE_ENDPOINT=${KEYSTONE_ENDPOINT}"
@@ -130,6 +137,8 @@ services:
       - ci_ui
       - dev
     depends_on:
+      build-reference:
+        condition: service_started
       mock-oauth2:
         condition: service_started
       mockkeystone:
@@ -145,11 +154,8 @@ services:
     entrypoint: [ "uv", "run", "/mock_auth.py" ]
 
   mockadmin:
-    build:
-      dockerfile: ./dockerfiles/Dockerfile-dev
-      context: .
-      target: base
     image: cscfi/metadata-submitter-dev
+    pull_policy: never
     environment:
       - "LOG_LEVEL=${LOG_LEVEL}"
       - "OIDC_URL=${OIDC_URL}"
@@ -167,6 +173,8 @@ services:
       - ./tests/integration/mock_admin_api.py:/mock_admin_api.py
     entrypoint: [ "python", "/mock_admin_api.py", "0.0.0.0", "8004" ]
     depends_on:
+      build-reference:
+        condition: service_started
       mockauth:
         condition: service_started
 
@@ -175,6 +183,7 @@ services:
       dockerfile: ./dockerfiles/Dockerfile-ldap-dev
       context: .
     image: cscfi/mockldap
+    pull_policy: never
     profiles:
       - ui
       - ci
@@ -182,7 +191,7 @@ services:
       - dev
 
   mockkeystone:
-    image: ghcr.io/cscfi/docker-keystone-swift:latest@sha256:e8b1ec21120ab9adc6ac6a2b98785fd273676439a8633fe898e37f2aea7e0712
+    image: ghcr.io/cscfi/docker-keystone-swift
     profiles:
       - ui
       - ci
@@ -196,7 +205,7 @@ services:
       start_period: 20s
 
   mockinbox:
-    image: motoserver/moto:latest@sha256:91fd602a21f49cf9eb82fdf474015a3c131d40104c8297ea6a2ca920708ae32c
+    image: motoserver/moto:5.2.3
     profiles:
       - ci
       - dev
@@ -210,7 +219,7 @@ services:
       start_period: 10s
 
   postgres-csc:
-    image: postgres:18-alpine@sha256:d3e1620b530c944afa6e887d22eb899824da68e19c52024bf98f5220c88a65b2
+    image: postgres:18.6-alpine
     profiles:
       - ui
       - ci
@@ -228,7 +237,7 @@ services:
       start_period: 10s
 
   postgres-nbis:
-    image: postgres:18-alpine@sha256:d3e1620b530c944afa6e887d22eb899824da68e19c52024bf98f5220c88a65b2
+    image: postgres:18.6-alpine
     profiles:
       - ci
       - dev
@@ -245,11 +254,8 @@ services:
       start_period: 10s
 
   integration-test-runner:
-    build:
-      dockerfile: ./dockerfiles/Dockerfile-dev
-      context: .
-      target: test
     image: cscfi/metadata-submitter-dev
+    pull_policy: never
     profiles:
       - ci
     environment:
@@ -261,6 +267,8 @@ services:
       - "KEYSTONE_ENDPOINT=${KEYSTONE_ENDPOINT}"
     command: "pytest tests/integration"
     depends_on:
+      build-reference:
+        condition: service_started
       sd-submit-api-csc:
         condition: service_healthy
       sd-submit-api-nbis:
@@ -273,3 +281,7 @@ services:
         condition: service_started
       mockinbox:
         condition: service_healthy
+
+secrets:
+  vault_secrets:
+    file: .env

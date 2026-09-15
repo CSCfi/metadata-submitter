@@ -270,7 +270,7 @@ uv run metadata_backend/scripts/fetch_metax.py
 The Docker image can be built using the Dockerfile located in dockerfiles directory:
 
 ```bash
-docker build --no-cache -f dockerfiles/Dockerfile -t cscfi/metadata-submitter .
+docker build --no-cache -f dockerfiles/Dockerfile --secret id=vault_secrets,src=.env -t cscfi/metadata-submitter .
 ```
 
 Once built, run the container with:

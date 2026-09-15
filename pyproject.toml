@@ -38,7 +38,7 @@ dependencies = [
     "uvloop==0.22.1",
     "xmlschema==4.3.2",
     "typing-extensions==4.16.0",
-    "pyjwt>=2.10.1",
+    "pyjwt>=2.14.0",
     "ldap3 @ git+https://github.com/cannatag/ldap3.git@refs/pull/983/head",
     # Above is a workaround found here until new version is released: https://github.com/cannatag/ldap3/issues/1159#issuecomment-2535547426
     "cachetools>=5.5.2",

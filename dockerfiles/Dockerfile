@@ -1,5 +1,5 @@
 #=======================
-FROM ghcr.io/astral-sh/uv:python3.14-trixie@sha256:a8433b4080bfc7d63c803189f90a026acb9b2c8d9a003868236194a839da9a6c AS build-backend
+FROM ghcr.io/astral-sh/uv:0.12.10-python3.14-trixie-slim@sha256:d5ddd498c5a28ec77ff1c70276f8f3c4a116a303c8b5583a018ea43c2e89e366 AS build-backend
 #=======================
 
 WORKDIR /app
@@ -13,11 +13,16 @@ COPY .python-version .
 COPY README.md .
 COPY metadata_backend ./metadata_backend
 
+RUN apt-get update && apt-get install -yqq git
+
 # Install dependencies and create virtual environment
-RUN uv sync --frozen
+RUN --mount=type=secret,id=vault_secrets \
+    grep '^UV_' /run/secrets/vault_secrets > /tmp/uv_env && \
+    set -a && . /tmp/uv_env && set +a && \
+    uv sync --frozen
 
 #=======================
-FROM ghcr.io/astral-sh/uv:python3.14-trixie-slim@sha256:0e664b12a6be9cd16be1015ec5cc3feebdeb42078ab587389707afbdfab8b10f
+FROM ghcr.io/astral-sh/uv:0.12.10-python3.14-trixie-slim@sha256:d5ddd498c5a28ec77ff1c70276f8f3c4a116a303c8b5583a018ea43c2e89e366
 #=======================
 
 LABEL maintainer="CSC Developers"
@@ -30,6 +35,9 @@ LABEL org.opencontainers.image.licenses="MIT"
 
 # Setup the working directory
 WORKDIR /app
+
+# To fix vulnerabilities
+RUN apt-get update && apt-get install --only-upgrade -yqq perl-base libc6 libc-bin
 
 # Add the user and group, and make it own /app
 RUN groupadd -r -g 998 submitter \
