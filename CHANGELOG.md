@@ -7,6 +7,23 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- CI audit job
+- Artifactory build-info metadata for releases (including MR releases), plus a link to the Artifactory release in the GitLab release description
+
+### Changed
+
+- Dockerfile/Dockerfile-dev now require .env mounted as a secret file, and Dockerfile installs git before uv sync
+- `make get_env` now also fetches a Vault secret enabling pnpm to authenticate against Artifactory
+- Dependencies (uv, uv.lock) now resolve through Artifactory instead of the public index
+- CI now runs on the sdd-common-ci image (pre-installed uv/tox) with proper scan watches
+- CI now uses a Docker registry to cache images between jobs, passing the image digest via a dotenv artifact
+
+### Removed
+
+- License output from the CI scan job
+
 ## [2026.8.0] - 2026-08-21
 
 ### Fixed
