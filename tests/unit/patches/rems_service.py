@@ -13,7 +13,7 @@ from metadata_backend.api.models.rems import (
     RemsWorkflow,
     RemsWorkflowDetails,
 )
-from metadata_backend.services.rems_service import RemsServiceHandler
+from metadata_backend.services.rems_service import REMS_LICENSE_TYPE_TEXT, RemsServiceHandler
 
 MOCK_REMS_DEFAULT_ORGANISATION_ID = "1"
 MOCK_REMS_DEFAULT_WORKFLOW_ID = 1
@@ -32,7 +32,7 @@ def _mock_rems_create_organisation(organisation_id: str) -> RemsOrganization:
     )
 
 
-def _mock_rems_create_license(organisation_id: str, license_id: int) -> RemsLicense:
+def _mock_rems_license(organisation_id: str, license_id: int) -> RemsLicense:
     return RemsLicense(
         id=license_id,
         licensetype="link",
@@ -42,8 +42,6 @@ def _mock_rems_create_license(organisation_id: str, license_id: int) -> RemsLice
             "sv": RemsLicenseLocalization(title="test_title", textcontent="test_content"),
         },
         organization=_mock_rems_create_organisation(organisation_id),
-        archived=False,
-        enabled=True,
     )
 
 
@@ -52,7 +50,7 @@ def _mock_rems_create_workflow(organisation_id: str, workflow_id: int, license_i
         id=workflow_id,
         title="test",
         workflow=RemsWorkflowDetails(
-            type="workflow/default", licenses=[_mock_rems_create_license(organisation_id, license_id)]
+            type="workflow/default", licenses=[_mock_rems_license(organisation_id, license_id)]
         ),
         organization=_mock_rems_create_organisation(organisation_id),
         archived=False,
@@ -71,7 +69,7 @@ _mock_rems_workflows = {
     )
 }
 _mock_rems_licenses = {
-    MOCK_REMS_DEFAULT_LICENSE_ID: _mock_rems_create_license(
+    MOCK_REMS_DEFAULT_LICENSE_ID: _mock_rems_license(
         organisation_id=MOCK_REMS_DEFAULT_ORGANISATION_ID, license_id=MOCK_REMS_DEFAULT_LICENSE_ID
     )
 }
@@ -80,6 +78,7 @@ _mock_rems_catalogue_items: dict[int, RemsCatalogueItem] = {}  # key: catalogue 
 
 mock_rems_resource_id = 1
 mock_rems_catalogue_id = 1
+mock_rems_license_id = MOCK_REMS_DEFAULT_LICENSE_ID
 
 
 async def _mock_rems_get_workflow(organization_id: str | None, workflow_id: int) -> RemsWorkflow:
@@ -90,10 +89,24 @@ async def _mock_rems_get_workflow(organization_id: str | None, workflow_id: int)
 
 
 async def _mock_rems_get_license(organization_id: str | None, license_id: int) -> RemsLicense:
-    license = _mock_rems_licenses[license_id]
-    if organization_id and organization_id != license.organization.id:
+    if license_id not in _mock_rems_licenses:
+        raise UserException(f"Unknown REMS license '{license_id}'")
+    rems_license = _mock_rems_licenses[license_id]
+    if organization_id and organization_id != rems_license.organization.id:
         raise UserException(f"REMS license '{license_id}' does not belong to REMS organization '{organization_id}'")
-    return license
+    return rems_license
+
+
+async def _mock_rems_create_license(organization_id: str, localization: RemsLicenseLocalization) -> int:
+    global mock_rems_license_id
+    mock_rems_license_id += 1
+    _mock_rems_licenses[mock_rems_license_id] = RemsLicense(
+        id=mock_rems_license_id,
+        licensetype=REMS_LICENSE_TYPE_TEXT,
+        localizations={"en": localization},
+        organization=_mock_rems_create_organisation(organization_id),
+    )
+    return mock_rems_license_id
 
 
 async def _mock_rems_get_resources(doi: str | None = None) -> list[RemsResource]:
@@ -176,6 +189,10 @@ def patch_rems_get_catalogue_item():
     )
 
 
+def patch_rems_create_license():
+    return patch.object(RemsServiceHandler, "create_license", new=AsyncMock(side_effect=_mock_rems_create_license))
+
+
 def patch_rems_create_resource():
     return patch.object(RemsServiceHandler, "create_resource", new=AsyncMock(side_effect=_mock_rems_create_resource))
 
@@ -192,6 +209,7 @@ patch_rems_get_workflows().start()
 patch_rems_get_workflow().start()
 patch_rems_get_licenses().start()
 patch_rems_get_license().start()
+patch_rems_create_license().start()
 patch_rems_get_resources().start()
 patch_rems_get_catalogue_item().start()
 patch_rems_create_resource().start()

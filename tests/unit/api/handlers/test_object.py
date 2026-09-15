@@ -516,13 +516,17 @@ async def test_missing_object_type_submission_bp(nbis_client):
     api_prefix_v1 = deployment_config().API_PREFIX_V1
     is_datacite = True
 
-    # Test missing mandatory XML.
-
+    # Test missing mandatory XML object types.
+    mandatory_object_types_by_file: dict[str, set[str]] = {}
     for object_type in BP_MANDATORY_OBJECT_TYPES:
+        file = get_xml_object_type_schema(object_type) + ".xml"
+        mandatory_object_types_by_file.setdefault(file, set()).add(object_type)
+
+    for file, object_types in mandatory_object_types_by_file.items():
         # Read XML files.
         _, files = bp_submission_documents(is_datacite=is_datacite)
-        # Remove XML corresponding to the mandatory object type.
-        del files[get_xml_object_type_schema(object_type) + ".xml"]
+        # Remove the XML carrying the mandatory object types.
+        del files[file]
         file_data = prepare_file_data_bp(files)
         with patch_get_user_projects, patch_verify_user_project, patch_verify_authorization:
             # Test create submission.
@@ -532,12 +536,11 @@ async def test_missing_object_type_submission_bp(nbis_client):
             assert problem_json["detail"] == "User error"
             assert len(problem_json["errors"]) == 1
 
-            is_single = object_type in BP_SINGLE_OBJECT_TYPES
-
-            assert (
-                problem_json["errors"][0] == f"Expecting {'exactly' if is_single else 'at least'} one '{object_type}' "
-                f"metadata object but found 0."
-            )
+            assert problem_json["errors"][0] in {
+                f"Expecting {'exactly' if object_type in BP_SINGLE_OBJECT_TYPES else 'at least'} one "
+                f"'{object_type}' metadata object but found 0."
+                for object_type in object_types
+            }
 
 
 async def test_mandatory_constraint_7_submission_bp(nbis_client):

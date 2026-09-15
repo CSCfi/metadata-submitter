@@ -24,10 +24,6 @@ from .models import (
     validate_relative_path,
 )
 
-# TODO(improve): support name and accession references to existing metadata objects submitted by the same project
-# TODO(improve): support accession references to existing metadata objects submitted by other projects
-# TODO(improve): support setting FEGA @center_name and IDENTIFIERS/SUBMITTER_ID/@namespace
-
 # XmlProcessor
 #
 
@@ -1039,22 +1035,17 @@ class XmlDocumentsProcessor(XmlProcessor, DocumentsProcessor):
                 XmlDocumentProcessor.set_xml_object_processor(self.xml_processor, name, p)
 
         for o in config.object_paths:
-            identifiers = self.get_object_identifiers(o.schema_type)
+            # Counted per metadata object path.
+            count = sum(1 for i in self.get_object_identifiers(o.schema_type) if i.root_path == o.root_path)
             if o.is_single and o.is_mandatory:
-                if len(identifiers) != 1:
-                    raise ValueError(
-                        f"Expecting exactly one '{o.schema_type}' metadata object but found {len(identifiers)}."
-                    )
+                if count != 1:
+                    raise ValueError(f"Expecting exactly one '{o.object_type}' metadata object but found {count}.")
             elif o.is_mandatory:
-                if len(identifiers) == 0:
-                    raise ValueError(
-                        f"Expecting at least one '{o.schema_type}' metadata object but found {len(identifiers)}."
-                    )
+                if count == 0:
+                    raise ValueError(f"Expecting at least one '{o.object_type}' metadata object but found {count}.")
             elif o.is_single:
-                if len(identifiers) > 1:
-                    raise ValueError(
-                        f"Expecting at most one '{o.schema_type}' metadata object but found {len(identifiers)}."
-                    )
+                if count > 1:
+                    raise ValueError(f"Expecting at most one '{o.object_type}' metadata object but found {count}.")
 
     def get_xml_object_identifier(self, schema_type: str, root_path: str, name: str) -> ObjectIdentifier:
         """

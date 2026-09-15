@@ -1,15 +1,53 @@
 """REMS service."""
 
+import hashlib
+import json
+import math
 from typing import Any
 from urllib.parse import quote
 
-import httpx
+from cachetools import TTLCache
+from starlette import status
 from yarl import URL
 
-from ..api.exceptions import UserException
-from ..api.models.rems import RemsCatalogueItem, RemsLicense, RemsResource, RemsWorkflow
+from ..api.exceptions import ServiceHandlerSystemException, UserException
+from ..api.models.rems import (
+    RemsCatalogueItem,
+    RemsLicense,
+    RemsLicenseLocalization,
+    RemsResource,
+    RemsWorkflow,
+)
 from ..conf.rems import rems_config
 from .service_handler import ServiceHandler
+
+REMS_LICENSE_TYPE_TEXT = "text"
+
+# How long the REMS licenses are remembered. REMS has no license search by content, so
+# every active license is listed and matched against. All requests share the cache.
+REMS_LICENSE_CACHE_TTL = 7 * 24 * 60 * 60.0
+
+
+def license_cache_key(organization_id: str, localizations: dict[str, RemsLicenseLocalization]) -> str:
+    """The key identifying a text license by its organization and localizations.
+
+    :param organization_id: The REMS organization id.
+    :param localizations: The license localizations.
+    :returns: The key, equal for two licenses with the same organization and localizations.
+    """
+
+    identity = json.dumps(
+        {
+            "organization": organization_id,
+            "localizations": {
+                language: [localization.title, localization.textcontent]
+                for language, localization in localizations.items()
+            },
+        },
+        # Sorted, to guarantee localizations order.
+        sort_keys=True,
+    )
+    return hashlib.sha256(identity.encode("utf-8")).hexdigest()
 
 
 class RemsServiceHandler(ServiceHandler):
@@ -30,6 +68,15 @@ class RemsServiceHandler(ServiceHandler):
             },
             healthcheck_url=URL(config.REMS_URL) / "api" / "health",
         )
+
+        # License id cache.
+        self._license_cache = self.new_license_cache()
+
+    @staticmethod
+    def new_license_cache() -> TTLCache[str, int]:
+        """A new cache of license ids, unbounded and expiring after the cache window."""
+
+        return TTLCache(maxsize=math.inf, ttl=REMS_LICENSE_CACHE_TTL)
 
     @staticmethod
     def get_application_url(catalogue_id: str) -> str:
@@ -69,9 +116,9 @@ class RemsServiceHandler(ServiceHandler):
                 path=f"/workflows/{workflow_id}",
                 params={"disabled": "false", "archived": "false"},
             )
-        except httpx.HTTPStatusError as ex:
-            if ex.response.status_code == 404:
-                raise UserException(f"Unknown REMS workflow '{workflow_id}''")
+        except ServiceHandlerSystemException as ex:
+            if ex.service_status_code == status.HTTP_404_NOT_FOUND:
+                raise UserException(f"Unknown REMS workflow '{workflow_id}'") from ex
             raise ex
 
         workflow = RemsWorkflow.model_validate(response)
@@ -89,12 +136,37 @@ class RemsServiceHandler(ServiceHandler):
         :returns: The list of active REMS licenses.
         """
 
+        # Example of REMS API response.
+        #
+        # [
+        #   {
+        #     "id": 0,
+        #     "licensetype": "text",
+        #     "organization": {
+        #       "organization/id": "string",
+        #       ...
+        #     },
+        #     "enabled": true,
+        #     "archived": true,
+        #     "localizations": {
+        #       "en": {
+        #         "title": "General Terms of Use",
+        #         "textcontent": "License text in English."
+        #       },
+        #       "fi": {
+        #         "title": "Yleiset käyttöehdot",
+        #         "textcontent": "Suomenkielinen lisenssiteksti.",
+        #         "attachment-id": 0
+        #       }
+        #     }
+        #   }
+        # ]
         response: dict[str, Any] = await self._request(
             method="GET", path="/licenses", params={"disabled": "false", "archived": "false"}
         )
-        return [RemsLicense.model_validate(license) for license in response]
+        return [RemsLicense.model_validate(rems_license) for rems_license in response]
 
-    async def get_license(self, organization_id: str | None, license_id: int) -> RemsWorkflow:
+    async def get_license(self, organization_id: str | None, license_id: int) -> RemsLicense:
         """
         Get active REMS license.
 
@@ -109,14 +181,96 @@ class RemsServiceHandler(ServiceHandler):
                 path=f"/licenses/{license_id}",
                 params={"disabled": "false", "archived": "false"},
             )
-        except httpx.HTTPStatusError as ex:
-            if ex.response.status_code == 404:
-                raise UserException(f"Unknown REMS license '{license_id}''")
+        except ServiceHandlerSystemException as ex:
+            if ex.service_status_code == status.HTTP_404_NOT_FOUND:
+                raise UserException(f"Unknown REMS license '{license_id}'") from ex
             raise ex
-        license = RemsWorkflow.model_validate(response)
-        if organization_id and license.organization.id != organization_id:
+        rems_license = RemsLicense.model_validate(response)
+        if organization_id and rems_license.organization.id != organization_id:
             raise UserException(f"REMS license '{license_id}' does not belong to REMS organization '{organization_id}'")
-        return license
+        return rems_license
+
+    async def create_license(self, organization_id: str, localizations: dict[str, RemsLicenseLocalization]) -> int:
+        """Create a REMS text license.
+
+        :param organization_id: The REMS organization id.
+        :param localizations: The license title and text content of each language, keyed
+            by language code.
+        :returns: The REMS license id.
+        """
+
+        # Example of REMS API request.
+        #
+        # {
+        #   "licensetype": "text",
+        #   "organization": {
+        #     "organization/id": "string"
+        #   },
+        #   "localizations": {
+        #     "en": {
+        #       "title": "English title",
+        #       "textcontent": "English content"
+        #     },
+        #     "fi": {
+        #       "title": "Finnish title",
+        #       "textcontent": "Finnish content"
+        #     }
+        #   }
+        # }
+        data = {
+            "licensetype": REMS_LICENSE_TYPE_TEXT,
+            "organization": {"organization/id": organization_id},
+            "localizations": {
+                language: {
+                    "title": localization.title,
+                    "textcontent": localization.textcontent,
+                }
+                for language, localization in localizations.items()
+            },
+        }
+
+        response: dict[str, Any] = await self._request(method="POST", path="/licenses/create", json_data=data)
+        return int(response["id"])
+
+    async def get_or_create_license(
+        self, organization_id: str, localizations: dict[str, RemsLicenseLocalization]
+    ) -> int:
+        """Get a matching REMS text license, or create it if none exists.
+
+        A license matches when it belongs to the same organization and has exactly the same
+        localizations, including localisation language, title, and text content.
+
+        A license that is not found in the cache is searched in REMS before it is created.
+        A license created here is cached, so asking for it again costs nothing.
+
+        :param organization_id: The REMS organization id.
+        :param localizations: The license localizations.
+        :returns: The REMS license id.
+        """
+
+        cache_key = license_cache_key(organization_id, localizations)
+
+        license_id = self._license_cache.get(cache_key)
+        if license_id is None:
+            # Check if the license exists in REMS.
+            await self._refresh_licenses()
+            license_id = self._license_cache.get(cache_key)
+
+        if license_id is None:
+            license_id = await self.create_license(organization_id, localizations)
+            self._license_cache[cache_key] = license_id
+
+        return license_id
+
+    async def _refresh_licenses(self) -> None:
+        """Retrieve all licenses from REMS and cache them."""
+
+        for rems_license in await self.get_licenses():
+            if rems_license.licensetype != REMS_LICENSE_TYPE_TEXT:
+                continue
+
+            cache_key = license_cache_key(rems_license.organization.id, rems_license.localizations)
+            self._license_cache[cache_key] = rems_license.id
 
     async def get_resources(self, doi: str | None = None) -> list[RemsResource]:
         """

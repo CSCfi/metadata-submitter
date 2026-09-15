@@ -2,6 +2,9 @@ import random
 import string
 import uuid
 
+import pytest
+
+from metadata_backend.api.exceptions import UserException
 from metadata_backend.api.models.rems import (
     RemsCatalogueItemLocalization,
     RemsLicense,
@@ -12,6 +15,7 @@ from metadata_backend.api.models.rems import (
     RemsWorkflowDetails,
 )
 from metadata_backend.conf.discovery import discovery_config
+from metadata_backend.services.rems_service import REMS_LICENSE_TYPE_TEXT, RemsServiceHandler
 
 # Test service: https://rems-test.2.rahtiapp.fi/swagger-ui/index.htm
 # Test data: https://github.com/CSCfi/rems/blob/master/src/clj/rems/service/test_data.clj
@@ -35,8 +39,6 @@ async def test_get_licenses(secret_env):
 
     expected_license = RemsLicense(
         id="1",
-        archived=False,
-        enabled=True,
         licensetype="link",
         localizations={
             "en": RemsLicenseLocalization(
@@ -58,6 +60,43 @@ async def test_get_licenses(secret_env):
     assert expected_license in licenses
 
 
+async def test_get_or_create_license(secret_env):
+    # REMS licenses cannot be deleted, only archived. THis test creates one new license.
+
+    service = RemsServiceHandler()
+
+    localizations = {
+        "en": RemsLicenseLocalization(title=f"test_{uuid.uuid4()}", textcontent="test license text content"),
+    }
+
+    # No license matches the localizations, so one is created.
+    license_id = await service.get_or_create_license(ORGANISATION.id, localizations)
+    assert license_id is not None
+
+    # The created license is found rather than a second one created.
+    assert await service.get_or_create_license(ORGANISATION.id, localizations) == license_id
+
+    # The created license is returned as it was given.
+    rems_license = await service.get_license(ORGANISATION.id, license_id)
+    assert rems_license.id == license_id
+    assert rems_license.licensetype == REMS_LICENSE_TYPE_TEXT
+    assert rems_license.localizations == localizations
+    assert rems_license.organization == ORGANISATION
+
+    # The created license is one of the active licenses.
+    assert rems_license in await service.get_licenses()
+
+    # The created license belongs to no other organisation.
+    with pytest.raises(UserException, match="does not belong to REMS organization"):
+        await service.get_license("other_organisation", license_id)
+
+
+async def test_get_license_unknown_license(secret_env):
+    service = RemsServiceHandler()
+    with pytest.raises(UserException, match="Unknown REMS license"):
+        await service.get_license(ORGANISATION.id, 999999999)
+
+
 async def test_get_workflows(secret_env):
     """Test REMS get workflows using test service and test data."""
 
@@ -75,8 +114,6 @@ async def test_get_workflows(secret_env):
             licenses=[
                 RemsLicense(
                     id=7,
-                    archived=False,
-                    enabled=True,
                     licensetype="link",
                     localizations={
                         "en": RemsLicenseLocalization(
@@ -103,8 +140,6 @@ async def test_get_workflows(secret_env):
                 ),
                 RemsLicense(
                     id=8,
-                    archived=False,
-                    enabled=True,
                     licensetype="text",
                     localizations={
                         "en": RemsLicenseLocalization(

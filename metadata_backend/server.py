@@ -34,6 +34,7 @@ from .api.services.auth import AuthService
 from .api.services.file import S3AllasFileProviderService, S3InboxSDAService
 from .api.services.ingest import SDAIngestService
 from .api.services.project import CscProjectService, NbisProjectService, ProjectService
+from .api.services.submission.bigpicture_policy import BigpictureRemsLicenseProvider
 from .conf.conf import (
     DEPLOYMENT_CSC,
     DEPLOYMENT_NBIS,
@@ -195,6 +196,7 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
     admin_handler = None
     keystone_handler = None
     auth_handler = None
+    license_provider = None
 
     if config.DEPLOYMENT == DEPLOYMENT_CSC:
         metax_handler = _create_handler(MetaxServiceHandler())
@@ -206,6 +208,7 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
     if config.DEPLOYMENT == DEPLOYMENT_NBIS:
         datacite_handler = _create_handler(DataciteServiceHandler(metax_handler))
         admin_handler = _create_handler(AdminServiceHandler())
+        license_provider = BigpictureRemsLicenseProvider(object_service)
 
     # Create file provider service.
     file_provider_service = (
@@ -225,6 +228,7 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
         auth=auth_service,
         project=project_service,
         file_provider=file_provider_service,
+        license_provider=license_provider,
     )
 
     # Provide service handlers for FastAPI routes.

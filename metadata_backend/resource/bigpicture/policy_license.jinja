@@ -1,0 +1,54 @@
+{# A Jinja template for the REMS license text created from the Bigpicture Policy XML
+   attributes. Rendered with one variable per attribute TAG in policy_attributes.yaml.
+
+   An attribute configured to allow "multiple" values produces a list of values.
+   Referring to a TAG that does not exist in policy_attributes.yaml, or leaving a
+   mandatory attribute out, is an error reported when the server starts.
+
+   An optional paragraph owns the blank line that follows it.
+#}
+Policy text: {{ policy_text }}
+
+Type of dataset: {{ type_of_dataset }}
+
+Defined research question required: {{ defined_research_question_required }}
+
+{% if legal_basis_for_sharing_the_data %}
+Legal basis for sharing the data: {{ legal_basis_for_sharing_the_data }}
+
+{% endif %}
+{% if informed_consent_form_defined_use_restrictions %}
+Use restrictions defined in informed consent form: {{ informed_consent_form_defined_use_restrictions }}
+
+{% endif %}
+{% if custom_use_restrictions %}
+Custom use restrictions: {{ custom_use_restrictions }}
+
+{% endif %}
+Allowed geographical distribution: {{ allowed_geographical_distribution }}
+
+Duration of access: {{ duration_of_access }}
+
+Type of access: {{ type_of_access }}
+
+{% for value in allowed_use %}
+Allowed use: {{ value }}
+
+{% endfor %}
+{% if required_bigpicture_acknowledgements %}
+Required Bigpicture acknowledgements: {{ required_bigpicture_acknowledgements }}
+
+{% endif %}
+{% for value in required_custom_acknowledgment %}
+Required custom acknowledgement: {{ value }}
+
+{% endfor %}
+{% for value in required_citation %}
+Required citation: {{ value }}
+
+{% endfor %}
+{% if coauthorship == "True" %}
+If the dataset is central to the study’s conclusion or the Data Contributor provides substantial contributions in interpretation or data analysis, the Data Contributor should be offered the option to co-author any dissemination.
+
+{% endif %}
+Terms of use version: {{ terms_of_use_version }}

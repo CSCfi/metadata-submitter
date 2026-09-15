@@ -18,6 +18,7 @@ from ...services.service_handler import HealthHandler
 from ..services.auth import AuthService
 from ..services.file import FileProviderService
 from ..services.project import ProjectService
+from ..services.rems import RemsLicenseProvider
 
 
 class RESTAPIServices(BaseModel):
@@ -36,6 +37,8 @@ class RESTAPIServices(BaseModel):
     project: ProjectService
     # File provider service.
     file_provider: FileProviderService
+    # License provider service.
+    license_provider: RemsLicenseProvider | None = None
 
 
 class RESTAPIServiceHandlers(BaseModel):

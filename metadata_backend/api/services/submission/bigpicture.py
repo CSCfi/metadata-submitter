@@ -1,6 +1,7 @@
 """Service for processing Bigpicture submissions."""
 
-import re
+# TODO: Make these modules a bigpicture package, to drop the prefix and split further.
+
 from pathlib import Path
 from typing import override
 
@@ -24,33 +25,27 @@ from ...processors.xml.bigpicture import (
     BP_IMAGE_OBJECT_TYPE,
     BP_IMAGE_PATH,
     BP_IMAGE_SCHEMA,
-    BP_LANDING_PAGE_PATH,
-    BP_LANDING_PAGE_SCHEMA,
     BP_OBSERVATION_OBJECT_TYPE,
     BP_OBSERVATION_PATH,
     BP_OBSERVATION_SCHEMA,
     BP_OBSERVER_OBJECT_TYPE,
     BP_OBSERVER_PATH,
     BP_OBSERVER_SCHEMA,
-    BP_ORGANISATION_PATH,
-    BP_ORGANISATION_SCHEMA,
-    BP_POLICY_PATH,
-    BP_POLICY_SCHEMA,
     BP_REMS_PATH,
     BP_REMS_SCHEMA,
-    BP_SAMPLE_BIOLOGICAL_BEING_PATH,
-    BP_SAMPLE_BLOCK_PATH,
-    BP_SAMPLE_SCHEMA,
-    BP_SAMPLE_SLIDE_PATH,
-    BP_SAMPLE_SPECIMEN_PATH,
-    BP_STAINING_PATH,
-    BP_STAINING_SCHEMA,
     BP_XML_OBJECT_CONFIG,
 )
 from ...processors.xml.datacite import DATACITE_OBJECT_TYPE, read_datacite_xml
-from ...processors.xml.processors import XmlDocumentsProcessor, XmlObjectProcessor, XmlStringDocumentsProcessor
+from ...processors.xml.processors import XmlDocumentsProcessor, XmlStringDocumentsProcessor
 from ..accession import generate_bp_accession
 from ..project import ProjectService
+from .bigpicture_policy import (
+    create_policy_license,
+    is_clinical_policy,
+    normalise_policy_attributes,
+    policy_processor,
+    validate_policy_attributes,
+)
 from .submission import ObjectSubmission, ObjectSubmissionService
 
 # mypy: disable_error_code = misc
@@ -71,44 +66,40 @@ BP_FILES = [
     "staining.xml",
 ]
 
+
 DATACITE_OBJECT_TITLE = "DataCite"
 DATACITE_OBJECT_DESCRIPTION = "DataCite"
 
 
-def is_clinical_policy(processor: XmlDocumentsProcessor | XmlObjectProcessor) -> bool:
+def validate_bigpicture_documents(processor: XmlDocumentsProcessor) -> None:
     """
-    Check if the policy is clinical. Raises a ValueError if the 'type of dataset' attribute value
-    is missing or invalid.
+    Validate Bigpicture XML documents beyond the XML Schema and reference validation.
+
+    XML attributes and validated here.
+
+    The validation may change the XMLs to make them valid.
 
     :param processor: The XML documents processor.
-    :return: True if the policy is clinical.
+    :raises UserException: if the documents do not pass validation.
     """
 
-    if isinstance(processor, XmlObjectProcessor):
-        policy_processor = processor
-    else:
-        # The BP XML processor guarantees that we have one dataset, rems and policy metadata object.
-        policy_identifiers = processor.get_object_identifiers(BP_POLICY_SCHEMA)
-        policy_processor = processor.get_object_processor(BP_POLICY_SCHEMA, BP_POLICY_PATH, policy_identifiers[0].name)
+    # Check mandatory constraints first to report missing metadata objects.
+    check_mandatory_constraints(processor)
 
-    # The field name should be descriptive as it is used in error messages.
-    field_name = "'Policy attribute 'type of dataset'"
-    value = policy_processor.get_xml_node_value(
-        './ATTRIBUTES/STRING_ATTRIBUTE[TAG="type_of_dataset"]/VALUE', optional=False, field_name=field_name
-    )
+    # Find the policy once, rather than in each of the checks below.
+    policy = policy_processor(processor)
 
-    # Text before first slash '/'.
-    text = value.split("/", 1)[0].strip()
+    # Check policy type.
+    is_clinical_policy(policy)
 
-    # Normalize spaces.
-    text = re.sub(r"\s+", " ", text).strip()
+    # Normalise attribute tags and values.
+    normalise_policy_attributes(policy)
 
-    if text == "Clinical":
-        return True
-    if text == "Non-Clinical":
-        return False
+    # Validate attribute tags and values.
+    validate_policy_attributes(policy)
 
-    raise UserException(f"{field_name} must start with 'Clinical' or 'Non-Clinical' before '/', got: '{value}'")
+    # Check that the REMS license can be created from the policy.
+    create_policy_license(policy)
 
 
 def check_mandatory_constraints(processor: XmlDocumentsProcessor) -> None:
@@ -122,82 +113,8 @@ def check_mandatory_constraints(processor: XmlDocumentsProcessor) -> None:
 
     max_reported_objects = 10
 
-    _check_mandatory_constraint_1(processor)
     _check_mandatory_constraint_5(processor)
     _check_mandatory_constraint_7(processor, max_reported_objects)
-
-
-def _check_mandatory_constraint_1(processor: XmlDocumentsProcessor) -> None:
-    """
-    Check mandatory constraint 1.
-
-    The XML processor should validate all of these using XML Schema and reference validation.
-    These checks have been added here for extra safety.
-
-    At least the following entities must be present:
-    - One Dataset
-    - One Policy
-    - One Organisation
-    - One REMS
-    - One Landing Page
-    - One or more Image
-    - One or more Slide
-    - One or more Staining
-    - One or more Block
-    - One or more Specimen
-    - One or more Biological Being
-    - One or more Observation
-    :param processor: The XML documents processor.
-    :param processor: The maximum number of reported objects
-    """
-
-    cnt = processor.get_xml_object_count(BP_DATASET_SCHEMA, BP_DATASET_PATH)
-    if cnt != 1:
-        f"Expected exactly 1 dataset object in submission but found {cnt}."
-
-    cnt = processor.get_xml_object_count(BP_POLICY_SCHEMA, BP_POLICY_PATH)
-    if cnt != 1:
-        f"Expected exactly 1 policy object in submission but found {cnt}."
-
-    cnt = processor.get_xml_object_count(BP_ORGANISATION_SCHEMA, BP_ORGANISATION_PATH)
-    if cnt != 1:
-        f"Expected exactly 1 organisation object in submission but found {cnt}."
-
-    cnt = processor.get_xml_object_count(BP_REMS_SCHEMA, BP_REMS_PATH)
-    if cnt != 1:
-        f"Expected exactly 1 rems object in submission but found {cnt}."
-
-    cnt = processor.get_xml_object_count(BP_LANDING_PAGE_SCHEMA, BP_LANDING_PAGE_PATH)
-    if cnt != 1:
-        f"Expected exactly 1 landing page object in submission but found {cnt}."
-
-    cnt = processor.get_xml_object_count(BP_IMAGE_SCHEMA, BP_IMAGE_PATH)
-    if cnt < 1:
-        f"Expected one or more image objects in submission but found {cnt}."
-
-    cnt = processor.get_xml_object_count(BP_SAMPLE_SCHEMA, BP_SAMPLE_SLIDE_PATH)
-    if cnt < 1:
-        f"Expected one or more slide objects in submission but found {cnt}."
-
-    cnt = processor.get_xml_object_count(BP_STAINING_SCHEMA, BP_STAINING_PATH)
-    if cnt < 1:
-        f"Expected one or more staining objects in submission but found {cnt}."
-
-    cnt = processor.get_xml_object_count(BP_SAMPLE_SCHEMA, BP_SAMPLE_BLOCK_PATH)
-    if cnt < 1:
-        f"Expected one or more block objects in submission but found {cnt}."
-
-    cnt = processor.get_xml_object_count(BP_SAMPLE_SCHEMA, BP_SAMPLE_SPECIMEN_PATH)
-    if cnt < 1:
-        f"Expected one or more specimen objects in submission but found {cnt}."
-
-    cnt = processor.get_xml_object_count(BP_SAMPLE_SCHEMA, BP_SAMPLE_BIOLOGICAL_BEING_PATH)
-    if cnt < 1:
-        f"Expected one or more biological being objects in submission but found {cnt}."
-
-    cnt = processor.get_xml_object_count(BP_OBSERVATION_SCHEMA, BP_OBSERVATION_PATH)
-    if cnt < 1:
-        f"Expected one or more observation objects in submission but found {cnt}."
 
 
 def _check_mandatory_constraint_5(processor: XmlDocumentsProcessor) -> None:
@@ -424,11 +341,8 @@ class BigpictureObjectSubmissionService(ObjectSubmissionService):
 
         The validation may change the XMLs to make the valid.
         """
-        # Check policy type.
-        is_clinical_policy(self._processor)
 
-        # Check mandatory constraints.
-        check_mandatory_constraints(self._processor)
+        validate_bigpicture_documents(self._processor)
 
     @override
     def prepare_create_submission(self, project_id: str, submission_id: str) -> Submission:

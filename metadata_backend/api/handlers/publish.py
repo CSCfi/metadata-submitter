@@ -1,6 +1,5 @@
 """Publish API handler."""
 
-import traceback
 from datetime import datetime
 
 from fastapi import Request
@@ -10,7 +9,7 @@ from ...conf.conf import DEPLOYMENT_CSC
 from ...conf.deployment import deployment_config
 from ...conf.discovery import discovery_config
 from ...helpers.logger import LOG
-from ..exceptions import SystemException, UserException
+from ..exceptions import SystemException, UserException, external_service_call
 from ..models.datacite import DataCiteMetadata
 from ..models.models import File, Registration, SubmissionId
 from ..models.submission import Rems, Submission, SubmissionMetadata, SubmissionWorkflow
@@ -21,7 +20,8 @@ from ..processors.xml.bigpicture import (
 from ..processors.xml.processors import XmlObjectProcessor
 from ..services.bigpicture import upload_bp_metadata_xmls
 from ..services.datacite import DataciteService
-from ..services.submission.bigpicture import is_clinical_policy
+from ..services.rems import resolve_rems_license_ids
+from ..services.submission.bigpicture_policy import is_clinical_policy
 from .restapi import RESTAPIHandler
 from .submission import SubmissionAPIHandler
 
@@ -58,7 +58,7 @@ class PublishAPIHandler(RESTAPIHandler):
 
         :returns: The created DOI
         """
-        try:
+        with external_service_call("Failed to register DOI."):
             if self._handlers.datacite is not None:
                 return await self._handlers.datacite.create_draft_doi()
             elif self._handlers.pid is not None:
@@ -66,20 +66,12 @@ class PublishAPIHandler(RESTAPIHandler):
 
             raise SystemException("Failed to register DOI. No service configured.")
 
-        except Exception as ex:
-            raise SystemException("Failed to register DOI. Please try again later.") from ex
-
     async def _register_metax_id(self, submission_id: str, registration: Registration) -> None:
-        try:
+        with external_service_call(f"Failed to register Metax ID in submission '{submission_id}'."):
             metax_id = await self._handlers.metax.create_draft_dataset(
                 registration.doi, registration.title, registration.description
             )
             registration.metaxId = metax_id
-
-        except Exception as ex:
-            raise SystemException(
-                f"Failed to register Metax ID in submission '{submission_id}'. Please try again later."
-            ) from ex
 
     async def _publish_datacite(
         self, submission: Submission, registration: Registration, datacite: DataCiteMetadata
@@ -90,7 +82,7 @@ class PublishAPIHandler(RESTAPIHandler):
         :param registration: The registration
         :param datacite: The DataCite metadata
         """
-        try:
+        with external_service_call("Failed to publish submission in DataCite."):
             discovery_url = self.get_discovery_url(submission, registration)
 
             if not registration.dataciteUrl:
@@ -110,10 +102,6 @@ class PublishAPIHandler(RESTAPIHandler):
                     )
 
                 await self._services.registration.update_datacite_url(registration.submissionId, discovery_url)
-        except Exception as ex:
-            raise SystemException(
-                f"Failed to publish submission in DataCite. Please try again later: {str(ex)}"
-            ) from ex
 
     async def _update_metax(self, registration: Registration, metadata: SubmissionMetadata) -> None:
         """Update information in Metax.
@@ -121,12 +109,8 @@ class PublishAPIHandler(RESTAPIHandler):
         :param registration: The registration
         :param metadata: The submission metadata
         """
-        try:
+        with external_service_call(f"Failed to update submission '{registration.submissionId}' in Metax."):
             await self._handlers.metax.update_dataset_metadata(metadata, registration.metaxId, self._handlers.ror)
-        except Exception as ex:
-            raise SystemException(
-                f"Failed to update submission '{registration.submissionId}' in Metax. Please try again later."
-            ) from ex
 
     async def _is_published_to_rems(self, submission: Submission, registration: Registration) -> bool:
         """Whether the submission is published to REMS.
@@ -160,7 +144,7 @@ class PublishAPIHandler(RESTAPIHandler):
         # Check that the workflow exists and get the organisation id.
         rems_workflow = await self._handlers.rems.get_workflow(rems.organizationId, rems.workflowId)
 
-        try:
+        with external_service_call(f"Failed to publish submission '{registration.submissionId}' to REMS."):
             # Create REMS resource.
             if not registration.remsResourceId:
                 if submission.workflow == SubmissionWorkflow.BP:
@@ -172,8 +156,17 @@ class PublishAPIHandler(RESTAPIHandler):
                 else:
                     # If DOI is unavailable use submission id as the REMS resource id.
                     resid = registration.submissionId
+
+                license_ids = await resolve_rems_license_ids(
+                    self._handlers.rems,
+                    self._services.license_provider,
+                    rems,
+                    registration.submissionId,
+                    rems_workflow.organization.id,
+                )
+
                 resource_id = await self._handlers.rems.create_resource(
-                    rems_workflow.organization.id, rems.licenses, resid
+                    rems_workflow.organization.id, license_ids, resid
                 )
                 await self._services.registration.update_rems_resource_id(registration.submissionId, str(resource_id))
                 registration.remsResourceId = str(resource_id)
@@ -205,16 +198,6 @@ class PublishAPIHandler(RESTAPIHandler):
 
                 await self._services.registration.update_rems_url(registration.submissionId, rems_url)
                 registration.remsUrl = rems_url
-        except Exception as ex:
-            LOG.error(
-                "Failed to publish submission %s to REMS. Original error: %s\nTraceback:\n%s",
-                registration.submissionId,
-                ex,
-                traceback.format_exc(),
-            )
-            raise SystemException(
-                f"Failed to publish submission '{registration.submissionId}' to REMS. Please try again later."
-            ) from ex
 
     async def _publish_metax(
         self,
@@ -224,12 +207,8 @@ class PublishAPIHandler(RESTAPIHandler):
 
         :param registration: The registration
         """
-        try:
+        with external_service_call(f"Failed to publish submission '{registration.submissionId}' to Metax."):
             await self._handlers.metax.publish_dataset(registration.metaxId, registration.doi)
-        except Exception as ex:
-            raise SystemException(
-                f"Failed to publish submission '{registration.submissionId}' to Metax. Please try again later."
-            ) from ex
 
     @staticmethod
     def _require_doi(submission_id: str, datacite: DataCiteMetadata) -> None:
