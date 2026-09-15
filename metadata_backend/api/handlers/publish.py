@@ -128,13 +128,34 @@ class PublishAPIHandler(RESTAPIHandler):
                 f"Failed to update submission '{registration.submissionId}' in Metax. Please try again later."
             ) from ex
 
+    async def _is_published_to_rems(self, submission: Submission, registration: Registration) -> bool:
+        """Whether the submission is published to REMS.
+
+        :param submission: The submission.
+        :param registration: The registration.
+        :return: True if the submission is published to REMS.
+        """
+
+        if submission.workflow != SubmissionWorkflow.BP:
+            return True
+
+        # A non-clinical Bigpicture dataset is not published to REMS.
+        async for xml in self._services.object.get_xml_documents(registration.submissionId, BP_POLICY_OBJECT_TYPE):
+            return is_clinical_policy(XmlObjectProcessor(BP_XML_OBJECT_CONFIG, xml))
+
+        return True
+
     async def _publish_rems(self, submission: Submission, rems: Rems, registration: Registration) -> None:
         """Prepare dictionary with values to be published to REMS. Adds the metax id if available.
 
-        :param rems: The submission metadata
+        :param submission: The submission metadata
         :param rems: The rems metadata
-            :param registration: The registration
+        :param registration: The registration
         """
+
+        if not await self._is_published_to_rems(submission, registration):
+            LOG.info("Submission %s is not published to REMS.", registration.submissionId)
+            return
 
         # Check that the workflow exists and get the organisation id.
         rems_workflow = await self._handlers.rems.get_workflow(rems.organizationId, rems.workflowId)
@@ -160,16 +181,8 @@ class PublishAPIHandler(RESTAPIHandler):
                 resource_id = int(registration.remsResourceId)
 
             # Create REMS catalogue item.
-            create_catalogue_item = True
-            if submission.workflow == SubmissionWorkflow.BP:
-                # Read policy XML. The BP XML processor guarantees that we have one policy metadata object.
-                async for xml in self._services.object.get_xml_documents(
-                    registration.submissionId, BP_POLICY_OBJECT_TYPE
-                ):
-                    # Create REMS catalogue item only for clinical datasets.
-                    create_catalogue_item = is_clinical_policy(XmlObjectProcessor(BP_XML_OBJECT_CONFIG, xml))
-
-            if create_catalogue_item and not registration.remsCatalogueId:
+            catalogue_id = registration.remsCatalogueId
+            if not catalogue_id:
                 catalogue_id = str(
                     await self._handlers.rems.create_catalogue_item(
                         rems_workflow.organization.id,
@@ -181,8 +194,6 @@ class PublishAPIHandler(RESTAPIHandler):
                 )
                 await self._services.registration.update_rems_catalogue_id(registration.submissionId, catalogue_id)
                 registration.remsCatalogueId = catalogue_id
-            else:
-                catalogue_id = registration.remsCatalogueId
 
             if not registration.remsUrl:
                 rems_url = self._handlers.rems.get_application_url(catalogue_id)
