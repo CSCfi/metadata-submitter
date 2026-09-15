@@ -7,6 +7,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ## [Unreleased]
 
+## [2026.9.0] - 2026-09-15
+
 ### Added
 
 - CI audit job
@@ -867,7 +869,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 - Files are also validated during submission process.
 
 
-[Unreleased]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.8.0...HEAD
+[Unreleased]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.9.0...HEAD
+[2026.9.0]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.8.0...2026.9.0
 [2026.8.0]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.6.0...2026.8.0
 [2026.6.0]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.6.0...2026.6.0
 [2026.6.0]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.4.0...2026.6.0
