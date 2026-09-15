@@ -9,12 +9,19 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- (users) Policy XML validation errors are reported to the submitter at submit time.
 - (users) Return more appropriate HTTP status codes when buckets are empty, or inaccessible
 
 ### Fixed
 
+- checking of mandatory Bigpicture object counts.
+- `get_license` parses a license as a workflow.
 - (users) Publishing non-clinical Bigpicture submission by removing invalid REMS-related dependency.
 - Upgraded the development image to Debian trixie, whose git can fetch the ldap3 dependency from GitHub.
+
+### Added
+
+- (users) REMS license creation from Bigpicture policy XML.
 
 ## [2026.9.0] - 2026-09-15
 
