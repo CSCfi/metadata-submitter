@@ -10,9 +10,10 @@ from metadata_backend.api.models.datacite import Subject
 from metadata_backend.api.models.models import Registration
 from metadata_backend.api.models.sda import FileItem
 from metadata_backend.api.models.submission import Rems, Submission, SubmissionMetadata, SubmissionWorkflow
+from metadata_backend.api.processors.xml.bigpicture import BP_DATASET_OBJECT_TYPE, BP_POLICY_OBJECT_TYPE
 from metadata_backend.api.services.file import FileProviderService
 from metadata_backend.conf.deployment import deployment_config
-from metadata_backend.database.postgres.models import FileEntity
+from metadata_backend.database.postgres.models import FileEntity, ObjectEntity
 from metadata_backend.database.postgres.repositories.submission import (
     SUB_FIELD_METADATA,
     SUB_FIELD_REMS,
@@ -302,6 +303,93 @@ async def test_publish_submission_bp(nbis_client, submission_repository, object_
         assert registration.remsResourceId is not None
         assert registration.remsCatalogueId is not None
         assert registration.remsUrl is not None
+
+
+async def test_publish_submission_bp_non_clinical(nbis_client, submission_repository, object_repository):
+    """Test publishing of a non-clinical BP submission.
+
+    A non-clinical dataset is not registered in REMS.
+    """
+
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+
+    rems = Rems(
+        organizationId=MOCK_REMS_DEFAULT_ORGANISATION_ID,
+        workflowId=MOCK_REMS_DEFAULT_WORKFLOW_ID,
+        licenses=[MOCK_REMS_DEFAULT_LICENSE_ID],
+    )
+
+    workflow = SubmissionWorkflow.BP
+
+    submission_entity = create_submission_entity(
+        workflow=workflow,
+        document={SUB_FIELD_METADATA: SUBMISSION_METADATA, SUB_FIELD_REMS: to_json_dict(rems)},
+    )
+    submission_id = await submission_repository.add_submission(submission_entity)
+
+    def _object(object_type: str, xml_document: str | None = None) -> ObjectEntity:
+        return create_object_entity(
+            project_id=submission_entity.project_id,
+            submission_id=submission_id,
+            object_type=object_type,
+            document={},
+            xml_document=xml_document,
+        )
+
+    await object_repository.add_object(_object(BP_DATASET_OBJECT_TYPE), workflow)
+    # The policy says the dataset is non-clinical.
+    await object_repository.add_object(
+        _object(
+            BP_POLICY_OBJECT_TYPE,
+            '<POLICY alias="1"><DATASET_REF alias="1"/><ATTRIBUTES>'
+            "<STRING_ATTRIBUTE><TAG>type_of_dataset</TAG><VALUE>Non-Clinical/Obscured</VALUE></STRING_ATTRIBUTE>"
+            "</ATTRIBUTES></POLICY>",
+        ),
+        workflow,
+    )
+
+    with (
+        patch_verify_user_project,
+        patch_verify_authorization,
+        patch(
+            "metadata_backend.api.handlers.publish.upload_bp_metadata_xmls",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "metadata_backend.api.services.file.S3InboxSDAService.find_missing_files", new_callable=AsyncMock
+        ) as mock_find_missing_files,
+        patch(
+            "metadata_backend.api.services.file.S3InboxSDAService.list_submission_inbox_files", new_callable=AsyncMock
+        ) as mock_list_submission_inbox_files,
+        patch(
+            "metadata_backend.api.services.file.S3InboxSDAService.find_orphaned_files", new_callable=AsyncMock
+        ) as mock_find_orphaned_files,
+        patch_datacite_create_draft_doi(f"doi_{str(uuid.uuid4())}/doi_{str(uuid.uuid4())}"),
+        patch_datacite_publish(),
+        patch_rems_create_resource() as mock_rems_create_resource,
+        patch_rems_create_catalogue_item() as mock_rems_create_catalogue_item,
+    ):
+        mock_list_submission_inbox_files.return_value = []
+        mock_find_missing_files.return_value = []
+        mock_find_orphaned_files.return_value = []
+
+        response = nbis_client.patch(
+            f"{api_prefix_v1}/publish/{submission_id}", headers={"Authorization": "Bearer oidc-token"}
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json() == {"submissionId": submission_id}
+
+        # Nothing of the submission reaches REMS.
+        mock_rems_create_resource.assert_not_awaited()
+        mock_rems_create_catalogue_item.assert_not_awaited()
+
+        response = nbis_client.get(f"{api_prefix_v1}/submissions/{submission_id}/registrations")
+        assert response.status_code == 200
+        registration = Registration.model_validate(response.json())
+        assert registration.remsResourceId is None
+        assert registration.remsCatalogueId is None
+        assert registration.remsUrl is None
 
 
 async def test_publish_submission_bp_fails_when_metadata_upload_fails(
