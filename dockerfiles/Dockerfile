@@ -8,6 +8,7 @@ WORKDIR /app
 COPY pyproject.toml .
 COPY uv.lock .
 COPY .python-version .
+COPY uv-artifactory.sh .
 
 # Copy project files
 COPY README.md .
@@ -17,9 +18,7 @@ RUN apt-get update && apt-get install -yqq git
 
 # Install dependencies and create virtual environment
 RUN --mount=type=secret,id=vault_secrets \
-    grep '^UV_' /run/secrets/vault_secrets > /tmp/uv_env && \
-    set -a && . /tmp/uv_env && set +a && \
-    uv sync --frozen
+    ./uv-artifactory.sh uv sync --frozen
 
 #=======================
 FROM ghcr.io/astral-sh/uv:0.12.10-python3.14-trixie-slim@sha256:d5ddd498c5a28ec77ff1c70276f8f3c4a116a303c8b5583a018ea43c2e89e366
