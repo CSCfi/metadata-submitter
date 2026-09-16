@@ -7,8 +7,11 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ## [Unreleased]
 
+## [2026.9.1] - 2026-09-16
+
 ### Changed
 
+- Updated dependencies
 - (users) Policy XML validation errors are reported to the submitter at submit time.
 - (users) Return more appropriate HTTP status codes when buckets are empty, or inaccessible
 
@@ -22,6 +25,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- (admins) `/sync/submissions/{submissionId}` endpoint to get metadata objects as a zip archive for a Bigpicture submission.
+- (admins) `/sync/submissions` endpoint to get a list of published submissions.
 - script `uv-artifactory.sh` that Dockerfiles can use to authenticate against Artifactory both when building and running the image. Requires that secret `vault_secrets` is also mounted and available for the commands needing authentication.
 - (users) REMS license creation from Bigpicture policy XML.
 
@@ -887,7 +892,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 - Files are also validated during submission process.
 
 
-[Unreleased]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.9.0...HEAD
+[Unreleased]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.9.1...HEAD
+[2026.9.1]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.9.0...2026.9.1
 [2026.9.0]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.8.0...2026.9.0
 [2026.8.0]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.6.0...2026.8.0
 [2026.6.0]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.6.0...2026.6.0
