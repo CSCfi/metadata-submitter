@@ -14,6 +14,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Fixed
 
+- configure `uv` to use Artifactory in `pyproject.toml`
 - checking of mandatory Bigpicture object counts.
 - `get_license` parses a license as a workflow.
 - (users) Publishing non-clinical Bigpicture submission by removing invalid REMS-related dependency.
@@ -21,6 +22,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- script `uv-artifactory.sh` that Dockerfiles can use to authenticate against Artifactory both when building and running the image. Requires that secret `vault_secrets` is also mounted and available for the commands needing authentication.
 - (users) REMS license creation from Bigpicture policy XML.
 
 ## [2026.9.0] - 2026-09-15
