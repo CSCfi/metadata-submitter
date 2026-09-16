@@ -12,6 +12,7 @@ WORKDIR /app
 COPY pyproject.toml .
 COPY uv.lock .
 COPY .python-version .
+COPY uv-artifactory.sh .
 
 # Copy project files
 COPY README.md .
@@ -20,9 +21,7 @@ COPY private/private_jwks.json ./private/private_jwks.json
 
 # Install dependencies and create virtual environment
 RUN --mount=type=secret,id=vault_secrets \
-    grep '^UV_' /run/secrets/vault_secrets > /tmp/uv_env && \
-    set -a && . /tmp/uv_env && set +a && \
-    uv sync --dev
+    ./uv-artifactory.sh uv sync --dev
 
 # Use virtual environment by default
 ENV PATH="/app/.venv/bin:$PATH"
@@ -34,3 +33,6 @@ FROM base AS test
 # Copy test files so tests can be run in the dev container
 COPY tests ./tests
 COPY .pytest.ini .
+COPY uv-artifactory.sh /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]

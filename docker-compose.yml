@@ -13,6 +13,8 @@ services:
   sd-submit-api-csc:
     image: cscfi/metadata-submitter-dev
     pull_policy: never
+    secrets:
+      - vault_secrets
     profiles:
       - ui
       - ci
@@ -68,6 +70,8 @@ services:
   sd-submit-api-nbis:
     image: cscfi/metadata-submitter-dev
     pull_policy: never
+    secrets:
+      - vault_secrets
     profiles:
       - ci
       - dev
