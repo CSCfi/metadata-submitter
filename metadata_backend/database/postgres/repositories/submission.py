@@ -4,7 +4,7 @@ import datetime
 import enum
 from typing import Awaitable, Callable, Sequence
 
-from sqlalchemy import and_, delete, func, select
+from sqlalchemy import ColumnElement, and_, delete, func, select
 
 from metadata_backend.api.models.submission import Submission, SubmissionWorkflow
 from metadata_backend.api.services.accession import generate_submission_accession
@@ -181,6 +181,45 @@ class SubmissionRepository:
         Submission.model_validate(submission.document)
 
         return submission
+
+    async def get_published_submissions(
+        self,
+        published_start: datetime.datetime | None = None,
+        published_end: datetime.datetime | None = None,
+        *,
+        workflow: SubmissionWorkflow | None = None,
+    ) -> Sequence[SubmissionEntity]:
+        """
+        Get submission objects for submissions published within the given period.
+
+        Ordered by publication date, most recently published last. A submission with no
+        publication date is not returned.
+
+        Args:
+            published_start: the first publication datetime to return, inclusive, or None
+                for everything published up to published_end.
+            published_end: the last publication datetime to return, inclusive, or None for
+                everything published since published_start.
+            workflow: filter by submission workflow.
+
+        Returns:
+            The matching submission entities.
+        """
+
+        filters: list[ColumnElement[bool]] = [
+            SubmissionEntity.is_published.is_(True),
+            SubmissionEntity.published.is_not(None),
+        ]
+        if published_start is not None:
+            filters.append(SubmissionEntity.published >= published_start)
+        if published_end is not None:
+            filters.append(SubmissionEntity.published <= published_end)
+        if workflow is not None:
+            filters.append(SubmissionEntity.workflow == workflow)
+
+        stmt = select(SubmissionEntity).where(and_(*filters)).order_by(SubmissionEntity.published.asc())
+        result = await session().execute(stmt)
+        return result.scalars().all()
 
     async def get_submission_ids_for_ingest(self, *, workflow: SubmissionWorkflow | None = None) -> list[str]:
         """Get submission ids that are published but not ingested.

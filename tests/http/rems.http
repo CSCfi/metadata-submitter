@@ -3,7 +3,7 @@
 
 
 @backend_url = http://localhost:5430
-@auth_url = http://localhost:8000
+@auth_url = http://localhost:8005
 # @rems_url = https://rems-dev.2.rahtiapp.fi/api
 @rems_url = http://localhost:8003/api
 @rems_url_2 = http://localhost:8003/

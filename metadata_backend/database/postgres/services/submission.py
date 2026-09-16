@@ -6,6 +6,7 @@ from typing import Any
 from ....api.exceptions import NotFoundUserException, UserException
 from ....api.json import to_json_dict
 from ....api.models.submission import Submission, Submissions, SubmissionWorkflow
+from ....api.models.sync import SyncSubmission
 from ..models import SubmissionEntity
 from ..repositories.registration import RegistrationRepository
 from ..repositories.submission import SubmissionRepository, SubmissionSort
@@ -186,6 +187,32 @@ class SubmissionService:
         :param name: The name of the submission.
         """
         return await self.convert_from_entity(await self.repository.get_submission_by_name(project_id, name))
+
+    async def get_published_submissions(
+        self,
+        published_start: datetime | None = None,
+        published_end: datetime | None = None,
+        *,
+        workflow: SubmissionWorkflow | None = None,
+    ) -> list[SyncSubmission]:
+        """
+        Get submission objects for submissions published within the given period.
+
+        Ordered by publication date, most recently published last.
+
+        Args:
+            published_start: the first publication datetime to return, inclusive, or None
+                for everything published up to published_end.
+            published_end: the last publication datetime to return, inclusive, or None for
+                everything published since published_start.
+            workflow: filter by submission workflow.
+
+        Returns:
+            The matching submissions.
+        """
+
+        entities = await self.repository.get_published_submissions(published_start, published_end, workflow=workflow)
+        return [SyncSubmission(submissionId=entity.submission_id, published=entity.published) for entity in entities]
 
     async def get_submissions(
         self,

@@ -20,6 +20,7 @@ from yarl import URL
 from metadata_backend.api.json import to_json_dict
 from metadata_backend.api.models.submission import Submission
 from metadata_backend.conf.deployment import deployment_config
+from metadata_backend.conf.sync import sync_config
 from tests.integration.conf import (
     auth_url,
     base_url,
@@ -33,6 +34,7 @@ from tests.integration.helpers import (
     delete_bucket,
     get_submission,
 )
+from tests.sync import sign_sync_token, sync_claims
 from tests.utils import (
     BigpictureObjectNames,
     bp_submission_documents,
@@ -44,11 +46,25 @@ from tests.utils import (
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
 
-# Load API_PREFIX from .env.example into the environment.
+# Load these from .env.example into the environment.
 keys = dotenv_values(Path(__file__).parent / ".env.example")
-for key in ["API_PREFIX"]:
+for key in ["API_PREFIX", "SYNC_CLIENTS", "SYNC_AUDIENCE"]:
     if key in keys:
         os.environ[key] = keys[key]
+
+
+def sync_signing_claims() -> tuple[str, str]:
+    """The audience and issuer the tests sign their sync tokens with.
+
+    Both come from the SYNC_AUDIENCE and SYNC_CLIENTS loaded from
+    .env.example above.
+
+    The first sync client in .env.example has the public key of
+    tests/test_files/keys/es256_private.txt.
+    """
+
+    config = sync_config()
+    return config.SYNC_AUDIENCE, config.SYNC_CLIENTS[0].iss
 
 
 @pytest.fixture
@@ -271,6 +287,17 @@ async def nbis_client() -> AsyncGenerator[aiohttp.ClientSession]:
     bearer_token = f"Bearer {token}"
     headers = {"Authorization": bearer_token}
 
+    async with aiohttp.ClientSession(base_url=f"{nbis_base_url}/", headers=headers) as client:
+        yield client
+
+
+@pytest.fixture
+async def sync_client() -> AsyncGenerator[aiohttp.ClientSession]:
+    """Create a sync client authorized with the sync service account token."""
+
+    private_key, _ = get_test_es256_keypair()
+    token = sign_sync_token(sync_claims(*sync_signing_claims()), private_key)
+    headers = {"Authorization": f"Bearer {token}"}
     async with aiohttp.ClientSession(base_url=f"{nbis_base_url}/", headers=headers) as client:
         yield client
 

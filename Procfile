@@ -1,5 +1,5 @@
 mockldap:       docker build -f ${PWD}/dockerfiles/Dockerfile-ldap-dev -t ldap . && docker run --rm -p 389:389 --name mock-ldap ldap
 mockkeystone:   docker run --rm -p 5001:5001 --env S6_LOGGING=0 --name keystone-swift ghcr.io/cscfi/docker-keystone-swift:latest
-mockauth:       gunicorn --reload --worker-class aiohttp.GunicornUVLoopWebWorker --workers 1 --log-level debug --graceful-timeout 60 --timeout 120 --bind ${BACKEND_HOST}:8000              tests.integration.mock_auth:init
+mockauth:       gunicorn --reload --worker-class aiohttp.GunicornUVLoopWebWorker --workers 1 --log-level debug --graceful-timeout 60 --timeout 120 --bind ${BACKEND_HOST}:8005              tests.integration.mock_auth:init
 mockadmin:      gunicorn --reload --worker-class aiohttp.GunicornUVLoopWebWorker --workers 1 --log-level debug --graceful-timeout 60 --timeout 120 --bind ${BACKEND_HOST}:8004              tests.integration.mock_admin_api:init
 sd-submit-api:  gunicorn --reload --worker-class aiohttp.GunicornUVLoopWebWorker --workers 1 --log-level debug --graceful-timeout 60 --timeout 120 --bind ${BACKEND_HOST}:5430              metadata_backend.server:init

@@ -6,7 +6,6 @@ proofs and forwarding requests upstream as standard Bearer token requests.
 """
 
 import base64
-import contextlib
 import hashlib
 import json
 import logging
@@ -24,7 +23,7 @@ from fastapi.responses import JSONResponse
 LOG = logging.getLogger("proxy")
 logging.basicConfig(level="INFO")
 
-PROXY_URL = "http://mockauth:8000"
+PROXY_URL = "http://mockauth:8005"
 PROXIED_BASE_URL = "http://mock-oauth2:8001"
 PROXIED_URL = f"{PROXIED_BASE_URL}/issuer"
 PROXIED_PATTERN = re.compile(re.escape(PROXIED_URL), re.IGNORECASE)
@@ -254,15 +253,6 @@ async def get_pouta_token() -> str:
     return resp.headers["X-Subject-Token"]
 
 
-@contextlib.asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Get pouta access token from keystone."""
-
-    app.state.pouta_token = await get_pouta_token()
-
-    yield
-
-
 async def proxy_request(proxied_url: str, request: Request) -> httpx.Response:
     await log_request(request)
 
@@ -279,7 +269,7 @@ async def proxy_request(proxied_url: str, request: Request) -> httpx.Response:
     return resp
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI()
 
 
 @app.api_route("/userinfo", methods=["GET", "POST"])
@@ -290,7 +280,9 @@ async def userinfo(request: Request) -> JSONResponse:
 
     headers = rewrite_headers(resp.headers)
     body = rewrite_body(resp)
-    body["pouta_access_token"] = request.app.state.pouta_token
+    # Fetched per request because a Keystone token may expire
+    # before this mock stops running.
+    body["pouta_access_token"] = await get_pouta_token()
 
     log_response(resp.status_code, headers, body)
 
@@ -331,7 +323,7 @@ async def log_exceptions(request: Request, exc: Exception):
 
 
 def main() -> None:
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8005)
 
 
 if __name__ == "__main__":

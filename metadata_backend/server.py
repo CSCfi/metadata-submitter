@@ -7,15 +7,17 @@ from enum import Enum
 from typing import Any, AsyncGenerator, Final, TypeVar, override
 
 import uvicorn
-from fastapi import APIRouter, FastAPI, status
+from fastapi import APIRouter, Depends, FastAPI, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.routing import APIRoute
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.responses import Response
 from starlette.types import ASGIApp
 
 from . import __version__
+from .api.dependencies import verify_sync
 from .api.errors import register_exception_handlers
 from .api.handlers.auth import AuthAPIHandler
 from .api.handlers.files import FilesAPIHandler
@@ -26,11 +28,13 @@ from .api.handlers.publish import PublishAPIHandler
 from .api.handlers.rems import RemsAPIHandler
 from .api.handlers.restapi import RESTAPIServiceHandlers, RESTAPIServices
 from .api.handlers.submission import SubmissionAPIHandler
+from .api.handlers.sync import SyncAPIHandler
 from .api.handlers.user import UserAPIHandler
 from .api.middlewares import AuthMiddleware, SessionMiddleware
 from .api.models.app import app_state
 from .api.models.submission import PaginatedSubmissions
 from .api.services.auth import AuthService
+from .api.services.bigpicture import BigpictureSyncMetadataProvider
 from .api.services.file import S3AllasFileProviderService, S3InboxSDAService
 from .api.services.ingest import SDAIngestService
 from .api.services.project import CscProjectService, NbisProjectService, ProjectService
@@ -40,6 +44,7 @@ from .conf.conf import (
     DEPLOYMENT_NBIS,
 )
 from .conf.deployment import deployment_config
+from .conf.sync import sync_config
 from .database.postgres.repositories.api_key import ApiKeyRepository
 from .database.postgres.repositories.file import FileRepository
 from .database.postgres.repositories.object import ObjectRepository
@@ -197,6 +202,7 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
     keystone_handler = None
     auth_handler = None
     license_provider = None
+    sync_provider = None
 
     if config.DEPLOYMENT == DEPLOYMENT_CSC:
         metax_handler = _create_handler(MetaxServiceHandler())
@@ -209,6 +215,7 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
         datacite_handler = _create_handler(DataciteServiceHandler(metax_handler))
         admin_handler = _create_handler(AdminServiceHandler())
         license_provider = BigpictureRemsLicenseProvider(object_service)
+        sync_provider = BigpictureSyncMetadataProvider(object_service)
 
     # Create file provider service.
     file_provider_service = (
@@ -380,6 +387,30 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
         auth_router.add_api_route(path="/callback", endpoint=_auth.callback, methods=GET, include_in_schema=False)
         auth_router.add_api_route(path="/logout", endpoint=_auth.logout, methods=GET)
 
+    # Sync router (requires a token signed by the sync client).
+    #
+
+    sync_router = None
+    if sync_config().SYNC_CLIENTS:
+        # Add sync routes only if SYNC_CLIENTS has been defined.
+        _sync = SyncAPIHandler(services, handlers, sync_provider)
+        sync_router = APIRouter(
+            prefix=config.API_PREFIX_SYNC,
+            tags=["Sync"],
+            # /sync endpoints require a token verified with a SYNC_CLIENTS public key.
+            dependencies=[Depends(verify_sync)],
+        )
+        sync_router.add_api_route("", _sync.list_published_submissions, methods=GET)
+        if sync_provider:
+            sync_router.add_api_route(
+                "/{submissionId}",
+                _sync.get_submission_metadata,
+                methods=GET,
+                # Metadata is returned as a zip.
+                response_class=Response,
+                responses={status.HTTP_200_OK: {"content": {"application/zip": {}}}},
+            )
+
     # Health router (authorization not required).
     #
 
@@ -401,6 +432,8 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
     app.include_router(api_router)
     if auth_router:
         app.include_router(auth_router)
+    if sync_router:
+        app.include_router(sync_router)
     app.include_router(health_router)
     app.include_router(openapi_router)
 
@@ -430,15 +463,23 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
             }
         }
 
+        def _apply_security(router: APIRouter, security: list[dict[str, list[str]]]) -> None:
+            """Apply a security requirement to the routes of one router."""
+            for _route in router.routes:
+                if isinstance(_route, APIRoute):
+                    path = _route.path
+                    methods: list[str] = list(_route.methods) or []
+                    for method in methods:
+                        method = method.lower()
+                        if path in openapi_schema["paths"] and method in openapi_schema["paths"][path]:
+                            openapi_schema["paths"][path][method]["security"] = security
+
         # Apply security scheme to API routes.
-        for _route in api_router.routes:
-            if isinstance(_route, APIRoute):
-                path = _route.path
-                methods: list[str] = list(_route.methods) or []
-                for method in methods:
-                    method = method.lower()
-                    if path in openapi_schema["paths"] and method in openapi_schema["paths"][path]:
-                        openapi_schema["paths"][path][method]["security"] = [{"oidc": []}]
+        _apply_security(api_router, [{"oidc": []}])
+
+        # The sync routes are authorized with the sync service account token instead.
+        if sync_router:
+            _apply_security(sync_router, [{"bearerAuth": []}])
 
         app.openapi_schema = openapi_schema
         return app.openapi_schema

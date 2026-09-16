@@ -47,6 +47,7 @@ from metadata_backend.database.postgres.services.registration import Registratio
 from metadata_backend.database.postgres.services.submission import SubmissionService
 from metadata_backend.server import create_app
 from metadata_backend.services.auth_service import DPoPHandler
+from tests.sync import sync_clients, sync_key_pair
 
 _engine: AsyncEngine | None = None
 _session_factory: SessionFactory | None = None
@@ -56,6 +57,10 @@ _file_repository: FileRepository | None = None
 _registration_repository: RegistrationRepository | None = None
 
 TEST_DISCOVERY_URL = "https://test_discovery/{id}"
+
+TEST_SYNC_AUDIENCE = "https://submitter.test/api/sync"
+TEST_SYNC_ISSUER = "sd-search-api"
+TEST_SYNC_PRIVATE_KEY, TEST_SYNC_PUBLIC_KEY = sync_key_pair()
 
 
 def pytest_configure(config):
@@ -222,6 +227,8 @@ def csc_client(monkeypatch, session) -> Generator[TestClient]:
 def nbis_client(monkeypatch, session) -> Generator[TestClient]:
     monkeypatch.setenv("DEPLOYMENT", DEPLOYMENT_NBIS)
     monkeypatch.setenv("JWT_KEY", "bW9jay1zZWNyZXQtd2hpY2gtaXMtYXQtbGVhc3QtMzItYnl0ZXM=")
+    monkeypatch.setenv("SYNC_CLIENTS", sync_clients((TEST_SYNC_ISSUER, TEST_SYNC_PUBLIC_KEY)))
+    monkeypatch.setenv("SYNC_AUDIENCE", TEST_SYNC_AUDIENCE)
     app = create_app(session)
     with TestClient(app) as client:
         yield client

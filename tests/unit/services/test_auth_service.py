@@ -24,7 +24,7 @@ from tests.unit.patches.auth_service import (
 
 @pytest.fixture
 def mock_oidc_url(monkeypatch) -> str:
-    url = "http://mockauth:8000"
+    url = "http://mockauth:8005"
     monkeypatch.setenv("OIDC_URL", url)
     return url
 

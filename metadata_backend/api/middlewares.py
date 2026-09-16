@@ -35,7 +35,9 @@ class SessionMiddleware:
     def __init__(self, app: ASGIApp, session_context: ContextVar[AsyncSession]):
         self.app = app
         self.session_context = session_context
-        self.api_prefix_v1 = deployment_config().API_PREFIX_V1
+        config = deployment_config()
+        # The paths whose requests are wrapped in a database transaction.
+        self.transaction_paths = (config.API_PREFIX_V1, config.API_PREFIX_SYNC)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         path = scope.get("path", "")
@@ -43,8 +45,8 @@ class SessionMiddleware:
         # Only intercept HTTP requests.
         if scope["type"] != "http":
             await self.app(scope, receive, send)
-        # Only intercept API requests.
-        elif not path.startswith(self.api_prefix_v1):
+        # Only intercept requests that are given a database transaction.
+        elif not path.startswith(self.transaction_paths):
             await self.app(scope, receive, send)
         else:
             method = scope["method"]

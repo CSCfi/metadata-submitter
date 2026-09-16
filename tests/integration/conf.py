@@ -4,7 +4,7 @@ import os
 
 # Default to localhost for testing outside a container.
 
-auth_url = os.getenv("OIDC_URL", "http://localhost:8000")
+auth_url = os.getenv("OIDC_URL", "http://localhost:8005")
 base_url = os.getenv("BASE_URL", "http://localhost:5430")
 nbis_base_url = os.getenv("NBIS_BASE_URL", "http://localhost:5431")
 
