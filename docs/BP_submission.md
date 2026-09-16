@@ -26,6 +26,8 @@
 | REMS_URL                        | REMS API URL.                                                                                                                                                                                  |
 | REMS_USER                       | REMS API user.                                                                                                                                                                                 |
 | REMS_KEY                        | REMS API key.                                                                                                                                                                                  |
+| SYNC_CLIENTS                    | Clients allowed to sync published submissions. See docs/BP_sync.md.                                                                                                                            |
+| SYNC_AUDIENCE                   | Audience of the JWT tokens for syncing published submissions.                                                                                                                                  |
 
 *1 The database schema is automatically created if it does not already exist or it can
 be created by executing the SQL statements in metadata_backend/database/postgres/schema/create.sql.

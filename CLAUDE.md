@@ -69,10 +69,52 @@ database/
 
 ### Request lifecycle
 
-1. `AuthMiddleware` validates JWT bearer token or session cookie on every `/v1/...` request.
+1. `AuthMiddleware` validates JWT bearer token or session cookie on every `/v1/...` request. Paths outside `/v1` — `/health`, the OIDC login routes, `/openapi.json`, `/sync/...` — are passed through and authorize themselves, or not at all.
 2. `SessionMiddleware` opens a SQLAlchemy async transaction and stores it in a `ContextVar`; commits or rolls back after the response.
 3. FastAPI dispatches to a handler in `api/handlers/`. Handlers call `api/services/` for business logic and `services/` for external service calls.
 4. Repositories retrieve the session from the `ContextVar` directly — they never manage transactions themselves.
+
+### Sync endpoints
+
+For clients mirroring published metadata. `/sync` lists the submissions published within a
+period, most recently published last; `/sync/{submissionId}` serves one submission's metadata
+objects as a zip. Documented in `docs/BP_sync.md`.
+
+Mounted **outside `/v1`**, so `AuthMiddleware` ignores them and `dependencies.py:verify_sync`
+verifies a **signed** bearer token instead. The dependency is on the **router**, so a route
+added later cannot be left open, and nothing is mounted without `SYNC_CLIENTS`.
+
+A syncing service signs a token per request with its private key and we hold only the public
+key, so nothing configured here can issue a token this service would accept — which a shared
+secret cannot say. `SYNC_CLIENTS` is a JSON array of `{iss, public_keys}`, and a key is verified
+against *that* service's issuer alone, so `iss` names whoever signed rather than being a
+self-asserted label. Nothing acts on `iss` yet beyond a debug log. `jti` is sent but neither
+required nor remembered: a token lives a minute.
+
+Three details carry the security:
+
+- **`algorithms=["ES256"]` is an allowlist**, never the token's own `alg`. A verifier honouring
+  the header would accept `HS256` signed with the public key it publishes.
+- **`aud` is required**, so a token signed for another service, or one recorded in a log, does
+  not authenticate here.
+- **Every key of every service is tried**, since the token carries no `kid`. That is what lets a
+  key be replaced with no moment when only one side has switched.
+
+`conf/sync.py` requires `SYNC_AUDIENCE` and **parses** every key rather than only decoding it,
+so one that cannot verify ES256 — not P-256, or a private key pasted by mistake — fails at
+startup rather than rejecting every request.
+
+The publication date is the only cursor: a published submission is immutable
+(`check_submission_modifiable`), so `published` is stamped once and the client tracks it.
+Nothing is paginated; a client narrows the period instead.
+
+Packaging is per deployment through `SyncMetadataProvider` (`api/services/sync.py`), implemented
+only by `BigpictureSyncMetadataProvider` and wired in `create_app` for NBIS. A deployment
+without a provider does not serve the archive route at all.
+
+Tested in `tests/unit/api/test_dependencies.py` (`verify_sync` against a synthetic `Request`)
+and `tests/unit/api/handlers/test_sync.py` (that the dependency is on the router), both signing
+through `tests/sync.py`.
 
 ### XML processing
 

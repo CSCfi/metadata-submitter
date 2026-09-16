@@ -107,6 +107,8 @@ services:
       - "JWT_ALGORITHM=${JWT_ALGORITHM:?JWT_ALGORITHM must be defined}"
       - "DATABASE_URL=${NBIS_DATABASE_URL}"
       - "BP_CENTER_ID=${BP_CENTER_ID}"
+      - "SYNC_CLIENTS=${SYNC_CLIENTS}"
+      - "SYNC_AUDIENCE=${SYNC_AUDIENCE}"
       - "S3_REGION=${S3_REGION}"
       - "S3_ENDPOINT=${S3_INBOX_ENDPOINT:?S3_INBOX_ENDPOINT must be defined}"
       - "ADMIN_URL=${SDA_API_URL}"
@@ -148,7 +150,7 @@ services:
       mockkeystone:
         condition: service_healthy
     healthcheck:
-      test: curl --fail http://127.0.0.1:8000/.well-known/openid-configuration || exit 1
+      test: curl --fail http://127.0.0.1:8005/.well-known/openid-configuration || exit 1
       interval: 10s
       timeout: 5s
       retries: 5

@@ -1,9 +1,13 @@
 """Bigpicture API services."""
 
-from typing import Literal
+import io
+import zipfile
+from collections import defaultdict
+from typing import Literal, override
 
 from pydantic import BaseModel
 
+from ...database.postgres.services.object import ObjectService
 from ...helpers.logger import LOG
 from ..exceptions import SystemException
 from ..handlers.restapi import RESTAPIServices
@@ -21,11 +25,13 @@ from ..processors.xml.bigpicture import (
     BP_STAINING_OBJECT_TYPE,
     BP_XML_OBJECT_CONFIG,
     as_xml_set_document,
+    get_xml_object_type_schema,
     update_landing_page_xml,
 )
-from ..processors.xml.datacite import DATACITE_OBJECT_TYPE, DATACITE_XML_SCHEMA_DIR
+from ..processors.xml.datacite import DATACITE_OBJECT_TYPE, DATACITE_SCHEMA, DATACITE_XML_SCHEMA_DIR
 from ..processors.xml.processors import XmlProcessor
 from .file import S3InboxSDAService
+from .sync import SyncMetadataProvider
 
 
 class XmlOutputFile(BaseModel):
@@ -170,3 +176,66 @@ async def upload_bp_metadata_xmls(services: RESTAPIServices, submission_id: str,
                     File(submissionId=submission_id, path=object_key, bytes=len(xml_bytes)),
                     SubmissionWorkflow.BP,
                 )
+
+
+BP_SYNC_METADATA_DIR = "METADATA"
+
+
+class BigpictureSyncMetadataProvider(SyncMetadataProvider):
+    """Package the metadata objects of a Bigpicture submission for sync."""
+
+    def __init__(self, object_service: ObjectService) -> None:
+        """
+        Package the metadata objects of a Bigpicture submission for sync.
+
+        :param object_service: The object service used to read the metadata objects.
+        """
+        self._object_service = object_service
+
+    @override
+    async def get_metadata_archive(self, submission_id: str) -> bytes:
+        """
+        Get the metadata objects of one submission as a zip archive.
+
+        One document per schema, holding every metadata object of that schema. DataCite
+        is handled separately.
+
+        :param submission_id: The submission id.
+        :return: The zip archive of the metadata objects.
+        """
+
+        objects = await self._object_service.get_objects(submission_id)
+
+        object_types_by_schema: dict[str, list[str]] = defaultdict(list)
+        for obj in objects:
+            # The DataCite object type is not one of the Bigpicture schemas.
+            schema_type = (
+                DATACITE_SCHEMA
+                if obj.objectType == DATACITE_OBJECT_TYPE
+                else get_xml_object_type_schema(obj.objectType)
+            )
+            if obj.objectType not in object_types_by_schema[schema_type]:
+                object_types_by_schema[schema_type].append(obj.objectType)
+
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+            for schema_type, object_types in sorted(object_types_by_schema.items()):
+                xml_documents = [
+                    xml_document
+                    async for xml_document in self._object_service.get_xml_documents(submission_id, object_types)
+                ]
+                if not xml_documents:
+                    continue
+
+                if schema_type == DATACITE_SCHEMA:
+                    if len(xml_documents) != 1:
+                        reason = f"Expected exactly one DataCite XML document but found {len(xml_documents)}"
+                        LOG.error(reason)
+                        raise SystemException(reason)
+                    document = xml_documents[0]
+                else:
+                    document = await as_xml_set_document(xml_documents, schema_type)
+
+                archive.writestr(f"{BP_SYNC_METADATA_DIR}/{schema_type}.xml", document)
+
+        return buffer.getvalue()

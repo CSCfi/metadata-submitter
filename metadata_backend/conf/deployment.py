@@ -20,6 +20,10 @@ class DeploymentConfig(BaseSettings):
     def API_PREFIX_V1(self) -> str:
         return f"{self.API_PREFIX}/v1"
 
+    @property
+    def API_PREFIX_SYNC(self) -> str:
+        return f"{self.API_PREFIX}/sync"
+
 
 def deployment_config() -> DeploymentConfig:
     """Get Deployment configuration."""
