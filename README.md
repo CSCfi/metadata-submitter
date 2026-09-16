@@ -142,7 +142,7 @@ The project Python package dependencies are automatically being kept up to date
 with [renovatebot](https://github.com/renovatebot/renovate).
 
 Dependencies are added and removed to the project using the `uv` commands or by directly editing the `pyproject.toml`
-file. In the latter case run `uv sync` or `uv sync --dev` to update the `uv.lock` file.
+file. In the latter case run `uv sync` or `uv sync --dev` to update the `uv.lock` file. When updating the lock file, export environment variables `UV_INDEX_ARTIFACTORY_*` from `.env` before running the command.
 
 </details>
 

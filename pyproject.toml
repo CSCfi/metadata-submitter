@@ -167,3 +167,7 @@ exclude = []
 ignore_decorators = []
 ignore_names = []
 paths = ["metadata_backend"]
+
+[[tool.uv.index]]
+name = "artifactory"
+url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/simple"
