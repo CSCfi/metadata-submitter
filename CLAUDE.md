@@ -47,6 +47,8 @@ The app has two deployment modes controlled by the `DEPLOYMENT` env var: `CSC` (
 - **CSC**: OIDC login/logout routes, Keystone (OpenStack), Metax, PID, S3/Allas file provider, API key management, submission CRUD.
 - **NBIS**: DataCite DOIs, SDA Admin API, S3-Inbox file provider, background ingest scanner task (`SDAIngestService`), no OIDC login routes.
 
+When working on CSC-side infrastructure (Allas/S3, Rahti, Pouta, Slurm), the `csc-docs` MCP server (configured in `.mcp.json`) can search `docs.csc.fi` for relevant reference material.
+
 ### Layered structure inside `metadata_backend/`
 
 ```
