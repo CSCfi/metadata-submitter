@@ -1,6 +1,5 @@
 stages:
   - test
-  - audit
   - build
   - scan
   - upload
@@ -11,12 +10,14 @@ include:
   - project: "sds-dev/releases"
     ref: main
     file: "releases.yml"
+  - project: 'sds-dev/devops/renovate-runner'
+    ref: main
+    file: 'templates/renovate-config-validator.gitlab-ci.yml'
 
 # Make all jobs interruptible by default
 default:
   interruptible: true
   image: "${ARTIFACTORY_SERVER}/sds/sdd-common-ci:2026.9.3"
-
 
 #
 # Test stage
@@ -95,31 +96,16 @@ default:
     # Shut down containers after the tests finish.
     - docker compose --profile ci down -v --remove-orphans
 
-
-#
-# Audit
-#
-1-python-jf-audit:
-  stage: audit
+renovate-config-validator:
+  stage: test
   rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $GITLAB_USER_NAME != "renovate-bot"'
-      variables:
-        WATCH: sds-watch
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $GITLAB_USER_NAME == "renovate-bot"'
-      variables:
-        WATCH: sds-renovate
-  before_script:
-    - jf config import "${JF_CONFIG_READ_ONLY}"
-  script:
-    # jf audit does not yet support uv
-    - uv export --format requirements.txt --output-file requirements.txt
-    - jf audit --pip --extended-table --watches=$WATCH
-
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
 
 #
 # Build stage
 #
-1-build-image:
+build-image:
   stage: build
   tags:
     - sds-build
@@ -149,7 +135,7 @@ default:
 #
 # Scan stage
 #
-1-scan-image:
+scan-image:
   stage: scan
   tags:
     - sds-test
