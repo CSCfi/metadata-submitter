@@ -197,7 +197,7 @@ services:
       - dev
 
   mockkeystone:
-    image: ghcr.io/cscfi/docker-keystone-swift
+    image: ghcr.io/cscfi/docker-keystone-swift:2026.9.0
     profiles:
       - ui
       - ci
