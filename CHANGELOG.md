@@ -13,11 +13,16 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Fixed
 
+- in `2-upload-ghcr-image` CI job, define `DOCKER_CONFIG` only after registry image has been pulled
 - configure renovate to ignore non-existent `cscfi/metadata-submitter-dev` images in `docker-compose.yml`
 
 ### Removed
 
 - audit CI job
+
+### Changed
+
+- use proper versions for `docker-keystone-swift` image
 
 ## [2026.9.1] - 2026-09-16
 
