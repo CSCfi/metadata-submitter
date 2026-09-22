@@ -67,6 +67,7 @@ get_env: ## Get secrets needed for integration tests from vault
 	cp tests/integration/.env.example .env
 
 	@printf "%s\n" "OIDC_VERIFY_ID_TOKEN=True" >> .env
+	@printf "%s\n" "INGEST_SCAN_INTERVAL=60" >> .env
 	$(call write_line,### VAULT SECRETS START ###)
 
 	# Write secrets to .env and tests/integration/.env files.

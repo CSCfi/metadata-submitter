@@ -12,7 +12,7 @@ from ...database.postgres.repository import _session_context
 from ...helpers.logger import LOG
 from ..handlers.restapi import RESTAPIServiceHandlers, RESTAPIServices
 from ..models.models import IngestErrorType, IngestFileState, IngestStatus
-from ..models.sda import CreateDatasetRequest, FileItem, IngestFileRequest, PostAccessionIdRequest
+from ..models.sda import CreateDatasetRequest, DatasetStatus, FileItem, IngestFileRequest, PostAccessionIdRequest
 from ..models.submission import SubmissionWorkflow
 
 
@@ -110,7 +110,9 @@ class SDAIngestService(IngestService):
         1. Claim the submission row.
         2. Sync local file statuses with the Admin API to pick up any progress made by a previous run.
         3. Advance each file that is still in progress by issuing the appropriate Admin API call.
-        4. If all files have reached ``READY`` status, release the dataset and mark the submission as ingested.
+        4. If all files have reached ``READY`` status, create and release the dataset and verify
+           via the Admin API that the dataset has reached ``released``.
+        5. Mark the submission as ingested.
 
         :param submission_id: ID of the submission to process.
         :returns: ``True`` when ingestion fully completed, ``False`` otherwise.
@@ -167,20 +169,47 @@ class SDAIngestService(IngestService):
                     ingest_error_type,
                 )
 
-        # 4. If all files have reached READY status, create & release the dataset and mark the submission as ingested.
+        # 4. If all files have reached ``READY`` status, create and release the dataset and verify
+        #    via the Admin API that the dataset has reached ``released``.
         all_ready = all(file.ingest_status == IngestStatus.READY for file in files)
         if not all_ready:
             return False
 
         file_ids = [file.file_id for file in files]
-        LOG.info("Creating dataset for submission %s with %s accession id(s)", submission_id, len(file_ids))
-        await self._admin_handler.create_dataset(
-            CreateDatasetRequest(user=user_id, accession_ids=file_ids, dataset_id=submission_id)
-        )
-        LOG.info("Releasing dataset for submission %s", submission_id)
-        await self._admin_handler.release_dataset(submission_id)
+        if not await self._finalize_dataset(user_id=user_id, submission_id=submission_id, file_ids=file_ids):
+            return False
+
+        # 5. Mark the submission as ingested.
         await self._services.submission.update_ingested(submission_id)
         LOG.info("Ingest complete for submission %s", submission_id)
+        return True
+
+    async def _finalize_dataset(self, *, user_id: str, submission_id: str, file_ids: list[str]) -> bool:
+        """Create, release, and verify the dataset once all of a submission's files are ready.
+
+        :param user_id: ID of the user who owns the submission inbox.
+        :param submission_id: the submission id, which matches as the dataset accession ID.
+        :param file_ids: accession IDs of the files making up the dataset.
+        :returns: ``True`` once the dataset status reaches ``released``.
+        """
+        dataset_status = await self._admin_handler.get_dataset_status(submission_id)
+
+        if dataset_status is None:
+            LOG.info("Creating dataset for submission %s with %s accession id(s)", submission_id, len(file_ids))
+            await self._admin_handler.create_dataset(
+                CreateDatasetRequest(user=user_id, accession_ids=file_ids, dataset_id=submission_id)
+            )
+            dataset_status = await self._admin_handler.get_dataset_status(submission_id)
+
+        if dataset_status == DatasetStatus.REGISTERED:
+            LOG.info("Releasing dataset for submission %s", submission_id)
+            await self._admin_handler.release_dataset(submission_id)
+            dataset_status = await self._admin_handler.get_dataset_status(submission_id)
+
+        if dataset_status != DatasetStatus.RELEASED:
+            LOG.info("Dataset for submission %s not yet released (status=%s)", submission_id, dataset_status)
+            return False
+
         return True
 
     async def _sync_file_ingest_states(

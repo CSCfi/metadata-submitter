@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from metadata_backend.api.models.models import IngestFileState, IngestStatus
-from metadata_backend.api.models.sda import CreateDatasetRequest, FileItem
+from metadata_backend.api.models.sda import CreateDatasetRequest, DatasetStatus, FileItem
 from metadata_backend.api.services.ingest import SDAIngestService
 
 
@@ -29,10 +29,7 @@ def _mock_with_session(service: SDAIngestService):
 async def test_sda_ingest_scan_once_processes_candidates_with_worker_bound() -> None:
     """Scanner should process candidate submissions and respect worker limits."""
     services = SimpleNamespace(
-        submission=SimpleNamespace(
-            get_submission_ids_for_ingest=AsyncMock(return_value=["s1", "s2", "s3"]),
-            claim_submission_for_ingest=AsyncMock(return_value=None),
-        ),
+        submission=SimpleNamespace(get_submission_ids_for_ingest=AsyncMock(return_value=["s1", "s2", "s3"])),
         file=SimpleNamespace(),
     )
     handlers = SimpleNamespace(admin=AsyncMock())
@@ -48,7 +45,7 @@ async def test_sda_ingest_scan_once_processes_candidates_with_worker_bound() -> 
     active = 0
     peak = 0
 
-    async def _ingest(submission_id: str) -> bool:
+    async def _ingest_submission_with_session(submission_id: str) -> bool:
         nonlocal active, peak
         active += 1
         peak = max(peak, active)
@@ -56,10 +53,12 @@ async def test_sda_ingest_scan_once_processes_candidates_with_worker_bound() -> 
         active -= 1
         return True
 
-    service.ingest = _ingest  # type: ignore[method-assign]
+    # scan_once's semaphore-bounded fan-out calls ingest_submission_with_session per candidate.
+    service.ingest_submission_with_session = _ingest_submission_with_session  # type: ignore[method-assign]
 
     await service.scan_once()
-    assert peak <= 2
+    # 3 candidates with max_workers=2 must overlap up to, but never beyond, the worker bound.
+    assert peak == 2
 
 
 @pytest.mark.asyncio
@@ -129,6 +128,8 @@ async def test_sda_ingest_marks_submission_ingested() -> None:
             createdAt="2024-01-01T00:00:00Z",
         ),
     ]
+    # Not created yet -> create_dataset; registered but not released yet -> release_dataset; then released.
+    handlers.admin.get_dataset_status = AsyncMock(side_effect=[None, DatasetStatus.REGISTERED, DatasetStatus.RELEASED])
 
     service = SDAIngestService(
         services,
@@ -144,6 +145,64 @@ async def test_sda_ingest_marks_submission_ingested() -> None:
     )
     handlers.admin.release_dataset.assert_awaited_once_with("dataset-1")
     services.submission.update_ingested.assert_awaited_once_with("dataset-1")
+
+
+@pytest.mark.asyncio
+async def test_sda_ingest_does_not_mark_ingested_until_dataset_release_is_confirmed() -> None:
+    """Ingest should not mark the submission ingested before the dataset is confirmed as released."""
+    file_states = {
+        "f1": IngestFileState(file_id="id-a", path="f1", ingest_status=IngestStatus.READY),
+        "f2": IngestFileState(file_id="id-b", path="f2", ingest_status=IngestStatus.READY),
+    }
+
+    async def _get_ingest_file_states(_submission_id: str):
+        return list(file_states.values())
+
+    services = SimpleNamespace(
+        submission=SimpleNamespace(
+            claim_submission_for_ingest=AsyncMock(
+                return_value=SimpleNamespace(bucket="mock_user_test.what", projectId="mock@user@test.what")
+            ),
+            update_ingested=AsyncMock(),
+        ),
+        file=SimpleNamespace(
+            get_ingest_file_states=_get_ingest_file_states,
+            update_ingest_status=AsyncMock(),
+        ),
+    )
+    handlers = SimpleNamespace(admin=AsyncMock())
+    handlers.admin.get_user_files.return_value = [
+        FileItem(
+            fileID="12345678-1234-4234-8234-1234567890ab",
+            inboxPath="f1",
+            fileStatus="ready",
+            createdAt="2024-01-01T00:00:00Z",
+        ),
+        FileItem(
+            fileID="22345678-1234-4234-8234-1234567890ab",
+            inboxPath="f2",
+            fileStatus="ready",
+            createdAt="2024-01-01T00:00:00Z",
+        ),
+    ]
+    # release_dataset() itself succeeds, but the Admin API still reports the dataset as "registered"
+    # (release has not actually taken effect yet).
+    handlers.admin.get_dataset_status = AsyncMock(
+        side_effect=[None, DatasetStatus.REGISTERED, DatasetStatus.REGISTERED]
+    )
+
+    service = SDAIngestService(
+        services,
+        handlers,
+        session_factory_provider=_session_factory_provider,
+    )
+    _mock_with_session(service)
+
+    ok = await service.ingest_submission_with_session("dataset-1")
+    assert ok is False
+    handlers.admin.create_dataset.assert_awaited_once()
+    handlers.admin.release_dataset.assert_awaited_once_with("dataset-1")
+    services.submission.update_ingested.assert_not_awaited()
 
 
 @pytest.mark.asyncio

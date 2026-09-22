@@ -1,5 +1,6 @@
 """Helper functions for the integration tests."""
 
+import asyncio
 import hashlib
 import json
 import logging
@@ -217,6 +218,26 @@ async def delete_bucket(bucket_name, access_key, secret_key, endpoint_url, regio
         await s3.delete_bucket(Bucket=bucket_name)
 
 
+def _mock_admin_url() -> str:
+    """Base URL for the mock Admin API, reachable from inside or outside the compose network."""
+    return "http://mockadmin:8004" if os.getenv("CICD") == "true" else "http://localhost:8004"
+
+
+def _mock_admin_headers(user_id: str) -> dict[str, str]:
+    """Auth header the mock Admin API accepts for the given user."""
+    admin_token = os.getenv("ADMIN_TOKEN", "")
+    if admin_token:
+        return {"Authorization": f"Bearer {admin_token}"}
+
+    header = urlsafe_b64encode(json.dumps({"alg": "none", "typ": "JWT"}).encode("utf-8")).decode("utf-8").rstrip("=")
+    payload = (
+        urlsafe_b64encode(json.dumps({"sub": user_id, "exp": int(time.time()) + 3600}).encode("utf-8"))
+        .decode("utf-8")
+        .rstrip("=")
+    )
+    return {"Authorization": f"Bearer {header}.{payload}.signature"}
+
+
 async def seed_mock_admin_files(
     client: aiohttp.ClientSession,
     user_id: str,
@@ -225,23 +246,6 @@ async def seed_mock_admin_files(
     extra_inbox_paths: set[str] | None = None,
 ) -> None:
     """Add submission file paths (and optional extra paths) to mock Admin inbox state."""
-    admin_url = "http://mockadmin:8004" if os.getenv("CICD") == "true" else "http://localhost:8004"
-    admin_token = os.getenv("ADMIN_TOKEN", "")
-    if admin_token:
-        auth_value = f"Bearer {admin_token}"
-    else:
-        header = (
-            urlsafe_b64encode(json.dumps({"alg": "none", "typ": "JWT"}).encode("utf-8")).decode("utf-8").rstrip("=")
-        )
-        payload = (
-            urlsafe_b64encode(json.dumps({"sub": user_id, "exp": int(time.time()) + 3600}).encode("utf-8"))
-            .decode("utf-8")
-            .rstrip("=")
-        )
-        auth_value = f"Bearer {header}.{payload}.signature"
-
-    headers = {"Authorization": auth_value}
-
     api_prefix_v1 = deployment_config().API_PREFIX_V1
     async with client.get(f"{api_prefix_v1}/submissions/{submission_id}/files") as resp:
         assert resp.status == 200
@@ -253,11 +257,41 @@ async def seed_mock_admin_files(
     if extra_inbox_paths:
         inbox_paths.update(extra_inbox_paths)
 
-    async with aiohttp.ClientSession(base_url=admin_url, headers=headers) as admin_client:
+    async with aiohttp.ClientSession(base_url=_mock_admin_url(), headers=_mock_admin_headers(user_id)) as admin_client:
         for inbox_path in sorted(inbox_paths):
             payload = {"user": user_id, "filepath": inbox_path}
             async with admin_client.post("/file/create", json=payload) as resp:
                 assert resp.status == 201
+
+
+async def wait_for_dataset_released(
+    user_id: str,
+    submission_id: str,
+    *,
+    timeout: float = 30,
+    poll_interval: float = 1,
+) -> None:
+    """Poll the mock Admin API until the background ingest scanner has released the dataset.
+
+    :param user_id: the user who owns the submission inbox.
+    :param submission_id: the submission (and dataset accession ID) to wait for.
+    :param timeout: seconds to wait before failing.
+    :param poll_interval: seconds between polls.
+    """
+    deadline = time.monotonic() + timeout
+    async with aiohttp.ClientSession(base_url=_mock_admin_url(), headers=_mock_admin_headers(user_id)) as admin_client:
+        while True:
+            async with admin_client.get(f"/dataset/{submission_id}") as resp:
+                if resp.status == 200:
+                    dataset = await resp.json()
+                    if dataset.get("status") == "released":
+                        return
+                elif resp.status != 404:
+                    resp.raise_for_status()
+
+            if time.monotonic() >= deadline:
+                raise AssertionError(f"Dataset for submission {submission_id} was not released within {timeout}s")
+            await asyncio.sleep(poll_interval)
 
 
 async def get_user_id(sess: aiohttp.ClientSession):

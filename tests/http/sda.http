@@ -68,3 +68,8 @@ Authorization: Bearer {{admin_token}}
 ### List datasets
 GET {{staging_api_url}}/datasets/list
 Authorization: Bearer {{admin_token}}
+
+
+### Get the state of a dataset
+GET {{staging_api_url}}/dataset/{{submission_id}}
+Authorization: Bearer {{admin_token}}
