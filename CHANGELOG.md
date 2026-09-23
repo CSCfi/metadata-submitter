@@ -22,6 +22,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- BP submission ingestion scanning cycle now utilizes the admin API `GET /dataset/{id}` endpoint to ensure dataset is actually properly released before submission is marked as ingested.
 - use proper versions for `docker-keystone-swift` image
 
 ## [2026.9.1] - 2026-09-16
