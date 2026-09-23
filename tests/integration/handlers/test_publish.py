@@ -25,6 +25,7 @@ from tests.integration.helpers import (
     get_user_id,
     publish_submission,
     seed_mock_admin_files,
+    wait_for_dataset_released,
 )
 from tests.utils import BigpictureObjectNames, bp_update_documents, sd_submission_dict
 
@@ -173,6 +174,10 @@ async def test_publish_bp(nbis_client, bp_submission):
         assert registration.remsUrl is not None
 
         await assert_immutable_after_publish_bp(nbis_client, submission_id, object_names, is_datacite)
+
+        # The background ingest scanner should progress every file to READY and only mark the
+        # submission ingested once the Admin API itself confirms the dataset was released.
+        await wait_for_dataset_released(mock_user, submission_id)
 
 
 @pytest.mark.skip(reason="This test is for manual testing against staging environment and requires manual setup.")

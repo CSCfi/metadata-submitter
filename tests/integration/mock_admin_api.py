@@ -283,7 +283,11 @@ async def create_dataset(req: web.Request) -> web.Response:
             status=500,
         )
 
-    datasets[dataset_data.dataset_id] = {"status": "registered", "files": dataset_data.accession_ids}
+    datasets[dataset_data.dataset_id] = {
+        "status": "registered",
+        "createdAt": datetime.now().isoformat(),
+        "numberOfFiles": len(dataset_data.accession_ids),
+    }
 
     for id in dataset_data.accession_ids:
         try:
@@ -358,14 +362,18 @@ async def get_accession_ids(req: web.Request) -> web.Response:
 
 
 async def get_dataset(req: web.Request) -> web.Response:
-    """Test endpoint for getting data associated with dataset."""
+    """Mock endpoint for getting the status of a dataset."""
     resp = isAdmin(req)
     if resp is not None:
         return resp
 
     dataset = req.match_info["dataset"]
+    if dataset not in datasets:
+        reason = "Dataset not found"
+        LOG.error(reason)
+        raise web.HTTPNotFound(reason=reason)
 
-    return web.json_response(datasets.get(dataset, {}))
+    return web.json_response(datasets[dataset])
 
 
 async def post_key(req: web.Request) -> web.Response:
@@ -438,11 +446,11 @@ async def init() -> web.Application:
     app.router.add_get("/users/{username}/files", get_user_files)
     app.router.add_post("/c4gh-keys/add", post_key)
     app.router.add_get("/ready", ready)
+    app.router.add_get("/dataset/{dataset}", get_dataset)
 
     # These endpoints are for tests only, they do not have an equivalent endpoint in the actual Admin API
     app.router.add_post("/file/create", create_file)
     app.router.add_get("/users/{username}/accessions", get_accession_ids)
-    app.router.add_get("/dataset/{dataset}", get_dataset)
 
     global decryption_key
     connection_count = 10

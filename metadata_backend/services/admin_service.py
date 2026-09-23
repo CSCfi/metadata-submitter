@@ -2,12 +2,15 @@
 
 from typing import Any
 
+from starlette import status
 from yarl import URL
 
-from ..api.exceptions import SystemException
+from ..api.exceptions import ServiceHandlerSystemException, SystemException
 from ..api.models.sda import (
     CreateDatasetRequest,
+    DatasetStatus,
     FileItem,
+    GetDatasetResponse,
     IngestFileRequest,
     PostAccessionIdRequest,
     UserFilesResponse,
@@ -129,3 +132,31 @@ class AdminServiceHandler(ServiceHandler):
         admin_auth_headers = self.get_admin_auth_headers()
         await self._request(method="POST", path=f"/dataset/release/{dataset}", headers=admin_auth_headers)
         LOG.info("Dataset %s has been released", dataset)
+
+    async def get_dataset_status(self, dataset: str) -> DatasetStatus | None:
+        """Return the current status of a dataset.
+
+        :param dataset: Dataset accession ID
+        :returns: the dataset's status, or ``None`` if the Admin API has no record of it yet (not
+            created, or reported with a status this client does not recognise).
+        """
+        admin_auth_headers = self.get_admin_auth_headers()
+
+        try:
+            dataset_resp: dict[str, Any] = await self._request(
+                method="GET", path=f"/dataset/{dataset}", headers=admin_auth_headers
+            )
+        except ServiceHandlerSystemException as e:
+            if e.service_status_code == status.HTTP_404_NOT_FOUND:
+                return None
+            raise
+
+        raw_status = GetDatasetResponse.model_validate(dataset_resp).status
+        if raw_status is None:
+            return None
+
+        try:
+            return DatasetStatus(raw_status)
+        except ValueError:
+            LOG.warning("Unknown dataset status %r for dataset %s", raw_status, dataset)
+            return None

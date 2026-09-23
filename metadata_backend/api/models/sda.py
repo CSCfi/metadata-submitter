@@ -1,5 +1,6 @@
 """NeIC SDA Admin API request models."""
 
+import enum
 from datetime import datetime
 
 from pydantic import UUID4, BaseModel, Field, RootModel
@@ -37,3 +38,18 @@ class CreateDatasetRequest(BaseModel):
     accession_ids: list[str]
     dataset_id: str
     user: str
+
+
+class DatasetStatus(enum.Enum):
+    """Dataset status reported by the Admin API."""
+
+    REGISTERED = "registered"
+    RELEASED = "released"
+
+
+class GetDatasetResponse(BaseModel):
+    """Admin API response model for a dataset status lookup."""
+
+    status: str | None = None
+    created_at: datetime | None = Field(default=None, alias="createdAt")
+    number_of_files: int | None = Field(default=None, alias="numberOfFiles")
