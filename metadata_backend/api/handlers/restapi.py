@@ -55,6 +55,7 @@ class RESTAPIServiceHandlers(BaseModel):
     auth: AuthServiceHandler | None
     admin: AdminServiceHandler | None = None
     database: HealthHandler
+    openbao: HealthHandler | None = None
 
 
 class RESTAPIHandler:

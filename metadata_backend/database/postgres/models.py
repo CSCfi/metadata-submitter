@@ -2,7 +2,7 @@
 
 import enum
 from datetime import datetime, timezone
-from typing import Any, Callable, Optional, Type
+from typing import Any, Type
 
 from sqlalchemy import (
     JSON,
@@ -14,6 +14,7 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     Integer,
+    LargeBinary,
     String,
     Text,
     TypeDecorator,
@@ -26,7 +27,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import DeclarativeBase, Mapped, Relationship, backref, mapped_column, relationship
-from sqlalchemy.sql.type_api import TypeEngine, UserDefinedType
+from sqlalchemy.sql.type_api import TypeEngine
 
 from ...api.models.models import CHECKSUM_METHOD_TYPES, IngestErrorType, IngestStatus
 from ...api.models.submission import SubmissionWorkflow
@@ -53,49 +54,6 @@ class TypeJSON(TypeDecorator[dict[str, Any]]):
         if dialect.name == "postgresql":
             return dialect.type_descriptor(JSONB())
         return dialect.type_descriptor(JSON())
-
-
-class PostgresXML(UserDefinedType[str]):
-    """Use PostgreSQL XMLType."""
-
-    def get_col_spec(self, **_kwargs: object) -> str:
-        """Override."""
-        return "XML"
-
-    def bind_processor(self, dialect: Dialect) -> Optional[Callable[[Optional[str]], Optional[str]]]:
-        """Override."""
-
-        def process(value: Optional[str]) -> Optional[str]:
-            return value
-
-        return process
-
-    def result_processor(self, dialect: Dialect, _: object) -> Optional[Callable[[Optional[str]], Optional[str]]]:
-        """Override."""
-
-        def process(value: Optional[str]) -> Optional[str]:
-            return value
-
-        return process
-
-
-class TypeXML(TypeDecorator[str]):
-    """
-    Use PostgreSQL XML type if available, otherwise fallback to Text.
-
-    Compatible with both Postgres and SQLite.
-    """
-
-    impl = Text
-    cache_ok = True
-
-    def load_dialect_impl(self, dialect: Dialect) -> TypeEngine[str]:
-        """Override."""
-
-        if dialect.name == "postgresql":
-            return dialect.type_descriptor(PostgresXML())
-        else:
-            return dialect.type_descriptor(Text())
 
 
 def string_enum(enum_type: Type[enum.Enum]) -> Enum:
@@ -208,8 +166,8 @@ class ObjectEntity(Base):
     title: Mapped[str] = mapped_column(String, nullable=True)
     description: Mapped[str] = mapped_column(Text, nullable=True)
 
-    document: Mapped[dict[str, Any]] = mapped_column(MutableDict.as_mutable(TypeJSON), nullable=True)
-    xml_document: Mapped[str] = mapped_column(TypeXML, nullable=True)
+    # The metadata object document as UTF-8 text or as bytes encrypted with OpenBao.
+    object: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
 
     created: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

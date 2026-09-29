@@ -5,6 +5,7 @@ import zipfile
 from collections import defaultdict
 from typing import Literal, override
 
+import httpx
 from pydantic import BaseModel
 
 from ...database.postgres.services.object import ObjectService
@@ -83,6 +84,18 @@ XML_OUTPUT_FILES: list[XmlOutputDir] = [
 ]
 
 
+def read_bp_public_key(response: httpx.Response) -> str:
+    """
+    Read the public key from the SDA login service's /info endpoint.
+
+    :param response: The response of the login service.
+    :return: The base64 encoded PEM public key.
+    """
+
+    public_key: str = response.json()["public_key"]
+    return public_key
+
+
 async def upload_bp_metadata_xmls(services: RESTAPIServices, submission_id: str, user_id: str, jwt: str) -> None:
     """Upload encrypted Bigpicture metadata XML files to SDA inbox.
 
@@ -104,7 +117,7 @@ async def upload_bp_metadata_xmls(services: RESTAPIServices, submission_id: str,
         for file in xml_output_dir.files:
             # Get all XML documents for the schema type of the file.
             xml_docs = [
-                xml_doc async for xml_doc in services.object.get_xml_documents(submission_id, tuple(file.object_types))
+                xml_doc async for xml_doc in services.object.get_documents(submission_id, tuple(file.object_types))
             ]
             if not xml_docs:
                 if file.mandatory:
@@ -222,7 +235,7 @@ class BigpictureSyncMetadataProvider(SyncMetadataProvider):
             for schema_type, object_types in sorted(object_types_by_schema.items()):
                 xml_documents = [
                     xml_document
-                    async for xml_document in self._object_service.get_xml_documents(submission_id, object_types)
+                    async for xml_document in self._object_service.get_documents(submission_id, object_types)
                 ]
                 if not xml_documents:
                     continue

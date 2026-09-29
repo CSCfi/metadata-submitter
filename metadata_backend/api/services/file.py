@@ -1,18 +1,14 @@
 """Service to retrieve file and bucket information from a file provider."""
 
-import base64
-import binascii
 from abc import ABC, abstractmethod
 from io import BytesIO
 
 import aioboto3
 import botocore.exceptions
 import ujson
-from crypt4gh.keys import c4gh
 from crypt4gh.lib import encrypt
 from pydantic import BaseModel, RootModel
 
-from ...conf.c4gh import c4gh_config
 from ...conf.s3 import s3_config
 from ...helpers.logger import LOG
 from ...services.admin_service import AdminServiceHandler
@@ -20,6 +16,7 @@ from ...services.keystone_service import KeystoneServiceHandler
 from ..exceptions import ForbiddenUserException, SystemException, UserException
 from ..models.models import File as SubmissionFile
 from ..models.sda import FileItem
+from .crypt import Crypt4GHPublicKeyProvider, generate_private_key
 
 
 class FileProviderService(ABC):
@@ -430,13 +427,18 @@ class S3AllasFileProviderService(S3FileProviderService):
 class S3InboxSDAService(FileProviderService):
     """Service to manage S3 buckets in NeIC SDA S3 Inbox."""
 
-    def __init__(self, admin_handler: AdminServiceHandler) -> None:
-        """Create S3 file service."""
+    def __init__(self, admin_handler: AdminServiceHandler, key_provider: Crypt4GHPublicKeyProvider) -> None:
+        """Create S3 file service.
+
+        :param admin_handler: The SDA Admin API service handler.
+        :param key_provider: The C4GH public key provider.
+        """
 
         self._config = s3_config()
         self.region = self._config.S3_REGION
         self.endpoint = self._config.S3_ENDPOINT
         self._admin_handler = admin_handler
+        self._key_provider = key_provider
 
     async def _verify_user_file(self, bucket: str, file: str) -> int | None:
         """Verify that the file exists in the specified S3 bucket and return its size."""
@@ -531,45 +533,13 @@ class S3InboxSDAService(FileProviderService):
         """
         return [f for f in inbox_file_paths if f not in file_paths]
 
-    async def _load_crypt4gh_keys(self) -> tuple[object, object]:
-        """Load Crypt4GH sender secret and recipient public keys from env variables."""
-        conf = c4gh_config()
-        try:
-            sender_key_pem = base64.b64decode(conf.CRYPT4GH_PRIVATE_KEY).decode("utf-8")
-            recipient_key_pem = base64.b64decode(conf.CRYPT4GH_PUBLIC_KEY).decode("utf-8")
-        except (binascii.Error, UnicodeDecodeError) as ex:
-            LOG.exception(
-                "Service configuration error: invalid base64 value in "
-                "CRYPT4GH_PRIVATE_KEY or CRYPT4GH_PUBLIC_KEY environment variables."
-            )
-            raise SystemException("Service configuration error.") from ex
+    async def _encrypt_file(self, file: bytes) -> bytes:
+        """Encrypt file bytes using crypt4gh and return encrypted payload bytes.
 
-        try:
-            sender_lines = [line.strip().encode("utf-8") for line in sender_key_pem.splitlines() if line.strip()]
-            recipient_lines = [line.strip().encode("utf-8") for line in recipient_key_pem.splitlines() if line.strip()]
-
-            private_data = base64.b64decode(b"".join(sender_lines[1:-1]))
-            public_data = base64.b64decode(b"".join(recipient_lines[1:-1]))
-
-            private_stream = BytesIO(private_data)
-            if private_data.startswith(c4gh.MAGIC_WORD):
-                private_stream.seek(len(c4gh.MAGIC_WORD))
-
-            sender_secret_key = c4gh.parse_private_key(private_stream, lambda: conf.CRYPT4GH_PRIVATE_KEY_PASSPHRASE)
-            recipient_public_key = public_data
-            return sender_secret_key, recipient_public_key
-        except Exception as ex:
-            LOG.exception(
-                "Service configuration error: Failed to load encryption "
-                "key from CRYPT4GH_PRIVATE_KEY_PASSPHRASE environmental variable."
-            )
-            raise SystemException("Service configuration error.") from ex
-
-    async def _encrypt_file(self, file: bytes, sender_secret_key: object, recipient_public_key: object) -> bytes:
-        """Encrypt file bytes using crypt4gh and return encrypted payload bytes."""
-        infile = BytesIO(file)
+        The sender key is generated for each file.
+        """
         outfile = BytesIO()
-        encrypt([(0, sender_secret_key, recipient_public_key)], infile, outfile)
+        encrypt([(0, generate_private_key(), await self._key_provider.get())], BytesIO(file), outfile)
         return outfile.getvalue()
 
     async def _add_file_to_bucket(
@@ -591,8 +561,7 @@ class S3InboxSDAService(FileProviderService):
             session_token: S3 session token.
             body: Unencrypted object bytes.
         """
-        sender_secret_key, recipient_public_key = await self._load_crypt4gh_keys()
-        encrypted_file = await self._encrypt_file(body, sender_secret_key, recipient_public_key)
+        encrypted_file = await self._encrypt_file(body)
 
         try:
             session = aioboto3.Session()

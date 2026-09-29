@@ -43,6 +43,7 @@ class HealthAPIHandler(RESTAPIHandler):
             self._handlers.keystone,
             self._handlers.admin,
             self._handlers.database,
+            self._handlers.openbao,
         ]
 
         results: list[tuple[str, Health]] = []

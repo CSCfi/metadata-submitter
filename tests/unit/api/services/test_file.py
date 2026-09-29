@@ -1,4 +1,5 @@
 import socket
+from base64 import b64encode
 from io import BytesIO
 from unittest.mock import AsyncMock
 
@@ -7,10 +8,13 @@ import ujson
 from aiobotocore import session
 from crypt4gh.lib import decrypt
 from moto.server import ThreadedMotoServer
+from pydantic import ValidationError
 
-from metadata_backend.api.exceptions import UserException
+from metadata_backend.api.exceptions import SystemException, UserException
 from metadata_backend.api.models.models import File as SubmissionFile
 from metadata_backend.api.models.sda import FileItem
+from metadata_backend.api.services.bigpicture import read_bp_public_key
+from metadata_backend.api.services.crypt import Crypt4GHPublicKeyProvider, parse_private_key
 from metadata_backend.api.services.file import S3AllasFileProviderService, S3InboxSDAService
 from metadata_backend.conf.s3 import s3_config
 from metadata_backend.services.keystone_service import KeystoneServiceHandler
@@ -20,6 +24,16 @@ bucket = "test-bucket"
 file = "test-file"
 content = b"test"
 creds = KeystoneServiceHandler.EC2Credentials(access="test-id", secret="test-key")
+
+
+def _key_provider() -> Crypt4GHPublicKeyProvider:
+    return Crypt4GHPublicKeyProvider(read_bp_public_key)
+
+
+def _mock_key_provider() -> Crypt4GHPublicKeyProvider:
+    """A key provider for tests that do not encrypt."""
+
+    return AsyncMock(spec=Crypt4GHPublicKeyProvider)
 
 
 @pytest.fixture(autouse=True)
@@ -149,50 +163,64 @@ async def test_update_and_verify_bucket_policy(s3_endpoint):
 
 
 @pytest.mark.asyncio
-async def test_load_crypt4gh_keys_with_generated_keypair(monkeypatch, tmp_path):
-    """_load_crypt4gh_keys should parse generated key material from env vars."""
-    passphrase = "unit-test-passphrase"
-    sender_env, recipient_env = generate_crypt4gh_keypair_env_values(tmp_path, passphrase)
+async def test_encrypt_file_without_the_public_key(monkeypatch):
+    monkeypatch.delenv("CRYPT4GH_PUBLIC_KEY", raising=False)
+    monkeypatch.delenv("CRYPT4GH_PUBLIC_KEY_URL", raising=False)
 
-    monkeypatch.setenv("CRYPT4GH_PRIVATE_KEY", sender_env)
-    monkeypatch.setenv("CRYPT4GH_PUBLIC_KEY", recipient_env)
-    monkeypatch.setenv("CRYPT4GH_PRIVATE_KEY_PASSPHRASE", passphrase)
+    with pytest.raises(ValidationError, match="CRYPT4GH_PUBLIC_KEY_URL or CRYPT4GH_PUBLIC_KEY is required"):
+        _key_provider()
 
-    service = S3InboxSDAService(AsyncMock())
-    sender_secret_key, recipient_public_key = await service._load_crypt4gh_keys()
 
-    assert isinstance(sender_secret_key, bytes)
-    assert isinstance(recipient_public_key, bytes)
-    assert len(sender_secret_key) == 32
-    assert len(recipient_public_key) == 32
+@pytest.mark.asyncio
+async def test_encrypt_file_with_an_unusable_public_key(monkeypatch):
+    monkeypatch.setenv("CRYPT4GH_PUBLIC_KEY", b64encode(b"not a PEM document").decode("utf-8"))
+
+    service = S3InboxSDAService(AsyncMock(), _key_provider())
+
+    # Make sure we don't get a SystemError.
+    with pytest.raises(SystemException, match="Service configuration error"):
+        await service._encrypt_file(b"<DATASET/>")
 
 
 @pytest.mark.asyncio
 async def test_encrypt_file_roundtrip_with_generated_keys(monkeypatch, tmp_path):
-    """_encrypt_file should encrypt bytes that can be decrypted with matching private key."""
+    """_encrypt_file should encrypt bytes that the recipient private key decrypts."""
     passphrase = "unit-test-passphrase"
-    sender_env, recipient_env = generate_crypt4gh_keypair_env_values(tmp_path, passphrase)
+    recipient_private_key, recipient_public_key = generate_crypt4gh_keypair_env_values(tmp_path, passphrase)
 
-    monkeypatch.setenv("CRYPT4GH_PRIVATE_KEY", sender_env)
-    monkeypatch.setenv("CRYPT4GH_PUBLIC_KEY", recipient_env)
-    monkeypatch.setenv("CRYPT4GH_PRIVATE_KEY_PASSPHRASE", passphrase)
+    monkeypatch.setenv("CRYPT4GH_PUBLIC_KEY", recipient_public_key)
 
-    service = S3InboxSDAService(AsyncMock())
-    sender_secret_key, recipient_public_key = await service._load_crypt4gh_keys()
+    service = S3InboxSDAService(AsyncMock(), _key_provider())
 
     plaintext = b"<DATASET><ID>123</ID></DATASET>"
-    encrypted = await service._encrypt_file(plaintext, sender_secret_key, recipient_public_key)
+    encrypted = await service._encrypt_file(plaintext)
 
     assert encrypted
     assert encrypted != plaintext
 
     decrypted_out = BytesIO()
-    decrypt([(0, sender_secret_key, None)], BytesIO(encrypted), decrypted_out)
+    decrypt([(0, parse_private_key(recipient_private_key, passphrase), None)], BytesIO(encrypted), decrypted_out)
     assert decrypted_out.getvalue() == plaintext
 
 
+@pytest.mark.asyncio
+async def test_encrypt_file_private_key_per_file(monkeypatch, tmp_path):
+    """The sender private key is generated per file."""
+    recipient_private_key, recipient_public_key = generate_crypt4gh_keypair_env_values(tmp_path, "unit-test-passphrase")
+
+    monkeypatch.setenv("CRYPT4GH_PUBLIC_KEY", recipient_public_key)
+
+    service = S3InboxSDAService(AsyncMock(), _key_provider())
+
+    plaintext = b"<DATASET><ID>123</ID></DATASET>"
+    first = await service._encrypt_file(plaintext)
+    second = await service._encrypt_file(plaintext)
+
+    assert first != second
+
+
 async def test_sda_inbox_add_file_to_bucket_uploads_payload(s3_endpoint):
-    service = S3InboxSDAService(AsyncMock())
+    service = S3InboxSDAService(AsyncMock(), _mock_key_provider())
 
     upload_body = b"plaintext-xml-payload"
     encrypted_body = b"encrypted-binary-payload"
@@ -209,7 +237,6 @@ async def test_sda_inbox_add_file_to_bucket_uploads_payload(s3_endpoint):
     ) as s3:
         await s3.create_bucket(Bucket=bucket)
 
-    service._load_crypt4gh_keys = AsyncMock(return_value=(object(), object()))
     service._encrypt_file = AsyncMock(return_value=encrypted_body)
 
     await service._add_file_to_bucket(
@@ -259,7 +286,7 @@ async def test_find_missing_files():
     # No missing files.
     admin_handler = get_mock_admin_handler(["IMAGES/IMAGE_1/img1.dcm"])
     submission_files = get_submission_files(["IMAGES/IMAGE_1/img1.dcm"])
-    service = S3InboxSDAService(admin_handler)
+    service = S3InboxSDAService(admin_handler, _mock_key_provider())
 
     missing_files = await service.find_missing_files("test_user", "test_submission", submission_files)
     assert missing_files == []
@@ -268,7 +295,7 @@ async def test_find_missing_files():
     # File missing from inbox.
     admin_handler = get_mock_admin_handler([])
     submission_files = get_submission_files(["IMAGES/IMAGE_1/img1.dcm"])
-    service = S3InboxSDAService(admin_handler)
+    service = S3InboxSDAService(admin_handler, _mock_key_provider())
 
     missing_files = await service.find_missing_files("test_user", "test_submission", submission_files)
     assert missing_files == ["IMAGES/IMAGE_1/img1.dcm"]
@@ -280,7 +307,7 @@ async def test_find_orphaned_files():
     # No orphaned files.
     admin_handler = get_mock_admin_handler(["IMAGES/IMAGE_1/img1.dcm"])
     submission_files = get_submission_files(["IMAGES/IMAGE_1/img1.dcm"])
-    service = S3InboxSDAService(admin_handler)
+    service = S3InboxSDAService(admin_handler, _mock_key_provider())
 
     orphaned_files = await service.find_orphaned_files("test_user", "test_submission", submission_files)
     assert orphaned_files == []
@@ -289,7 +316,7 @@ async def test_find_orphaned_files():
     # File missing from submission.
     admin_handler = get_mock_admin_handler(["IMAGES/IMAGE_1/img1.dcm"])
     submission_files = []
-    service = S3InboxSDAService(admin_handler)
+    service = S3InboxSDAService(admin_handler, _mock_key_provider())
 
     orphaned_files = await service.find_orphaned_files("test_user", "test_submission", submission_files)
     assert orphaned_files == ["IMAGES/IMAGE_1/img1.dcm"]
@@ -324,7 +351,7 @@ async def test_list_submission_inbox_files():
         )
     ]
 
-    service = S3InboxSDAService(admin_handler)
+    service = S3InboxSDAService(admin_handler, _mock_key_provider())
 
     inbox_files = await service.list_submission_inbox_files("user1", "1")
 

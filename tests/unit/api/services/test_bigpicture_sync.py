@@ -72,13 +72,13 @@ def _provider() -> BigpictureSyncMetadataProvider:
             for object_type in TEST_DOCUMENTS
         ]
 
-    async def get_xml_documents(_: str, object_type: str | Sequence[str] | None = None) -> AsyncIterator[str]:
+    async def get_documents(_: str, object_type: str | Sequence[str] | None = None) -> AsyncIterator[str]:
         object_types = [object_type] if isinstance(object_type, str) else list(object_type or [])
         for one_object_type in object_types:
             for document in TEST_DOCUMENTS[one_object_type]:
                 yield document
 
-    object_service = cast(ObjectService, SimpleNamespace(get_objects=get_objects, get_xml_documents=get_xml_documents))
+    object_service = cast(ObjectService, SimpleNamespace(get_objects=get_objects, get_documents=get_documents))
     return BigpictureSyncMetadataProvider(object_service)
 
 

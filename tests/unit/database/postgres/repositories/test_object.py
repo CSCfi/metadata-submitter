@@ -36,8 +36,7 @@ async def test_add_get_delete_object(
     name = f"name_{uuid.uuid4()}"
     object_type = "test"
     title = "test"
-    document = {"test": "test"}
-    xml_document = "<test/>"
+    document = "<test/>"
 
     async def _add_object() -> tuple[ObjectEntity, str]:
         _obj = ObjectEntity(
@@ -46,8 +45,7 @@ async def test_add_get_delete_object(
             name=name,
             object_type=object_type,
             title=title,
-            document=document,
-            xml_document=xml_document,
+            object=document.encode("utf-8"),
         )
         _object_id = await object_repository.add_object(_obj, workflow)
         assert isinstance(ulid.parse(_object_id), ulid.ULID)
@@ -61,8 +59,7 @@ async def test_add_get_delete_object(
         assert entity.object_type == object_type
         assert entity.submission_id == submission_id
         assert entity.title == title
-        assert entity.document == document
-        assert entity.xml_document == xml_document
+        assert entity.object.decode("utf-8") == document
 
     # Select the object by ID
     assert_object(await object_repository.get_object_by_id(object_id))
@@ -120,39 +117,35 @@ async def test_get_and_count_objects(
 
     first_object_name = f"name_{uuid.uuid4()}"
     first_object_type = "test1"
-    first_document = {"test": "test"}
 
     first_object = ObjectEntity(
         project_id=first_project_id,
         submission_id=first_submission_id,
         name=first_object_name,
         object_type=first_object_type,
-        document=first_document,
-        xml_document="<test/>",
+        object="<test/>".encode("utf-8"),
     )
 
     second_object_name = f"name_{uuid.uuid4()}"
     second_object_type = "test2"
-    second_document = {"test": "test"}
 
     second_object = ObjectEntity(
         project_id=second_project_id,
         submission_id=first_submission_id,
         name=second_object_name,
         object_type=second_object_type,
-        document=second_document,
+        object="<test/>".encode("utf-8"),
     )
 
     third_object_name = f"name_{uuid.uuid4()}"
     third_object_type = "test1"
-    third_document = {"test": "test"}
 
     third_object = ObjectEntity(
         project_id=second_project_id,
         submission_id=second_submission_id,
         name=third_object_name,
         object_type=third_object_type,
-        document=third_document,
+        object="<test/>".encode("utf-8"),
     )
 
     first_object_id = await object_repository.add_object(first_object, workflow)

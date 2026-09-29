@@ -1,13 +1,50 @@
 """Service for metadata objects."""
 
 from datetime import datetime
-from typing import Any, AsyncIterator, Sequence
+from typing import AsyncIterator, Sequence
 
-from ....api.exceptions import NotFoundUserException, UserException
+from ....api.exceptions import NotFoundUserException, SystemException, UserException
 from ....api.models.models import Object
 from ....api.models.submission import SubmissionWorkflow
+from ....api.services.openbao import OpenBaoService, is_encrypted
 from ..models import ObjectEntity
 from ..repositories.object import ObjectRepository
+
+
+async def encode_object(document: str, openbao: OpenBaoService | None) -> bytes:
+    """
+    Encode a metadata object for storage, encrypting it if OpenBao is configured.
+
+    :param document: The metadata object document.
+    :param openbao: The OpenBao service, or None if the deployment configures none.
+    :return: The stored metadata object.
+    """
+
+    if openbao is None:
+        return document.encode("utf-8")
+
+    return await openbao.encrypt(document)
+
+
+async def decode_object(data: bytes, openbao: OpenBaoService | None) -> str:
+    """
+    Decode a stored metadata object, decrypting it if it is encrypted.
+
+    :param data: The stored metadata object.
+    :param openbao: The OpenBao service, or None if the deployment configures none.
+    :raises SystemException: If the object is encrypted and OpenBao is not configured.
+    :return: The metadata object document.
+    """
+
+    if not is_encrypted(data):
+        return data.decode("utf-8")
+
+    if openbao is None:
+        raise SystemException(
+            "A stored metadata object is encrypted and no OPENBAO_URL is configured to decrypt it with."
+        )
+
+    return await openbao.decrypt(data)
 
 
 class UnknownObjectException(NotFoundUserException):
@@ -27,9 +64,14 @@ class UnknownObjectException(NotFoundUserException):
 class ObjectService:
     """Service for metadata objects."""
 
-    def __init__(self, repository: ObjectRepository) -> None:
-        """Initialize the service."""
+    def __init__(self, repository: ObjectRepository, openbao: OpenBaoService | None = None) -> None:
+        """Initialize the service.
+
+        :param repository: The metadata object repository.
+        :param openbao: The OpenBao service, or None to store metadata objects unencrypted.
+        """
         self.repository = repository
+        self.openbao = openbao
 
     async def add_object(
         self,
@@ -39,8 +81,7 @@ class ObjectService:
         object_type: str,
         workflow: SubmissionWorkflow,
         *,
-        document: dict[str, Any] | None = None,
-        xml_document: str | None = None,
+        document: str,
         object_id: str | None = None,
         title: str | None = None,
         description: str | None = None,
@@ -52,13 +93,15 @@ class ObjectService:
         :param name: the metadata object name
         :param object_type: the metadata object type
         :param workflow: the submission workflow
-        :param document: the object metadata JSON document
-        :param xml_document: the object metadata XML document
+        :param document: the metadata object document
         :param object_id: metadata object id that overrides the default one
         :param title: metadata object title
         :param description: metadata object description
         :returns: the metadata object id
         """
+
+        if not document:
+            raise SystemException("The metadata object document is empty.")
 
         # Check that the object name does not already exist in the project.
         if await self.is_object_by_name(project_id, name, object_type):
@@ -72,8 +115,7 @@ class ObjectService:
             object_type=object_type,
             name=name,
             object_id=object_id,
-            document=document,
-            xml_document=xml_document,
+            object=await encode_object(document, self.openbao),
             title=title,
             description=description,
         )
@@ -87,29 +129,27 @@ class ObjectService:
         self,
         object_id: str,
         *,
-        document: dict[str, Any] | None = None,
-        xml_document: str | None = None,
-        title: str | None = None,
-        description: str | None = None,
+        document: str,
+        title: str | None,
+        description: str | None,
     ) -> None:
-        """Add a new metadata object to the database.
+        """Replace the metadata object in the database.
 
-        :param object_id: metadata object id that overrides the default one
-        :param document: the object metadata JSON document
-        :param xml_document: the object metadata XML document
+        :param object_id: the metadata object id
+        :param document: the metadata object document
         :param title: metadata object title
         :param description: metadata object description
         """
 
+        if not document:
+            raise SystemException("The metadata object document is empty.")
+
+        data = await encode_object(document, self.openbao)
+
         def update_callback(obj: ObjectEntity) -> None:
-            if obj.document:
-                obj.document = document
-            if obj.xml_document:
-                obj.xml_document = xml_document
-            if obj.title:
-                obj.title = title
-            if obj.description:
-                obj.description = description
+            obj.object = data
+            obj.title = title
+            obj.description = description
             obj.modified = datetime.now()
 
         if await self.repository.update_object(object_id, update_callback) is None:
@@ -189,9 +229,9 @@ class ObjectService:
 
         return objects
 
-    async def get_xml_document(self, object_id: str) -> str:
+    async def get_document(self, object_id: str) -> str:
         """
-        Retrieve metadata object XML document with the given object id.
+        Retrieve the metadata object document with the given object id.
 
         :param object_id: The object id.
         :return: The metadata object document.
@@ -200,20 +240,20 @@ class ObjectService:
         if obj is None:
             raise UnknownObjectException(object_id)
 
-        return obj.xml_document
+        return await decode_object(obj.object, self.openbao)
 
-    async def get_xml_documents(
+    async def get_documents(
         self, submission_id: str, object_type: str | Sequence[str] | None = None
     ) -> AsyncIterator[str]:
         """
-        Retrieve metadata object XML documents associated with the given submission.
+        Retrieve the metadata object documents associated with the given submission.
 
         :param submission_id: The submission id.
         :param object_type: The metadata object type(s).
-        :return: An asynchronous iterator of dictionaries representing the metadata object XML documents.
+        :return: An asynchronous iterator of the metadata object documents.
         """
         async for obj in self.repository.get_objects(submission_id, object_type):
-            yield obj.xml_document
+            yield await decode_object(obj.object, self.openbao)
 
     async def delete_object_by_id(self, object_id: str) -> None:
         """Delete metadata object.

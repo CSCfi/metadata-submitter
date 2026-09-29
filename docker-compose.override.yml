@@ -40,6 +40,9 @@ services:
   mockinbox:
     ports:
       - "8006:8006"
+  openbao:
+    ports:
+      - "8200:8200"
 
 volumes:
   postgres-csc-data:

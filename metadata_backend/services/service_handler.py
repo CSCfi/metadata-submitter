@@ -126,6 +126,7 @@ class ServiceHandler(HealthHandler):
         json_data: Optional[dict[str, Any] | list[dict[str, Any]]] = None,
         timeout: int = 10,
         headers: Optional[dict[str, Any]] = None,
+        log_payload: bool = True,
     ) -> Any:
         """Request to service REST API.
 
@@ -136,16 +137,18 @@ class ServiceHandler(HealthHandler):
         :param json_data: Dict with request data
         :param timeout: Request timeout in seconds
         :param headers: request headers
+        :param log_payload: Is the request payload logged
         :returns: Response body parsed as JSON
         """
         LOG.debug(
-            "%s request to: %r, path %r, params %r, request payload: %r",
+            "%s request to: %r, path %r, params %r",
             method,
             (url or self.base_url),
             path,
             params,
-            json_data,
         )
+        if log_payload:
+            LOG.debug("%s request payload: %r", method, json_data)
         if url is None:
             url = self.base_url
             if path and path.startswith("/"):

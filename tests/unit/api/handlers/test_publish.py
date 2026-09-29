@@ -216,7 +216,6 @@ async def test_publish_submission_bp(nbis_client, submission_repository, object_
         project_id=submission_entity.project_id,
         submission_id=submission_id,
         object_type=dataset_object_type,
-        document={},
         title=dataset_title,
         description=dataset_description,
     )
@@ -327,13 +326,12 @@ async def test_publish_submission_bp_non_clinical(nbis_client, submission_reposi
     )
     submission_id = await submission_repository.add_submission(submission_entity)
 
-    def _object(object_type: str, xml_document: str | None = None) -> ObjectEntity:
+    def _object(object_type: str, document: str | None = None) -> ObjectEntity:
         return create_object_entity(
             project_id=submission_entity.project_id,
             submission_id=submission_id,
             object_type=object_type,
-            document={},
-            xml_document=xml_document,
+            document=document,
         )
 
     await object_repository.add_object(_object(BP_DATASET_OBJECT_TYPE), workflow)
@@ -416,7 +414,6 @@ async def test_publish_submission_bp_fails_when_metadata_upload_fails(
         project_id=submission_entity.project_id,
         submission_id=submission_id,
         object_type="dataset",
-        document={},
         title="bp-title",
         description="bp-description",
     )
@@ -495,7 +492,6 @@ async def test_publish_submission_bp_adds_thumbnail_jpgs_before_orphan_check(
         project_id=submission_entity.project_id,
         submission_id=submission_id,
         object_type="dataset",
-        document={},
         title="bp-title",
         description="bp-description",
     )

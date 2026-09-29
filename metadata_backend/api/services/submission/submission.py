@@ -437,8 +437,8 @@ class ObjectSubmissionService(ABC):
         name: str,
         object_type: str,
         id: str,
-        title: str,
-        description: str,
+        title: str | None,
+        description: str | None,
         xml: ElementTree,
     ) -> None:
         """
@@ -463,12 +463,12 @@ class ObjectSubmissionService(ABC):
             object_id=id,
             title=title,
             description=description,
-            xml_document=XmlProcessor.write_xml(xml),
+            document=XmlProcessor.write_xml(xml),
         )
         if saved_object_id != id:
             raise SystemException("Failed to save generated object id")
 
-    async def _update_object(self, id: str, title: str, description: str, xml: ElementTree) -> None:
+    async def _update_object(self, id: str, title: str | None, description: str | None, xml: ElementTree) -> None:
         """
         Update metadata object in the database.
 
@@ -482,7 +482,7 @@ class ObjectSubmissionService(ABC):
             id,
             title=title,
             description=description,
-            xml_document=XmlProcessor.write_xml(xml),
+            document=XmlProcessor.write_xml(xml),
         )
 
     async def _delete_object(self, id: str) -> None:

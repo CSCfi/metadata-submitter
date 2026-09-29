@@ -229,6 +229,7 @@ def nbis_client(monkeypatch, session) -> Generator[TestClient]:
     monkeypatch.setenv("JWT_KEY", "bW9jay1zZWNyZXQtd2hpY2gtaXMtYXQtbGVhc3QtMzItYnl0ZXM=")
     monkeypatch.setenv("SYNC_CLIENTS", sync_clients((TEST_SYNC_ISSUER, TEST_SYNC_PUBLIC_KEY)))
     monkeypatch.setenv("SYNC_AUDIENCE", TEST_SYNC_AUDIENCE)
+    monkeypatch.setenv("CRYPT4GH_PUBLIC_KEY_URL", "http://keys.test/key")
     app = create_app(session)
     with TestClient(app) as client:
         yield client

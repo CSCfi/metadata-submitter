@@ -17,9 +17,17 @@ tox -e pytest   # unit tests with coverage
 # Run a single test
 .venv/bin/pytest tests/unit/path/to/test_file.py::test_name -x
 
-# Sync dependencies and activate virtualenv
+  # Sync dependencies and activate virtualenv. uv downloads from Artifactory (pyproject.toml), which
+# needs the UV_* credentials in .env; uv does not read .env itself, and without them it fails with a 401.
+set -a; eval "$(grep '^UV_' .env)"; set +a
 uv sync --dev
 source .venv/bin/activate
+
+# Integration tests exactly as CI runs them: inside the runner container, with its environment
+docker compose -f docker-compose.yml --env-file tests/integration/.env --profile ci run --build integration-test-runner
+
+# Re-encrypt every stored metadata object with the configured OPENBAO_* key and method
+python -m metadata_backend.scripts.reencrypt_objects
 
 # Run the API server (dev, via Procfile with hot reload)
 honcho start
@@ -118,6 +126,14 @@ Tested in `tests/unit/api/test_dependencies.py` (`verify_sync` against a synthet
 and `tests/unit/api/handlers/test_sync.py` (that the dependency is on the router), both signing
 through `tests/sync.py`.
 
+### Encryption
+
+Stored metadata objects are encrypted with OpenBao (`api/services/openbao.py`) when `OPENBAO_URL`
+is set. OpenBao authenticates with exactly one of `OPENBAO_TOKEN` and `OPENBAO_KUBERNETES_ROLE`.
+Files uploaded to the NBIS inbox are Crypt4GH-encrypted (`api/services/crypt.py`).
+
+GitLab rejects any pushed file ending in `.key` or `.pem`, so test keys are named `*_private.txt`.
+
 ### XML processing
 
 Submissions are sent as multipart form data containing XML. `api/processors/processors.py` dispatches to format-specific processors under `api/processors/xml/` (FEGA, Bigpicture, DataCite). Processors parse/validate XML and return typed models used downstream.
@@ -125,3 +141,9 @@ Submissions are sent as multipart form data containing XML. `api/processors/proc
 ### Configuration
 
 All config classes live in `conf/` and inherit from Pydantic `BaseSettings` (env vars loaded lazily via factory functions, not at import time). `conf/deployment.py` is the top-level switch; individual service configs (e.g., `conf/datacite.py`, `conf/metax.py`) are loaded only when those service handlers are instantiated.
+
+A config built with constructor arguments still reads the environment for every other field. On the host,
+pytest's environment holds no service settings: `tests/integration/.env` is read only by `docker compose`,
+and `tests/integration/conf.py` falls back to defaults. In CI, the `integration-test-runner` service's
+`environment:` list sets real variables, for example `OPENBAO_TOKEN`. So a test choosing one of two
+exclusive settings must `monkeypatch.delenv` the other, or it passes locally and fails in CI.
