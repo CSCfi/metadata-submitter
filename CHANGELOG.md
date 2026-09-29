@@ -9,6 +9,14 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- (admins) OPENBAO_OBJECT_KEY_NAME env: OpenBao encryption key used to encrypt the metadata objects stored in the database. Required when OPENBAO_URL is defined.                                                                                                                                                          - Added: OPENBAO_OBJECT_ENCRYPTION env: Encryption method used for metadata objects stored in the database. "envelope" (default): metadata objects are encrypted with data encryption keys created for the provided key encryption key. "direct": metadata object are directly encrypted with the provided symmetric key.
+- (admins) OPENBAO_KUBERNETES_MOUNT env: OpenBao Kubernetes authentication method mount path (default value "kubernetes").
+- (admins) OPENBAO_KUBERNETES_ROLE env: OpenBao role for Kubernetes service account authentication. The service account token is exchanged for an OpenBao token. Alternative to OPENBAO_TOKEN.
+- (admins) OPENBAO_TOKEN env: OpenBao token. Alternative to OPENBAO_KUBERNETES_ROLE.
+- (admins) OPENBAO_URL env: OpenBao server URL. Metadata objects stored in the database are encrypted using OpenBao when this is defined.
+- Kubernetes integration test container for OpenBao Kubernetes service account authentication.
+- OpenBao integration test container.
+- metadata object encryption (envelope or direct) using OpenBao.
 - CI job `renovate-config-validator` that validates `renovate.json`
 
 ### Fixed
@@ -18,10 +26,14 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Removed
 
+- (admins) CRYPT4GH_PRIVATE_PASSPHRASE env (Generate file specific sender private keys instead)
+- (admins) CRYPT4GH_PRIVATE_KEY env (Generate file specific sender private keys instead)
+- use of static private Crypt4GH keys when encrypting Bigpicture XMLs written out to the NeiC SDA inbox.
 - audit CI job
 
 ### Changed
 
+- refactored and slightly improved Crypt4GH related functionality while implementing stored metadata object encryption using Crypt4GH that was later replaced with OpenBao based encryption to protect the key material.
 - BP submission ingestion scanning cycle now utilizes the admin API `GET /dataset/{id}` endpoint to ensure dataset is actually properly released before submission is marked as ingested.
 - use proper versions for `docker-keystone-swift` image
 
