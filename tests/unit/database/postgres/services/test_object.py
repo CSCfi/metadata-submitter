@@ -1,17 +1,25 @@
-"""Test ObjectService."""
+"""Test ObjectService and the encoding of the objects it stores."""
 
 import uuid
 
 import pytest
 
-from metadata_backend.api.exceptions import UserException
+from metadata_backend.api.exceptions import SystemException, UserException
 from metadata_backend.api.models.models import Object
 from metadata_backend.api.models.submission import SubmissionWorkflow
+from metadata_backend.api.services.openbao import SD_SUBMIT_MAGIC
+from metadata_backend.conf.openbao import DIRECT, ENVELOPE, ObjectEncryption
 from metadata_backend.database.postgres.models import ObjectEntity
 from metadata_backend.database.postgres.repositories.object import ObjectRepository
 from metadata_backend.database.postgres.repositories.submission import SubmissionRepository
-from metadata_backend.database.postgres.services.object import ObjectService
+from metadata_backend.database.postgres.services.object import (
+    ObjectService,
+    decode_object,
+    encode_object,
+    is_encrypted,
+)
 from tests.unit.database.postgres.helpers import create_object_entity, create_submission_entity
+from tests.unit.openbao import MockOpenBaoService
 
 workflow = SubmissionWorkflow.SD
 
@@ -26,8 +34,7 @@ async def test_add_update_delete_object(
     submission_id = submission.submission_id
 
     object_type: str = "test"
-    document = {"test": "test"}
-    xml_document = "<test/>"
+    document = "<test/>"
     project_id = f"project_{uuid.uuid4()}"
     object_id = f"id_{uuid.uuid4()}"
     object_id2 = f"id_{uuid.uuid4()}"
@@ -49,8 +56,7 @@ async def test_add_update_delete_object(
         assert entity.object_id == object_id
         assert entity.name == name
         assert entity.title == title
-        assert entity.document == document
-        assert entity.xml_document == xml_document
+        assert entity.object.decode("utf-8") == document
 
     # Add
 
@@ -62,7 +68,6 @@ async def test_add_update_delete_object(
             object_type,
             workflow,
             document=document,
-            xml_document=xml_document,
             object_id=object_id_,
             title=title,
             description=description,
@@ -91,7 +96,6 @@ async def test_add_update_delete_object(
             object_type,
             workflow,
             document=document,
-            xml_document=xml_document,
             object_id=object_id,
             title=title,
             description=description,
@@ -99,15 +103,13 @@ async def test_add_update_delete_object(
 
     # Update
 
-    document = {"update": "update"}
-    xml_document = "<update/>"
+    document = "<update/>"
     title = "update"
     description = "update"
 
     await object_service.update_object(
         object_id,
         document=document,
-        xml_document=xml_document,
         title=title,
         description=description,
     )
@@ -125,7 +127,104 @@ async def test_add_update_delete_object(
     assert await object_repository.get_object_by_id(object_id) is None
 
 
-async def test_get_xml_document(
+async def test_update_object(
+    submission_repository: SubmissionRepository,
+    object_repository: ObjectRepository,
+    object_service: ObjectService,
+):
+    submission = create_submission_entity()
+    await submission_repository.add_submission(submission)
+
+    object_id = await object_service.add_object(
+        submission.project_id,
+        submission.submission_id,
+        f"name_{uuid.uuid4()}",
+        "test",
+        workflow,
+        document="<test/>",
+        title="title",
+        description="description",
+    )
+
+    await object_service.update_object(object_id, document="<update/>", title=None, description=None)
+
+    entity = await object_repository.get_object_by_id(object_id)
+    assert entity.object.decode("utf-8") == "<update/>"
+    assert entity.title is None
+    assert entity.description is None
+
+    await object_service.update_object(object_id, document="<test/>", title="title", description="description")
+
+    entity = await object_repository.get_object_by_id(object_id)
+    assert entity.object.decode("utf-8") == "<test/>"
+    assert entity.title == "title"
+    assert entity.description == "description"
+
+
+async def test_add_and_update_object_without_document(
+    submission_repository: SubmissionRepository,
+    object_service: ObjectService,
+):
+    submission = create_submission_entity()
+    await submission_repository.add_submission(submission)
+
+    with pytest.raises(SystemException, match="document is empty"):
+        await object_service.add_object(
+            submission.project_id,
+            submission.submission_id,
+            f"name_{uuid.uuid4()}",
+            "test",
+            workflow,
+            document="",
+            title=None,
+            description=None,
+        )
+
+    object_id = await object_service.add_object(
+        submission.project_id,
+        submission.submission_id,
+        f"name_{uuid.uuid4()}",
+        "test",
+        workflow,
+        document="<test/>",
+        title=None,
+        description=None,
+    )
+
+    with pytest.raises(SystemException, match="document is empty"):
+        await object_service.update_object(object_id, document="", title=None, description=None)
+
+
+async def test_add_and_update_object_to_have_title_and_description(
+    submission_repository: SubmissionRepository,
+    object_repository: ObjectRepository,
+    object_service: ObjectService,
+):
+    submission = create_submission_entity()
+    await submission_repository.add_submission(submission)
+
+    object_id = await object_repository.add_object(
+        ObjectEntity(
+            project_id=submission.project_id,
+            submission_id=submission.submission_id,
+            name=f"name_{uuid.uuid4()}",
+            object_type="test",
+            title=None,
+            description=None,
+            object=b"",
+        ),
+        workflow,
+    )
+
+    await object_service.update_object(object_id, document="<update/>", title="title", description="description")
+
+    entity = await object_repository.get_object_by_id(object_id)
+    assert entity.object.decode("utf-8") == "<update/>"
+    assert entity.title == "title"
+    assert entity.description == "description"
+
+
+async def test_get_document(
     submission_repository: SubmissionRepository,
     object_repository: ObjectRepository,
     object_service: ObjectService,
@@ -136,7 +235,7 @@ async def test_get_xml_document(
     obj = create_object_entity(submission.project_id, submission.submission_id)
     object_id = await object_repository.add_object(obj, workflow)
 
-    assert obj.xml_document == await object_service.get_xml_document(object_id)
+    assert obj.object.decode("utf-8") == await object_service.get_document(object_id)
 
 
 async def test_get_objects(
@@ -185,7 +284,7 @@ async def test_get_objects(
         assert res.modified is not None
 
 
-async def test_get_xml_documents(
+async def test_get_documents(
     submission_repository: SubmissionRepository,
     object_repository: ObjectRepository,
     object_service: ObjectService,
@@ -203,12 +302,10 @@ async def test_get_xml_documents(
         await object_repository.add_object(obj, workflow)
 
     # Get XML documents.
-    xml_documents = [
-        document async for document in object_service.get_xml_documents(submission.submission_id, object_type)
-    ]
+    documents = [document async for document in object_service.get_documents(submission.submission_id, object_type)]
 
     # Assert XML documents.
-    assert set(xml_documents) == {"<test/>"}
+    assert set(documents) == {"<test/>"}
 
 
 async def test_count_objects(
@@ -229,3 +326,66 @@ async def test_count_objects(
 
     assert await object_service.count_objects(submission.submission_id, object_type) == 3
     assert await object_service.count_objects(submission.submission_id, "other") == 0
+
+
+@pytest.mark.parametrize("encryption", [ENVELOPE, DIRECT])
+async def test_encrypted_object_is_stored_and_read(
+    encryption: ObjectEncryption,
+    submission_repository: SubmissionRepository,
+    object_repository: ObjectRepository,
+):
+    openbao = MockOpenBaoService(encryption, asymmetric=encryption != DIRECT)
+    object_service = ObjectService(object_repository, openbao)
+
+    submission = create_submission_entity()
+    await submission_repository.add_submission(submission)
+
+    document = '<TEST alias="1"/>'
+    object_id = await object_service.add_object(
+        submission.project_id,
+        submission.submission_id,
+        f"name_{uuid.uuid4()}",
+        "test",
+        workflow,
+        document=document,
+    )
+
+    entity = await object_repository.get_object_by_id(object_id)
+    assert entity.object.startswith(SD_SUBMIT_MAGIC)
+    assert document.encode("utf-8") not in entity.object
+
+    assert await object_service.get_document(object_id) == document
+    documents = [document async for document in object_service.get_documents(submission.submission_id)]
+    assert documents == [document]
+
+
+# The encoding of a stored metadata object.
+#
+
+DOCUMENT = '<TEST alias="1"><VALUE>test</VALUE></TEST>'
+
+
+async def test_object_unencrypted() -> None:
+    data = await encode_object(DOCUMENT, None)
+
+    assert data == DOCUMENT.encode("utf-8")
+    assert not is_encrypted(data)
+    assert await decode_object(data, None) == DOCUMENT
+
+
+@pytest.mark.parametrize("encryption", [ENVELOPE, DIRECT])
+async def test_object_encrypted(encryption: ObjectEncryption) -> None:
+    openbao = MockOpenBaoService(encryption, asymmetric=encryption != DIRECT)
+
+    data = await encode_object(DOCUMENT, openbao)
+
+    assert is_encrypted(data)
+    assert DOCUMENT.encode("utf-8") not in data
+    assert await decode_object(data, openbao) == DOCUMENT
+
+
+async def test_encrypted_object_without_openbao() -> None:
+    data = await encode_object(DOCUMENT, MockOpenBaoService())
+
+    with pytest.raises(SystemException, match="no OPENBAO_URL is configured"):
+        await decode_object(data, None)

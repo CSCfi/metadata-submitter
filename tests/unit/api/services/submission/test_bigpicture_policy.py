@@ -143,15 +143,13 @@ _EXPECTED_COAUTHORSHIP_LICENSE_TEXT = """If the dataset is central to the studyâ
 
 
 def _mock_object_service(*documents: str) -> ObjectService:
-    """A mock object service whose get_xml_documents yields the given XML documents."""
+    """A mock object service whose get_documents yields the given XML documents."""
 
-    async def get_xml_documents(
-        submission_id: str, object_type: str | Sequence[str] | None = None
-    ) -> AsyncIterator[str]:
+    async def get_documents(submission_id: str, object_type: str | Sequence[str] | None = None) -> AsyncIterator[str]:
         for document in documents:
             yield document
 
-    return cast(ObjectService, SimpleNamespace(get_xml_documents=get_xml_documents))
+    return cast(ObjectService, SimpleNamespace(get_documents=get_documents))
 
 
 @pytest.mark.parametrize(("policy", "clinical"), [("policy_clinical.xml", True), ("policy_non_clinical.xml", False)])

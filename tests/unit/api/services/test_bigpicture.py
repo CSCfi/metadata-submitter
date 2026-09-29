@@ -8,6 +8,7 @@ import pytest
 from metadata_backend.api.exceptions import SystemException
 from metadata_backend.api.processors.xml.bigpicture import BP_SAMPLE_OBJECT_TYPES
 from metadata_backend.api.services.bigpicture import upload_bp_metadata_xmls
+from metadata_backend.api.services.crypt import Crypt4GHPublicKeyProvider
 from metadata_backend.api.services.file import S3InboxSDAService
 
 
@@ -15,7 +16,7 @@ async def test_upload_bp_metadata_xmls_uses_expected_object_keys_and_payloads():
     """BP metadata upload helper should upload plaintext XML to expected DATASET_{id}/METADATA keys."""
 
     submission_id = "123"
-    file_provider = S3InboxSDAService(AsyncMock())
+    file_provider = S3InboxSDAService(AsyncMock(), AsyncMock(spec=Crypt4GHPublicKeyProvider))
     file_provider._add_file_to_bucket = AsyncMock()  # type: ignore[method-assign]
 
     object_docs: dict[str, list[str]] = {
@@ -40,7 +41,7 @@ async def test_upload_bp_metadata_xmls_uses_expected_object_keys_and_payloads():
         ],
     }
 
-    def get_xml_documents(_submission_id: str, object_type: str | tuple[str, ...]):
+    def get_documents(_submission_id: str, object_type: str | tuple[str, ...]):
         async def _iter():
             if isinstance(object_type, tuple):
                 for sample_type in object_type:
@@ -62,7 +63,7 @@ async def test_upload_bp_metadata_xmls_uses_expected_object_keys_and_payloads():
                 return_value=SimpleNamespace(dataciteUrl="https://doi.test", remsUrl="https://rems.test")
             )
         ),
-        object=SimpleNamespace(get_xml_documents=get_xml_documents),
+        object=SimpleNamespace(get_documents=get_documents),
     )
 
     with patch("metadata_backend.api.services.bigpicture.XmlProcessor.validate_schema"):
@@ -109,10 +110,10 @@ async def test_upload_bp_metadata_xmls_uses_expected_object_keys_and_payloads():
 async def test_upload_bp_metadata_xmls_raises_on_upload_error():
     """Upload errors in BP metadata upload helper should fail publish flow."""
 
-    file_provider = S3InboxSDAService(AsyncMock())
+    file_provider = S3InboxSDAService(AsyncMock(), AsyncMock(spec=Crypt4GHPublicKeyProvider))
     file_provider._add_file_to_bucket = AsyncMock()  # type: ignore[method-assign]
 
-    def get_xml_documents(_submission_id: str, object_type: str | tuple[str, ...]):
+    def get_documents(_submission_id: str, object_type: str | tuple[str, ...]):
         async def _iter():
             if "dataset" in object_type:
                 yield "<DATASET/>"
@@ -124,7 +125,7 @@ async def test_upload_bp_metadata_xmls_raises_on_upload_error():
         file=SimpleNamespace(is_file_by_path=AsyncMock(return_value=False), add_file=AsyncMock()),
         submission=SimpleNamespace(get_bucket=AsyncMock(return_value="test-bucket")),
         registration=SimpleNamespace(get_registration=AsyncMock(return_value=None)),
-        object=SimpleNamespace(get_xml_documents=get_xml_documents),
+        object=SimpleNamespace(get_documents=get_documents),
     )
 
     file_provider._add_file_to_bucket.side_effect = SystemException("upload failed")  # type: ignore[method-assign]

@@ -37,6 +37,7 @@ def test_sync_routes_no_key(monkeypatch, session):
     monkeypatch.setenv("DEPLOYMENT", DEPLOYMENT_NBIS)
     monkeypatch.setenv("JWT_KEY", "bW9jay1zZWNyZXQtd2hpY2gtaXMtYXQtbGVhc3QtMzItYnl0ZXM=")
     monkeypatch.delenv("SYNC_CLIENTS", raising=False)
+    monkeypatch.setenv("CRYPT4GH_PUBLIC_KEY_URL", "http://keys.test/key")
 
     with TestClient(create_app(session)) as client:
         paths = _served_paths(client)

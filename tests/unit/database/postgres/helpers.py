@@ -70,8 +70,7 @@ def create_object_entity(
     object_type: str | None = None,
     title: str | None = None,
     description: str | None = None,
-    document: dict[str, Any] | None = None,
-    xml_document: str | None = None,
+    document: str | None = None,
 ) -> ObjectEntity:
     if name is None:
         name = f"name_{uuid.uuid4()}"
@@ -82,9 +81,7 @@ def create_object_entity(
     if description is None:
         description = f"description_{uuid.uuid4()}"
     if document is None:
-        document = {"test": "test"}
-    if xml_document is None:
-        xml_document = "<test/>"
+        document = "<test/>"
 
     return ObjectEntity(
         project_id=project_id,
@@ -93,8 +90,7 @@ def create_object_entity(
         object_type=object_type,
         title=title,
         description=description,
-        document=document,
-        xml_document=xml_document,
+        object=document.encode("utf-8"),
     )
 
 

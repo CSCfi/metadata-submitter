@@ -7,6 +7,8 @@ from unittest.mock import AsyncMock
 import pytest
 from aiohttp import ClientSession
 
+from metadata_backend.api.services.bigpicture import read_bp_public_key
+from metadata_backend.api.services.crypt import Crypt4GHPublicKeyProvider
 from metadata_backend.api.services.file import S3InboxSDAService
 from metadata_backend.conf.deployment import deployment_config
 from tests.integration.conf import (
@@ -212,14 +214,8 @@ async def test_real_publish_bp(nbis_client, bp_submission, monkeypatch):
         "CRYPT4GH_PUBLIC_KEY",
         "LS0tLS1CRUdJTiBDUllQVDRHSCBQVUJMSUMgS0VZLS0tLS0KTWExUzVKVW90ZXRsOVdGSVNobU5ncEhMNDBkZG42QmxEelBXbE1oK1puND0KLS0tLS1FTkQgQ1JZUFQ0R0ggUFVCTElDIEtFWS0tLS0tCg==",
     )
-    # Private key generated for our testing
-    monkeypatch.setenv(
-        "CRYPT4GH_PRIVATE_KEY",
-        "LS0tLS1CRUdJTiBDUllQVDRHSCBQUklWQVRFIEtFWS0tLS0tCll6Um5hQzEyTVFBR2MyTnllWEIwQUJRQUFBQUF5a1hJVzJJTUhuVS9idllxalFHL2tRQVJZMmhoWTJoaE1qQmZjRzlzZVRFek1EVUFQRTQ0OWsrYldmSGsvM2pmNmYwSm91VTZCaWRma0k2SU1mdDJiaTZNUVp2TWM0WU5jbFpydW5TUmUxT3NiR0ExMnF5eGhISXE3WEJzRjBlQ0JBPT0KLS0tLS1FTkQgQ1JZUFQ0R0ggUFJJVkFURSBLRVktLS0tLQo=",
-    )
-    monkeypatch.setenv("CRYPT4GH_PRIVATE_KEY_PASSPHRASE", "secret-passphrase")
 
-    s3_inbox = S3InboxSDAService(AsyncMock())
+    s3_inbox = S3InboxSDAService(AsyncMock(), Crypt4GHPublicKeyProvider(read_bp_public_key))
     assert s3_inbox.endpoint == "https://staging-inbox.bp.nbis.se"
 
     # Upload submission files to S3 inbox in the same way a user would manually before publishing

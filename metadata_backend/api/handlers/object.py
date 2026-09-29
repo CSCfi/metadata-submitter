@@ -294,7 +294,7 @@ class ObjectAPIHandler(RESTAPIHandler):
 
             # Get documents.
             for obj in objects:
-                xml = await object_service.get_xml_document(obj.objectId)
+                xml = await object_service.get_document(obj.objectId)
                 yield xml
 
         async def xml_stream() -> AsyncGenerator[bytes]:

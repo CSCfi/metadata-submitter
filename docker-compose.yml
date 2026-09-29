@@ -82,6 +82,8 @@ services:
         condition: service_started
       postgres-nbis:
         condition: service_healthy
+      openbao-init:
+        condition: service_completed_successfully
 
     healthcheck:
       test: >
@@ -114,9 +116,12 @@ services:
       - "ADMIN_URL=${SDA_API_URL}"
       - "ADMIN_TOKEN=${ADMIN_TOKEN}"
       - "INGEST_SCAN_INTERVAL=${INGEST_SCAN_INTERVAL:-60}"
-      - "CRYPT4GH_PUBLIC_KEY=${C4GH_RECIPIENT_PUBLIC_KEY:?C4GH_RECIPIENT_PUBLIC_KEY must be defined}"
-      - "CRYPT4GH_PRIVATE_KEY=${C4GH_SENDER_SECRET_KEY:?C4GH_SENDER_SECRET_KEY must be defined}"
-      - "CRYPT4GH_PRIVATE_KEY_PASSPHRASE=${C4GH_SECRET_KEY_PASSPHRASE:?C4GH_SECRET_KEY_PASSPHRASE must be defined}"
+      - "CRYPT4GH_PUBLIC_KEY=${C4GH_RECIPIENT_PUBLIC_KEY}"
+      - "CRYPT4GH_PUBLIC_KEY_URL=${CRYPT4GH_PUBLIC_KEY_URL}"
+      - "OPENBAO_URL=${OPENBAO_URL:?OPENBAO_URL must be defined}"
+      - "OPENBAO_TOKEN=${OPENBAO_TOKEN}"
+      - "OPENBAO_OBJECT_KEY_NAME=${OPENBAO_OBJECT_KEY_NAME_ASYMMETRIC:?OPENBAO_OBJECT_KEY_NAME_ASYMMETRIC must be defined}"
+      - "OPENBAO_OBJECT_ENCRYPTION=envelope"
       - "ALLOW_UNSAFE=${ALLOW_UNSAFE}"
 
   mock-oauth2:
@@ -225,6 +230,102 @@ services:
       retries: 5
       start_period: 10s
 
+  openbao:
+    image: openbao/openbao:2.4.3
+    profiles:
+      - ci
+      - dev
+      - demo
+    environment:
+      # Dev mode starts unsealed with everything in memory and nothing survives
+      # a restart.
+      - "BAO_DEV_ROOT_TOKEN_ID=${OPENBAO_TOKEN:?OPENBAO_TOKEN must be defined}"
+      - "BAO_DEV_LISTEN_ADDRESS=0.0.0.0:8200"
+      - "BAO_ADDR=http://127.0.0.1:8200"
+    command: [ "server", "-dev" ]
+    healthcheck:
+      test: [ "CMD", "bao", "status" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  mockkubernetes:
+    image: cscfi/metadata-submitter-dev
+    pull_policy: never
+    profiles:
+      - ci
+      - dev
+    depends_on:
+      build-reference:
+        condition: service_started
+    volumes:
+      - ./tests/integration/mock_kubernetes.py:/mock_kubernetes.py
+      - ./tests/test_files/keys:/keys:ro
+    entrypoint: [ "python", "/mock_kubernetes.py" ]
+    healthcheck:
+      test: >
+        bash -c 'curl --insecure --fail --output /dev/null --silent --data "{}"
+        https://127.0.0.1:8443/apis/authentication.k8s.io/v1/tokenreviews || exit 1'
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  openbao-init:
+    image: openbao/openbao:2.4.3
+    profiles:
+      - ci
+      - dev
+      - demo
+    depends_on:
+      openbao:
+        condition: service_healthy
+    environment:
+      - "BAO_ADDR=http://openbao:8200"
+      - "BAO_TOKEN=${OPENBAO_TOKEN:?OPENBAO_TOKEN must be defined}"
+    # Create the transit encryption keys.
+    entrypoint:
+      - sh
+      - -c
+      - |
+        bao secrets enable transit || true
+        bao write -f "transit/keys/${OPENBAO_OBJECT_KEY_NAME_ASYMMETRIC:?OPENBAO_OBJECT_KEY_NAME_ASYMMETRIC must be defined}" type=rsa-4096
+        bao write -f "transit/keys/${OPENBAO_OBJECT_KEY_NAME_SYMMETRIC:?OPENBAO_OBJECT_KEY_NAME_SYMMETRIC must be defined}" type=aes256-gcm96
+
+  openbao-init-k8s:
+    image: openbao/openbao:2.4.3
+    profiles:
+      - ci
+      - dev
+    depends_on:
+      openbao-init:
+        condition: service_completed_successfully
+      mockkubernetes:
+        condition: service_healthy
+    volumes:
+      - ./tests/test_files/keys:/keys:ro
+    environment:
+      - "BAO_ADDR=http://openbao:8200"
+      - "BAO_TOKEN=${OPENBAO_TOKEN:?OPENBAO_TOKEN must be defined}"
+    # Enable Kubernetes service account authentication against the mock
+    # Kubernetes API for integration tests.
+    entrypoint:
+      - sh
+      - -c
+      - |
+        bao policy write sd-submit -<<'POLICY'
+        path "transit/*" { capabilities = ["create", "read", "update"] }
+        POLICY
+        bao auth enable kubernetes || true
+        bao write auth/kubernetes/config \
+          kubernetes_host="${MOCK_KUBERNETES_URL:?MOCK_KUBERNETES_URL must be defined}" \
+          kubernetes_ca_cert=@/keys/mock_kubernetes.crt disable_local_ca_jwt=true
+        bao write "auth/kubernetes/role/${OPENBAO_KUBERNETES_ROLE:?OPENBAO_KUBERNETES_ROLE must be defined}" \
+          bound_service_account_names="${OPENBAO_KUBERNETES_SERVICE_ACCOUNT:?OPENBAO_KUBERNETES_SERVICE_ACCOUNT must be defined}" \
+          bound_service_account_namespaces="${OPENBAO_KUBERNETES_NAMESPACE:?OPENBAO_KUBERNETES_NAMESPACE must be defined}" \
+          token_policies=sd-submit token_ttl=1h
+
   postgres-csc:
     image: postgres:18.6-alpine@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873
     profiles:
@@ -272,6 +373,10 @@ services:
       - "BASE_URL=http://sd-submit-api-csc:5430"
       - "NBIS_BASE_URL=http://sd-submit-api-nbis:5431"
       - "KEYSTONE_ENDPOINT=${KEYSTONE_ENDPOINT}"
+      - "OPENBAO_URL=${OPENBAO_URL}"
+      - "OPENBAO_TOKEN=${OPENBAO_TOKEN}"
+      - "OPENBAO_OBJECT_KEY_NAME_ASYMMETRIC=${OPENBAO_OBJECT_KEY_NAME_ASYMMETRIC}"
+      - "OPENBAO_OBJECT_KEY_NAME_SYMMETRIC=${OPENBAO_OBJECT_KEY_NAME_SYMMETRIC}"
     command: "pytest tests/integration"
     depends_on:
       build-reference:
@@ -288,6 +393,8 @@ services:
         condition: service_started
       mockinbox:
         condition: service_healthy
+      openbao-init-k8s:
+        condition: service_completed_successfully
 
 secrets:
   vault_secrets:

@@ -309,8 +309,9 @@ def get_test_es256_keypair() -> tuple[str, str]:
     return private_key, public_key
 
 
-def generate_crypt4gh_keypair_env_values(tmp_path: Path, passphrase: str) -> tuple[str, str]:
+def generate_crypt4gh_keypair_env_values(tmp_path: Path, passphrase: str | None) -> tuple[str, str]:
     """Generate a Crypt4GH keypair and return base64-encoded PEM values for env vars."""
+    tmp_path.mkdir(parents=True, exist_ok=True)
     secret_key_path = tmp_path / "sender.sec"
     public_key_path = tmp_path / "recipient.pub"
 
@@ -318,12 +319,10 @@ def generate_crypt4gh_keypair_env_values(tmp_path: Path, passphrase: str) -> tup
     current_umask = os.umask(0)
     os.umask(current_umask)
     try:
-        generate(str(secret_key_path), str(public_key_path), passphrase.encode("utf-8"), None)
+        generate(str(secret_key_path), str(public_key_path), passphrase.encode("utf-8") if passphrase else None, None)
     finally:
         os.umask(current_umask)
 
-    sender_key_pem = secret_key_path.read_text(encoding="utf-8")
-    recipient_key_pem = public_key_path.read_text(encoding="utf-8")
-    return b64encode(sender_key_pem.encode("utf-8")).decode("utf-8"), b64encode(
-        recipient_key_pem.encode("utf-8")
-    ).decode("utf-8")
+    secret_key = b64encode(secret_key_path.read_bytes()).decode("utf-8")
+    public_key = b64encode(public_key_path.read_bytes()).decode("utf-8")
+    return secret_key, public_key

@@ -34,9 +34,11 @@ from .api.middlewares import AuthMiddleware, SessionMiddleware
 from .api.models.app import app_state
 from .api.models.submission import PaginatedSubmissions
 from .api.services.auth import AuthService
-from .api.services.bigpicture import BigpictureSyncMetadataProvider
+from .api.services.bigpicture import BigpictureSyncMetadataProvider, read_bp_public_key
+from .api.services.crypt import Crypt4GHPublicKeyProvider
 from .api.services.file import S3AllasFileProviderService, S3InboxSDAService
 from .api.services.ingest import SDAIngestService
+from .api.services.openbao import OpenBaoService
 from .api.services.project import CscProjectService, NbisProjectService, ProjectService
 from .api.services.submission.bigpicture_policy import BigpictureRemsLicenseProvider
 from .conf.conf import (
@@ -44,6 +46,7 @@ from .conf.conf import (
     DEPLOYMENT_NBIS,
 )
 from .conf.deployment import deployment_config
+from .conf.openbao import openbao_config
 from .conf.sync import sync_config
 from .database.postgres.repositories.api_key import ApiKeyRepository
 from .database.postgres.repositories.file import FileRepository
@@ -108,9 +111,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     # Create database session factory.
     state.session_factory = create_session_factory(engine)
 
+    # Create encryption service.
+    openbao_service = getattr(state, "openbao_service", None)
+    if openbao_service is not None:
+        # Check encryption service at startup.
+        await openbao_service.validate()
+
     # Start background ingest scanner task for NBIS deployment.
     ingest_scanner_task: asyncio.Task[None] | None = None
-    ingest_scanner_service = getattr(app.state, "ingest_scanner_service", None)
+    ingest_scanner_service = getattr(state, "ingest_scanner_service", None)
     if ingest_scanner_service is not None:
         LOG.info("Starting background ingest scanner task")
         ingest_scanner_task = asyncio.create_task(ingest_scanner_service.run_forever())
@@ -123,6 +132,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
             await ingest_scanner_task
         except asyncio.CancelledError:
             pass
+
+    if openbao_service is not None:
+        await openbao_service.close()
 
     # Dispose database engine.
     await engine.dispose()
@@ -164,6 +176,10 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
     # logging.getLogger("sqlalchemy.engine").setLevel(logging.DEBUG)
     # logging.getLogger("sqlalchemy.pool").setLevel(logging.DEBUG)
 
+    # Create the encryption service.
+    openbao_service = OpenBaoService() if openbao_config().OPENBAO_URL else None
+    app.state.openbao_service = openbao_service
+
     # Create database repositories.
     submission_repository = SubmissionRepository()
     object_repository = ObjectRepository()
@@ -173,7 +189,7 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
 
     # Create database services.
     submission_service = SubmissionService(submission_repository, registration_repository)
-    object_service = ObjectService(object_repository)
+    object_service = ObjectService(object_repository, openbao_service)
     registration_service = RegistrationService(registration_repository)
     file_service = FileService(file_repository)
     auth_service = AuthService(api_key_repository)
@@ -219,7 +235,9 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
 
     # Create file provider service.
     file_provider_service = (
-        S3AllasFileProviderService() if config.DEPLOYMENT == DEPLOYMENT_CSC else S3InboxSDAService(admin_handler)
+        S3AllasFileProviderService()
+        if config.DEPLOYMENT == DEPLOYMENT_CSC
+        else S3InboxSDAService(admin_handler, Crypt4GHPublicKeyProvider(read_bp_public_key))
     )
 
     rems_handler = _create_handler(RemsServiceHandler())
@@ -249,6 +267,7 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
         auth=auth_handler,
         admin=admin_handler,
         database=DatabaseHealthHandler(lambda: state.session_factory),
+        openbao=openbao_service,
     )
 
     # Provide ingest scanner service for NBIS deployment.

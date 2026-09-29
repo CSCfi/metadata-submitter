@@ -124,7 +124,7 @@ class PublishAPIHandler(RESTAPIHandler):
             return True
 
         # A non-clinical Bigpicture dataset is not published to REMS.
-        async for xml in self._services.object.get_xml_documents(registration.submissionId, BP_POLICY_OBJECT_TYPE):
+        async for xml in self._services.object.get_documents(registration.submissionId, BP_POLICY_OBJECT_TYPE):
             return is_clinical_policy(XmlObjectProcessor(BP_XML_OBJECT_CONFIG, xml))
 
         return True

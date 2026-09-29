@@ -219,7 +219,7 @@ class BigpictureRemsLicenseProvider(RemsLicenseProvider):
 
     @override
     async def get_license(self, submission_id: str) -> dict[str, RemsLicenseLocalization] | None:
-        async for xml in self._object_service.get_xml_documents(submission_id, BP_POLICY_OBJECT_TYPE):
+        async for xml in self._object_service.get_documents(submission_id, BP_POLICY_OBJECT_TYPE):
             localization = create_policy_license(XmlObjectProcessor(BP_XML_OBJECT_CONFIG, xml))
             return {_BP_POLICY_REMS_LICENSE_LANGUAGE: localization}
 

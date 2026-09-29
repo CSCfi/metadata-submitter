@@ -79,10 +79,16 @@ which creates a virtual Python environment in `.venv` directory using the versio
 `.python-version`](.python-version).
 `uv` installs the dependencies in `uv.lock` file that are specified in the `pyproject.toml` file.
 
+`uv` downloads the dependencies from Artifactory, which requires authentication. The credentials are the
+`UV_INDEX_ARTIFACTORY_USERNAME` and `UV_INDEX_ARTIFACTORY_PASSWORD` variables in the `.env` file, so first
+[configure environment variables](#configure-environment-variables). `uv` does not read the `.env` file itself.
+Without the credentials, `uv sync` fails with `HTTP status client error (401 )`.
+
 Whenever initiating a local development environment, it is a good idea to run the following commands:
 
 ```bash
 uv self update  # update uv
+set -a; eval "$(grep '^UV_' .env)"; set +a  # export the Artifactory credentials from .env
 uv sync --dev  # sync all python dependencies
 source .venv/bin/activate  # activate the uv venv
 ```
@@ -142,7 +148,8 @@ The project Python package dependencies are automatically being kept up to date
 with [renovatebot](https://github.com/renovatebot/renovate).
 
 Dependencies are added and removed to the project using the `uv` commands or by directly editing the `pyproject.toml`
-file. In the latter case run `uv sync` or `uv sync --dev` to update the `uv.lock` file. When updating the lock file, export environment variables `UV_INDEX_ARTIFACTORY_*` from `.env` before running the command.
+file. In the latter case run `uv sync` or `uv sync --dev` to update the `uv.lock` file. Like any `uv` command that downloads packages, these need the Artifactory credentials exported from `.env`
+[as described above](#initialise-the-project-for-development-and-testing).
 
 </details>
 
@@ -305,6 +312,15 @@ make db_stamp revision=head
 Fresh local databases can still be created automatically by the application or with the checked-in
 SQL in `metadata_backend/database/postgres/schema/create.sql`. Alembic is intended for upgrading
 already existing databases and for recording future schema changes.
+
+`create.sql` is generated from the SQLAlchemy models in `metadata_backend/database/postgres/models.py`.
+Regenerate it whenever the models change, and add an Alembic migration for the same change:
+
+```bash
+python -m metadata_backend.database.postgres.repository
+```
+
+The order of `CREATE INDEX` statements may change between runs without any schema change.
 
 </details>
 
