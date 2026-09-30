@@ -9,6 +9,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- (admins) New database table for tracking dispatched external service actions.
+- (admins) Configurable retry cooldown (`INGEST_RETRY_COOLDOWN_SECONDS`) before the ingestion scanner automatically retries a dispatched action that hasn't progressed.
 - (admins) OPENBAO_OBJECT_KEY_NAME env: OpenBao encryption key used to encrypt the metadata objects stored in the database. Required when OPENBAO_URL is defined.                                                                                                                                                          - Added: OPENBAO_OBJECT_ENCRYPTION env: Encryption method used for metadata objects stored in the database. "envelope" (default): metadata objects are encrypted with data encryption keys created for the provided key encryption key. "direct": metadata object are directly encrypted with the provided symmetric key.
 - (admins) OPENBAO_KUBERNETES_MOUNT env: OpenBao Kubernetes authentication method mount path (default value "kubernetes").
 - (admins) OPENBAO_KUBERNETES_ROLE env: OpenBao role for Kubernetes service account authentication. The service account token is exchanged for an OpenBao token. Alternative to OPENBAO_TOKEN.
@@ -21,6 +23,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Fixed
 
+- BP submission ingestion scanner no longer re-sends the same file/dataset request to the Admin API when processing takes longer than one scan cycle.
 - in `2-upload-ghcr-image` CI job, define `DOCKER_CONFIG` only after registry image has been pulled
 - configure renovate to ignore non-existent `cscfi/metadata-submitter-dev` images in `docker-compose.yml`
 
