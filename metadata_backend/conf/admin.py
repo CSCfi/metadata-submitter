@@ -16,6 +16,11 @@ class AdminConfig(BaseSettings):
         description="Background ingest scanner interval in seconds.",
     )
     INGEST_WORKERS: int = Field(4, description="Maximum number of concurrent background ingest workers.")
+    INGEST_RETRY_COOLDOWN_SECONDS: int = Field(
+        21600,
+        description="Minimum time to wait before automatically re-dispatching an Admin API action that "
+        "still looks pending, in case the original message was lost.",
+    )
 
 
 def admin_config() -> AdminConfig:
