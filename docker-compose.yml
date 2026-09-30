@@ -125,7 +125,7 @@ services:
       - "ALLOW_UNSAFE=${ALLOW_UNSAFE}"
 
   mock-oauth2:
-    image: ghcr.io/navikt/mock-oauth2-server:6.0.3@sha256:250e04413e2fc7877d4cb38ecd74d3ecb1a40aae3a9bdad96d1c593e59fee95e
+    image: ghcr.io/navikt/mock-oauth2-server:6.0.4@sha256:47374fe063995d9b6d39ebb6ea21eb5f765025bf0aa08b61b08b439eb91adaf0
     environment:
       JSON_CONFIG_PATH: /config/mock-auth.json
       PORT: 8001
@@ -231,7 +231,7 @@ services:
       start_period: 10s
 
   openbao:
-    image: openbao/openbao:2.4.3@sha256:48174d0c98dbb955731c5d54a7e7083987fd25a7fb5d793181db8576ada8ed64
+    image: openbao/openbao:2.7.0@sha256:71156a1c6623a5fa3f5e61b0c6a8ead0faf0df29a778339188443551995d1315
     profiles:
       - ci
       - dev
@@ -273,7 +273,7 @@ services:
       start_period: 10s
 
   openbao-init:
-    image: openbao/openbao:2.4.3@sha256:48174d0c98dbb955731c5d54a7e7083987fd25a7fb5d793181db8576ada8ed64
+    image: openbao/openbao:2.7.0@sha256:71156a1c6623a5fa3f5e61b0c6a8ead0faf0df29a778339188443551995d1315
     profiles:
       - ci
       - dev
@@ -294,7 +294,7 @@ services:
         bao write -f "transit/keys/${OPENBAO_OBJECT_KEY_NAME_SYMMETRIC:?OPENBAO_OBJECT_KEY_NAME_SYMMETRIC must be defined}" type=aes256-gcm96
 
   openbao-init-k8s:
-    image: openbao/openbao:2.4.3@sha256:48174d0c98dbb955731c5d54a7e7083987fd25a7fb5d793181db8576ada8ed64
+    image: openbao/openbao:2.7.0@sha256:71156a1c6623a5fa3f5e61b0c6a8ead0faf0df29a778339188443551995d1315
     profiles:
       - ci
       - dev
