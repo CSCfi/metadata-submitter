@@ -3,17 +3,27 @@
 import asyncio
 from collections.abc import Awaitable, Callable
 from contextlib import suppress
+from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from ...api.exceptions import ServiceHandlerSystemException
 from ...conf.admin import admin_config
 from ...database.postgres.repository import _session_context
+from ...database.postgres.services.dispatch import DispatchKey, is_due
 from ...helpers.logger import LOG
 from ..handlers.restapi import RESTAPIServiceHandlers, RESTAPIServices
 from ..models.models import IngestErrorType, IngestFileState, IngestStatus
 from ..models.sda import CreateDatasetRequest, DatasetStatus, FileItem, IngestFileRequest, PostAccessionIdRequest
 from ..models.submission import SubmissionWorkflow
+
+# Dispatch tracking uses the DispatchService (database.postgres.services.dispatch), which treats
+# service/action/target as opaque strings — these constants are this module's own vocabulary.
+_SDA_ADMIN_SERVICE = "sda_admin"
+_ACTION_FILE_INGEST = "file_ingest"
+_ACTION_FILE_ACCESSION = "file_accession"
+_ACTION_DATASET_CREATE = "dataset_create"
+_ACTION_DATASET_RELEASE = "dataset_release"
 
 
 class IngestService:
@@ -33,6 +43,7 @@ class SDAIngestService(IngestService):
         session_factory_provider: Callable[[], async_sessionmaker[AsyncSession]],
         scan_interval_seconds: int | None = None,
         max_workers: int | None = None,
+        retry_cooldown_seconds: int | None = None,
     ) -> None:
         """Initialise the NeIC SDA ingest service.
 
@@ -41,6 +52,7 @@ class SDAIngestService(IngestService):
         :param session_factory_provider: Factory to create database sessions.
         :param scan_interval_seconds: Background ingest scanner interval in seconds.
         :param max_workers: Maximum number of concurrent background ingest workers.
+        :param retry_cooldown_seconds: Minimum time before re-dispatching an Admin API action.
         """
         admin_handler = handlers.admin
         if admin_handler is None:
@@ -52,6 +64,7 @@ class SDAIngestService(IngestService):
         self._session_factory_provider = session_factory_provider
         self._scan_interval_seconds = scan_interval_seconds or conf.INGEST_SCAN_INTERVAL
         self._max_workers = max_workers or conf.INGEST_WORKERS
+        self._retry_cooldown_seconds = retry_cooldown_seconds or conf.INGEST_RETRY_COOLDOWN_SECONDS
 
     async def run_forever(self) -> None:
         """Run the periodic scan loop until the task is cancelled."""
@@ -133,6 +146,9 @@ class SDAIngestService(IngestService):
 
         LOG.info("Submission %s has %s file(s) tracked for ingest", submission_id, len(files))
 
+        # Gets all previously recorded dispatches for this submission.
+        dispatches = await self._services.dispatch.get_dispatches(submission_id, _SDA_ADMIN_SERVICE)
+
         # 2. Sync local file statuses with the Admin API to pick up any progress made by a previous run.
         user_id = submission.projectId
         await self._sync_file_ingest_states(user_id=user_id, submission_id=submission_id, file_states=files)
@@ -144,9 +160,8 @@ class SDAIngestService(IngestService):
                 await self._ingest_file(
                     user_id=user_id,
                     submission_id=submission_id,
-                    file_path=file.path,
-                    file_id=file.file_id,
-                    ingest_status=file.ingest_status,
+                    file=file,
+                    dispatches=dispatches,
                 )
             except Exception as e:
                 LOG.exception(
@@ -176,34 +191,68 @@ class SDAIngestService(IngestService):
             return False
 
         file_ids = [file.file_id for file in files]
-        if not await self._finalize_dataset(user_id=user_id, submission_id=submission_id, file_ids=file_ids):
+        if not await self._finalize_dataset(
+            user_id=user_id, submission_id=submission_id, file_ids=file_ids, dispatches=dispatches
+        ):
             return False
 
         # 5. Mark the submission as ingested.
+        # Also clear any dispatch rows for this submission now that ingest is complete.
+        await self._services.dispatch.clear_dispatches(submission_id, _SDA_ADMIN_SERVICE)
         await self._services.submission.update_ingested(submission_id)
         LOG.info("Ingest complete for submission %s", submission_id)
         return True
 
-    async def _finalize_dataset(self, *, user_id: str, submission_id: str, file_ids: list[str]) -> bool:
+    async def _finalize_dataset(
+        self,
+        *,
+        user_id: str,
+        submission_id: str,
+        file_ids: list[str],
+        dispatches: dict[DispatchKey, datetime],
+    ) -> bool:
         """Create, release, and verify the dataset once all of a submission's files are ready.
 
         :param user_id: ID of the user who owns the submission inbox.
         :param submission_id: the submission id, which matches as the dataset accession ID.
         :param file_ids: accession IDs of the files making up the dataset.
+        :param dispatches: dispatches already recorded for this submission, keyed by (action, target).
         :returns: ``True`` once the dataset status reaches ``released``.
         """
         dataset_status = await self._admin_handler.get_dataset_status(submission_id)
 
         if dataset_status is None:
+            # Check if a dispatch is already active without the cooldown having elapsed.
+            create_dispatched_at = dispatches.get(DispatchKey(_ACTION_DATASET_CREATE, ""))
+            if not is_due(create_dispatched_at, self._retry_cooldown_seconds):
+                LOG.debug(
+                    "Dataset creation already dispatched for submission %s at %s, cooldown not elapsed",
+                    submission_id,
+                    create_dispatched_at,
+                )
+                return False
+
             LOG.info("Creating dataset for submission %s with %s accession id(s)", submission_id, len(file_ids))
             await self._admin_handler.create_dataset(
                 CreateDatasetRequest(user=user_id, accession_ids=file_ids, dataset_id=submission_id)
             )
+            await self._services.dispatch.mark_dispatched(submission_id, _SDA_ADMIN_SERVICE, _ACTION_DATASET_CREATE)
             dataset_status = await self._admin_handler.get_dataset_status(submission_id)
 
         if dataset_status == DatasetStatus.REGISTERED:
+            # Check if a dispatch is already active without the cooldown having elapsed.
+            release_dispatched_at = dispatches.get(DispatchKey(_ACTION_DATASET_RELEASE, ""))
+            if not is_due(release_dispatched_at, self._retry_cooldown_seconds):
+                LOG.debug(
+                    "Dataset release already dispatched for submission %s at %s, cooldown not elapsed",
+                    submission_id,
+                    release_dispatched_at,
+                )
+                return False
+
             LOG.info("Releasing dataset for submission %s", submission_id)
             await self._admin_handler.release_dataset(submission_id)
+            await self._services.dispatch.mark_dispatched(submission_id, _SDA_ADMIN_SERVICE, _ACTION_DATASET_RELEASE)
             dataset_status = await self._admin_handler.get_dataset_status(submission_id)
 
         if dataset_status != DatasetStatus.RELEASED:
@@ -288,39 +337,65 @@ class SDAIngestService(IngestService):
         *,
         user_id: str,
         submission_id: str,
-        file_path: str,
-        file_id: str,
-        ingest_status: IngestStatus,
+        file: IngestFileState,
+        dispatches: dict[DispatchKey, datetime],
     ) -> None:
         """Advance a single file by one step along the ingest pipeline.
 
         :param user_id: the user who owns the submission inbox.
         :param submission_id: the submission the file belongs to.
-        :param file_path: inbox-relative path of the file.
-        :param file_id: local UUID of the file, used as the accession ID.
-        :param ingest_status: current ingest status loaded for this file in the current cycle.
+        :param file: current ingest state loaded for this file in the current cycle.
+        :param dispatches: dispatches already recorded for this submission, keyed by (action, target).
         """
         # File status: UPLOADED -> trigger Admin API ingest (file moves toward VERIFIED).
-        if ingest_status == IngestStatus.UPLOADED:
+        if file.ingest_status == IngestStatus.UPLOADED:
+            # Check if a dispatch is already active without the cooldown having elapsed.
+            dispatched_at = dispatches.get(DispatchKey(_ACTION_FILE_INGEST, file.file_id))
+            if not is_due(dispatched_at, self._retry_cooldown_seconds):
+                LOG.debug(
+                    "Ingest already dispatched for submission %s file_id=%s at %s, cooldown not elapsed",
+                    submission_id,
+                    file.file_id,
+                    dispatched_at,
+                )
+                return
+
             LOG.info(
                 "Triggering ingest for submission %s file_id=%s path=%s",
                 submission_id,
-                file_id,
-                file_path,
+                file.file_id,
+                file.path,
             )
-            await self._admin_handler.ingest_file(data=IngestFileRequest(user=user_id, filepath=file_path))
+            await self._admin_handler.ingest_file(data=IngestFileRequest(user=user_id, filepath=file.path))
+            await self._services.dispatch.mark_dispatched(
+                submission_id, _SDA_ADMIN_SERVICE, _ACTION_FILE_INGEST, file.file_id
+            )
             return
 
         # File status: VERIFIED -> assign the accession ID (file moves toward READY).
-        if ingest_status == IngestStatus.VERIFIED:
+        if file.ingest_status == IngestStatus.VERIFIED:
+            # Check if a dispatch is already active without the cooldown having elapsed.
+            dispatched_at = dispatches.get(DispatchKey(_ACTION_FILE_ACCESSION, file.file_id))
+            if not is_due(dispatched_at, self._retry_cooldown_seconds):
+                LOG.debug(
+                    "Accession dispatch already sent for submission %s file_id=%s at %s, cooldown not elapsed",
+                    submission_id,
+                    file.file_id,
+                    dispatched_at,
+                )
+                return
+
             LOG.info(
                 "Assigning accession id for submission %s file_id=%s path=%s",
                 submission_id,
-                file_id,
-                file_path,
+                file.file_id,
+                file.path,
             )
             await self._admin_handler.post_accession_id(
-                data=PostAccessionIdRequest(user=user_id, filepath=file_path, accession_id=file_id)
+                data=PostAccessionIdRequest(user=user_id, filepath=file.path, accession_id=file.file_id)
+            )
+            await self._services.dispatch.mark_dispatched(
+                submission_id, _SDA_ADMIN_SERVICE, _ACTION_FILE_ACCESSION, file.file_id
             )
             return
 

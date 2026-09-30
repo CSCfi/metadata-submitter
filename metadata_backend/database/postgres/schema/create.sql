@@ -51,6 +51,17 @@ CREATE INDEX ix_objects_created ON objects (created);
 CREATE INDEX ix_objects_submission_id ON objects (submission_id);
 CREATE INDEX ix_objects_modified ON objects (modified);
 
+CREATE TABLE dispatches (
+	submission_id VARCHAR(128) NOT NULL,
+	service VARCHAR(32) NOT NULL,
+	action VARCHAR(64) NOT NULL,
+	target VARCHAR(128) NOT NULL,
+	dispatched_at TIMESTAMP WITH TIME ZONE NOT NULL,
+	attempts INTEGER DEFAULT 1 NOT NULL,
+	PRIMARY KEY (submission_id, service, action, target),
+	FOREIGN KEY(submission_id) REFERENCES submissions (submission_id) ON DELETE CASCADE
+);
+
 CREATE TABLE files (
 	file_id VARCHAR(128) NOT NULL,
 	submission_id VARCHAR(128) NOT NULL,

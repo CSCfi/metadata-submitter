@@ -49,6 +49,7 @@ from .conf.deployment import deployment_config
 from .conf.openbao import openbao_config
 from .conf.sync import sync_config
 from .database.postgres.repositories.api_key import ApiKeyRepository
+from .database.postgres.repositories.dispatch import DispatchRepository
 from .database.postgres.repositories.file import FileRepository
 from .database.postgres.repositories.object import ObjectRepository
 from .database.postgres.repositories.registration import RegistrationRepository
@@ -58,6 +59,7 @@ from .database.postgres.repository import (
     create_engine,
     create_session_factory,
 )
+from .database.postgres.services.dispatch import DispatchService
 from .database.postgres.services.file import FileService
 from .database.postgres.services.object import ObjectService
 from .database.postgres.services.registration import RegistrationService
@@ -186,6 +188,7 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
     registration_repository = RegistrationRepository()
     file_repository = FileRepository()
     api_key_repository = ApiKeyRepository()
+    dispatch_repository = DispatchRepository()
 
     # Create database services.
     submission_service = SubmissionService(submission_repository, registration_repository)
@@ -193,6 +196,7 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
     registration_service = RegistrationService(registration_repository)
     file_service = FileService(file_repository)
     auth_service = AuthService(api_key_repository)
+    dispatch_service = DispatchService(dispatch_repository)
 
     # Create project service.
     project_service: ProjectService | None = None
@@ -249,6 +253,7 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
         object=object_service,
         registration=registration_service,
         file=file_service,
+        dispatch=dispatch_service,
         # Other services.
         auth=auth_service,
         project=project_service,

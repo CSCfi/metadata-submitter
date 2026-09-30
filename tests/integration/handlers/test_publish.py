@@ -19,6 +19,7 @@ from tests.integration.conf import (
 from tests.integration.helpers import (
     add_bucket,
     add_file_to_bucket,
+    get_admin_call_count,
     get_file_from_bucket,
     get_files,
     get_objects,
@@ -180,6 +181,15 @@ async def test_publish_bp(nbis_client, bp_submission):
         # The background ingest scanner should progress every file to READY and only mark the
         # submission ingested once the Admin API itself confirms the dataset was released.
         await wait_for_dataset_released(mock_user, submission_id)
+
+        # The scanner's dispatch-cooldown gate should mean every Admin API action is sent exactly
+        # once per file/dataset, even though ingestion runs across several scan cycles -- this is
+        # the exact duplicate-message regression the dispatches table exists to prevent.
+        for path in published_submission_paths:
+            assert await get_admin_call_count(mock_user, "file_ingest", path) == 1
+            assert await get_admin_call_count(mock_user, "file_accession", path) == 1
+        assert await get_admin_call_count(mock_user, "dataset_create", submission_id) == 1
+        assert await get_admin_call_count(mock_user, "dataset_release", submission_id) == 1
 
 
 @pytest.mark.skip(reason="This test is for manual testing against staging environment and requires manual setup.")

@@ -36,6 +36,7 @@ SUBMISSIONS_TABLE = "submissions"
 OBJECTS_TABLE = "objects"
 FILES_TABLE = "files"
 REGISTRATIONS_TABLE = "registrations"
+DISPATCHES_TABLE = "dispatches"
 
 
 class TypeJSON(TypeDecorator[dict[str, Any]]):
@@ -271,6 +272,32 @@ class FileEntity(Base):
         ObjectEntity,
         backref=backref(
             FILES_TABLE,
+            cascade="all, delete-orphan",  # tell ORM that database does on delete cascade
+            passive_deletes=True,  # tell ORM that database does on delete cascade
+            single_parent=True,
+        ),
+        passive_deletes=True,  # safe here if ON DELETE CASCADE is set in FK
+    )
+
+
+class DispatchEntity(Base):
+    """Table for tracking dispatched external service actions, to avoid duplicate delivery."""
+
+    __tablename__ = DISPATCHES_TABLE
+
+    submission_id: Mapped[str] = mapped_column(
+        String(128), ForeignKey("submissions.submission_id", ondelete="CASCADE"), primary_key=True
+    )
+    service: Mapped[str] = mapped_column(String(32), primary_key=True)
+    action: Mapped[str] = mapped_column(String(64), primary_key=True)
+    target: Mapped[str] = mapped_column(String(128), primary_key=True)
+    dispatched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
+
+    submission: Mapped[Relationship[SubmissionEntity]] = relationship(
+        SubmissionEntity,
+        backref=backref(
+            DISPATCHES_TABLE,
             cascade="all, delete-orphan",  # tell ORM that database does on delete cascade
             passive_deletes=True,  # tell ORM that database does on delete cascade
             single_parent=True,

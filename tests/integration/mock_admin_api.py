@@ -56,6 +56,15 @@ datasets = {}
 decryption_key = {}
 public_keys = {}
 
+# Tracks how many times each dispatch action has been attempted for a given target (a file path
+# for file-level actions, a dataset id for dataset-level actions), so integration tests can assert
+# the ingest scanner never re-dispatches an action it already sent.
+call_counts: dict[tuple[str, str], int] = {}
+
+
+def _record_call(action: str, target: str) -> None:
+    call_counts[(action, target)] = call_counts.get((action, target), 0) + 1
+
 
 class FileModel(BaseModel):
     """Model for validating request json when ingesting file."""
@@ -156,6 +165,8 @@ async def ingest_file(req: web.Request) -> web.Response:
             status=400,
         )
 
+    _record_call("file_ingest", ingestion_data.filepath)
+
     user_files = files_in_inbox.get(ingestion_data.user, [])
     for file in user_files:
         if ingestion_data.filepath == file.get("inboxPath", ""):
@@ -195,6 +206,8 @@ async def post_accession_id(req: web.Request) -> web.Response:
             {"error": f"json decoding: {e}", "status": 400},
             status=400,
         )
+
+    _record_call("file_accession", accession_data.filepath)
 
     if accession_data.accession_id in file_accession_ids:
         reason = "accession ID %s already in use" % accession_data.accession_id
@@ -273,6 +286,8 @@ async def create_dataset(req: web.Request) -> web.Response:
             status=400,
         )
 
+    _record_call("dataset_create", dataset_data.dataset_id)
+
     global file_accession_ids, datasets, files_in_inbox
     found = [id in file_accession_ids.keys() for id in dataset_data.accession_ids]
     if not all(found):
@@ -312,6 +327,8 @@ async def release_dataset(req: web.Request) -> web.Response:
 
     global datasets
     dataset = req.match_info["dataset"]
+    _record_call("dataset_release", dataset)
+
     if dataset not in datasets:
         reason = "Dataset not found"
         LOG.error(reason)
@@ -374,6 +391,17 @@ async def get_dataset(req: web.Request) -> web.Response:
         raise web.HTTPNotFound(reason=reason)
 
     return web.json_response(datasets[dataset])
+
+
+async def get_call_count(req: web.Request) -> web.Response:
+    """Test endpoint for reading how many times a dispatch action was attempted for a target."""
+    resp = isAdmin(req)
+    if resp is not None:
+        return resp
+
+    action = req.query.get("action", "")
+    target = req.query.get("target", "")
+    return web.json_response({"count": call_counts.get((action, target), 0)})
 
 
 async def post_key(req: web.Request) -> web.Response:
@@ -451,6 +479,7 @@ async def init() -> web.Application:
     # These endpoints are for tests only, they do not have an equivalent endpoint in the actual Admin API
     app.router.add_post("/file/create", create_file)
     app.router.add_get("/users/{username}/accessions", get_accession_ids)
+    app.router.add_get("/test/call-count", get_call_count)
 
     global decryption_key
     connection_count = 10

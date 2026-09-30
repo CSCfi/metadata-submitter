@@ -278,8 +278,7 @@ class PublishAPIHandler(RESTAPIHandler):
         return SubmissionId(submissionId=submission_id)
 
     async def _register_submission(self, submission: Submission, datacite: DataCiteMetadata | None, rems: Rems) -> None:
-        """
-        Register submission with external discovery services.
+        """Register submission with external discovery services.
 
         :param submission: The submission
         :param datacite: The datacite metadata

@@ -2,6 +2,7 @@
 
 from pydantic import BaseModel, ConfigDict
 
+from ...database.postgres.services.dispatch import DispatchService
 from ...database.postgres.services.file import FileService
 from ...database.postgres.services.object import ObjectService
 from ...database.postgres.services.registration import RegistrationService
@@ -31,6 +32,7 @@ class RESTAPIServices(BaseModel):
     object: ObjectService
     registration: RegistrationService
     file: FileService
+    dispatch: DispatchService
     # Auth service.
     auth: AuthService
     # Project service.

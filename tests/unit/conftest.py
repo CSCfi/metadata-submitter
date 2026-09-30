@@ -29,7 +29,14 @@ from metadata_backend.conf.pid import CscPidConfig
 from metadata_backend.conf.rems import RemsConfig
 from metadata_backend.conf.ror import RorConfig
 from metadata_backend.conf.s3 import S3Config
-from metadata_backend.database.postgres.models import FILES_TABLE, OBJECTS_TABLE, REGISTRATIONS_TABLE, SUBMISSIONS_TABLE
+from metadata_backend.database.postgres.models import (
+    DISPATCHES_TABLE,
+    FILES_TABLE,
+    OBJECTS_TABLE,
+    REGISTRATIONS_TABLE,
+    SUBMISSIONS_TABLE,
+)
+from metadata_backend.database.postgres.repositories.dispatch import DispatchRepository
 from metadata_backend.database.postgres.repositories.file import FileRepository
 from metadata_backend.database.postgres.repositories.object import ObjectRepository
 from metadata_backend.database.postgres.repositories.registration import RegistrationRepository
@@ -41,6 +48,7 @@ from metadata_backend.database.postgres.repository import (
     create_session_factory,
     get_sqllite_db_url,
 )
+from metadata_backend.database.postgres.services.dispatch import DispatchService
 from metadata_backend.database.postgres.services.file import FileService
 from metadata_backend.database.postgres.services.object import ObjectService
 from metadata_backend.database.postgres.services.registration import RegistrationService
@@ -55,6 +63,7 @@ _submission_repository: SubmissionRepository | None = None
 _object_repository: ObjectRepository | None = None
 _file_repository: FileRepository | None = None
 _registration_repository: RegistrationRepository | None = None
+_dispatch_repository: DispatchRepository | None = None
 
 TEST_DISCOVERY_URL = "https://test_discovery/{id}"
 
@@ -115,7 +124,8 @@ async def _session_start():
         _submission_repository, \
         _object_repository, \
         _file_repository, \
-        _registration_repository
+        _registration_repository, \
+        _dispatch_repository
 
     # Use SQLLite database.
     _temp_sqlite_file = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
@@ -129,6 +139,7 @@ async def _session_start():
     _object_repository = ObjectRepository()
     _file_repository = FileRepository()
     _registration_repository = RegistrationRepository()
+    _dispatch_repository = DispatchRepository()
 
 
 async def _session_finish():
@@ -160,7 +171,7 @@ async def session(session_factory):
             token = _session_context.set(session)
             try:
                 # Delete existing rows from tables.
-                for table in [REGISTRATIONS_TABLE, FILES_TABLE, OBJECTS_TABLE, SUBMISSIONS_TABLE]:
+                for table in [REGISTRATIONS_TABLE, DISPATCHES_TABLE, FILES_TABLE, OBJECTS_TABLE, SUBMISSIONS_TABLE]:
                     await session.execute(text(f"DELETE FROM {table}"))
                 yield session
                 await session.rollback()
@@ -191,6 +202,11 @@ def registration_repository() -> RegistrationRepository:
     return _registration_repository
 
 
+@pytest.fixture
+def dispatch_repository() -> DispatchRepository:
+    return _dispatch_repository
+
+
 # Database service fixtures.
 
 
@@ -212,6 +228,11 @@ def file_service() -> FileService:
 @pytest.fixture
 def registration_service() -> RegistrationService:
     return RegistrationService(_registration_repository)
+
+
+@pytest.fixture
+def dispatch_service() -> DispatchService:
+    return DispatchService(_dispatch_repository)
 
 
 @pytest.fixture

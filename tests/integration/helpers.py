@@ -294,6 +294,21 @@ async def wait_for_dataset_released(
             await asyncio.sleep(poll_interval)
 
 
+async def get_admin_call_count(user_id: str, action: str, target: str) -> int:
+    """Get how many times the mock Admin API recorded a dispatch action for a target.
+
+    :param user_id: a user, used only to authenticate against the mock Admin API.
+    :param action: one of "file_ingest", "file_accession", "dataset_create", "dataset_release".
+    :param target: the file path (file-level actions) or dataset/submission id (dataset-level).
+    :returns: the number of times that action was attempted for that target.
+    """
+    async with aiohttp.ClientSession(base_url=_mock_admin_url(), headers=_mock_admin_headers(user_id)) as admin_client:
+        async with admin_client.get("/test/call-count", params={"action": action, "target": target}) as resp:
+            assert resp.status == 200
+            data = await resp.json()
+            return data["count"]
+
+
 async def get_user_id(sess: aiohttp.ClientSession):
     """Get user ID from /users/me endpoint."""
     api_prefix_v1 = deployment_config().API_PREFIX_V1
