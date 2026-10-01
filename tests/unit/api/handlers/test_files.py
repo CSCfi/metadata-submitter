@@ -138,3 +138,17 @@ async def test_check_bucket_access(csc_client) -> None:
     ):
         response = csc_client.head(f"{api_prefix_v1}/buckets/{bucket_name}?projectId={project_id}")
         assert response.status_code == 403
+
+
+async def test_buckets_not_available_nbis(nbis_client) -> None:
+    """Test that /buckets endpoints are not available in NBIS deployment."""
+
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+    project_id = "PRJ123"
+    bucket_name = "bucket1"
+
+    with patch_verify_authorization:
+        assert nbis_client.get(f"{api_prefix_v1}/buckets?projectId={project_id}").status_code == 404
+        assert nbis_client.get(f"{api_prefix_v1}/buckets/{bucket_name}/files?projectId={project_id}").status_code == 404
+        assert nbis_client.put(f"{api_prefix_v1}/buckets/{bucket_name}?projectId={project_id}").status_code == 404
+        assert nbis_client.head(f"{api_prefix_v1}/buckets/{bucket_name}?projectId={project_id}").status_code == 404

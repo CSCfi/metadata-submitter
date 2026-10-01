@@ -393,10 +393,11 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
         api_router.add_api_route("/api/keys", _key.get_api_keys, methods=GET, tags=key_tag)
 
     # File routes.
-    api_router.add_api_route("/buckets", _file.get_project_buckets, methods=GET, tags=bucket_tag)
-    api_router.add_api_route("/buckets/{bucket}/files", _file.get_files_in_bucket, methods=GET, tags=bucket_tag)
-    api_router.add_api_route("/buckets/{bucket}", _file.grant_access_to_bucket, methods=["PUT"], tags=bucket_tag)
-    api_router.add_api_route("/buckets/{bucket}", _file.check_bucket_access, methods=HEAD, tags=bucket_tag)
+    if config.DEPLOYMENT == DEPLOYMENT_CSC:
+        api_router.add_api_route("/buckets", _file.get_project_buckets, methods=GET, tags=bucket_tag)
+        api_router.add_api_route("/buckets/{bucket}/files", _file.get_files_in_bucket, methods=GET, tags=bucket_tag)
+        api_router.add_api_route("/buckets/{bucket}", _file.grant_access_to_bucket, methods=["PUT"], tags=bucket_tag)
+        api_router.add_api_route("/buckets/{bucket}", _file.check_bucket_access, methods=HEAD, tags=bucket_tag)
 
     # REMS routes.
     api_router.add_api_route("/rems", _rems.get_organisations, methods=GET, tags=rems_tag)
