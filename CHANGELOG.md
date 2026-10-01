@@ -29,6 +29,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Removed
 
+- (users) NBIS deployment no longer includes unused `/buckets` endpoints
 - (admins) CRYPT4GH_PRIVATE_PASSPHRASE env (Generate file specific sender private keys instead)
 - (admins) CRYPT4GH_PRIVATE_KEY env (Generate file specific sender private keys instead)
 - use of static private Crypt4GH keys when encrypting Bigpicture XMLs written out to the NeiC SDA inbox.
