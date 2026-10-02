@@ -137,6 +137,14 @@ class AuthMiddleware:
             # Before request is processed by the route.
             LOG.debug("Authenticating request: method: %s, path: %s", method, path)
 
+            response_started = False
+
+            async def tracking_send(message: Message) -> None:
+                nonlocal response_started
+                if message["type"] == "http.response.start":
+                    response_started = True
+                await send(message)
+
             try:
                 # Extract JWT token or API key.
                 jwt_token, api_key = await extract_jwt_token_and_api_key(method, path, scope)
@@ -148,9 +156,13 @@ class AuthMiddleware:
                 state = scope.setdefault("state", {})
                 state["user"] = user
 
-                await self.app(scope, receive, send)
+                await self.app(scope, receive, tracking_send)
             except Exception as exc:
-                await _send_error_response(scope, receive, send, exc)
+                if response_started:
+                    # A response, such as the generic error one, has already been sent and cannot be replaced.
+                    LOG.exception("Exception after the response started: method: %s, path: %s", method, path)
+                else:
+                    await _send_error_response(scope, receive, send, exc)
 
 
 async def _send_error_response(scope: Scope, receive: Receive, send: Send, exc: Exception) -> None:

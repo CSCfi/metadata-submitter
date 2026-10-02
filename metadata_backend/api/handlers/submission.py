@@ -15,7 +15,7 @@ from ..exceptions import UserException
 from ..json import to_json_dict
 from ..models.models import File, Registration, SubmissionId
 from ..models.submission import PaginatedSubmissions, PaginatedSubmissionsPage, Submission, SubmissionWorkflow
-from ..services.project import ProjectService
+from ..services.project import ProjectService, UnaffiliatedProjectUserException
 from .restapi import RESTAPIHandler
 
 SubmissionDocumentBody = Annotated[Submission, Body(description="Submission document")]
@@ -68,13 +68,18 @@ class SubmissionAPIHandler(RESTAPIHandler):
 
         # Check that submission exists.
         if search_name and project_id is not None:
+            # Check the user's project before searching it, so names in other projects cannot be probed.
+            await project_service.verify_user_project(user_id, project_id)
             submission_id = await submission_service.check_submission_by_id_or_name(project_id, submission_id)
         else:
             await submission_service.check_submission_by_id(submission_id)
 
         # Check that the user owns the submission.
         actual_project_id = await submission_service.get_project_id(submission_id)
-        await project_service.verify_user_project(user_id, actual_project_id)
+        try:
+            await project_service.verify_user_project(user_id, actual_project_id)
+        except UnaffiliatedProjectUserException as e:
+            raise UnknownSubmissionUserException(submission_id) from e
 
         if workflow:
             # Check that the workflow matches.
@@ -85,7 +90,7 @@ class SubmissionAPIHandler(RESTAPIHandler):
         if project_id:
             # Check that the project matches.
             if project_id != actual_project_id:
-                raise UserException(f"Submission belongs to a different project: '{actual_project_id}")
+                raise UserException(f"Submission belongs to a different project: '{actual_project_id}'")
 
         return submission_id
 

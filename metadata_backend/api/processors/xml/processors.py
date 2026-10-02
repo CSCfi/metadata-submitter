@@ -40,7 +40,12 @@ class XmlProcessor(ABC):
         :return: XML element tree.
         """
 
-        parser = etree.XMLParser(remove_blank_text=True, remove_comments=True)
+        # Resolve only entities the document defines itself, and never load a DTD or fetch from the
+        # network, so that a submitted document cannot read server files or URLs. An external entity is
+        # rejected as undefined rather than kept, so it is never stored for a later reader to resolve.
+        parser = etree.XMLParser(
+            remove_blank_text=True, remove_comments=True, resolve_entities="internal", load_dtd=False, no_network=True
+        )
 
         if isinstance(xml, Path):
             return etree.parse(str(xml), parser)
@@ -50,10 +55,6 @@ class XmlProcessor(ABC):
 
         if isinstance(xml, str):
             xml = xml.encode("utf-8")
-
-        if isinstance(xml, Path):
-            with xml.open("rb") as f:
-                etree.parse(f, parser=parser, base_url=str(xml))
 
         return etree.ElementTree(etree.fromstring(xml, parser))
 

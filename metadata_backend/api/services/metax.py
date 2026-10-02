@@ -174,7 +174,7 @@ class MetaxMapper:
         :param datacite_metadata: DataCite metadata
         :returns: Metax metadata.
         """
-        LOG.info("Mapping DataCite metadata to Metax metadata: %r.", datacite_metadata)
+        LOG.info("Mapping DataCite metadata to Metax metadata.")
 
         await self._map_actors(datacite_metadata.creators, Roles.creator, metax_metadata)
         await self._map_publisher(datacite_metadata.publisher, metax_metadata)

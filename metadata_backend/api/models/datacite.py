@@ -162,10 +162,12 @@ def _remove_whitespace(values: dict, fields: Iterable[str]) -> dict:  # type: ig
     :param values: Dictionary of model field values
     :return: The model values with whitespace removed from the specified fields
     """
+    if not isinstance(values, dict):
+        return values  # Let pydantic report the type error.
     for field in fields:
         if field in values and values[field] is not None:
             val = values[field]
-            if any(c.isspace() for c in val):
+            if isinstance(val, str) and any(c.isspace() for c in val):
                 # Remove whitespace.
                 values[field] = "".join(val.split())
     return values
@@ -216,6 +218,8 @@ class Creator(StrictBaseModel):
     @classmethod
     def _model_validator_name(cls: type["Creator"], values: dict) -> dict:  # type: ignore
         """Set name and nameType if familyName and givenName are provided."""
+        if not isinstance(values, dict):
+            return values  # Let pydantic report the type error.
         given = values.get("givenName")
         family = values.get("familyName")
 
@@ -247,6 +251,8 @@ class Contributor(StrictBaseModel):
     @classmethod
     def _model_validator_name(cls: type["Contributor"], values: dict) -> dict:  # type: ignore
         """Set name and nameType if familyName and givenName are provided."""
+        if not isinstance(values, dict):
+            return values  # Let pydantic report the type error.
         given = values.get("givenName")
         family = values.get("familyName")
 

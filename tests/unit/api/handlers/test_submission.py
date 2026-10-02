@@ -58,6 +58,32 @@ async def test_post_get_delete_submission(csc_client):
         assert response.status_code == 404
 
 
+async def test_get_submission_in_other_project_is_not_found(csc_client):
+    """Test that a submission in another project is indistinguishable from an unknown one."""
+
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+    name = f"name_{uuid.uuid4()}"
+    other_project_id = f"project_{uuid.uuid4()}"
+    submission_id = await sd_submission(csc_client, name=name, project_id=other_project_id)
+
+    # The user is affiliated only with the mock project.
+    with patch_get_user_projects, patch_verify_authorization:
+        unknown = csc_client.get(f"{api_prefix_v1}/submissions/unknown-{uuid.uuid4()}").json()
+        for request in (csc_client.get, csc_client.delete):
+            response = request(f"{api_prefix_v1}/submissions/{submission_id}")
+            assert response.status_code == 404
+            problem = response.json()
+            assert problem["detail"] == f"Submission '{submission_id}' not found."
+            assert problem.keys() == unknown.keys()
+            assert other_project_id not in response.text
+
+        # Searching another project by name is refused before the name is looked up.
+        response = csc_client.get(f"{api_prefix_v1}/submissions/{name}?projectId={other_project_id}")
+        assert response.status_code == 401
+        assert response.json()["detail"] == "User is not affiliated with the project."
+        assert other_project_id not in response.text
+
+
 async def test_post_submission_fails_with_missing_fields(csc_client):
     """Test that submission creation fails with missing fields."""
 

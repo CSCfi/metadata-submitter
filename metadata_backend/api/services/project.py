@@ -6,20 +6,26 @@ from typing import override
 from urllib.parse import urlparse
 
 from aiocache import SimpleMemoryCache, cached
-from fastapi import HTTPException
 from ldap3 import Connection, Server
 from ldap3.core.exceptions import LDAPExceptionError
-from starlette import status
 
 from ...conf.ldap import csc_ldap_config
 from ...helpers.logger import LOG
-from ..exceptions import LdapSystemException, SystemException, UserException
+from ..exceptions import LdapSystemException, SystemException, UnauthorizedUserException, UserException
 from ..models.models import Project
 
 CSC_LDAP_DN = "ou=idm,dc=csc,dc=fi"
 CSC_LDAP_PROJECT_ATTRIBUTE = "CSCPrjNum"
 CSC_LDAP_SERVICE_PROFILE = "SP_SD-SUBMIT"
 CSC_LDAP_FILTER = "(&(objectClass=applicationProcess)(CSCSPCommonStatus=ready)(CSCUserName={username}))"
+
+
+class UnaffiliatedProjectUserException(UnauthorizedUserException):
+    """Raised when the user is not affiliated with the project."""
+
+    def __init__(self) -> None:
+        """Initialize the exception."""
+        super().__init__("User is not affiliated with the project.")
 
 
 class ProjectService(ABC):
@@ -35,10 +41,7 @@ class ProjectService(ABC):
             project_id: The project ID.
         """
         if not await self._verify_user_project(user_id, project_id):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=f"User {user_id} is not affiliated with project {project_id}.",
-            )
+            raise UnaffiliatedProjectUserException()
 
     @cached(ttl=3600, cache=SimpleMemoryCache)  # type: ignore
     async def get_user_projects(self, user_id: str) -> list[Project]:

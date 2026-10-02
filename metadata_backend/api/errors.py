@@ -74,7 +74,7 @@ def register_exception_handlers(app: FastAPI) -> None:
             request.method,
             request.url.path,
             exc.status_code,
-            _format_exception,
+            _format_exception(exc),
         )
         return problem_response(request, status.HTTP_500_INTERNAL_SERVER_ERROR, "Unexpected HTTP error")
 

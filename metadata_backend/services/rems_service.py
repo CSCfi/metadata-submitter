@@ -99,7 +99,7 @@ class RemsServiceHandler(ServiceHandler):
         response: dict[str, Any] = await self._request(
             method="GET", path="/workflows", params={"disabled": "false", "archived": "false"}
         )
-        return [RemsWorkflow.model_validate(workflow) for workflow in response]
+        return [self._validate_response(RemsWorkflow, workflow) for workflow in response]
 
     async def get_workflow(self, organization_id: str | None, workflow_id: int) -> RemsWorkflow:
         """
@@ -121,7 +121,7 @@ class RemsServiceHandler(ServiceHandler):
                 raise UserException(f"Unknown REMS workflow '{workflow_id}'") from ex
             raise ex
 
-        workflow = RemsWorkflow.model_validate(response)
+        workflow = self._validate_response(RemsWorkflow, response)
         if organization_id and workflow.organization.id != organization_id:
             raise UserException(
                 f"REMS workflow '{workflow_id}' does not belong to REMS organization '{organization_id}'"
@@ -164,7 +164,7 @@ class RemsServiceHandler(ServiceHandler):
         response: dict[str, Any] = await self._request(
             method="GET", path="/licenses", params={"disabled": "false", "archived": "false"}
         )
-        return [RemsLicense.model_validate(rems_license) for rems_license in response]
+        return [self._validate_response(RemsLicense, rems_license) for rems_license in response]
 
     async def get_license(self, organization_id: str | None, license_id: int) -> RemsLicense:
         """
@@ -185,7 +185,7 @@ class RemsServiceHandler(ServiceHandler):
             if ex.service_status_code == status.HTTP_404_NOT_FOUND:
                 raise UserException(f"Unknown REMS license '{license_id}'") from ex
             raise ex
-        rems_license = RemsLicense.model_validate(response)
+        rems_license = self._validate_response(RemsLicense, response)
         if organization_id and rems_license.organization.id != organization_id:
             raise UserException(f"REMS license '{license_id}' does not belong to REMS organization '{organization_id}'")
         return rems_license
@@ -284,7 +284,7 @@ class RemsServiceHandler(ServiceHandler):
         if doi is not None:
             params["resid"] = doi
         response: dict[str, Any] = await self._request(method="GET", path="/resources", params=params)
-        return [RemsResource.model_validate(resource) for resource in response]
+        return [self._validate_response(RemsResource, resource) for resource in response]
 
     async def get_catalogue_item(self, catalogue_id: int) -> RemsCatalogueItem:
         """
@@ -295,7 +295,7 @@ class RemsServiceHandler(ServiceHandler):
         """
 
         response: dict[str, Any] = await self._request(method="GET", path=f"/catalogue-items/{catalogue_id}")
-        return RemsCatalogueItem.model_validate(response)
+        return self._validate_response(RemsCatalogueItem, response)
 
     async def create_resource(self, organization_id: str, license_ids: list[int] | None, resid: str) -> int:
         """Create a REMS resource.

@@ -96,8 +96,12 @@ class SensitiveDataObjectSubmissionService(ObjectSubmissionService):
         :param old_submission: The existing submission.
         :return: The submission document.
         """
+        changes = json.loads(self._submission_document)
+        if not isinstance(changes, dict):
+            raise UserException(f"The '{SD_FILE}' document must be a JSON object.")
+
         # Merge changes to the existing submission document.
-        return Submission.model_validate({**to_json_dict(old_submission), **json.loads(self._submission_document)})
+        return Submission.model_validate({**to_json_dict(old_submission), **changes})
 
     @override
     def prepare_files(self, submission_id: str) -> list[File]:

@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Awaitable, Callable, Optional, override
 
 import httpx
+from pydantic import BaseModel, ValidationError
 from starlette import status
 from yarl import URL
 
@@ -14,6 +15,8 @@ from ..helpers.logger import LOG
 
 RETRY_MAX_COUNT = 3
 RETRY_DELAY = 1
+# The most characters of an external service error response that are logged.
+MAX_LOGGED_ERROR_CONTENT = 500
 RETRY_STATUS_CODES = frozenset({status.HTTP_408_REQUEST_TIMEOUT, status.HTTP_429_TOO_MANY_REQUESTS})
 
 
@@ -184,10 +187,16 @@ class ServiceHandler(HealthHandler):
                     await asyncio.sleep(RETRY_DELAY)
                 else:
                     # Failed request with no retry attempts remaining.
-                    content = response.text
+                    # An error body can echo the request, such as metadata with personal data
+                    # so only its start is logged.
+                    content = response.text[:MAX_LOGGED_ERROR_CONTENT]
                     LOG.error(
-                        f"Service handler {method} request to {self.service_name} path {url} returned: "
-                        f"{response.status_code} and content: {content}"
+                        "Service handler %s request to %s path %s returned: %d and content: %s",
+                        method,
+                        self.service_name,
+                        url,
+                        response.status_code,
+                        content,
                     )
                     raise ServiceHandlerSystemException(self.service_name, service_status_code=response.status_code)
         except ServiceHandlerSystemException as exc:
@@ -198,6 +207,28 @@ class ServiceHandler(HealthHandler):
                 f"unexpected exception: {str(exc)}"
             )
             raise ServiceHandlerSystemException(self.service_name, exc)
+
+    def _validate_response[T: BaseModel](self, model: type[T], data: Any) -> T:
+        """Validate an external service response.
+
+        A response the model rejects is the service's fault, not the client's, so it is reported as a
+        service error rather than a validation error that would list the service's fields to the client.
+
+        :param model: The response model.
+        :param data: The response body.
+        :returns: The validated response.
+        """
+        try:
+            return model.model_validate(data)
+        except ValidationError as exc:
+            # The response may carry credentials, so the log omits the rejected values.
+            LOG.error(
+                "Service handler %s returned an invalid %s: %s",
+                self.service_name,
+                model.__name__,
+                exc.errors(include_url=False, include_input=False),
+            )
+            raise ServiceHandlerSystemException(self.service_name, exc) from None
 
     @override
     async def get_health(self) -> Health:

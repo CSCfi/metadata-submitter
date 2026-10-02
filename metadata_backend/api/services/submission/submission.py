@@ -6,8 +6,11 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from typing import Sequence, cast
 
+from fastapi import HTTPException
+from lxml.etree import XMLSyntaxError
 from lxml.etree import _ElementTree as ElementTree  # noqa
 from pydantic import BaseModel, ValidationError
+from starlette import status
 
 from ....database.postgres.services.file import FileService
 from ....database.postgres.services.object import ObjectService, UnknownObjectException
@@ -18,9 +21,17 @@ from ...models.models import File
 from ...models.submission import Submission, SubmissionWorkflow
 from ...processors.models import ObjectIdentifier
 from ...processors.processors import DocumentsProcessor, ObjectProcessor
+from ...processors.xml.exceptions import SchemaValidationException
 from ...processors.xml.processors import XmlObjectProcessor, XmlProcessor
 from ..accession import generate_accession
 from ..project import ProjectService
+
+# Errors whose message is written for the submitter. Any other error, for example one raised by the
+# database, may carry SQL, parameters or configuration and is left to the generic 500 handler.
+USER_ERRORS = (UserException, SchemaValidationException, XMLSyntaxError, ValueError)
+# Errors that already have a status and a message meant for the client. ValidationError must be
+# matched before USER_ERRORS, since it is a ValueError.
+PRESERVED_ERRORS = (ValidationError, SystemException, HTTPException, UserExceptions)
 
 
 class ObjectSubmission(BaseModel):
@@ -163,6 +174,8 @@ class ObjectSubmissionService(ABC):
                                 f"'{identifier.id}' is not supported"
                             )
 
+                # Report metadata objects that already have accessions, and references to metadata objects
+                # outside the submission, which are allowed only if supports_references is set.
                 if errors:
                     raise UserExceptions(errors)
 
@@ -174,7 +187,12 @@ class ObjectSubmissionService(ABC):
 
                 # Check that all metadata object references have accessions.
                 for identifier in processor.get_references_without_ids():
-                    errors.append(f"Unknown '{identifier.schema_type}' metadata object '{identifier.id}' reference")
+                    errors.append(f"Unknown '{identifier.schema_type}' metadata object '{identifier.name}' reference")
+
+                # Report references to metadata objects that are not in the submission, which would
+                # otherwise be saved without an accession.
+                if errors:
+                    raise UserExceptions(errors)
 
             # Assign submission accession.
             submission_id = self.assign_submission_accession()
@@ -220,10 +238,12 @@ class ObjectSubmissionService(ABC):
             for file in files:
                 await self._file_service.add_file(file, self._workflow)
 
-        except ValidationError as e:
-            # Preserve Pydantic validation error.
-            raise e
-        except Exception as e:
+        except PRESERVED_ERRORS:
+            # Preserve errors that already have a status and a message meant for the client.
+            raise
+        except USER_ERRORS as e:
+            if isinstance(e, UserException) and e.status_code != status.HTTP_400_BAD_REQUEST:
+                raise
             errors.append(str(e))
             raise UserExceptions(errors) from e
 
@@ -347,6 +367,9 @@ class ObjectSubmissionService(ABC):
                                     f"metadata object '{ref_identifier.id}' outside the submission."
                                 )
 
+                # Report accession and name conflicts with the existing metadata objects, unexpected
+                # accessions in new metadata objects, and references to metadata objects outside the
+                # submission, which are allowed only if supports_references is set.
                 if errors:
                     raise UserExceptions(errors)
 
@@ -358,7 +381,12 @@ class ObjectSubmissionService(ABC):
 
                 # Check that all metadata object references have accessions.
                 for identifier in processor.get_references_without_ids():
-                    errors.append(f"Unknown '{identifier.schema_type}' metadata object '{identifier.id}' reference")
+                    errors.append(f"Unknown '{identifier.schema_type}' metadata object '{identifier.name}' reference")
+
+                # Report references to metadata objects that are not in the submission, which would
+                # otherwise be saved without an accession. Earlier errors have already been raised.
+                if errors:
+                    raise UserExceptions(errors)
 
             # Prepare submission document.
             old_submission = await self._submission_service.get_submission_by_id(submission_id)
@@ -408,10 +436,12 @@ class ObjectSubmissionService(ABC):
             for file in files:
                 await self._file_service.add_file(file, self._workflow)
 
-        except ValidationError as e:
-            # Preserve Pydantic validation error.
-            raise e
-        except Exception as e:
+        except PRESERVED_ERRORS:
+            # Preserve errors that already have a status and a message meant for the client.
+            raise
+        except USER_ERRORS as e:
+            if isinstance(e, UserException) and e.status_code != status.HTTP_400_BAD_REQUEST:
+                raise
             errors.append(str(e))
             raise UserExceptions(errors) from e
 

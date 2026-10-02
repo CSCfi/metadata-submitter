@@ -266,3 +266,39 @@ async def test_auth_middleware_missing_authorization_returns_401():
     assert sent_messages
     assert sent_messages[0]["type"] == "http.response.start"
     assert sent_messages[0]["status"] == 401
+
+
+async def test_auth_middleware_does_not_replace_started_response(monkeypatch):
+    """Test auth middleware sends no second response for an error raised after the response started.
+
+    Starlette sends the generic error response for an unexpected exception and then re-raises it.
+    """
+
+    async def _call(_scope, _receive, send):
+        await send({"type": "http.response.start", "status": 500, "headers": []})
+        await send({"type": "http.response.body", "body": b"generic"})
+        raise RuntimeError("secret detail")
+
+    mock_app = MagicMock(side_effect=_call)
+    monkeypatch.setattr("metadata_backend.api.middlewares.verify_authorization", AsyncMock(return_value=Mock()))
+    middleware = AuthMiddleware(mock_app, MagicMock())
+
+    scope = {
+        "type": "http",
+        "method": "GET",
+        "path": f"{deployment_config().API_PREFIX_V1}/test",
+        "headers": [],
+    }
+
+    async def _receive():
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    sent_messages = []
+
+    async def _send(message):
+        sent_messages.append(message)
+
+    await middleware(scope, _receive, _send)
+
+    assert [m["type"] for m in sent_messages] == ["http.response.start", "http.response.body"]
+    assert sent_messages[1]["body"] == b"generic"

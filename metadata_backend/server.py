@@ -1,6 +1,7 @@
 """Functions to launch backend server."""
 
 import asyncio
+import copy
 import logging
 from contextlib import asynccontextmanager
 from enum import Enum
@@ -65,7 +66,7 @@ from .database.postgres.services.object import ObjectService
 from .database.postgres.services.registration import RegistrationService
 from .database.postgres.services.submission import SubmissionService
 from .health import DatabaseHealthHandler
-from .helpers.logger import LOG
+from .helpers.logger import LOG, CallbackQueryFilter
 from .services.admin_service import AdminServiceHandler
 from .services.auth_service import AuthServiceHandler
 from .services.datacite_service import DataciteServiceHandler
@@ -528,7 +529,12 @@ def main() -> None:
     host = "0.0.0.0"  # nosec
     port = 5430 if config.DEPLOYMENT == DEPLOYMENT_CSC else 5431
 
-    uvicorn.run(create_app(), host=host, port=port, loop="uvloop")
+    # Uvicorn applies its logging configuration when it starts, so the filter is added to it.
+    log_config = copy.deepcopy(uvicorn.config.LOGGING_CONFIG)
+    log_config.setdefault("filters", {})["callback_query"] = {"()": CallbackQueryFilter}
+    log_config["handlers"]["access"]["filters"] = ["callback_query"]
+
+    uvicorn.run(create_app(), host=host, port=port, loop="uvloop", log_config=log_config)
 
 
 if __name__ == "__main__":
