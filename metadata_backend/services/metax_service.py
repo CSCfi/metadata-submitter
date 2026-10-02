@@ -47,7 +47,7 @@ class MetaxServiceHandler(MetaxService, ServiceHandler):
             method="GET", path="reference-data/fields-of-science", params={"limit": "1000"}
         )
 
-        fields = [FieldOfScience.model_validate(f) for f in resp.get("results", [])]
+        fields = [self._validate_response(FieldOfScience, f) for f in resp.get("results", [])]
         return fields
 
     async def create_draft_dataset(self, doi: str, title: str, description: str) -> str:
@@ -117,7 +117,7 @@ class MetaxServiceHandler(MetaxService, ServiceHandler):
         :returns: Metax dataset response
         """
         dataset: dict[str, Any] = await self._request(method="POST", path="/datasets", json_data=json_data)
-        LOG.info("Draft dataset is created: %r", dataset)
+        LOG.info("Draft dataset is created with Metax ID: %r.", dataset.get("id"))
 
         return dataset
 
@@ -144,7 +144,7 @@ class MetaxServiceHandler(MetaxService, ServiceHandler):
         resp: dict[str, Any] = await self._request(method="PATCH", path=f"/datasets/{metax_id}", json_data=json_data)
         if "not found" in resp.get("detail", "").lower():
             raise ValueError(f"Invalid Metax ID: {metax_id}")
-        LOG.info("Dataset with Metax ID %s is updated: %r", metax_id, resp)
+        LOG.info("Dataset with Metax ID %s is updated.", metax_id)
 
         return resp
 

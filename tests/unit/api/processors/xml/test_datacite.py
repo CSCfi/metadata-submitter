@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+from lxml import etree
 from pydantic_string_url import AnyUrl
 
 from metadata_backend.api.models.datacite import DataCiteMetadata, Publisher
-from metadata_backend.api.processors.xml.datacite import read_datacite_xml
+from metadata_backend.api.processors.xml.datacite import _elem, read_datacite_xml
 
 TEST_FILE = Path(__file__).parent.parent.parent.parent.parent / "test_files" / "xml" / "datacite" / "datacite.xml"
 
@@ -14,6 +16,13 @@ def test_read_datacite_xml():
     xml = TEST_FILE.read_bytes()
     datacite, datacite_xml = read_datacite_xml(xml)
     assert_datacite(datacite, saved=False)
+
+
+def test_elem_rejects_repeated_element():
+    """Test that a repeated element is a user error (ValueError), not an internal one."""
+    elements = [etree.Element("publisher"), etree.Element("publisher")]
+    with pytest.raises(ValueError, match="At most one element expected"):
+        _elem(elements)
 
 
 def assert_datacite(datacite: DataCiteMetadata, saved: bool) -> None:

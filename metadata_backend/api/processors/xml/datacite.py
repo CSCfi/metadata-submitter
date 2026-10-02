@@ -45,14 +45,14 @@ DATACITE_OBJECT_TYPE = "datacite"
 
 
 def _elem(node: Element | list[Element] | None) -> Element | None:
-    """Return element  if the element exists.
+    """Return element if the element exists.
 
     :param node: An XML element, a list of elements with one XML element, or None.
     :returns: The element if it exists, otherwise None.
     """
     if isinstance(node, list):
         if len(node) > 1:
-            raise SystemError(f"At most one element expected: {[element.tag for element in node]}")
+            raise ValueError(f"At most one element expected: {[element.tag for element in node]}")
         return node[0] if node else None
 
     return node

@@ -7,6 +7,7 @@ from ....api.exceptions import NotFoundUserException, SystemException, UserExcep
 from ....api.models.models import Object
 from ....api.models.submission import SubmissionWorkflow
 from ....api.services.openbao import OpenBaoService, is_encrypted
+from ....helpers.logger import LOG
 from ..models import ObjectEntity
 from ..repositories.object import ObjectRepository
 
@@ -40,9 +41,8 @@ async def decode_object(data: bytes, openbao: OpenBaoService | None) -> str:
         return data.decode("utf-8")
 
     if openbao is None:
-        raise SystemException(
-            "A stored metadata object is encrypted and no OPENBAO_URL is configured to decrypt it with."
-        )
+        LOG.error("A stored metadata object is encrypted and no OPENBAO_URL is configured to decrypt it with.")
+        raise SystemException("Service configuration error.")
 
     return await openbao.decrypt(data)
 

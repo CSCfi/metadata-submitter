@@ -6,7 +6,7 @@ import httpx
 from pydantic import BaseModel
 from yarl import URL
 
-from ..api.exceptions import ForbiddenUserException, NotFoundUserException, SystemException
+from ..api.exceptions import ForbiddenUserException, NotFoundUserException, ServiceHandlerSystemException
 from ..conf.keystone import keystone_config
 from ..helpers.logger import LOG
 from .service_handler import ServiceHandler
@@ -96,25 +96,33 @@ class KeystoneServiceHandler(ServiceHandler):
                 }
             },
         )
-        ret = resp.json()
+        try:
+            ret = resp.json()
 
-        # Get the scoped token
-        scoped: str = resp.headers["X-Subject-Token"]
-        # Use the first available public endpoint
-        endpoint = [
-            list(filter(lambda i: i["interface"] == "public", i["endpoints"]))[0]
-            for i in filter(lambda i: i["type"] == "object-store", ret["token"]["catalog"])
-        ][0]
+            # Get the scoped token
+            scoped: str = resp.headers["X-Subject-Token"]
+            # Use the first available public endpoint
+            endpoint = [
+                list(filter(lambda i: i["interface"] == "public", i["endpoints"]))[0]
+                for i in filter(lambda i: i["type"] == "object-store", ret["token"]["catalog"])
+            ][0]
 
-        # Append the scoped project with metadata
-        project_entry = self.ProjectEntry(
-            id=project_id,
-            name=project_name,
-            endpoint=endpoint["url"],
-            token=scoped,
-            uid=ret["token"]["user"]["id"],
-            uname=ret["token"]["user"]["name"],
-        )
+            project_data = {
+                "id": project_id,
+                "name": project_name,
+                "endpoint": endpoint["url"],
+                "token": scoped,
+                "uid": ret["token"]["user"]["id"],
+                "uname": ret["token"]["user"]["name"],
+            }
+        except Exception as e:
+            LOG.error(
+                "Service handler %s returned an invalid scoped token response: %s", self.service_name, type(e).__name__
+            )
+            raise ServiceHandlerSystemException(self.service_name) from None
+
+        # Return the project with its scoped token, object storage endpoint and user.
+        project_entry = self._validate_response(self.ProjectEntry, project_data)
         return project_entry
 
     async def get_ec2_for_project(self, project: ProjectEntry) -> EC2Credentials:
@@ -123,25 +131,25 @@ class KeystoneServiceHandler(ServiceHandler):
         :param project: The project entry containing token.
         :returns: The EC2 credentials containing access and secret keys.
         """
+        resp: dict[str, Any] = await self._request(
+            method="POST",
+            url=URL(f"{self.base_url}/v3/users/{project.uid}/credentials/OS-EC2"),
+            json_data={
+                "tenant_id": project.id,
+            },
+            headers={
+                "X-Auth-Token": project.token,
+            },
+        )
         try:
-            resp: dict[str, Any] = await self._request(
-                method="POST",
-                url=URL(f"{self.base_url}/v3/users/{project.uid}/credentials/OS-EC2"),
-                json_data={
-                    "tenant_id": project.id,
-                },
-                headers={
-                    "X-Auth-Token": project.token,
-                },
+            credential_data = {"access": resp["credential"]["access"], "secret": resp["credential"]["secret"]}
+        except Exception as e:
+            LOG.error(
+                "Service handler %s returned an invalid credential response: %s", self.service_name, type(e).__name__
             )
-            credentials = self.EC2Credentials(
-                access=resp["credential"]["access"],
-                secret=resp["credential"]["secret"],
-            )
-            return credentials
-        except KeyError as e:
-            LOG.exception("Missing required credential fields: %r", e)
-            raise SystemException("Invalid credential response format.")
+            raise ServiceHandlerSystemException(self.service_name) from None
+
+        return self._validate_response(self.EC2Credentials, credential_data)
 
     async def delete_ec2_from_project(self, project: ProjectEntry, credentials: EC2Credentials) -> int:
         """Delete the existing ec2 credential using scoped project from entry.

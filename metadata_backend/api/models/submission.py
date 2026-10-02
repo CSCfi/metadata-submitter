@@ -85,6 +85,8 @@ class Submission(StrictBaseModel):
     @model_validator(mode="before")
     @classmethod
     def model_validator_context(cls: type["Submission"], values: dict, info: ValidationInfo) -> dict:  # type: ignore
+        if not isinstance(values, dict):
+            return values  # Let pydantic report the type error.
         if info.context and info.context.get("projectId"):
             values["projectId"] = info.context.get("projectId")
         if info.context and info.context.get("workflow"):

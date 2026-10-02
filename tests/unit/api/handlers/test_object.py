@@ -7,6 +7,9 @@ import uuid
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, BinaryIO
+from unittest.mock import AsyncMock, patch
+
+from sqlalchemy.exc import IntegrityError
 
 from metadata_backend.api.models.models import Files, Object, Objects
 from metadata_backend.api.models.submission import Submission, SubmissionWorkflow
@@ -14,6 +17,7 @@ from metadata_backend.api.processors.xml.bigpicture import (
     BP_ANNOTATION_OBJECT_TYPE,
     BP_ANNOTATION_SCHEMA,
     BP_DATASET_OBJECT_TYPE,
+    BP_DATASET_PATH,
     BP_DATASET_SCHEMA,
     BP_IMAGE_OBJECT_TYPE,
     BP_IMAGE_SCHEMA,
@@ -52,6 +56,7 @@ from metadata_backend.api.processors.xml.processors import (
 )
 from metadata_backend.api.services.accession import generate_bp_accession_prefix
 from metadata_backend.conf.deployment import deployment_config
+from metadata_backend.database.postgres.services.file import FileService
 from tests.unit.patches.user import (
     MOCK_PROJECT_ID,
     patch_get_user_projects,
@@ -472,6 +477,47 @@ async def test_submission_bp_duplicate_dataset_alias_rejected(nbis_client):
         assert problem_json["errors"] == [
             f"Submission with name '{dataset_alias}' already exists in project '{MOCK_PROJECT_ID}'"
         ]
+
+
+async def test_submission_bp_unknown_reference_rejected(nbis_client):
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+
+    def processor_callback(processor: XmlDocumentsProcessor):
+        # Point the dataset's image reference at an image that is not submitted.
+        for dataset_processor in processor.get_xml_object_processors(BP_DATASET_SCHEMA, BP_DATASET_PATH):
+            dataset_processor.xml.getroot().find("IMAGE_REF").set("alias", "unknown-image")
+
+    _, files = bp_submission_documents(is_datacite=False, processor_callback=processor_callback)
+
+    with patch_get_user_projects, patch_verify_user_project, patch_verify_authorization:
+        response = nbis_client.post(f"{api_prefix_v1}/submit", files=prepare_file_data_bp(files))
+        assert response.status_code == 400
+        problem_json = response.json()
+        assert problem_json["detail"] == "User error"
+        assert problem_json["errors"] == ["Unknown 'image' metadata object 'unknown-image' reference"]
+
+
+async def test_submission_bp_database_error_not_disclosed(nbis_client):
+    """Test that POST /v1/submit does not return the text of an unexpected error, such as SQL."""
+
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+
+    _, files = bp_submission_documents(is_datacite=False)
+    error = IntegrityError("INSERT INTO files (path) VALUES (?)", ("secret-parameter",), Exception("UNIQUE"))
+
+    with (
+        patch_get_user_projects,
+        patch_verify_user_project,
+        patch_verify_authorization,
+        patch.object(FileService, "add_file", new=AsyncMock(side_effect=error)),
+    ):
+        response = nbis_client.post(f"{api_prefix_v1}/submit", files=prepare_file_data_bp(files))
+        assert response.status_code == 500
+        problem_json = response.json()
+        assert problem_json["detail"] == "Unexpected error"
+        assert "errors" not in problem_json
+        assert "INSERT" not in response.text
+        assert "secret-parameter" not in response.text
 
 
 async def test_get_submission_by_id_or_name(nbis_client):

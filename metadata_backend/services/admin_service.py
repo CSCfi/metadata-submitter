@@ -39,7 +39,8 @@ class AdminServiceHandler(ServiceHandler):
         if self._config.ADMIN_TOKEN:
             return {"Authorization": f"Bearer {self._config.ADMIN_TOKEN}"}
         else:
-            raise SystemException("Admin token is not configured")
+            LOG.error("Admin API token is not configured.")
+            raise SystemException("Service configuration error.")
 
     async def get_user_files(self, username: str, dataset_id: str = "") -> list[FileItem]:
         """Return information on all the user's files in inbox.
@@ -57,7 +58,7 @@ class AdminServiceHandler(ServiceHandler):
             headers=admin_auth_headers,
         )
         LOG.info("Fetched files from inbox for user %s", username)
-        user_files = UserFilesResponse.model_validate(user_files_resp)
+        user_files = self._validate_response(UserFilesResponse, user_files_resp)
         return user_files.root
 
     async def ingest_file(self, *, data: IngestFileRequest | None = None, file_id: str | None = None) -> None:
@@ -151,7 +152,7 @@ class AdminServiceHandler(ServiceHandler):
                 return None
             raise
 
-        raw_status = GetDatasetResponse.model_validate(dataset_resp).status
+        raw_status = self._validate_response(GetDatasetResponse, dataset_resp).status
         if raw_status is None:
             return None
 

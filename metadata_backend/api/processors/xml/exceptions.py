@@ -4,6 +4,9 @@ from typing import Sequence
 
 from lxml.etree import _LogEntry  # noqa
 
+# The most schema errors included in the message returned to the client.
+MAX_REPORTED_ERRORS = 20
+
 
 class SchemaValidationException(Exception):
     """Exception containing XML Schema validation errors."""
@@ -15,5 +18,7 @@ class SchemaValidationException(Exception):
         :param errors: Sequence or XML Schema validation errors.
         """
         self.errors: Sequence[_LogEntry] = errors
-        messages: list[str] = [f"Line {err.line}: {err.message}" for err in errors]
+        messages: list[str] = [f"Line {err.line}: {err.message}" for err in errors[:MAX_REPORTED_ERRORS]]
+        if len(errors) > MAX_REPORTED_ERRORS:
+            messages.append(f"... and {len(errors) - MAX_REPORTED_ERRORS} more errors.")
         super().__init__(f"XML Schema validation failed for '{schema_type}':\n" + "\n".join(messages))

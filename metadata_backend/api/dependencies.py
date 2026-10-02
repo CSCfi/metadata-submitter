@@ -31,7 +31,7 @@ def get_workflow() -> SubmissionWorkflow:
     if deployment_config().DEPLOYMENT == DEPLOYMENT_NBIS:
         return SubmissionWorkflow.BP
 
-    raise SystemException("No workflow specified for {deployment_config().DEPLOYMENT} deployment")
+    raise SystemException(f"No workflow specified for {deployment_config().DEPLOYMENT} deployment")
 
 
 # The allowlist for algorithms the sync JWT tokens are signed with.

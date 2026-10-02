@@ -384,8 +384,10 @@ async def test_object_encrypted(encryption: ObjectEncryption) -> None:
     assert await decode_object(data, openbao) == DOCUMENT
 
 
-async def test_encrypted_object_without_openbao() -> None:
+async def test_encrypted_object_without_openbao(caplog: pytest.LogCaptureFixture) -> None:
     data = await encode_object(DOCUMENT, MockOpenBaoService())
 
-    with pytest.raises(SystemException, match="no OPENBAO_URL is configured"):
+    # The client is not told which setting is missing; the log is.
+    with pytest.raises(SystemException, match=r"^Service configuration error\.$"):
         await decode_object(data, None)
+    assert "no OPENBAO_URL is configured" in caplog.text

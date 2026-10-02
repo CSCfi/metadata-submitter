@@ -5,13 +5,16 @@ import os
 from unittest.mock import MagicMock, patch
 
 import pytest
-from fastapi import HTTPException
 from ldap3.core.exceptions import LDAPBindError, LDAPSocketOpenError
 from starlette import status
 
 from metadata_backend.api.exceptions import LdapSystemException, SystemException
 from metadata_backend.api.models.models import Project
-from metadata_backend.api.services.project import CscProjectService, NbisProjectService
+from metadata_backend.api.services.project import (
+    CscProjectService,
+    NbisProjectService,
+    UnaffiliatedProjectUserException,
+)
 
 
 async def test_get_user_projects_csc() -> None:
@@ -98,9 +101,11 @@ async def test_verify_user_projects_csc() -> None:
         await service.verify_user_project("test_user", "test_project")
 
         assert not await service._verify_user_project("test_user", "invalid_project")
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(UnaffiliatedProjectUserException) as exc_info:
             await service.verify_user_project("test_user", "-1")
         assert exc_info.value.status_code == status.HTTP_401_UNAUTHORIZED
+        # Names neither the user nor the project.
+        assert str(exc_info.value) == "User is not affiliated with the project."
 
 
 async def test_get_user_projects_nbis() -> None:
@@ -119,6 +124,8 @@ async def test_verify_user_projects_nbis() -> None:
     await service.verify_user_project("test_user2", "test_user2")
 
     assert not await service._verify_user_project("test_user1", "test_user2")
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(UnaffiliatedProjectUserException) as exc_info:
         await service.verify_user_project("test_user1", "test_user2")
     assert exc_info.value.status_code == status.HTTP_401_UNAUTHORIZED
+    # On NBIS the project ID is another user's ID, so it must not appear in the message.
+    assert "test_user2" not in str(exc_info.value)
