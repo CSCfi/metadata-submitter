@@ -231,7 +231,7 @@ services:
       start_period: 10s
 
   openbao:
-    image: openbao/openbao:2.7.0@sha256:71156a1c6623a5fa3f5e61b0c6a8ead0faf0df29a778339188443551995d1315
+    image: openbao/openbao:2.7.1@sha256:6d2b93856e3fcf7b18ad855a0b51eaba474dc8b79cf554379ea32034797d2acf
     profiles:
       - ci
       - dev
@@ -273,7 +273,7 @@ services:
       start_period: 10s
 
   openbao-init:
-    image: openbao/openbao:2.7.0@sha256:71156a1c6623a5fa3f5e61b0c6a8ead0faf0df29a778339188443551995d1315
+    image: openbao/openbao:2.7.1@sha256:6d2b93856e3fcf7b18ad855a0b51eaba474dc8b79cf554379ea32034797d2acf
     profiles:
       - ci
       - dev
@@ -294,7 +294,7 @@ services:
         bao write -f "transit/keys/${OPENBAO_OBJECT_KEY_NAME_SYMMETRIC:?OPENBAO_OBJECT_KEY_NAME_SYMMETRIC must be defined}" type=aes256-gcm96
 
   openbao-init-k8s:
-    image: openbao/openbao:2.7.0@sha256:71156a1c6623a5fa3f5e61b0c6a8ead0faf0df29a778339188443551995d1315
+    image: openbao/openbao:2.7.1@sha256:6d2b93856e3fcf7b18ad855a0b51eaba474dc8b79cf554379ea32034797d2acf
     profiles:
       - ci
       - dev
