@@ -7,6 +7,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ## [Unreleased]
 
+## [2026.10.0] - 2026-10-02
+
 ### Added
 
 - (admins) New database table for tracking dispatched external service actions.
@@ -23,6 +25,9 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Fixed
 
+- (users) Malformed submission JSON returns a validation error instead of a server error
+- Malformed Keystone raises 502 instead
+- Unexpected errors no longer send a second response
 - BP submission ingestion scanner no longer re-sends the same file/dataset request to the Admin API when processing takes longer than one scan cycle.
 - in `2-upload-ghcr-image` CI job, define `DOCKER_CONFIG` only after registry image has been pulled
 - configure renovate to ignore non-existent `cscfi/metadata-submitter-dev` images in `docker-compose.yml`
@@ -37,9 +42,21 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- (admins) Server configuration errors return "Service configuration error." and log the specific cause
+- Dependency updates
 - refactored and slightly improved Crypt4GH related functionality while implementing stored metadata object encryption using Crypt4GH that was later replaced with OpenBao based encryption to protect the key material.
 - BP submission ingestion scanning cycle now utilizes the admin API `GET /dataset/{id}` endpoint to ensure dataset is actually properly released before submission is marked as ingested.
 - use proper versions for `docker-keystone-swift` image
+
+### Security
+
+- (admins) Logs no longer contain the OIDC login code, personal data from metadata, or full external service error responses
+- (users) Error messages no longer show project or user IDs, server configuration or internal details
+- (users) Submissions in other projects return 404 Not Found
+- XML parser settings that block external entities are set explicitly
+- SQL errors no longer include parameter values
+- Invalid external service responses return 502 instead of a 400 listing the service's fields
+- Unexpected errors in metadata submission return a generic 500 instead of internal error text such as SQL
 
 ## [2026.9.1] - 2026-09-16
 
@@ -926,7 +943,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 - Files are also validated during submission process.
 
 
-[Unreleased]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.9.1...HEAD
+[Unreleased]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.10.0...HEAD
+[2026.10.0]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.9.1...2026.10.0
 [2026.9.1]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.9.0...2026.9.1
 [2026.9.0]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.8.0...2026.9.0
 [2026.8.0]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.6.0...2026.8.0
