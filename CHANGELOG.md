@@ -7,6 +7,10 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Import fixed OpenBao transit keys in docker compose integration tests so stored submissions survive an OpenBao restart.
+
 ## [2026.10.0] - 2026-10-02
 
 ### Added
