@@ -237,8 +237,6 @@ services:
       - dev
       - demo
     environment:
-      # Dev mode starts unsealed with everything in memory and nothing survives
-      # a restart.
       - "BAO_DEV_ROOT_TOKEN_ID=${OPENBAO_TOKEN:?OPENBAO_TOKEN must be defined}"
       - "BAO_DEV_LISTEN_ADDRESS=0.0.0.0:8200"
       - "BAO_ADDR=http://127.0.0.1:8200"
@@ -281,17 +279,27 @@ services:
     depends_on:
       openbao:
         condition: service_healthy
+    volumes:
+      - ./tests/test_files/keys:/keys:ro
     environment:
       - "BAO_ADDR=http://openbao:8200"
       - "BAO_TOKEN=${OPENBAO_TOKEN:?OPENBAO_TOKEN must be defined}"
-    # Create the transit encryption keys.
+    # Import the transit encryption keys from fixed key material.
     entrypoint:
       - sh
       - -c
       - |
+        set -e
         bao secrets enable transit || true
-        bao write -f "transit/keys/${OPENBAO_OBJECT_KEY_NAME_ASYMMETRIC:?OPENBAO_OBJECT_KEY_NAME_ASYMMETRIC must be defined}" type=rsa-4096
-        bao write -f "transit/keys/${OPENBAO_OBJECT_KEY_NAME_SYMMETRIC:?OPENBAO_OBJECT_KEY_NAME_SYMMETRIC must be defined}" type=aes256-gcm96
+        import_key() {
+          if bao read "transit/keys/$$1" > /dev/null 2>&1; then
+            echo "Transit key '$$1' exists."
+          else
+            bao transit import "transit/keys/$$1" "@/keys/$$2" type="$$3"
+          fi
+        }
+        import_key "${OPENBAO_OBJECT_KEY_NAME_ASYMMETRIC:?OPENBAO_OBJECT_KEY_NAME_ASYMMETRIC must be defined}" openbao_object_key_asymmetric.txt rsa-4096
+        import_key "${OPENBAO_OBJECT_KEY_NAME_SYMMETRIC:?OPENBAO_OBJECT_KEY_NAME_SYMMETRIC must be defined}" openbao_object_key_symmetric.txt aes256-gcm96
 
   openbao-init-k8s:
     image: openbao/openbao:2.7.1@sha256:6d2b93856e3fcf7b18ad855a0b51eaba474dc8b79cf554379ea32034797d2acf
