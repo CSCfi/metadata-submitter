@@ -9,11 +9,26 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Fixed
 
+- The mock LDAP container no longer fails when it is restarted.
+- Bigpicture 2.0 policy attributes and attribute values are not converted to 3.0 ones.
 - Import fixed OpenBao transit keys in docker compose integration tests so stored submissions survive an OpenBao restart.
 
 ### Added
 
+- (users) Support for Bigpicture metadata standard 3.0 submissions alongside 2.0. The dataset METADATA_STANDARD sets the version of a submission, and it cannot be changed by an update.
+- When new database schema is created, the latest Alembic version is stamped.
+- New database schema is created by the server only if none of the tables exist.
+- Alembic migration integration test.
+- Bigpicture 3.0 annotator, ontology and annotation task metadata objects, with their references from annotations and their files.
+- Bigpicture 3.0 XML schemas from imi-bigpicture/bigpicture-metaflex (commit 5c45302).
 - (users) submission ingestion date and `FILES/files.json` to the /sync endpoint response.
+
+### Changed
+
+- References added to a Bigpicture 3.0 dataset are placed after BIGPICTURE_NODE, so the dataset remains valid.
+- The Clinical/Scrambled dataset type is not accepted in Bigpicture 3.0 policies.
+- REMS license can be created from policy XML using either 2.0 or 3.0 metadata standard version.
+- Bigpicture policy attributes and controlled values are defined per metadata standard version. A policy must use the attributes and values of its own version.
 
 ## [2026.10.0] - 2026-10-02
 
