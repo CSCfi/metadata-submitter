@@ -11,6 +11,10 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 - Import fixed OpenBao transit keys in docker compose integration tests so stored submissions survive an OpenBao restart.
 
+### Added
+
+- (users) submission ingestion date and `FILES/files.json` to the /sync endpoint response.
+
 ## [2026.10.0] - 2026-10-02
 
 ### Added
