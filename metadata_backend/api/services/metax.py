@@ -330,7 +330,7 @@ class MetaxMapper:
             Organization(pref_label=publisher.name, external_identifier=publisher.publisherIdentifier)
         )
 
-        for fundingRef in funding_references:
+        for fundingRef in funding_references or []:
             # Check that the ROR organisation exists and get organisation identifier and preferred name.
             fundingRef.funderIdentifier, fundingRef.funderName = await self._map_organization(fundingRef.funderName)
             funder = Funder(
@@ -360,12 +360,15 @@ class MetaxMapper:
             geographic_name = location.geoLocationPlace
 
             # geoLocationPlace is mapped to YSO ontology URL.
-            reference_url = [
-                loc.uri
-                for loc in METAX_MAPPING_GEO_LOCATIONS
-                if "en" in loc.pref_label and loc.pref_label["en"] == geographic_name
-            ]
-            reference = ReferenceLocation(url=reference_url[0]) if reference_url[0] else None
+            reference_url = next(
+                (
+                    loc.uri
+                    for loc in METAX_MAPPING_GEO_LOCATIONS
+                    if "en" in loc.pref_label and loc.pref_label["en"] == geographic_name
+                ),
+                None,
+            )
+            reference = ReferenceLocation(url=reference_url) if reference_url else None
             custom_wkt = []
 
             #  geoLocationPoint, geoLocationBox and geolocationPolygon are mapped to custom_wkt.
@@ -387,23 +390,26 @@ class MetaxMapper:
                     )
                 )
             if location.geoLocationPolygon is not None:
-                pol_points = []
-                in_pol_points = []
+                # inPolygonPoint only marks the inside of a polygon larger than half the earth.
+                # It is not a location of the dataset, and a WKT polygon has no use for it.
+                pol_points = [
+                    (pol.polygonPoint.pointLongitude, pol.polygonPoint.pointLatitude)
+                    for pol in location.geoLocationPolygon
+                    if pol.polygonPoint is not None
+                ]
 
-                for pol in location.geoLocationPolygon:
-                    if pol.polygonPoint is not None:
-                        pol_points.append((pol.polygonPoint.pointLongitude, pol.polygonPoint.pointLatitude))
-                    if pol.inPolygonPoint is not None:
-                        in_pol_points.append((pol.inPolygonPoint.pointLongitude, pol.inPolygonPoint.pointLatitude))
+                # A polygon needs at least three distinct points.
+                if len(set(pol_points)) < 3:
+                    raise UserException(
+                        "Invalid geoLocationPolygon: at least three distinct polygonPoints are required."
+                    )
 
                 # Polygon should be closed
                 if pol_points[0] != pol_points[-1]:
                     pol_points.append(pol_points[0])
 
                 pol_str = ", ".join(f"{lon} {lat}" for lon, lat in pol_points)
-                in_pol_str = ", ".join(f"{lon} {lat}" for lon, lat in in_pol_points)
-
-                custom_wkt.extend([f"POLYGON(({pol_str}))", f"POINT({in_pol_str})"])
+                custom_wkt.append(f"POLYGON(({pol_str}))")
 
             spatial = Spatial(geographic_name=geographic_name, reference=reference, custom_wkt=custom_wkt)
             metax_metadata.spatial.append(spatial)

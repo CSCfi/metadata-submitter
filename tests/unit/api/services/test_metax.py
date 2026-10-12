@@ -1,8 +1,17 @@
+import pytest
 from pydantic_string_url import AnyUrl
 
-from metadata_backend.api.models.datacite import Subject
-from metadata_backend.api.models.metax import FieldOfScience
-from metadata_backend.api.services.metax import MetaxService
+from metadata_backend.api.exceptions import UserException
+from metadata_backend.api.models.datacite import (
+    GeoLocation,
+    GeoLocationPoint,
+    GeoLocationPolygonPoint,
+    Publisher,
+    Subject,
+)
+from metadata_backend.api.models.metax import FieldOfScience, MetaxFields
+from metadata_backend.api.services.metax import MetaxMapper, MetaxService
+from metadata_backend.api.services.ror import RorService
 
 
 class TestMetaxService(MetaxService):
@@ -102,3 +111,92 @@ async def test_get_field_of_science_empty_subject():
     subject = Subject(subject="")
     field = await service.get_field_of_science(subject)
     assert field is None
+
+
+class TestRorService(RorService):
+    async def get_organisation(self, organisation: str) -> tuple[AnyUrl, str] | None:
+        return AnyUrl("https://ror.org/020hwjq30"), organisation
+
+
+def _metax_fields() -> MetaxFields:
+    return MetaxFields(title="title", description="description", persistent_identifier="doi", actors=[], keyword=[])
+
+
+def test_map_spatial_unknown_place():
+    metax = _metax_fields()
+    metax.spatial = []
+    location = GeoLocation(
+        geoLocationPlace="Unknown place", geoLocationPoint=GeoLocationPoint(pointLatitude=60.0, pointLongitude=24.0)
+    )
+    MetaxMapper._map_spatial([location], metax)
+    assert metax.spatial[0].geographic_name == "Unknown place"
+    assert metax.spatial[0].reference is None
+    assert metax.spatial[0].custom_wkt == ["POINT (24.0 60.0)"]
+
+
+def test_map_spatial_without_place():
+    metax = _metax_fields()
+    metax.spatial = []
+    location = GeoLocation(geoLocationPoint=GeoLocationPoint(pointLatitude=60.0, pointLongitude=24.0))
+    MetaxMapper._map_spatial([location], metax)
+    assert metax.spatial[0].geographic_name is None
+    assert metax.spatial[0].reference is None
+    assert metax.spatial[0].custom_wkt == ["POINT (24.0 60.0)"]
+
+
+def test_map_spatial_known_place():
+    metax = _metax_fields()
+    metax.spatial = []
+    MetaxMapper._map_spatial([GeoLocation(geoLocationPlace="Valaam")], metax)
+    assert metax.spatial[0].reference.url == "http://www.yso.fi/onto/yso/p105065"
+
+
+async def test_map_projects_without_funding_references():
+    metax = _metax_fields()
+    metax.projects = []
+    mapper = MetaxMapper(TestMetaxService(), TestRorService())
+    await mapper._map_projects(Publisher(name="CSC"), None, metax)
+    assert len(metax.projects) == 1
+    assert metax.projects[0].participating_organizations[0].pref_label == {"en": "CSC"}
+    assert metax.projects[0].funding == []
+
+
+def _polygon_point(lon: float, lat: float) -> GeoLocationPolygonPoint:
+    return GeoLocationPolygonPoint(polygonPoint=GeoLocationPoint(pointLongitude=lon, pointLatitude=lat))
+
+
+def test_map_spatial_polygon():
+    metax = _metax_fields()
+    metax.spatial = []
+    polygon = [_polygon_point(24.0, 60.0), _polygon_point(25.0, 60.0), _polygon_point(25.0, 61.0)]
+    MetaxMapper._map_spatial([GeoLocation(geoLocationPolygon=polygon)], metax)
+    assert metax.spatial[0].custom_wkt == ["POLYGON((24.0 60.0, 25.0 60.0, 25.0 61.0, 24.0 60.0))"]
+
+
+def test_map_spatial_polygon_ignores_in_polygon_point():
+    metax = _metax_fields()
+    metax.spatial = []
+    polygon = [
+        _polygon_point(24.0, 60.0),
+        _polygon_point(25.0, 60.0),
+        _polygon_point(25.0, 61.0),
+        _polygon_point(24.0, 60.0),
+        GeoLocationPolygonPoint(inPolygonPoint=GeoLocationPoint(pointLongitude=24.5, pointLatitude=60.5)),
+    ]
+    MetaxMapper._map_spatial([GeoLocation(geoLocationPolygon=polygon)], metax)
+    assert metax.spatial[0].custom_wkt == ["POLYGON((24.0 60.0, 25.0 60.0, 25.0 61.0, 24.0 60.0))"]
+
+
+@pytest.mark.parametrize(
+    "polygon",
+    [
+        [],
+        [GeoLocationPolygonPoint(inPolygonPoint=GeoLocationPoint(pointLongitude=24.5, pointLatitude=60.5))],
+        [_polygon_point(24.0, 60.0), _polygon_point(25.0, 60.0), _polygon_point(24.0, 60.0)],
+    ],
+)
+def test_map_spatial_polygon_too_few_points(polygon):
+    metax = _metax_fields()
+    metax.spatial = []
+    with pytest.raises(UserException, match="at least three distinct polygonPoints"):
+        MetaxMapper._map_spatial([GeoLocation(geoLocationPolygon=polygon)], metax)
