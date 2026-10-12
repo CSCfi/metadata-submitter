@@ -17,7 +17,7 @@ from tests.sync import sign_sync_token, sync_claims, sync_headers
 from tests.unit.conftest import TEST_SYNC_AUDIENCE, TEST_SYNC_ISSUER, TEST_SYNC_PRIVATE_KEY
 from tests.unit.database.postgres.helpers import create_submission_entity
 
-BP_SUBMISSION_DIR = Path(__file__).parent.parent.parent.parent / "test_files" / "xml" / "bigpicture"
+BP_SUBMISSION_DIR = Path(__file__).parent.parent.parent.parent / "test_files" / "xml" / "bigpicture" / "2.0"
 
 
 SYNC_HEADERS = sync_headers(sign_sync_token(sync_claims(TEST_SYNC_AUDIENCE, TEST_SYNC_ISSUER), TEST_SYNC_PRIVATE_KEY))

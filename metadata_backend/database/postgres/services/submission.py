@@ -54,6 +54,7 @@ class SubmissionService:
         :param submission: the submission document
         """
         submission.submissionId = None
+        submission.metadataVersion = None
         submission.published = None
         submission.dateCreated = None
         submission.lastModified = None
@@ -69,6 +70,9 @@ class SubmissionService:
         :param submission: The new submission document
         "return: The submission entity
         """
+        # The metadata version is set only when the submission is created.
+        metadata_version = submission.metadataVersion
+
         # Create a copy so that the original document is not modified.
         submission = submission.model_copy(deep=True)
 
@@ -79,7 +83,9 @@ class SubmissionService:
         except ValueError:
             raise UserException(f"Invalid submission workflow: {submission.workflow.value}")
 
-        entity = SubmissionEntity(name=submission.name, project_id=submission.projectId, workflow=workflow)
+        entity = SubmissionEntity(
+            name=submission.name, project_id=submission.projectId, workflow=workflow, metadata_version=metadata_version
+        )
         SubmissionService._set_updatable_values(submission, entity)
         return entity
 
@@ -88,7 +94,8 @@ class SubmissionService:
         entity.bucket = submission.bucket
         entity.title = submission.title
         entity.description = submission.description
-        entity.document = to_json_dict(submission)
+        # The metadata version is stored only in a database column, which is never updated.
+        entity.document = to_json_dict(submission.model_copy(update={"metadataVersion": None}))
 
     @staticmethod
     async def convert_to_updated_entity(submission: dict[str, Any], old_entity: SubmissionEntity) -> SubmissionEntity:
@@ -141,6 +148,7 @@ class SubmissionService:
         submission = Submission.model_validate(entity.document).model_copy(deep=True)
 
         submission.submissionId = entity.submission_id
+        submission.metadataVersion = entity.metadata_version
         submission.published = entity.is_published
         if entity.bucket is not None:
             submission.bucket = entity.bucket

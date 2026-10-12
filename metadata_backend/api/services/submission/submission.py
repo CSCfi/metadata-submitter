@@ -63,6 +63,16 @@ class ObjectSubmissionService(ABC):
         """
         return None
 
+    async def validate_update(self, submission_id: str) -> None:
+        """
+        Validate the update of an existing submission against the stored submission.
+
+        Called after the documents processor is created and the documents are validated.
+
+        :param submission_id: The submission id.
+        """
+        return None
+
     @abstractmethod
     def assign_submission_accession(self) -> str | None:
         """
@@ -186,13 +196,12 @@ class ObjectSubmissionService(ABC):
                     processor.set_object_id(identifier)
 
                 # Check that all metadata object references have accessions.
-                for identifier in processor.get_references_without_ids():
-                    errors.append(f"Unknown '{identifier.schema_type}' metadata object '{identifier.name}' reference")
-
-                # Report references to metadata objects that are not in the submission, which would
-                # otherwise be saved without an accession.
-                if errors:
-                    raise UserExceptions(errors)
+                unknown_references = {
+                    f"Unknown '{identifier.schema_type}' metadata object '{identifier.name}' reference"
+                    for identifier in processor.get_references_without_ids()
+                }
+                if unknown_references:
+                    raise UserExceptions(sorted(unknown_references))
 
             # Assign submission accession.
             submission_id = self.assign_submission_accession()
@@ -281,6 +290,8 @@ class ObjectSubmissionService(ABC):
             if processor:
                 #  Validate XML documents in addition to the XML schema and reference validation.
                 self.validate_documents()
+                # Validate the update against the stored submission using workflow specific rules.
+                await self.validate_update(submission_id)
 
             if processor:
                 # Get metadata object identifiers.
@@ -380,13 +391,12 @@ class ObjectSubmissionService(ABC):
                     processor.set_object_id(identifier)
 
                 # Check that all metadata object references have accessions.
-                for identifier in processor.get_references_without_ids():
-                    errors.append(f"Unknown '{identifier.schema_type}' metadata object '{identifier.name}' reference")
-
-                # Report references to metadata objects that are not in the submission, which would
-                # otherwise be saved without an accession. Earlier errors have already been raised.
-                if errors:
-                    raise UserExceptions(errors)
+                unknown_references = {
+                    f"Unknown '{identifier.schema_type}' metadata object '{identifier.name}' reference"
+                    for identifier in processor.get_references_without_ids()
+                }
+                if unknown_references:
+                    raise UserExceptions(sorted(unknown_references))
 
             # Prepare submission document.
             old_submission = await self._submission_service.get_submission_by_id(submission_id)

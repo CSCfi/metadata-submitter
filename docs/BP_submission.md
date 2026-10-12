@@ -23,6 +23,7 @@
 | JWT_ALGORITHM             | Algorithm used to sign and verify user's JWT.                                                                                                                                                                                                                                      |
 | JWT_KEY                   | Public key used to verify the user's JWT signature.                                                                                                                                                                                                                                |
 | DATABASE_URL              | Submit API database URL (postgresql+asyncpg:://username:password@host:port/database). *1                                                                                                                                                                                           |
+| DATABASE_MIGRATE          | Apply database migrations when the server starts (true/false, default false). *1                                                                                                                                                                                                   |
 | DISCOVERY_URL             | URL used by REMS and DataCite to direct users to the dataset. Must include the placeholder {id}, which is replaced with the dataset ID (e.g., https://datasets.bp.nbis.se/datasets/{id}.html).                                                                                     |
 | DATACITE_API              | DataCite API URL.                                                                                                                                                                                                                                                                  |
 | DATACITE_USER             | DataCite user.                                                                                                                                                                                                                                                                     |
@@ -36,6 +37,8 @@
 
 *1 The database schema is automatically created if it does not already exist or it can
 be created by executing the SQL statements in metadata_backend/database/postgres/schema/create.sql.
+An existing database is upgraded with the Alembic migrations, either when the server starts with
+DATABASE_MIGRATE=true or with `make db_upgrade`.
 
 ## Bigpicture Submission Workflow with SD Submit API
 
@@ -84,24 +87,52 @@ dataset.
 
 #### Submit a new Bigpicture dataset with metadata files
 
-Create a new submission by uploading all required metadata XML files with the following command. The command in this
-document refers to a set of test XML files available in this repository:
+Create a new submission by uploading metadata XML files using the POST `submit` command. The examples below refer to
+example XML files provided in this repository for both metadata standard versions 2.0 and 3.0.
+
+The metadata version is read from the `METADATA_STANDARD` element of the dataset XML, and all XML files in one
+submission must follow the XML schemas of that version. The metadata standard version 3.0 adds three new metadata
+files: `annotator.xml`, `annotation_task.xml` and `ontology.xml`.
+
+Example for the metadata standard version 2.0:
 
 ```bash
 export SUBMISSION_ID=$(curl --request POST "$API_URL/v1/submit" \
      --header "Authorization: Bearer $TOKEN" \
-     --form "annotation=@./tests/test_files/xml/bigpicture/annotation.xml;type=text/xml" \
-     --form "datacite=@./tests/test_files/xml/bigpicture/datacite.xml;type=text/xml" \
-     --form "dataset=@./tests/test_files/xml/bigpicture/dataset.xml;type=text/xml" \
-     --form "image=@./tests/test_files/xml/bigpicture/image.xml;type=text/xml" \
-     --form "landing_page=@./tests/test_files/xml/bigpicture/landing_page.xml;type=text/xml" \
-     --form "observation=@./tests/test_files/xml/bigpicture/observation.xml;type=text/xml" \
-     --form "observer=@./tests/test_files/xml/bigpicture/observer.xml;type=text/xml" \
-     --form "organisation=@./tests/test_files/xml/bigpicture/organisation.xml;type=text/xml" \
-     --form "policy=@./tests/test_files/xml/bigpicture/policy.xml;type=text/xml" \
-     --form "bprems=@./tests/test_files/xml/bigpicture/rems.xml;type=text/xml" \
-     --form "sample=@./tests/test_files/xml/bigpicture/sample.xml;type=text/xml" \
-     --form "staining=@./tests/test_files/xml/bigpicture/staining.xml;type=text/xml" | jq -r '.submissionId')
+     --form "annotation=@./tests/test_files/xml/bigpicture/2.0/annotation.xml;type=text/xml" \
+     --form "datacite=@./tests/test_files/xml/bigpicture/2.0/datacite.xml;type=text/xml" \
+     --form "dataset=@./tests/test_files/xml/bigpicture/2.0/dataset.xml;type=text/xml" \
+     --form "image=@./tests/test_files/xml/bigpicture/2.0/image.xml;type=text/xml" \
+     --form "landing_page=@./tests/test_files/xml/bigpicture/2.0/landing_page.xml;type=text/xml" \
+     --form "observation=@./tests/test_files/xml/bigpicture/2.0/observation.xml;type=text/xml" \
+     --form "observer=@./tests/test_files/xml/bigpicture/2.0/observer.xml;type=text/xml" \
+     --form "organisation=@./tests/test_files/xml/bigpicture/2.0/organisation.xml;type=text/xml" \
+     --form "policy=@./tests/test_files/xml/bigpicture/2.0/policy.xml;type=text/xml" \
+     --form "bprems=@./tests/test_files/xml/bigpicture/2.0/rems.xml;type=text/xml" \
+     --form "sample=@./tests/test_files/xml/bigpicture/2.0/sample.xml;type=text/xml" \
+     --form "staining=@./tests/test_files/xml/bigpicture/2.0/staining.xml;type=text/xml" | jq -r '.submissionId')
+```
+
+Example for the metadata standard version 3.0:
+
+```bash
+export SUBMISSION_ID=$(curl --request POST "$API_URL/v1/submit" \
+     --header "Authorization: Bearer $TOKEN" \
+     --form "annotation=@./tests/test_files/xml/bigpicture/3.0/annotation.xml;type=text/xml" \
+     --form "annotation_task=@./tests/test_files/xml/bigpicture/3.0/annotation_task.xml;type=text/xml" \
+     --form "annotator=@./tests/test_files/xml/bigpicture/3.0/annotator.xml;type=text/xml" \
+     --form "datacite=@./tests/test_files/xml/bigpicture/3.0/datacite.xml;type=text/xml" \
+     --form "dataset=@./tests/test_files/xml/bigpicture/3.0/dataset.xml;type=text/xml" \
+     --form "image=@./tests/test_files/xml/bigpicture/3.0/image.xml;type=text/xml" \
+     --form "landing_page=@./tests/test_files/xml/bigpicture/3.0/landing_page.xml;type=text/xml" \
+     --form "observation=@./tests/test_files/xml/bigpicture/3.0/observation.xml;type=text/xml" \
+     --form "observer=@./tests/test_files/xml/bigpicture/3.0/observer.xml;type=text/xml" \
+     --form "ontology=@./tests/test_files/xml/bigpicture/3.0/ontology.xml;type=text/xml" \
+     --form "organisation=@./tests/test_files/xml/bigpicture/3.0/organisation.xml;type=text/xml" \
+     --form "policy=@./tests/test_files/xml/bigpicture/3.0/policy.xml;type=text/xml" \
+     --form "bprems=@./tests/test_files/xml/bigpicture/3.0/rems.xml;type=text/xml" \
+     --form "sample=@./tests/test_files/xml/bigpicture/3.0/sample.xml;type=text/xml" \
+     --form "staining=@./tests/test_files/xml/bigpicture/3.0/staining.xml;type=text/xml" | jq -r '.submissionId')
 ```
 
 All XML files are validated and then added to the submission entity.
@@ -174,9 +205,12 @@ For other schema types, replace the schema type in the url parameter (`schemaTyp
 schema types:
 
 - `annotation`
+- `annotation_task` (since 3.0)
+- `annotator` (since 3.0)
 - `landing_page`
 - `observation`
 - `observer`
+- `ontology` (since 3.0)
 - `organisation`
 - `policy`
 - `rems`
@@ -185,30 +219,34 @@ schema types:
 
 ### 4. Update submission metadata
 
-You can update an existing dataset submission by uploading modified XML files with the following command.
-For example, to update the image metadata file:
+You can update an existing dataset submission by uploading modified XML files with the PATCH `submit` command.
+
+For example, to update the image metadata file in a metadata standard version 2.0 submission:
 
 ```bash
 curl --request PATCH "$API_URL/v1/submit/$SUBMISSION_ID" \
      --header "Authorization: Bearer $TOKEN" \
-     --form "image=@./tests/test_files/xml/bigpicture/update/image.xml;type=text/xml" \
-     --form "annotation=@./tests/test_files/xml/bigpicture/annotation.xml;type=text/xml" \
-     --form "datacite=@./tests/test_files/xml/bigpicture/datacite.xml;type=text/xml" \
-     --form "dataset=@./tests/test_files/xml/bigpicture/dataset.xml;type=text/xml" \
-     --form "landing_page=@./tests/test_files/xml/bigpicture/landing_page.xml;type=text/xml" \
-     --form "observation=@./tests/test_files/xml/bigpicture/observation.xml;type=text/xml" \
-     --form "observer=@./tests/test_files/xml/bigpicture/observer.xml;type=text/xml" \
-     --form "organisation=@./tests/test_files/xml/bigpicture/organisation.xml;type=text/xml" \
-     --form "policy=@./tests/test_files/xml/bigpicture/policy.xml;type=text/xml" \
-     --form "bprems=@./tests/test_files/xml/bigpicture/rems.xml;type=text/xml" \
-     --form "sample=@./tests/test_files/xml/bigpicture/sample.xml;type=text/xml" \
-     --form "staining=@./tests/test_files/xml/bigpicture/staining.xml;type=text/xml" | jq
+     --form "image=@./tests/test_files/xml/bigpicture/2.0/update/image.xml;type=text/xml" \
+     --form "annotation=@./tests/test_files/xml/bigpicture/2.0/annotation.xml;type=text/xml" \
+     --form "datacite=@./tests/test_files/xml/bigpicture/2.0/datacite.xml;type=text/xml" \
+     --form "dataset=@./tests/test_files/xml/bigpicture/2.0/dataset.xml;type=text/xml" \
+     --form "landing_page=@./tests/test_files/xml/bigpicture/2.0/landing_page.xml;type=text/xml" \
+     --form "observation=@./tests/test_files/xml/bigpicture/2.0/observation.xml;type=text/xml" \
+     --form "observer=@./tests/test_files/xml/bigpicture/2.0/observer.xml;type=text/xml" \
+     --form "organisation=@./tests/test_files/xml/bigpicture/2.0/organisation.xml;type=text/xml" \
+     --form "policy=@./tests/test_files/xml/bigpicture/2.0/policy.xml;type=text/xml" \
+     --form "bprems=@./tests/test_files/xml/bigpicture/2.0/rems.xml;type=text/xml" \
+     --form "sample=@./tests/test_files/xml/bigpicture/2.0/sample.xml;type=text/xml" \
+     --form "staining=@./tests/test_files/xml/bigpicture/2.0/staining.xml;type=text/xml" | jq
 ```
 
 **Note:** The submission update API call requires all necessary metadata XML files to be uploaded in the same call even
 if they have not been altered.
 
-If you need to remove a submission entirely, you can delete it using the submission ID:
+**Note:** The metadata version of a submission cannot be changed. To move a submission to another version before
+publishing it, delete the submission as shown below and submit it again.
+
+If you need to remove a submission entirely, you can delete it using the DELETE `submit` command:
 
 ```bash
 curl --request DELETE "$API_URL/v1/submit/$SUBMISSION_ID" \

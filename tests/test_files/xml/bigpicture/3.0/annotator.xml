@@ -1,0 +1,14 @@
+<ANNOTATOR_SET>
+    <ANNOTATOR alias="1">
+        <ATTRIBUTES>
+            <STRING_ATTRIBUTE>
+                <TAG>annotator_type</TAG>
+                <VALUE>Human</VALUE>
+            </STRING_ATTRIBUTE>
+            <STRING_ATTRIBUTE>
+                <TAG>description</TAG>
+                <VALUE>test</VALUE>
+            </STRING_ATTRIBUTE>
+        </ATTRIBUTES>
+    </ANNOTATOR>
+</ANNOTATOR_SET>

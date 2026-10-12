@@ -5,6 +5,7 @@ Their configuration, and reading and writing them to the metadata object XML.
 
 # TODO: Make these modules a bigpicture package, to drop the prefix and split further.
 
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, Literal, override
 
@@ -13,6 +14,7 @@ from lxml.etree import _Element as Element  # noqa
 from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
 
 from ...exceptions import SystemException, UserException
+from ...processors.xml.bigpicture import BigpictureVersion
 from ...processors.xml.processors import XmlObjectProcessor
 
 BP_STRING_ATTRIBUTE_TRUE = "True"
@@ -49,46 +51,62 @@ BP_VALUE_TYPE_CONTROLLED_VALUE: BigpictureValueType = "controlledValue"
 BP_VALUE_TYPE_BOOLEAN: BigpictureValueType = "boolean"
 
 
-class BigpictureAttribute(BaseModel):
-    """A Bigpicture metadata object attribute.
+class BigpictureVersioned(BaseModel):
+    """An attribute or controlled value defined in some or all metadata standard versions.
+
+    :param versions: The metadata standard versions it is defined in, all if none.
+    """
+
+    # Reject unknown keys to report configuration errors.
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    versions: tuple[BigpictureVersion, ...] = ()
+
+    def is_in(self, version: BigpictureVersion) -> bool:
+        """
+        Check whether it is defined in the given metadata standard version.
+
+        Without listed versions, it is defined in every version.
+
+        :param version: The metadata standard version.
+        :return: True if it is defined in the version.
+        """
+
+        return not self.versions or version in self.versions
+
+
+class BigpictureVersionedAttribute(BigpictureVersioned):
+    """A Bigpicture metadata object attribute, and the metadata standard versions it belongs to.
 
     :param tag: The attribute TAG.
-    :param previous_tags: The TAGs the attribute had before.
+    :param aliases: Other TAGs the attribute may be given with.
     :param attribute_type: The kind of Bigpicture XML attribute the value is read from.
     :param value_type: The kind of value read from the Bigpicture XML element.
     :param mandatory: Whether the attribute is mandatory and must have a value.
     :param multiple: Whether the attribute may occur more than once.
     """
 
-    # Reject unknown keys to report configuration errors.
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
     tag: str
-    previous_tags: tuple[str, ...] = ()
+    aliases: tuple[str, ...] = ()
     attribute_type: BigpictureAttributeType
     value_type: BigpictureValueType = BP_VALUE_TYPE_TEXT
     mandatory: bool = False
     multiple: bool = False
 
     @property
-    def tags(self) -> tuple[str, ...]:
-        """Return current and previous tags for the attribute, the current one first."""
-
-        return self.tag, *self.previous_tags
-
-    @property
     def normalised_tags(self) -> tuple[str, ...]:
-        """Return normalised current and previous tags for this attribute, the current one first."""
+        """Return the normalised TAG and its aliases, the TAG first."""
 
-        return tuple(normalised_value(tag) for tag in self.tags)
+        return tuple(normalised_value(tag) for tag in (self.tag, *self.aliases))
 
-    def validated_values(self, values: list[str], object_name: str) -> list[str]:
+    def validated_values(self, values: list[str], object_name: str, version: BigpictureVersion) -> list[str]:
         """
         Validate and return the attribute values.
 
         :param values: The attribute values.
         :param object_name: The metadata object the attribute is read from, named as the
             submitter knows it, for informative user errors.
+        :param version: The metadata standard version of the metadata object.
         :raises UserException: if the attribute values do not pass validation.
         :return: The validated attribute values.
         """
@@ -104,52 +122,51 @@ class BigpictureAttribute(BaseModel):
         return values
 
 
-class BigpictureControlledValue(BaseModel):
-    """Current and previous controlled values of a Bigpicture metadata object attribute.
+class BigpictureVersionedControlledValue(BigpictureVersioned):
+    """A controlled value of a Bigpicture metadata object attribute, and the metadata standard
+    versions it belongs to.
 
-    :param value: The current controlled value.
-    :param previous_values: Any previous values the current controlled value replaces.
+    :param value: The controlled value.
+    :param aliases: Other ways of writing the controlled value.
     """
 
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
     value: str
-    previous_values: tuple[str, ...] = ()
+    aliases: tuple[str, ...] = ()
 
     @model_validator(mode="before")
     @classmethod
     def expand_plain_value(cls, data: Any) -> Any:
-        """Expand a plain string into a controlled value with no previous values."""
+        """Expand a plain string into a controlled value."""
 
         return {"value": data} if isinstance(data, str) else data
 
     @property
     def controlled_values(self) -> tuple[str, ...]:
-        """Return current and previous values for the controlled value, the current one first."""
+        """Return the controlled value and its aliases, the controlled value first."""
 
-        return self.value, *self.previous_values
+        return self.value, *self.aliases
 
     @property
     def normalised_controlled_values(self) -> tuple[str, ...]:
-        """Return normalised current and previous values for the controlled value, the current one first."""
+        """Return the normalised controlled value and its aliases, the controlled value first."""
 
         return tuple(normalised_value(value) for value in self.controlled_values)
 
 
 BP_BOOLEAN_CONTROLLED_VALUES = (
-    BigpictureControlledValue(value=BP_STRING_ATTRIBUTE_TRUE, previous_values=("yes",)),
-    BigpictureControlledValue(value=BP_STRING_ATTRIBUTE_FALSE, previous_values=("no",)),
+    BigpictureVersionedControlledValue(value=BP_STRING_ATTRIBUTE_TRUE, aliases=("yes",)),
+    BigpictureVersionedControlledValue(value=BP_STRING_ATTRIBUTE_FALSE, aliases=("no",)),
 )
 
 
-class BigpictureStringAttribute(BigpictureAttribute):
+class BigpictureVersionedStringAttribute(BigpictureVersionedAttribute):
     """A Bigpicture STRING_ATTRIBUTE.
 
     :param controlled_values: The controlled attribute values if any.
     :param default: The default attribute value.
     """
 
-    controlled_values: tuple[BigpictureControlledValue, ...] | None = None
+    controlled_values: tuple[BigpictureVersionedControlledValue, ...] | None = None
     default: str | None = None
 
     @model_validator(mode="before")
@@ -163,7 +180,7 @@ class BigpictureStringAttribute(BigpictureAttribute):
         return {**data, "controlled_values": BP_BOOLEAN_CONTROLLED_VALUES}
 
     @model_validator(mode="after")
-    def check_controlled_values(self) -> "BigpictureStringAttribute":
+    def check_controlled_values(self) -> "BigpictureVersionedStringAttribute":
         """Check that the controlled values are provided only for controlled value attributes."""
 
         # A boolean value is also assigned controlled values.
@@ -171,13 +188,19 @@ class BigpictureStringAttribute(BigpictureAttribute):
             if not self.controlled_values:
                 raise ValueError(f"Attribute '{self.tag}' of value type '{self.value_type}' requires controlled values")
 
-            normalised = [
-                value for controlled in self.controlled_values for value in controlled.normalised_controlled_values
-            ]
-            if len(set(normalised)) != len(normalised):
-                raise ValueError(
-                    f"Attribute '{self.tag}' has controlled values that differ only in case, punctuation or whitespace"
-                )
+            # A controlled value of one version may be an alias of a controlled value of another.
+            for version in BigpictureVersion:
+                normalised = [
+                    value
+                    for controlled in self.controlled_values
+                    if controlled.is_in(version)
+                    for value in controlled.normalised_controlled_values
+                ]
+                if len(set(normalised)) != len(normalised):
+                    raise ValueError(
+                        f"Attribute '{self.tag}' has controlled values that differ only in case, punctuation or "
+                        f"whitespace in version {version}"
+                    )
 
         elif self.controlled_values is not None:
             raise ValueError(
@@ -187,16 +210,26 @@ class BigpictureStringAttribute(BigpictureAttribute):
         return self
 
     @model_validator(mode="after")
-    def check_previous_tags(self) -> "BigpictureStringAttribute":
-        """Check that the previous tags are distinct from the current one."""
+    def check_controlled_value_versions(self) -> "BigpictureVersionedStringAttribute":
+        """Check that every controlled value is in the attribute's versions, and that every version of
+        the attribute has a controlled value."""
 
-        if len(set(self.normalised_tags)) != len(self.tags):
-            raise ValueError(f"Attribute '{self.tag}' has previous_tags that are the same tag when normalised")
+        for controlled in self.controlled_values or ():
+            if other_versions := [version for version in controlled.versions if not self.is_in(version)]:
+                raise ValueError(
+                    f"Attribute '{self.tag}' has controlled value '{controlled.value}' in versions the attribute "
+                    f"is not in: {', '.join(other_versions)}"
+                )
+
+        if self.controlled_values:
+            for version in BigpictureVersion:
+                if self.is_in(version) and not any(controlled.is_in(version) for controlled in self.controlled_values):
+                    raise ValueError(f"Attribute '{self.tag}' has no controlled values in version {version}")
 
         return self
 
     @model_validator(mode="after")
-    def check_default(self) -> "BigpictureStringAttribute":
+    def check_default(self) -> "BigpictureVersionedStringAttribute":
         """Check that a mandatory attribute has no default."""
 
         if self.mandatory and self.default is not None:
@@ -204,26 +237,27 @@ class BigpictureStringAttribute(BigpictureAttribute):
 
         return self
 
-    def matched_controlled_value(self, value: str) -> str | None:
+    def matched_controlled_value(self, value: str, version: BigpictureVersion) -> str | None:
         """
         Return the controlled value that matches the given value after normalisation.
 
-        Returns None if the value does not match any current or previous controlled
-        value after normalisation.
+        Returns None if the value does not match any controlled value of the version, or its
+        aliases, after normalisation.
 
         :param value: The value read from the metadata object.
+        :param version: The metadata standard version of the metadata object.
         :return: The controlled value it matches, or None if it matches none.
         """
 
         normalised = normalised_value(value)
         for controlled in self.controlled_values or ():
-            if normalised in controlled.normalised_controlled_values:
+            if controlled.is_in(version) and normalised in controlled.normalised_controlled_values:
                 return controlled.value
 
         return None
 
     @override
-    def validated_values(self, values: list[str], object_name: str) -> list[str]:
+    def validated_values(self, values: list[str], object_name: str, version: BigpictureVersion) -> list[str]:
         """
         Validate and replace attribute values.
 
@@ -233,22 +267,24 @@ class BigpictureStringAttribute(BigpictureAttribute):
         :param values: The attribute values.
         :param object_name: The metadata object the attribute is read from, named as the
             submitter knows it, for informative user errors.
+        :param version: The metadata standard version of the metadata object.
         :raises UserException: if the attribute values do not pass validation.
         :return: The validated attribute values.
         """
 
-        values = super().validated_values(values, object_name)
+        values = super().validated_values(values, object_name, version)
 
         if self.controlled_values is None:
             return values
 
         matched_values = []
         for value in values:
-            matched = self.matched_controlled_value(value)
+            matched = self.matched_controlled_value(value, version)
             if matched is None:
+                allowed = [controlled.value for controlled in self.controlled_values if controlled.is_in(version)]
                 raise UserException(
                     f"{object_name} attribute '{self.tag}' has value '{value}' but must be one of: "
-                    f"{', '.join(controlled.value for controlled in self.controlled_values)}."
+                    f"{', '.join(allowed)}."
                 )
             matched_values.append(matched)
 
@@ -261,49 +297,57 @@ class BigpictureAttributesConfig(BaseModel):
     # Reject unknown keys to report configuration errors.
     model_config = ConfigDict(extra="forbid")
 
-    attributes: tuple[BigpictureStringAttribute, ...]
-    set_attributes: tuple[BigpictureStringAttribute, ...]
+    attributes: tuple[BigpictureVersionedStringAttribute, ...]
+    set_attributes: tuple[BigpictureVersionedStringAttribute, ...]
 
     @property
-    def all_attributes(self) -> tuple[BigpictureStringAttribute, ...]:
+    def all_attributes(self) -> tuple[BigpictureVersionedStringAttribute, ...]:
         return *self.attributes, *self.set_attributes
 
     @property
     def tags(self) -> set[str]:
-        """Return the current tag of every attribute the file declares."""
+        """Return the tag of every attribute the file declares."""
 
         return {attribute.tag for attribute in self.all_attributes}
 
     @property
     def mandatory_tags(self) -> set[str]:
-        """Return the current tag of every attribute that must be given a value."""
+        """Return the tag of every attribute that must be given a value in its versions."""
 
         return {attribute.tag for attribute in self.all_attributes if attribute.mandatory}
 
     @model_validator(mode="after")
     def check_tags(self) -> "BigpictureAttributesConfig":
-        """Check that no two attributes have the same tag."""
+        """Check that no two attributes have the same tag, or alias, in the same version.
 
-        tags: dict[str, list[str]] = {}
-        for attribute in self.all_attributes:
-            for tag in attribute.tags:
-                tags.setdefault(normalised_value(tag), []).append(tag)
+        An alias of an attribute of one version may be the tag of an attribute of another.
+        """
 
-        repeated = [same for same in tags.values() if len(same) > 1]
-        if repeated:
-            raise ValueError(
-                f"Attributes have tags that are the same when normalised: "
-                f"{'; '.join(', '.join(same) for same in repeated)}"
-            )
+        for version in BigpictureVersion:
+            tags: dict[str, list[str]] = {}
+            for attribute in self.all_attributes:
+                if attribute.is_in(version):
+                    for tag in (attribute.tag, *attribute.aliases):
+                        tags.setdefault(normalised_value(tag), []).append(tag)
+
+            repeated = [same for same in tags.values() if len(same) > 1]
+            if repeated:
+                raise ValueError(
+                    f"Attributes have tags that are the same when normalised in version {version}: "
+                    f"{'; '.join(', '.join(same) for same in repeated)}"
+                )
 
         return self
 
 
 def _string_attributes_by_xpath(
     attributes: BigpictureAttributesConfig,
-) -> tuple[tuple[str, tuple["BigpictureStringAttribute", ...]], ...]:
+) -> tuple[tuple[str, tuple["BigpictureVersionedStringAttribute", ...]], ...]:
     """
     The STRING_ATTRIBUTE attributes grouped by the XPath their values are read from.
+
+    Each group has the attributes of every version. A TAG that is not configured is
+    ignored.
 
     :param attributes: The attributes the metadata object declares.
     :return: Each XPath with the attributes read from it.
@@ -345,9 +389,6 @@ def _string_elements_by_normalised_tag(processor: XmlObjectProcessor, xpath: str
     """
     Every STRING_ATTRIBUTE element of a metadata object, by the normalised form of its TAG.
 
-    An element whose TAG matches no configured attribute is in here too, and is simply
-    never looked up.
-
     :param processor: The metadata object processor.
     :param xpath: The XPath to the STRING_ATTRIBUTE elements.
     :return: The elements, by the normalised form of the TAG each of them gives.
@@ -365,33 +406,32 @@ def _string_attribute_values(element: Element) -> list[str]:
     return [value.text for value in element.iterfind("VALUE") if value.text]
 
 
-def _string_attribute_tag_values(elements: dict[str, list[Element]], attribute: BigpictureStringAttribute) -> list[str]:
+def _string_attribute_tag_values(elements: dict[str, list[Element]], normalised_tags: Iterable[str]) -> list[str]:
     """
-    The values one STRING_ATTRIBUTE is given, without validating them.
+    The values STRING_ATTRIBUTE elements with the given TAGs are given, without validating them.
 
     :param elements: The metadata object's STRING_ATTRIBUTE elements, by normalised TAG.
-    :param attribute: The attribute to read.
+    :param normalised_tags: The normalised TAGs to read.
     :return: The values given, stripped, without those giving no value.
     """
 
-    # Read from every TAG the attribute answers to, so a source written against an earlier
-    # version of the metadata standard is read as one written against this version. Giving
-    # the same attribute under two of its TAGs is one value too many rather than a merge.
     return [
         value.strip()
-        for tag in attribute.normalised_tags
+        for tag in normalised_tags
         for element in elements.get(tag, [])
         for value in _string_attribute_values(element)
         if is_string_attribute_value(value)
     ]
 
 
-def read_string_attribute_values(processor: XmlObjectProcessor, attribute: BigpictureStringAttribute) -> list[str]:
+def read_string_attribute_values(
+    processor: XmlObjectProcessor, attribute: BigpictureVersionedStringAttribute
+) -> list[str]:
     """
     The values one attribute of ATTRIBUTES/STRING_ATTRIBUTE is given, as they are given.
 
-    The TAG is matched without case, punctuation or whitespace, so the attribute is
-    found whether or not the metadata object has been normalised. The values are
+    The TAG, or an alias, is matched without case, punctuation or whitespace, so the
+    attribute is found whether or not the metadata object has been normalised. The values are
     returned unvalidated, for a caller reading one attribute rather than validating
     the metadata object.
 
@@ -401,49 +441,37 @@ def read_string_attribute_values(processor: XmlObjectProcessor, attribute: Bigpi
     """
 
     elements = _string_elements_by_normalised_tag(processor, _BP_STRING_ATTRIBUTE_XPATH)
-    return _string_attribute_tag_values(elements, attribute)
+    return _string_attribute_tag_values(elements, attribute.normalised_tags)
 
 
-def _read_string_attribute_values(
-    elements: dict[str, list[Element]], attribute: BigpictureStringAttribute, object_name: str
-) -> list[str]:
-    """
-    Read the values for one STRING_ATTRIBUTE, and validate them.
-
-    :param elements: The metadata object's STRING_ATTRIBUTE elements, by normalised TAG.
-    :param attribute: The attribute to read.
-    :param object_name: The metadata object, named as the submitter knows it, for
-        informative user errors.
-    :raises UserException: if the values do not pass validation.
-    :return: The validated attribute values.
-    """
-
-    return attribute.validated_values(_string_attribute_tag_values(elements, attribute), object_name)
-
-
-def normalise_string_attributes(processor: XmlObjectProcessor, attributes: BigpictureAttributesConfig) -> None:
+def normalise_string_attributes(
+    processor: XmlObjectProcessor, attributes: BigpictureAttributesConfig, version: BigpictureVersion
+) -> None:
     """
     Replace each TAG and STRING_ATTRIBUTE controlled value in the metadata object XML with the
     one it matches.
 
-    A TAG and a STRING_ATTRIBUTE controlled value are both matched without case, punctuation or
-    whitespace. Both support previous values.
+    A TAG and a controlled value, or their aliases, are matched without case, punctuation or
+    whitespace.
 
     :param processor: The metadata object processor.
     :param attributes: The attributes the metadata object declares.
+    :param version: The metadata standard version of the metadata object.
     """
 
-    for xpath, group in _string_attributes_by_xpath(attributes):
+    for xpath, xpath_attributes in _string_attributes_by_xpath(attributes):
         elements = _string_elements_by_normalised_tag(processor, xpath)
 
-        for attribute in group:
+        for attribute in xpath_attributes:
+            if not attribute.is_in(version):
+                continue
             for tag in attribute.normalised_tags:
                 for element in elements.get(tag, []):
                     _normalise_tag(element, attribute)
-                    _normalise_values(element, attribute)
+                    _normalise_values(element, attribute, version)
 
 
-def _normalise_tag(element: Element, attribute: BigpictureStringAttribute) -> None:
+def _normalise_tag(element: Element, attribute: BigpictureVersionedStringAttribute) -> None:
     """Replace the TAG of a STRING_ATTRIBUTE element with the TAG the attribute has.
 
     :param element: The STRING_ATTRIBUTE element.
@@ -455,7 +483,9 @@ def _normalise_tag(element: Element, attribute: BigpictureStringAttribute) -> No
         tag.text = attribute.tag
 
 
-def _normalise_values(element: Element, attribute: BigpictureStringAttribute) -> None:
+def _normalise_values(
+    element: Element, attribute: BigpictureVersionedStringAttribute, version: BigpictureVersion
+) -> None:
     """
     Replace each VALUE of a STRING_ATTRIBUTE element with the controlled value it matches.
 
@@ -464,6 +494,7 @@ def _normalise_values(element: Element, attribute: BigpictureStringAttribute) ->
 
     :param element: The STRING_ATTRIBUTE element.
     :param attribute: The attribute the element gives.
+    :param version: The metadata standard version of the metadata object.
     """
 
     if attribute.controlled_values is None:
@@ -474,28 +505,60 @@ def _normalise_values(element: Element, attribute: BigpictureStringAttribute) ->
         if not is_string_attribute_value(text):
             continue
 
-        matched = attribute.matched_controlled_value(text)
+        matched = attribute.matched_controlled_value(text, version)
         if matched is not None and matched != value.text:
             value.text = matched
 
 
 def read_attributes(
-    processor: XmlObjectProcessor, attributes: BigpictureAttributesConfig, object_name: str
-) -> list[tuple[BigpictureStringAttribute, list[str]]]:
+    processor: XmlObjectProcessor,
+    attributes: BigpictureAttributesConfig,
+    object_name: str,
+    version: BigpictureVersion,
+) -> list[tuple[BigpictureVersionedStringAttribute, list[str]]]:
     """
-     Read and validate every attribute a Bigpicture metadata object declares.
+    Read and validate every attribute a Bigpicture metadata object declares in its version.
 
     :param processor: The metadata object processor.
-     :param attributes: The attributes the metadata object declares.
-     :param object_name: The metadata object, named as the submitter knows it, for
-         informative user errors.
-     :raises UserException: if any of the values do not pass validation.
-     :return: Attributes with their values.
+    :param attributes: The attributes the metadata object declares.
+    :param object_name: The metadata object, named as the submitter knows it, for
+        informative user errors.
+    :param version: The metadata standard version of the metadata object.
+    :raises UserException: if any of the values do not pass validation, or an attribute of
+        another version is given.
+    :return: The attributes of the version with their values.
     """
 
-    values = []
-    for xpath, group in _string_attributes_by_xpath(attributes):
-        elements = _string_elements_by_normalised_tag(processor, xpath)
-        values += [(attribute, _read_string_attribute_values(elements, attribute, object_name)) for attribute in group]
+    attributes_expected_version = []
+    attributes_different_version = []
 
-    return values
+    for xpath, xpath_attributes in _string_attributes_by_xpath(attributes):
+        elements = _string_elements_by_normalised_tag(processor, xpath)
+
+        # The TAGs and aliases of this version's attributes.
+        version_tags = {
+            tag for attribute in xpath_attributes if attribute.is_in(version) for tag in attribute.normalised_tags
+        }
+
+        for attribute in xpath_attributes:
+            if attribute.is_in(version):
+                attributes_expected_version.append(
+                    (attribute, _string_attribute_tag_values(elements, attribute.normalised_tags))
+                )
+            else:
+                tags = [tag for tag in attribute.normalised_tags if tag not in version_tags]
+                attributes_different_version.append((attribute, _string_attribute_tag_values(elements, tags)))
+
+    # Reject attributes belonging to another version.
+    for attribute, values in attributes_different_version:
+        if values:
+            raise UserException(
+                f"{object_name} attribute '{attribute.tag}' is not in metadata standard version {version}, "
+                f"only in {', '.join(attribute.versions)}."
+            )
+
+    # Validate the attribute values.
+    return [
+        (attribute, attribute.validated_values(values, object_name, version))
+        for attribute, values in attributes_expected_version
+    ]

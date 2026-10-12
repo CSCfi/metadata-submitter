@@ -6,10 +6,8 @@
         <VERSION>1</VERSION>
         <METADATA_STANDARD>2.0.0</METADATA_STANDARD>
         <!--
-        Add missing references for mandatory constraint 5:
-        <IMAGE_REF alias="..."/>
-        <ANNOTATION_REF alias="..."/>
-        <OBSERVATION_REF alias="..."/>
+        The image, annotation and observation references are left out on purpose:
+        validation adds them for mandatory constraint 5.
         -->
         <ATTRIBUTES>
             <STRING_ATTRIBUTE>

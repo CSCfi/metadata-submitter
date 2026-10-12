@@ -35,18 +35,18 @@ curl {{api_url}}/v1/submissions
 ### Create new submission (copy-paste to terminal because -F flags are not supported in REST Client extension)
 curl -X POST '{{api_url}}/v1/submit' \
      -H 'Authorization: Bearer {{bearer_token}}' \
-     -F "annotation=@./tests/test_files/xml/bigpicture/annotation.xml;type=text/xml" \
-     -F "datacite=@./tests/test_files/xml/bigpicture/datacite.xml;type=text/xml" \
-     -F "dataset=@./tests/test_files/xml/bigpicture/dataset.xml;type=text/xml" \
-     -F "image=@./tests/test_files/xml/bigpicture/image.xml;type=text/xml" \
-     -F "landing_page=@./tests/test_files/xml/bigpicture/landing_page.xml;type=text/xml" \
-     -F "observation=@./tests/test_files/xml/bigpicture/observation.xml;type=text/xml" \
-     -F "observer=@./tests/test_files/xml/bigpicture/observer.xml;type=text/xml" \
-     -F "organisation=@./tests/test_files/xml/bigpicture/organisation.xml;type=text/xml" \
-     -F "policy=@./tests/test_files/xml/bigpicture/policy.xml;type=text/xml" \
-     -F "bprems=@./tests/test_files/xml/bigpicture/rems.xml;type=text/xml" \
-     -F "sample=@./tests/test_files/xml/bigpicture/sample.xml;type=text/xml" \
-     -F "staining=@./tests/test_files/xml/bigpicture/staining.xml;type=text/xml" | jq
+     -F "annotation=@./tests/test_files/xml/bigpicture/2.0/annotation.xml;type=text/xml" \
+     -F "datacite=@./tests/test_files/xml/bigpicture/2.0/datacite.xml;type=text/xml" \
+     -F "dataset=@./tests/test_files/xml/bigpicture/2.0/dataset.xml;type=text/xml" \
+     -F "image=@./tests/test_files/xml/bigpicture/2.0/image.xml;type=text/xml" \
+     -F "landing_page=@./tests/test_files/xml/bigpicture/2.0/landing_page.xml;type=text/xml" \
+     -F "observation=@./tests/test_files/xml/bigpicture/2.0/observation.xml;type=text/xml" \
+     -F "observer=@./tests/test_files/xml/bigpicture/2.0/observer.xml;type=text/xml" \
+     -F "organisation=@./tests/test_files/xml/bigpicture/2.0/organisation.xml;type=text/xml" \
+     -F "policy=@./tests/test_files/xml/bigpicture/2.0/policy.xml;type=text/xml" \
+     -F "bprems=@./tests/test_files/xml/bigpicture/2.0/rems.xml;type=text/xml" \
+     -F "sample=@./tests/test_files/xml/bigpicture/2.0/sample.xml;type=text/xml" \
+     -F "staining=@./tests/test_files/xml/bigpicture/2.0/staining.xml;type=text/xml" | jq
 
 # Fill in submission_id here:
 @submission_id = ...
@@ -74,18 +74,18 @@ curl {{api_url}}/v1/submissions/{{submission_id}}/objects/docs?schemaType=image
 ### Update image xml file in the submission
 curl -X PATCH {{api_url}}/v1/submit/{{submission_id}} \
      -H 'Authorization: Bearer {{bearer_token}}' \
-     -F "annotation=@./tests/test_files/xml/bigpicture/annotation.xml;type=text/xml" \
-     -F "datacite=@./tests/test_files/xml/bigpicture/datacite.xml;type=text/xml" \
-     -F "dataset=@./tests/test_files/xml/bigpicture/dataset.xml;type=text/xml" \
-     -F "image=@./tests/test_files/xml/bigpicture/update/image.xml;type=text/xml" \
-     -F "landing_page=@./tests/test_files/xml/bigpicture/landing_page.xml;type=text/xml" \
-     -F "observation=@./tests/test_files/xml/bigpicture/observation.xml;type=text/xml" \
-     -F "observer=@./tests/test_files/xml/bigpicture/observer.xml;type=text/xml" \
-     -F "organisation=@./tests/test_files/xml/bigpicture/organisation.xml;type=text/xml" \
-     -F "policy=@./tests/test_files/xml/bigpicture/policy.xml;type=text/xml" \
-     -F "bprems=@./tests/test_files/xml/bigpicture/rems.xml;type=text/xml" \
-     -F "sample=@./tests/test_files/xml/bigpicture/sample.xml;type=text/xml" \
-     -F "staining=@./tests/test_files/xml/bigpicture/staining.xml;type=text/xml" | jq
+     -F "annotation=@./tests/test_files/xml/bigpicture/2.0/annotation.xml;type=text/xml" \
+     -F "datacite=@./tests/test_files/xml/bigpicture/2.0/datacite.xml;type=text/xml" \
+     -F "dataset=@./tests/test_files/xml/bigpicture/2.0/dataset.xml;type=text/xml" \
+     -F "image=@./tests/test_files/xml/bigpicture/2.0/update/image.xml;type=text/xml" \
+     -F "landing_page=@./tests/test_files/xml/bigpicture/2.0/landing_page.xml;type=text/xml" \
+     -F "observation=@./tests/test_files/xml/bigpicture/2.0/observation.xml;type=text/xml" \
+     -F "observer=@./tests/test_files/xml/bigpicture/2.0/observer.xml;type=text/xml" \
+     -F "organisation=@./tests/test_files/xml/bigpicture/2.0/organisation.xml;type=text/xml" \
+     -F "policy=@./tests/test_files/xml/bigpicture/2.0/policy.xml;type=text/xml" \
+     -F "bprems=@./tests/test_files/xml/bigpicture/2.0/rems.xml;type=text/xml" \
+     -F "sample=@./tests/test_files/xml/bigpicture/2.0/sample.xml;type=text/xml" \
+     -F "staining=@./tests/test_files/xml/bigpicture/2.0/staining.xml;type=text/xml" | jq
 
 ### Delete submission
 curl -X DELETE {{api_url}}/v1/submit/{{submission_id}} \

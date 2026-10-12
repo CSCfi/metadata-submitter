@@ -8,7 +8,10 @@ ENV LDAP_ORGANISATION="Test Org" \
     LDAP_DOMAIN="csc.fi" \
     LDAP_ADMIN_PASSWORD=admin \
     LDAP_SEED_INTERNAL_LDIF_PATH=/config/ldif \
-    LDAP_SEED_INTERNAL_SCHEMA_PATH=/config/schema
+    LDAP_SEED_INTERNAL_SCHEMA_PATH=/config/schema \
+    # Keep the bootstrap directory after the first start. Otherwise a restarted container fails
+    # to copy the seed schema into it and exits.
+    LDAP_REMOVE_CONFIG_AFTER_SETUP=false
 
 # Create source and destination directories for schema
 RUN mkdir -p /config/schema \

@@ -14,26 +14,32 @@ from jinja2 import Environment, Template, TemplateError, meta
 from ....database.postgres.services.object import ObjectService
 from ...exceptions import SystemException, UserException
 from ...models.rems import RemsLicenseLocalization
-from ...processors.xml.bigpicture import BP_POLICY_OBJECT_TYPE, BP_POLICY_PATH, BP_POLICY_SCHEMA, BP_XML_OBJECT_CONFIG
+from ...models.submission import Submission
+from ...processors.xml.bigpicture import (
+    BP_POLICY_OBJECT_TYPE,
+    BP_POLICY_PATH,
+    BP_POLICY_SCHEMA,
+    BP_XML_OBJECT_CONFIGS,
+    BigpictureVersion,
+)
 from ...processors.xml.processors import XmlDocumentsProcessor, XmlObjectProcessor
 from ..rems import RemsLicenseProvider
 from .bigpicture_attributes import (
     BigpictureAttributesConfig,
-    BigpictureStringAttribute,
+    BigpictureVersionedStringAttribute,
     load_bigpicture_attributes,
     normalise_string_attributes,
     normalised_value,
     read_attributes,
     read_string_attribute_values,
 )
+from .bigpicture_version import get_bp_version_from_submission
 
 _BP_RESOURCE_DIR = Path(__file__).parent.parent.parent.parent / "resource" / "bigpicture"
 
 _BP_POLICY_ATTRIBUTES_FILE = _BP_RESOURCE_DIR / "policy_attributes.yaml"
 _BP_POLICY_ATTRIBUTES = load_bigpicture_attributes(_BP_POLICY_ATTRIBUTES_FILE)
-_BP_POLICY_ATTRIBUTE_BY_TAG = {
-    tag: attribute for attribute in _BP_POLICY_ATTRIBUTES.all_attributes for tag in attribute.tags
-}
+_BP_POLICY_ATTRIBUTE_BY_TAG = {attribute.tag: attribute for attribute in _BP_POLICY_ATTRIBUTES.all_attributes}
 
 _BP_POLICY_OBJECT_NAME = "Policy"
 _BP_POLICY_REMS_LICENSE_LANGUAGE = "en"
@@ -47,7 +53,7 @@ _BP_POLICY_CLINICAL_SCOPE = "Clinical"
 _BP_POLICY_NON_CLINICAL_SCOPE = "Non-Clinical"
 
 
-def _configured_policy_attribute(tag: str) -> BigpictureStringAttribute:
+def _configured_policy_attribute(tag: str) -> BigpictureVersionedStringAttribute:
     """The configured policy attribute with the given TAG.
 
     :param tag: The attribute TAG.
@@ -169,39 +175,45 @@ _BP_POLICY_LICENSE_TEMPLATE_FILE = _BP_RESOURCE_DIR / "policy_license.jinja"
 _BP_POLICY_LICENSE_TEMPLATE = _load_license_template(_BP_POLICY_LICENSE_TEMPLATE_FILE, _BP_POLICY_ATTRIBUTES)
 
 
-def normalise_policy_attributes(processor: XmlObjectProcessor) -> None:
-    normalise_string_attributes(processor, _BP_POLICY_ATTRIBUTES)
+def normalise_policy_attributes(processor: XmlObjectProcessor, version: BigpictureVersion) -> None:
+    normalise_string_attributes(processor, _BP_POLICY_ATTRIBUTES, version)
 
 
-def validate_policy_attributes(processor: XmlObjectProcessor) -> None:
-    read_attributes(processor, _BP_POLICY_ATTRIBUTES, _BP_POLICY_OBJECT_NAME)
+def validate_policy_attributes(processor: XmlObjectProcessor, version: BigpictureVersion) -> None:
+    read_attributes(processor, _BP_POLICY_ATTRIBUTES, _BP_POLICY_OBJECT_NAME, version)
 
 
-def create_policy_license(processor: XmlObjectProcessor) -> RemsLicenseLocalization:
+def create_policy_license(processor: XmlObjectProcessor, version: BigpictureVersion) -> RemsLicenseLocalization:
     """
     Create the REMS license from the policy XML.
 
     :param processor: The XML documents processor.
+    :param version: The metadata standard version of the policy.
     :raises UserException: if the Policy XML can't be used to create the REMS license.
     :return: The license title and text.
     """
 
-    context = _license_context(read_attributes(processor, _BP_POLICY_ATTRIBUTES, _BP_POLICY_OBJECT_NAME))
+    context = _license_context(read_attributes(processor, _BP_POLICY_ATTRIBUTES, _BP_POLICY_OBJECT_NAME, version))
     text = _BP_POLICY_LICENSE_TEMPLATE.render(context)
     return RemsLicenseLocalization(title=str(context[_BP_POLICY_TITLE_TAG]), textcontent=text.strip())
 
 
 def _license_context(
-    attribute_values: list[tuple[BigpictureStringAttribute, list[str]]],
+    attribute_values: list[tuple[BigpictureVersionedStringAttribute, list[str]]],
 ) -> dict[str, str | list[str]]:
     """
     The attribute values the license template is rendered with, keyed by attribute tag.
 
-    :param attribute_values: The attributes with the values the policy gives them.
+    :param attribute_values: The policy attribute values.
     :return: The values of each attribute, a list of them if it allows multiple.
     """
 
-    context: dict[str, str | list[str]] = {}
+    # The template refers to the attributes of every version, for example both duration_of_use (2.0)
+    # and duration_of_access (3.0), but only those of the policy's version are read. The others are
+    # given an empty value, so the template never refers to an undefined variable.
+    context: dict[str, str | list[str]] = {
+        attribute.tag: [] if attribute.multiple else "" for attribute in _BP_POLICY_ATTRIBUTES.all_attributes
+    }
     for attribute, values in attribute_values:
         if not values and attribute.default is not None:
             values = [attribute.default]
@@ -218,9 +230,13 @@ class BigpictureRemsLicenseProvider(RemsLicenseProvider):
         self._object_service = object_service
 
     @override
-    async def get_license(self, submission_id: str) -> dict[str, RemsLicenseLocalization] | None:
-        async for xml in self._object_service.get_documents(submission_id, BP_POLICY_OBJECT_TYPE):
-            localization = create_policy_license(XmlObjectProcessor(BP_XML_OBJECT_CONFIG, xml))
-            return {_BP_POLICY_REMS_LICENSE_LANGUAGE: localization}
+    async def get_license(self, submission: Submission) -> dict[str, RemsLicenseLocalization] | None:
+        policies = [
+            xml async for xml in self._object_service.get_documents(submission.submissionId, BP_POLICY_OBJECT_TYPE)
+        ]
+        if not policies:
+            return None
 
-        return None
+        version = get_bp_version_from_submission(submission)
+        localization = create_policy_license(XmlObjectProcessor(BP_XML_OBJECT_CONFIGS[version], policies[0]), version)
+        return {_BP_POLICY_REMS_LICENSE_LANGUAGE: localization}

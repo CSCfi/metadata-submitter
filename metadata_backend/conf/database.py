@@ -10,6 +10,9 @@ class DatabaseConfig(BaseSettings):
     model_config = {"extra": "allow"}  # Allow creation using the constructor.
 
     DATABASE_URL: str = Field(description="Database URL")
+    DATABASE_MIGRATE: bool = Field(
+        default=False, description="Apply the Alembic migrations to the database when the server starts."
+    )
 
 
 def database_config() -> DatabaseConfig:

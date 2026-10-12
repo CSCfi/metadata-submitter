@@ -1,0 +1,11 @@
+<LANDING_PAGE_SET>
+    <LANDING_PAGE alias="1">
+        <DATASET_REF alias="1"/>
+        <ATTRIBUTES>
+            <STRING_ATTRIBUTE>
+                <TAG>test</TAG>
+                <VALUE>test</VALUE>
+            </STRING_ATTRIBUTE>
+        </ATTRIBUTES>
+    </LANDING_PAGE>
+</LANDING_PAGE_SET>

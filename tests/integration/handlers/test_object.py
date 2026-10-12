@@ -3,6 +3,9 @@
 import logging
 import uuid
 
+import pytest
+
+from metadata_backend.api.processors.xml.bigpicture import BigpictureVersion
 from metadata_backend.conf.deployment import deployment_config
 from tests.integration.helpers import (
     get_submission,
@@ -55,14 +58,15 @@ async def test_sd_submission(sd_client, sd_submission, sd_submission_update, pro
         assert resp.status == 404
 
 
-async def test_bp_submission(nbis_client, bp_submission, bp_submission_update):
+@pytest.mark.parametrize("version", list(BigpictureVersion))
+async def test_bp_submission(nbis_client, bp_submission, bp_submission_update, version):
     """Test post, get and delete BP submission using /submit endpoint."""
 
     api_prefix_v1 = deployment_config().API_PREFIX_V1
 
     for is_datacite in [True, False]:
         # Create submission.
-        submission, object_names = await bp_submission(is_datacite)
+        submission, object_names = await bp_submission(is_datacite, version)
         submission_id = submission.submissionId
 
         # Get submission using /submissions endpoint.
@@ -73,7 +77,7 @@ async def test_bp_submission(nbis_client, bp_submission, bp_submission_update):
         assert not saved_submission.published
 
         # Update submission (no XML changes).
-        await bp_submission_update(submission.submissionId, object_names, is_datacite)
+        await bp_submission_update(submission.submissionId, object_names, is_datacite, version)
 
         # Delete submission.
         async with nbis_client.delete(f"{api_prefix_v1}/submit/{submission_id}") as resp:

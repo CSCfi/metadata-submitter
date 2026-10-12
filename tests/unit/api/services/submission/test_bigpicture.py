@@ -1,9 +1,16 @@
 """Tests for Bigpicture submission service."""
 
+import re
+
 import pytest
 
 from metadata_backend.api.exceptions import UserException
-from metadata_backend.api.services.submission.bigpicture import BigpictureObjectSubmissionService
+from metadata_backend.api.processors.xml.bigpicture import BP_DATASET_PATH, BP_DATASET_SCHEMA, BigpictureVersion
+from metadata_backend.api.processors.xml.processors import XmlObjectProcessor
+from metadata_backend.api.services.submission.bigpicture import (
+    BigpictureObjectSubmissionService,
+    validate_bigpicture_documents,
+)
 from metadata_backend.api.services.submission.submission import ObjectSubmission
 from tests.utils import bp_objects
 
@@ -96,7 +103,7 @@ def test_prepare_files_wrong_directory_raises():
     )
 
     with pytest.raises(
-        UserException, match="Annotation file 'OTHER_DIR/test.geojson.c4gh' must be in directory 'ANNOTATIONS'."
+        UserException, match="ANNOTATION file 'OTHER_DIR/test.geojson.c4gh' must be in directory 'ANNOTATIONS'."
     ):
         _prepare_files(objects)
 
@@ -137,3 +144,35 @@ def test_check_image_file_dir_correct_dir():
     alias = "IMAGE_TEST"
     path = "IMAGES/IMAGE_TEST/image"
     BigpictureObjectSubmissionService.check_image_file_dir(alias, path)
+
+
+@pytest.mark.parametrize("version", list(BigpictureVersion))
+def test_validate_documents_adds_missing_dataset_references(version):
+    """Image, annotation and observation references missing from the dataset are added in the correct place."""
+
+    objects, _ = bp_objects(is_update=False, version=version)
+    objects = [
+        ObjectSubmission(
+            filename=o.filename,
+            document=re.sub(r"<(IMAGE|ANNOTATION|OBSERVATION)_REF [^>]*/>", "", o.document)
+            if o.filename == "dataset.xml"
+            else o.document,
+        )
+        for o in objects
+    ]
+    processor, _, _ = BigpictureObjectSubmissionService._create_processor(objects)
+
+    dataset_name = processor.get_object_identifiers(BP_DATASET_SCHEMA)[0].name
+    dataset_processor = processor.get_object_processor(BP_DATASET_SCHEMA, BP_DATASET_PATH, dataset_name)
+    ref_tags = ["IMAGE_REF", "ANNOTATION_REF", "OBSERVATION_REF"]
+
+    def dataset_ref_tags() -> list[str]:
+        return [tag for tag in ref_tags if dataset_processor.root_element.find(tag) is not None]
+
+    assert dataset_ref_tags() == []
+
+    validate_bigpicture_documents(processor)
+
+    assert dataset_ref_tags() == ref_tags
+    # Validates the dataset XML against the XML schema.
+    XmlObjectProcessor(dataset_processor.config, dataset_processor.xml)

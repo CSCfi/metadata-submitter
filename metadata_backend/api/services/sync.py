@@ -2,6 +2,8 @@
 
 from abc import ABC, abstractmethod
 
+from ..models.submission import Submission
+
 
 class SyncMetadataProvider(ABC):
     """How a deployment packages the metadata objects of a submission for syncing.
@@ -10,10 +12,10 @@ class SyncMetadataProvider(ABC):
     """
 
     @abstractmethod
-    async def get_metadata_archive(self, submission_id: str) -> bytes:
+    async def get_metadata_archive(self, submission: Submission) -> bytes:
         """
         Get the metadata objects of one submission as a zip archive.
 
-        :param submission_id: The submission id.
+        :param submission: The submission.
         :return: The zip archive of the metadata objects.
         """

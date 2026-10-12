@@ -240,6 +240,8 @@ class SubmissionAPIHandler(RESTAPIHandler):
 
         # Set workflow according to the deployment type.
         submission.workflow = workflow
+        # The metadata version is set from the submitted metadata objects.
+        submission.metadataVersion = None
 
         # Check that user is affiliated with the project.
         await project_service.verify_user_project(user_id, submission.projectId)

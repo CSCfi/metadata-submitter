@@ -2,7 +2,7 @@ import pytest
 from pydantic import ValidationError
 
 from metadata_backend.api.exceptions import UserException
-from metadata_backend.api.processors.xml.bigpicture import BP_XML_OBJECT_CONFIG
+from metadata_backend.api.processors.xml.bigpicture import BP_XML_OBJECT_CONFIG_2, BigpictureVersion
 from metadata_backend.api.processors.xml.processors import XmlObjectProcessor
 from metadata_backend.api.services.submission.bigpicture_attributes import (
     BP_ATTRIBUTE_TYPE_STRING,
@@ -11,19 +11,22 @@ from metadata_backend.api.services.submission.bigpicture_attributes import (
     BP_VALUE_TYPE_CONTROLLED_VALUE,
     BP_VALUE_TYPE_TEXT,
     BigpictureAttributesConfig,
-    BigpictureStringAttribute,
+    BigpictureVersionedStringAttribute,
     normalised_value,
     read_attributes,
 )
 
 _POLICY_OBJECT_NAME = "Policy"
 
+_V2 = BigpictureVersion.V2_0
+_V3 = BigpictureVersion.V3_0
 
-def _string_attribute(tag: str = "tag", **fields) -> BigpictureStringAttribute:
-    return BigpictureStringAttribute(tag=tag, attribute_type=BP_ATTRIBUTE_TYPE_STRING, **fields)
+
+def _string_attribute(tag: str = "tag", **fields) -> BigpictureVersionedStringAttribute:
+    return BigpictureVersionedStringAttribute(tag=tag, attribute_type=BP_ATTRIBUTE_TYPE_STRING, **fields)
 
 
-def _controlled_attribute(*controlled_values, **fields) -> BigpictureStringAttribute:
+def _controlled_attribute(*controlled_values, **fields) -> BigpictureVersionedStringAttribute:
     return _string_attribute(value_type=BP_VALUE_TYPE_CONTROLLED_VALUE, controlled_values=controlled_values, **fields)
 
 
@@ -53,8 +56,6 @@ def test_normalised_value(value, expected):
         (_controlled_attribute("Unlimited time"), ["unlimited  TIME"], ["Unlimited time"]),
         (_controlled_attribute("Non-Clinical/Obscured"), ["NON CLINICAL OBSCURED"], ["Non-Clinical/Obscured"]),
         (_controlled_attribute("Non-Clinical/Obscured"), ["nonclinicalobscured"], ["Non-Clinical/Obscured"]),
-        # A previous controlled value value becomes the current one that replaces it.
-        (_controlled_attribute("Worldwide", {"value": "New", "previous_values": ["Old"]}), ["old"], ["New"]),
         # A boolean attribute is treated as a controlled value with True and False values.
         (_string_attribute(value_type=BP_VALUE_TYPE_BOOLEAN), ["true"], ["True"]),
         (_string_attribute(value_type=BP_VALUE_TYPE_BOOLEAN), ["Yes"], ["True"]),
@@ -63,7 +64,7 @@ def test_normalised_value(value, expected):
     ],
 )
 def test_validated_values(attribute, given, expected):
-    assert attribute.validated_values(given, _POLICY_OBJECT_NAME) == expected
+    assert attribute.validated_values(given, _POLICY_OBJECT_NAME, _V3) == expected
 
 
 @pytest.mark.parametrize(
@@ -81,7 +82,45 @@ def test_validated_values(attribute, given, expected):
 )
 def test_validated_values_error(attribute, given, message):
     with pytest.raises(UserException, match=message):
-        attribute.validated_values(given, _POLICY_OBJECT_NAME)
+        attribute.validated_values(given, _POLICY_OBJECT_NAME, _V2)
+
+
+def test_validated_values_version():
+    """A controlled value given versions is allowed only in those versions."""
+
+    # "Worldwide" is in every version, and "Only 2.0" only in 2.0.
+    attribute = _controlled_attribute("Worldwide", {"value": "Only 2.0", "versions": ["2.0"]})
+
+    # In 2.0, both are allowed.
+    assert attribute.validated_values(["worldwide"], _POLICY_OBJECT_NAME, _V2) == ["Worldwide"]
+    assert attribute.validated_values(["only 2.0"], _POLICY_OBJECT_NAME, _V2) == ["Only 2.0"]
+
+    # In 3.0, only "Worldwide" is allowed, and the error lists only it.
+    assert attribute.validated_values(["worldwide"], _POLICY_OBJECT_NAME, _V3) == ["Worldwide"]
+    with pytest.raises(UserException, match=r"has value 'only 2.0' but must be one of: Worldwide\.$"):
+        attribute.validated_values(["only 2.0"], _POLICY_OBJECT_NAME, _V3)
+
+
+def test_validated_values_version_alias():
+    """A controlled value of one version may be an alias of a controlled value of another."""
+
+    attribute = _controlled_attribute(
+        {"value": "Old", "versions": ["2.0"], "aliases": ["New"]},
+        {"value": "New", "versions": ["3.0"]},
+    )
+
+    assert attribute.validated_values(["new"], _POLICY_OBJECT_NAME, _V2) == ["Old"]
+    assert attribute.validated_values(["new"], _POLICY_OBJECT_NAME, _V3) == ["New"]
+    with pytest.raises(UserException, match=r"has value 'old' but must be one of: New\.$"):
+        attribute.validated_values(["old"], _POLICY_OBJECT_NAME, _V3)
+
+
+def test_unknown_version_error():
+    with pytest.raises(ValidationError, match="versions"):
+        _string_attribute(versions=["1.0"])
+
+    with pytest.raises(ValidationError, match="versions"):
+        _controlled_attribute({"value": "Old", "versions": ["1.0"]})
 
 
 @pytest.mark.parametrize("configured", [None, ("Enabled",)])
@@ -100,8 +139,26 @@ def test_boolean_controlled_values(configured):
             "differ only in case",
         ),
         (
-            {"tag": "duration_of_access", "previous_tags": ("Duration Of Access",)},
-            "previous_tags that are the same tag",
+            {
+                "value_type": BP_VALUE_TYPE_CONTROLLED_VALUE,
+                "controlled_values": ({"value": "Old", "aliases": ["New"]}, {"value": "New", "versions": ["3.0"]}),
+            },
+            "differ only in case, punctuation or whitespace in version 3.0",
+        ),
+        (
+            {
+                "versions": ["3.0"],
+                "value_type": BP_VALUE_TYPE_CONTROLLED_VALUE,
+                "controlled_values": ("Worldwide", {"value": "Old", "versions": ["2.0"]}),
+            },
+            "has controlled value 'Old' in versions the attribute is not in: 2.0",
+        ),
+        (
+            {
+                "value_type": BP_VALUE_TYPE_CONTROLLED_VALUE,
+                "controlled_values": ({"value": "Old", "versions": ["2.0"]},),
+            },
+            "has no controlled values in version 3.0",
         ),
         ({"mandatory": True, "default": "a"}, "allows no default"),
     ],
@@ -115,8 +172,28 @@ def test_string_attributes_same_tag_error():
     with pytest.raises(ValidationError, match="tags that are the same when normalised"):
         BigpictureAttributesConfig(
             attributes=(_string_attribute("duration_of_access"),),
-            set_attributes=(_string_attribute("type_of_access", previous_tags=("Duration Of Access",)),),
+            set_attributes=(_string_attribute("Duration Of Access", versions=["2.0"]),),
         )
+
+
+def test_string_attributes_same_alias_error():
+    with pytest.raises(ValidationError, match="tags that are the same when normalised in version 2.0"):
+        BigpictureAttributesConfig(
+            attributes=(_string_attribute("duration_of_access"),),
+            set_attributes=(_string_attribute("duration_of_use", aliases=["Duration Of Access"]),),
+        )
+
+
+def test_string_attributes_alias_of_another_version():
+    """An alias of an attribute of one version may be the tag of an attribute of another."""
+
+    BigpictureAttributesConfig(
+        attributes=(
+            _string_attribute("duration_of_use", versions=["2.0"], aliases=["duration_of_access"]),
+            _string_attribute("duration_of_access", versions=["3.0"]),
+        ),
+        set_attributes=(),
+    )
 
 
 def _policy_xml(*attributes: tuple[str, str], set_attributes: tuple[tuple[str, str], ...] = ()) -> str:
@@ -136,40 +213,82 @@ def _policy_xml(*attributes: tuple[str, str], set_attributes: tuple[tuple[str, s
 def _policy_processor(
     *attributes: tuple[str, str], set_attributes: tuple[tuple[str, str], ...] = ()
 ) -> XmlObjectProcessor:
-    return XmlObjectProcessor(BP_XML_OBJECT_CONFIG, _policy_xml(*attributes, set_attributes=set_attributes))
+    # BP.policy.xsd has not changed between 2.0 and 3.0.
+    return XmlObjectProcessor(BP_XML_OBJECT_CONFIG_2, _policy_xml(*attributes, set_attributes=set_attributes))
 
 
 def _attributes_config(
-    attributes: tuple[BigpictureStringAttribute, ...] = (),
-    set_attributes: tuple[BigpictureStringAttribute, ...] = (),
+    attributes: tuple[BigpictureVersionedStringAttribute, ...] = (),
+    set_attributes: tuple[BigpictureVersionedStringAttribute, ...] = (),
 ) -> BigpictureAttributesConfig:
     return BigpictureAttributesConfig(attributes=attributes, set_attributes=set_attributes)
 
 
-def test_read_attributes_previous_tag():
-    config = _attributes_config(
-        attributes=(_string_attribute("new", previous_tags=("old",)),),
+def _versioned_attributes_config() -> BigpictureAttributesConfig:
+    """Two mandatory attributes, one only in 2.0 and the other only in 3.0."""
+
+    return _attributes_config(
+        attributes=(
+            _string_attribute("only_2_0", versions=["2.0"], mandatory=True),
+            _string_attribute("only_3_0", versions=["3.0"], mandatory=True),
+        )
     )
 
-    attributes = read_attributes(_policy_processor(("old", "a")), config, _POLICY_OBJECT_NAME)
-    assert [(attribute.tag, values) for attribute, values in attributes] == [("new", ["a"])]
+
+def test_read_attributes_version():
+    """Only the attributes of the metadata object's version are validated and returned."""
+
+    config = _versioned_attributes_config()
+
+    # A 2.0 object passes without the mandatory 3.0 attribute, which is not returned.
+    attributes = read_attributes(_policy_processor(("only_2_0", "a")), config, _POLICY_OBJECT_NAME, _V2)
+    assert [(attribute.tag, values) for attribute, values in attributes] == [("only_2_0", ["a"])]
+
+    # A 3.0 object passes without the mandatory 2.0 attribute, which is not returned.
+    attributes = read_attributes(_policy_processor(("only_3_0", "a")), config, _POLICY_OBJECT_NAME, _V3)
+    assert [(attribute.tag, values) for attribute, values in attributes] == [("only_3_0", ["a"])]
+
+
+def test_read_attributes_version_error():
+    """An attribute from another version is rejected."""
+
+    config = _versioned_attributes_config()
+
+    with pytest.raises(UserException, match="'only_3_0' is not in metadata standard version 2.0, only in 3.0"):
+        read_attributes(_policy_processor(("only_3_0", "a")), config, _POLICY_OBJECT_NAME, _V2)
+
+    with pytest.raises(UserException, match="'only_2_0' is not in metadata standard version 3.0, only in 2.0"):
+        read_attributes(_policy_processor(("only_2_0", "a")), config, _POLICY_OBJECT_NAME, _V3)
+
+
+def test_read_attributes_alias():
+    """An attribute is read from its alias, which another version's attribute may have as its TAG."""
+
+    config = _attributes_config(
+        attributes=(
+            _string_attribute("only_2_0", versions=["2.0"], mandatory=True, aliases=["only_3_0"]),
+            _string_attribute("only_3_0", versions=["3.0"], mandatory=True),
+        )
+    )
+
+    attributes = read_attributes(_policy_processor(("Only 3.0", "a")), config, _POLICY_OBJECT_NAME, _V2)
+    assert [(attribute.tag, values) for attribute, values in attributes] == [("only_2_0", ["a"])]
+
+    # The alias is not the other way round.
+    with pytest.raises(UserException, match="'only_2_0' is not in metadata standard version 3.0, only in 2.0"):
+        read_attributes(_policy_processor(("only_2_0", "a")), config, _POLICY_OBJECT_NAME, _V3)
 
 
 def test_read_attributes_multiple_value_error():
-    # Same tag twice (previous tag).
-    config = _attributes_config(
-        attributes=(_string_attribute("new", previous_tags=("old",)),),
-    )
-
-    with pytest.raises(UserException, match="may be given only once"):
-        read_attributes(_policy_processor(("new", "a"), ("old", "b")), config, _POLICY_OBJECT_NAME)
-
     # Same tag twice (normalised tag).
     config = _attributes_config(attributes=(_string_attribute("duration_of_access"),))
 
     with pytest.raises(UserException, match="may be given only once"):
         read_attributes(
-            _policy_processor(("duration_of_access", "a"), ("Duration Of Access", "b")), config, _POLICY_OBJECT_NAME
+            _policy_processor(("duration_of_access", "a"), ("Duration Of Access", "b")),
+            config,
+            _POLICY_OBJECT_NAME,
+            _V3,
         )
 
 
@@ -177,7 +296,7 @@ def test_read_attributes_multiple_value_error():
 def test_read_attributes_normalised(tag):
     config = _attributes_config(attributes=(_string_attribute("duration_of_access"),))
 
-    attributes = read_attributes(_policy_processor((tag, "a")), config, _POLICY_OBJECT_NAME)
+    attributes = read_attributes(_policy_processor((tag, "a")), config, _POLICY_OBJECT_NAME, _V3)
     assert [values for _, values in attributes] == [["a"]]
 
 
@@ -200,7 +319,7 @@ def test_read_attributes_normalised(tag):
 def test_read_attributes_empty_string(value):
     config = _attributes_config(attributes=(_string_attribute("tag"),))
 
-    given = read_attributes(_policy_processor(("tag", value)), config, _POLICY_OBJECT_NAME)
+    given = read_attributes(_policy_processor(("tag", value)), config, _POLICY_OBJECT_NAME, _V3)
 
     assert [values for _, values in given] == [[]]
 
@@ -209,7 +328,7 @@ def test_read_attributes_empty_string(value):
 def test_read_attributes_value_resembling_empty_string(value):
     config = _attributes_config(attributes=(_string_attribute("tag"),))
 
-    given = read_attributes(_policy_processor(("tag", value)), config, _POLICY_OBJECT_NAME)
+    given = read_attributes(_policy_processor(("tag", value)), config, _POLICY_OBJECT_NAME, _V3)
 
     assert [values for _, values in given] == [[value]]
 
@@ -217,7 +336,7 @@ def test_read_attributes_value_resembling_empty_string(value):
 def test_read_attributes_string_with_whitespace():
     config = _attributes_config(attributes=(_string_attribute("tag"),))
 
-    given = read_attributes(_policy_processor(("tag", "  a  ")), config, _POLICY_OBJECT_NAME)
+    given = read_attributes(_policy_processor(("tag", "  a  ")), config, _POLICY_OBJECT_NAME, _V3)
 
     assert [values for _, values in given] == [["a"]]
 
@@ -229,7 +348,7 @@ def test_read_attributes_attributes_before_set_attributes():
     )
 
     given = read_attributes(
-        _policy_processor(("tag", "a"), set_attributes=(("tag2", "b"), ("tag2", "c"))), config, _POLICY_OBJECT_NAME
+        _policy_processor(("tag", "a"), set_attributes=(("tag2", "b"), ("tag2", "c"))), config, _POLICY_OBJECT_NAME, _V3
     )
 
     assert [(attribute.tag, values) for attribute, values in given] == [("tag", ["a"]), ("tag2", ["b", "c"])]

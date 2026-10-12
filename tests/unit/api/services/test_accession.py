@@ -6,11 +6,14 @@ import pytest
 
 from metadata_backend.api.processors.xml.bigpicture import (
     BP_ANNOTATION_OBJECT_TYPE,
+    BP_ANNOTATION_TASK_OBJECT_TYPE,
+    BP_ANNOTATOR_OBJECT_TYPE,
     BP_DATASET_OBJECT_TYPE,
     BP_IMAGE_OBJECT_TYPE,
     BP_LANDING_PAGE_OBJECT_TYPE,
     BP_OBSERVATION_OBJECT_TYPE,
     BP_OBSERVER_OBJECT_TYPE,
+    BP_ONTOLOGY_OBJECT_TYPE,
     BP_ORGANISATION_OBJECT_TYPE,
     BP_POLICY_OBJECT_TYPE,
     BP_REMS_OBJECT_TYPE,
@@ -41,11 +44,14 @@ def assert_bp_accession_format(center_id: str, accession_type: str, object_type:
 def test_generate_bp_accession_format():
     center_id = bp_config().BP_CENTER_ID
     assert_bp_accession_format(center_id, "annotation", BP_ANNOTATION_OBJECT_TYPE)
+    assert_bp_accession_format(center_id, "annotation_task", BP_ANNOTATION_TASK_OBJECT_TYPE)
+    assert_bp_accession_format(center_id, "annotator", BP_ANNOTATOR_OBJECT_TYPE)
     assert_bp_accession_format(center_id, "dataset", BP_DATASET_OBJECT_TYPE)
     assert_bp_accession_format(center_id, "image", BP_IMAGE_OBJECT_TYPE)
     assert_bp_accession_format(center_id, "landing_page", BP_LANDING_PAGE_OBJECT_TYPE)
     assert_bp_accession_format(center_id, "observation", BP_OBSERVATION_OBJECT_TYPE)
     assert_bp_accession_format(center_id, "observer", BP_OBSERVER_OBJECT_TYPE)
+    assert_bp_accession_format(center_id, "ontology", BP_ONTOLOGY_OBJECT_TYPE)
     assert_bp_accession_format(center_id, "organisation", BP_ORGANISATION_OBJECT_TYPE)
     assert_bp_accession_format(center_id, "policy", BP_POLICY_OBJECT_TYPE)
     assert_bp_accession_format(center_id, "rems", BP_REMS_OBJECT_TYPE)

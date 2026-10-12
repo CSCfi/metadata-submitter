@@ -302,6 +302,9 @@ Apply all migrations to the database pointed to by `DATABASE_URL` environment va
 make db_upgrade
 ```
 
+Or let the server apply them when it starts, before it serves any requests, by setting
+`DATABASE_MIGRATE=true`.
+
 If an existing database already matches the current schema but has not been versioned by Alembic yet,
 stamp it with the current revision without running migrations:
 
@@ -309,9 +312,10 @@ stamp it with the current revision without running migrations:
 make db_stamp revision=head
 ```
 
-Fresh local databases can still be created automatically by the application or with the checked-in
-SQL in `metadata_backend/database/postgres/schema/create.sql`. Alembic is intended for upgrading
-already existing databases and for recording future schema changes.
+A database without tables is created by the server when it starts, and stamped with the current
+revision. A database created with the checked-in SQL in
+`metadata_backend/database/postgres/schema/create.sql` must be stamped with `make db_stamp revision=head`.
+Alembic is intended for upgrading already existing databases and for recording future schema changes.
 
 `create.sql` is generated from the SQLAlchemy models in `metadata_backend/database/postgres/models.py`.
 Regenerate it whenever the models change, and add an Alembic migration for the same change:

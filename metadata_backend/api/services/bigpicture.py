@@ -14,19 +14,21 @@ from ...helpers.logger import LOG
 from ..exceptions import SystemException
 from ..handlers.restapi import RESTAPIServices
 from ..models.models import File
-from ..models.submission import SubmissionWorkflow
+from ..models.submission import Submission, SubmissionWorkflow
 from ..models.sync import SyncFile, SyncFiles
 from ..processors.xml.bigpicture import (
     BP_ANNOTATION_OBJECT_TYPE,
+    BP_ANNOTATION_TASK_OBJECT_TYPE,
+    BP_ANNOTATOR_OBJECT_TYPE,
     BP_DATASET_OBJECT_TYPE,
     BP_IMAGE_OBJECT_TYPE,
     BP_LANDING_PAGE_OBJECT_TYPE,
     BP_OBSERVATION_OBJECT_TYPE,
     BP_OBSERVER_OBJECT_TYPE,
+    BP_ONTOLOGY_OBJECT_TYPE,
     BP_POLICY_OBJECT_TYPE,
     BP_SAMPLE_OBJECT_TYPES,
     BP_STAINING_OBJECT_TYPE,
-    BP_XML_OBJECT_CONFIG,
     as_xml_set_document,
     get_xml_object_type_schema,
     update_landing_page_xml,
@@ -34,6 +36,7 @@ from ..processors.xml.bigpicture import (
 from ..processors.xml.datacite import DATACITE_OBJECT_TYPE, DATACITE_SCHEMA, DATACITE_XML_SCHEMA_DIR
 from ..processors.xml.processors import XmlProcessor
 from .file import S3InboxSDAService
+from .submission.bigpicture_version import get_bp_xml_object_config
 from .sync import SyncMetadataProvider
 
 
@@ -75,6 +78,12 @@ XML_OUTPUT_FILES: list[XmlOutputDir] = [
             XmlOutputFile(name="observer.xml.c4gh", object_types=[BP_OBSERVER_OBJECT_TYPE]),
             XmlOutputFile(name="sample.xml.c4gh", object_types=BP_SAMPLE_OBJECT_TYPES),
             XmlOutputFile(name="staining.xml.c4gh", object_types=[BP_STAINING_OBJECT_TYPE]),
+            # Since 3.0.
+            XmlOutputFile(name="annotator.xml.c4gh", object_types=[BP_ANNOTATOR_OBJECT_TYPE], mandatory=False),
+            XmlOutputFile(name="ontology.xml.c4gh", object_types=[BP_ONTOLOGY_OBJECT_TYPE], mandatory=False),
+            XmlOutputFile(
+                name="annotation_task.xml.c4gh", object_types=[BP_ANNOTATION_TASK_OBJECT_TYPE], mandatory=False
+            ),
         ],
     ),
     XmlOutputDir(
@@ -114,6 +123,7 @@ async def upload_bp_metadata_xmls(services: RESTAPIServices, submission_id: str,
 
     bucket = user_id.replace("@", "_")  # SDA inbox bucket name is the user id with @ replaced by underscore
     registration = await services.registration.get_registration(submission_id)  # For landing page XML update
+    config = get_bp_xml_object_config(await services.submission.get_submission_by_id(submission_id))
 
     for xml_output_dir in XML_OUTPUT_FILES:
         for file in xml_output_dir.files:
@@ -133,6 +143,7 @@ async def upload_bp_metadata_xmls(services: RESTAPIServices, submission_id: str,
                 xml_docs = [
                     await update_landing_page_xml(
                         xml_doc,
+                        config,
                         datacite_url=registration.dataciteUrl if registration else None,
                         rems_url=registration.remsUrl if registration else None,
                     )
@@ -155,16 +166,17 @@ async def upload_bp_metadata_xmls(services: RESTAPIServices, submission_id: str,
                     LOG.error(f"reason: {str(ex)}")
                     raise SystemException(reason)
             else:
-                # BP XML types are wrapped in a set element and validated via BP_XML_OBJECT_CONFIG.
-                schema_type = BP_XML_OBJECT_CONFIG.get_schema_type(file.object_types[0])
-                xml = await as_xml_set_document(xml_docs, schema_type)
+                # BP XML types are wrapped in a set element and validated against the schemas
+                # of the submission's version.
+                schema_type = config.get_schema_type(file.object_types[0])
+                xml = await as_xml_set_document(xml_docs, schema_type, config)
                 try:
                     parsed_xml = XmlProcessor.parse_xml(xml)
                     XmlProcessor.validate_schema(
                         parsed_xml,
-                        BP_XML_OBJECT_CONFIG.schema_dir,
+                        config.schema_dir,
                         schema_type,
-                        BP_XML_OBJECT_CONFIG.schema_file_resolver,
+                        config.schema_file_resolver,
                     )
                 except Exception as ex:
                     reason = f"Generated XML document is not valid for {file.name}"
@@ -211,7 +223,7 @@ class BigpictureSyncMetadataProvider(SyncMetadataProvider):
         self._file_service = file_service
 
     @override
-    async def get_metadata_archive(self, submission_id: str) -> bytes:
+    async def get_metadata_archive(self, submission: Submission) -> bytes:
         """
         Get the metadata objects of one submission as a zip archive.
 
@@ -219,11 +231,13 @@ class BigpictureSyncMetadataProvider(SyncMetadataProvider):
         is handled separately. The files of the submission, with their accessions, are
         listed in a JSON document.
 
-        :param submission_id: The submission id.
+        :param submission: The submission.
         :return: The zip archive of the metadata objects.
         """
 
+        submission_id = submission.submissionId
         objects = await self._object_service.get_objects(submission_id)
+        config = get_bp_xml_object_config(submission)
 
         object_types_by_schema: dict[str, list[str]] = defaultdict(list)
         for obj in objects:
@@ -253,7 +267,7 @@ class BigpictureSyncMetadataProvider(SyncMetadataProvider):
                         raise SystemException(reason)
                     document = xml_documents[0]
                 else:
-                    document = await as_xml_set_document(xml_documents, schema_type)
+                    document = await as_xml_set_document(xml_documents, schema_type, config)
 
                 archive.writestr(f"{BP_SYNC_METADATA_DIR}/{schema_type}.xml", document)
 

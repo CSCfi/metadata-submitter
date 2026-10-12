@@ -4,9 +4,16 @@ import os
 import re
 import sqlite3
 from contextvars import ContextVar
+from pathlib import Path
 from typing import Callable
 
-from sqlalchemy import create_mock_engine, event, text
+from alembic import command
+from alembic.config import Config
+from alembic.runtime.migration import MigrationContext
+from alembic.script import ScriptDirectory
+from sqlalchemy import Connection, create_mock_engine, event, inspect, pool, text
+from sqlalchemy import create_engine as create_sync_engine
+from sqlalchemy.engine import URL, make_url
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 
 from ...api.exceptions import SystemException
@@ -15,16 +22,80 @@ from .models import Base
 
 SessionFactory = async_sessionmaker[AsyncSession]
 
+_ALEMBIC_DIR = Path(__file__).parent / "alembic"
+
+
+def _alembic_config() -> Config:
+    """Return the Alembic configuration."""
+    config = Config()
+    config.set_main_option("script_location", str(_ALEMBIC_DIR))
+    return config
+
+
+def _has_tables(connection: Connection) -> bool:
+    """Return true if any of the database tables have already been created."""
+    return not set(inspect(connection).get_table_names()).isdisjoint(Base.metadata.tables)
+
+
+def _create_tables(connection: Connection) -> None:
+    """
+    Create the tables from the models if the database has none and
+    stamp the latest Alembic revision.
+
+    Args:
+        connection: Synchronous SQLAlchemy connection.
+    """
+    if _has_tables(connection):
+        return
+
+    Base.metadata.create_all(connection)
+    script_dir = ScriptDirectory.from_config(_alembic_config())
+    MigrationContext.configure(connection).stamp(script_dir, "head")
+
 
 async def _create_schema(engine: AsyncEngine) -> None:
     """
-    Create database schema if it does not already exist.
+    Create database schema if the none of the tables already exist.
 
     Args:
         engine: Asynchronous SQLAlchemy 2.0 engine.
     """
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(_create_tables)
+
+
+def get_sync_database_url() -> str:
+    """Return the database URL given by the DATABASE_URL environment variable with a synchronous driver."""
+    url = make_url(database_config().DATABASE_URL)
+
+    driver_map = {
+        "postgresql+asyncpg": "postgresql+psycopg",
+        "sqlite+aiosqlite": "sqlite",
+    }
+    if url.drivername in driver_map:
+        url = url.set(drivername=driver_map[url.drivername])
+
+    return URL.render_as_string(url, hide_password=False)
+
+
+def migrate_schema() -> None:
+    """
+    Apply the Alembic migrations to the database given by the DATABASE_URL environment variable.
+
+    Checks that database tables have been created.
+
+    Run before the server starts its event loop.
+    """
+
+    engine = create_sync_engine(get_sync_database_url(), poolclass=pool.NullPool)
+    try:
+        with engine.connect() as connection:
+            has_tables = _has_tables(connection)
+    finally:
+        engine.dispose()
+
+    if has_tables:
+        command.upgrade(_alembic_config(), "head")
 
 
 async def create_engine(db_url: str | None = None) -> AsyncEngine:
@@ -103,9 +174,9 @@ def get_sqllite_db_url(file: str) -> str:
     Args:
         file: the file path
     Returns:
-        Sqllite in-memory database url.
+        Sqllite file database url.
     """
-    return f"sqlite+aiosqlite:///{file}?cache=shared"
+    return f"sqlite+aiosqlite:///{file}"
 
 
 def create_session_factory(engine: AsyncEngine) -> SessionFactory:
