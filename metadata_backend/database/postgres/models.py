@@ -106,6 +106,8 @@ class SubmissionEntity(Base):
     project_id: Mapped[str] = mapped_column(String, nullable=False)
     bucket: Mapped[str] = mapped_column(String(64), nullable=True)
     workflow: Mapped[SubmissionWorkflow] = mapped_column(string_enum(SubmissionWorkflow), nullable=False)
+    # The metadata standard version, set when the submission is created and never changed.
+    metadata_version: Mapped[str] = mapped_column(String(16), nullable=True)
 
     title: Mapped[str] = mapped_column(String, nullable=True)
     description: Mapped[str] = mapped_column(Text, nullable=True)

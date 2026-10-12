@@ -18,6 +18,12 @@ from metadata_backend.api.processors.xml.bigpicture import (
     BP_ANNOTATION_OBJECT_TYPE,
     BP_ANNOTATION_PATH,
     BP_ANNOTATION_SCHEMA,
+    BP_ANNOTATION_TASK_OBJECT_TYPE,
+    BP_ANNOTATION_TASK_PATH,
+    BP_ANNOTATION_TASK_SCHEMA,
+    BP_ANNOTATOR_OBJECT_TYPE,
+    BP_ANNOTATOR_PATH,
+    BP_ANNOTATOR_SCHEMA,
     BP_DATASET_OBJECT_TYPE,
     BP_DATASET_PATH,
     BP_DATASET_SCHEMA,
@@ -33,6 +39,9 @@ from metadata_backend.api.processors.xml.bigpicture import (
     BP_OBSERVER_OBJECT_TYPE,
     BP_OBSERVER_PATH,
     BP_OBSERVER_SCHEMA,
+    BP_ONTOLOGY_OBJECT_TYPE,
+    BP_ONTOLOGY_PATH,
+    BP_ONTOLOGY_SCHEMA,
     BP_ORGANISATION_OBJECT_TYPE,
     BP_ORGANISATION_PATH,
     BP_ORGANISATION_SCHEMA,
@@ -56,6 +65,7 @@ from metadata_backend.api.processors.xml.bigpicture import (
     BP_STAINING_OBJECT_TYPE,
     BP_STAINING_PATH,
     BP_STAINING_SCHEMA,
+    BigpictureVersion,
 )
 from metadata_backend.api.processors.xml.processors import XmlDocumentsProcessor
 from metadata_backend.api.services.submission.bigpicture import BigpictureObjectSubmissionService
@@ -68,30 +78,46 @@ TEST_FILES_ROOT = Path(__file__).parent / "test_files"
 SD_SUBMISSION_DIR = TEST_FILES_ROOT / "submission"
 SD_SUBMISSION = TEST_FILES_ROOT / "submission" / "submission.json"
 
-BP_SUBMISSION_DIR = TEST_FILES_ROOT / "xml" / "bigpicture"
-BP_UPDATE_DIR = BP_SUBMISSION_DIR / "update"
-BP_FIX_DIR = BP_SUBMISSION_DIR / "fix"
+BP_SUBMISSION_2_DIR = TEST_FILES_ROOT / "xml" / "bigpicture" / "2.0"
+BP_SUBMISSION_3_DIR = TEST_FILES_ROOT / "xml" / "bigpicture" / "3.0"
+BP_UPDATE_2_DIR = BP_SUBMISSION_2_DIR / "update"
+BP_FIX_2_DIR = BP_SUBMISSION_2_DIR / "fix"
+BP_UPDATE_3_DIR = BP_SUBMISSION_3_DIR / "update"
+BP_FIX_3_DIR = BP_SUBMISSION_3_DIR / "fix"
 
 TEST_KEYS_DIR = TEST_FILES_ROOT / "keys"
 
 BigpictureObjectNames = dict[str, dict[str, dict[str, str]]]
 
 
-def bp_objects(is_update: bool, is_fix: bool = False) -> tuple[list[ObjectSubmission], dict[str, Path]]:
+def bp_objects(
+    is_update: bool, is_fix: bool = False, version: BigpictureVersion = BigpictureVersion.V2_0
+) -> tuple[list[ObjectSubmission], dict[str, Path]]:
     """Get BP XML test files.
 
     :param is_update: If true then updated XML files are used.
     :param is_fix: If true then fixable XML files are used.
+    :param version: The Bigpicture metadata version of the XML files.
     :return: ObjectSubmission list, and list of file names and paths.
     """
 
-    files = {p.name: p for p in BP_SUBMISSION_DIR.iterdir() if p.is_file()}
+    submission_dir, update_dir, fix_dir = {
+        BigpictureVersion.V2_0: (BP_SUBMISSION_2_DIR, BP_UPDATE_2_DIR, BP_FIX_2_DIR),
+        BigpictureVersion.V3_0: (BP_SUBMISSION_3_DIR, BP_UPDATE_3_DIR, BP_FIX_3_DIR),
+    }[version]
+
+    def xml_files(xml_dir: Path) -> dict[str, Path]:
+        xml_files_ = {p.name: p for p in xml_dir.glob("*") if p.is_file()}
+        assert xml_files_, f"No XML files in {xml_dir}"
+        return xml_files_
+
+    files = xml_files(submission_dir)
     if is_update:
         # Use update files.
-        files.update({p.name: p for p in BP_UPDATE_DIR.iterdir() if p.is_file()})
+        files.update(xml_files(update_dir))
     if is_fix:
         # Use fixable files.
-        files.update({p.name: p for p in BP_FIX_DIR.iterdir() if p.is_file()})
+        files.update(xml_files(fix_dir))
 
     # Changes other XML files except Datacite XML.
     objects: list[ObjectSubmission] = []
@@ -110,6 +136,7 @@ def _bp_submission_documents(
     is_fix: bool = False,
     is_datacite: bool = False,
     processor_callback: Callable[[XmlDocumentsProcessor], None] | None = None,
+    version: BigpictureVersion = BigpictureVersion.V2_0,
 ) -> tuple[BigpictureObjectNames, dict[str, io.BytesIO]]:
     """Read BP XML test files, assign unique object names while preserving provided object names.
 
@@ -120,10 +147,11 @@ def _bp_submission_documents(
     :param is_update: If true then updated XML files are used.
     :param is_fix: If true then fixable XML files are used.
     :param is_datacite: If true then returns the Datacite XML file.
+    :param version: The Bigpicture metadata version of the XML files.
     :return: object_names, and dictionary of file names and IO bytes.
     """
 
-    objects, files = bp_objects(is_update, is_fix)
+    objects, files = bp_objects(is_update, is_fix, version)
     processor, _, _ = BigpictureObjectSubmissionService._create_processor(objects)
 
     new_object_names: BigpictureObjectNames = {}
@@ -181,6 +209,14 @@ def _bp_submission_documents(
     change_object_name(BP_REMS_SCHEMA, BP_REMS_OBJECT_TYPE, BP_REMS_PATH, "1")
     change_object_name(BP_ORGANISATION_SCHEMA, BP_ORGANISATION_OBJECT_TYPE, BP_ORGANISATION_PATH, "1")
 
+    if version == BigpictureVersion.V3_0:
+        # The second annotation, whose parent is the first one.
+        change_object_name(BP_ANNOTATION_SCHEMA, BP_ANNOTATION_OBJECT_TYPE, BP_ANNOTATION_PATH, "2")
+        # The objects introduced in 3.0.
+        change_object_name(BP_ANNOTATOR_SCHEMA, BP_ANNOTATOR_OBJECT_TYPE, BP_ANNOTATOR_PATH, "1")
+        change_object_name(BP_ONTOLOGY_SCHEMA, BP_ONTOLOGY_OBJECT_TYPE, BP_ONTOLOGY_PATH, "1")
+        change_object_name(BP_ANNOTATION_TASK_SCHEMA, BP_ANNOTATION_TASK_OBJECT_TYPE, BP_ANNOTATION_TASK_PATH, "1")
+
     # Call processor callback to make any other changes to the XML files.
     if processor_callback is not None:
         processor_callback(processor)
@@ -222,6 +258,7 @@ def bp_submission_documents(
     is_fix: bool = False,
     object_names: BigpictureObjectNames | None = None,
     processor_callback: Callable[[XmlDocumentsProcessor], None] | None = None,
+    version: BigpictureVersion = BigpictureVersion.V2_0,
 ) -> tuple[BigpictureObjectNames, dict[str, io.BytesIO]]:
     """Get BP XML test files for a new submission.
 
@@ -232,6 +269,7 @@ def bp_submission_documents(
     :param is_fix: If true then fixable XML files are used.
     :param object_names: Reuse these object names instead of generating new ones.
     :param processor_callback: Callback to make changes to the XML documents.
+    :param version: The Bigpicture metadata version of the XML files.
     :return: object_names, and dictionary of file names and IO bytes.
     """
 
@@ -241,6 +279,7 @@ def bp_submission_documents(
         is_fix=is_fix,
         is_datacite=is_datacite,
         processor_callback=processor_callback,
+        version=version,
     )
 
 
@@ -249,6 +288,7 @@ def bp_update_documents(
     is_datacite: bool,
     is_fix: bool = False,
     processor_callback: Callable[[XmlDocumentsProcessor], None] | None = None,
+    version: BigpictureVersion = BigpictureVersion.V2_0,
 ) -> tuple[BigpictureObjectNames, dict[str, io.BytesIO]]:
     """Get BP XML test files for a submission update.
 
@@ -259,6 +299,7 @@ def bp_update_documents(
     :param is_datacite: If true then returns the Datacite XML file.
     :param is_fix: If true then fixable XML files are used.
     :param processor_callback: Callback to make changes to the XML documents.
+    :param version: The Bigpicture metadata version of the XML files.
     :return: object_names, and dictionary of file names and IO bytes.
     """
 
@@ -268,6 +309,7 @@ def bp_update_documents(
         is_fix=is_fix,
         is_datacite=is_datacite,
         processor_callback=processor_callback,
+        version=version,
     )
 
 

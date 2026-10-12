@@ -19,6 +19,8 @@ from ...processors.xml.bigpicture import (
     BP_ANNOTATION_OBJECT_TYPE,
     BP_ANNOTATION_PATH,
     BP_ANNOTATION_SCHEMA,
+    BP_ANNOTATION_TASK_PATH,
+    BP_ANNOTATION_TASK_SCHEMA,
     BP_DATASET_OBJECT_TYPE,
     BP_DATASET_PATH,
     BP_DATASET_SCHEMA,
@@ -31,12 +33,16 @@ from ...processors.xml.bigpicture import (
     BP_OBSERVER_OBJECT_TYPE,
     BP_OBSERVER_PATH,
     BP_OBSERVER_SCHEMA,
+    BP_ONTOLOGY_PATH,
+    BP_ONTOLOGY_SCHEMA,
     BP_REMS_PATH,
     BP_REMS_SCHEMA,
-    BP_XML_OBJECT_CONFIG,
+    BP_XML_OBJECT_CONFIGS,
+    get_bp_version_from_dataset,
+    get_bp_version_from_documents,
 )
 from ...processors.xml.datacite import DATACITE_OBJECT_TYPE, read_datacite_xml
-from ...processors.xml.processors import XmlDocumentsProcessor, XmlStringDocumentsProcessor
+from ...processors.xml.processors import XmlDocumentsProcessor, XmlObjectProcessor, XmlStringDocumentsProcessor
 from ..accession import generate_bp_accession
 from ..project import ProjectService
 from .bigpicture_policy import (
@@ -46,19 +52,25 @@ from .bigpicture_policy import (
     policy_processor,
     validate_policy_attributes,
 )
+from .bigpicture_version import get_bp_version_from_submission
 from .submission import ObjectSubmission, ObjectSubmissionService
 
 # mypy: disable_error_code = misc
 
 
 DATACITE_FILE = "datacite.xml"
+# File names of all versions. A file of an object type the declared version does not have is
+# rejected by the XML documents processor.
 BP_FILES = [
     "annotation.xml",
+    "annotation_task.xml",  # Since 3.0.
+    "annotator.xml",  # Since 3.0.
     "dataset.xml",
     "image.xml",
     "landing_page.xml",
     "observation.xml",
     "observer.xml",
+    "ontology.xml",  # Since 3.0.
     "organisation.xml",
     "policy.xml",
     "rems.xml",
@@ -89,26 +101,30 @@ def validate_bigpicture_documents(processor: XmlDocumentsProcessor) -> None:
     # Find the policy once, rather than in each of the checks below.
     policy = policy_processor(processor)
 
+    # The policy attributes are normalised and validated for the metadata standard version.
+    dataset_identifiers = processor.get_object_identifiers(BP_DATASET_SCHEMA)
+    dataset = processor.get_object_processor(BP_DATASET_SCHEMA, BP_DATASET_PATH, dataset_identifiers[0].name)
+    version = get_bp_version_from_dataset(dataset.root_element)
+
     # Check policy type.
     is_clinical_policy(policy)
 
     # Normalise attribute tags and values.
-    normalise_policy_attributes(policy)
+    normalise_policy_attributes(policy, version)
 
     # Validate attribute tags and values.
-    validate_policy_attributes(policy)
+    validate_policy_attributes(policy, version)
 
     # Check that the REMS license can be created from the policy.
-    create_policy_license(policy)
+    create_policy_license(policy, version)
 
 
 def check_mandatory_constraints(processor: XmlDocumentsProcessor) -> None:
     """
-    Check mandatory constraints specified in the Bigpicture metadata
-    standard document v2.0.0-2 not enforced by the XML Schemas.
-    Raises a ValueError if a mandatory constraint check fails.
+    Check the mandatory constraints that the XML schemas do not enforce.
 
     :param processor: The XML documents processor.
+    :raises UserException: If a mandatory constraint is not met.
     """
 
     max_reported_objects = 10
@@ -168,8 +184,10 @@ def _check_mandatory_constraint_5(processor: XmlDocumentsProcessor) -> None:
 
     def insert_after(new_element: Element, prev_element: list[str]) -> None:
         """
-        Insert new element after the last element in the prioritised element list
-        to maintain the required sequence order.
+        Insert new element after the last occurrence of the first listed element present.
+
+        List the element itself first, then the elements preceding it in the DATASET sequence,
+        nearest first, ending with one that is always present.
         """
         for e in prev_element:
             existing_element = dataset_element.findall(e)
@@ -179,16 +197,25 @@ def _check_mandatory_constraint_5(processor: XmlDocumentsProcessor) -> None:
 
         raise SystemException(f"Failed to insert missing element to dataset XML: {new_element.tag}")
 
+    # BIGPICTURE_NODE is required since metadata standard 3.0.
+
     def add_image_ref(alias: str) -> None:
         insert_after(
             Element("IMAGE_REF", alias=alias),
-            ["IMAGE_REF", "DATASET_TYPE", "DATASET_OWNER_CONTACT_EMAIL", "METADATA_STANDARD"],
+            ["IMAGE_REF", "BIGPICTURE_NODE", "DATASET_TYPE", "DATASET_OWNER_CONTACT_EMAIL", "METADATA_STANDARD"],
         )
 
     def add_annotation_ref(alias: str) -> None:
         insert_after(
             Element("ANNOTATION_REF", alias=alias),
-            ["ANNOTATION_REF", "IMAGE_REF", "DATASET_TYPE", "DATASET_OWNER_CONTACT_EMAIL", "METADATA_STANDARD"],
+            [
+                "ANNOTATION_REF",
+                "IMAGE_REF",
+                "BIGPICTURE_NODE",
+                "DATASET_TYPE",
+                "DATASET_OWNER_CONTACT_EMAIL",
+                "METADATA_STANDARD",
+            ],
         )
 
     def add_observation_ref(alias: str) -> None:
@@ -198,6 +225,7 @@ def _check_mandatory_constraint_5(processor: XmlDocumentsProcessor) -> None:
                 "OBSERVATION_REF",
                 "ANNOTATION_REF",
                 "IMAGE_REF",
+                "BIGPICTURE_NODE",
                 "DATASET_TYPE",
                 "DATASET_OWNER_CONTACT_EMAIL",
                 "METADATA_STANDARD",
@@ -314,8 +342,33 @@ class BigpictureObjectSubmissionService(ObjectSubmissionService):
             datacite, datacite_xml = read_datacite_xml(datacite_object.document)
 
         # Create processor for Bigpicture XMLs.
-        processor = XmlStringDocumentsProcessor(BP_XML_OBJECT_CONFIG, [o.document for o in bp_objects])
+        version = get_bp_version_from_documents([o.document for o in bp_objects])
+        processor = XmlStringDocumentsProcessor(BP_XML_OBJECT_CONFIGS[version], [o.document for o in bp_objects])
         return processor, datacite, datacite_xml
+
+    @override
+    async def validate_update(self, submission_id: str) -> None:
+        """
+        Check that the update does not change the Bigpicture metadata version of the submission.
+
+        :param submission_id: The submission id.
+        :raises UserException: If the version would change.
+        """
+        # The BP XML processor guarantees that we have one dataset metadata object.
+        dataset_identifier = self._processor.get_object_identifiers(BP_DATASET_SCHEMA)[0]
+        dataset_processor = self._processor.get_object_processor(
+            BP_DATASET_SCHEMA, BP_DATASET_PATH, dataset_identifier.name
+        )
+        version = get_bp_version_from_dataset(dataset_processor.root_element)
+
+        stored_version = get_bp_version_from_submission(
+            await self._submission_service.get_submission_by_id(submission_id)
+        )
+        if version != stored_version:
+            raise UserException(
+                f"Bigpicture metadata version cannot be changed from {stored_version} to {version} "
+                "when updating a submission."
+            )
 
     @override
     def assign_submission_accession(self) -> str | None:
@@ -386,6 +439,7 @@ class BigpictureObjectSubmissionService(ObjectSubmissionService):
             title=dataset_processor.get_object_title(),
             description=dataset_processor.get_object_description(),
             workflow=SubmissionWorkflow.BP,
+            metadataVersion=get_bp_version_from_dataset(dataset_processor.root_element),
             rems=Rems(
                 workflowId=int(workflow_id),
                 organizationId=organization_id,
@@ -424,8 +478,23 @@ class BigpictureObjectSubmissionService(ObjectSubmissionService):
 
         files = []
 
+        # Check that the file paths are unique in a submission.
+        file_path_to_object_type: dict[str, str] = {}
+
+        def _add_file(object_type: str, file: File) -> None:
+            if (other_object_type := file_path_to_object_type.get(file.path)) is not None:
+                filename = file.path.removeprefix(f"DATASET_{submission_id}/")
+                raise UserException(f"{object_type} file '{filename}' is already declared by {other_object_type}.")
+            file_path_to_object_type[file.path] = object_type
+            files.append(file)
+
         image_processors = self._processor.get_xml_object_processors(BP_IMAGE_SCHEMA, BP_IMAGE_PATH)
         annotation_processors = self._processor.get_xml_object_processors(BP_ANNOTATION_SCHEMA, BP_ANNOTATION_PATH)
+        # Since 3.0.
+        ontology_processors = self._processor.get_xml_object_processors(BP_ONTOLOGY_SCHEMA, BP_ONTOLOGY_PATH)
+        annotation_task_processors = self._processor.get_xml_object_processors(
+            BP_ANNOTATION_TASK_SCHEMA, BP_ANNOTATION_TASK_PATH
+        )
 
         for image_processor in image_processors:
             object_id = image_processor.get_xml_object_identifier().id
@@ -444,7 +513,8 @@ class BigpictureObjectSubmissionService(ObjectSubmissionService):
                 # User is expected to upload the image files to the S3 inbox using
                 # the DATASET_{submission_id} path prefix where the submission_id is
                 # the same as the newly generated dataset accession ID.
-                files.append(
+                _add_file(
+                    "IMAGE",
                     File(
                         submissionId=submission_id,
                         objectId=object_id,
@@ -452,29 +522,37 @@ class BigpictureObjectSubmissionService(ObjectSubmissionService):
                         checksumMethod=file_elem.get("checksum_method"),
                         unencryptedChecksum=file_elem.get("unencrypted_checksum"),
                         encryptedChecksum=file_elem.get("checksum"),
-                    )
+                    ),
                 )
 
-        for annotation_processor in annotation_processors:
-            object_id = annotation_processor.get_xml_object_identifier().id
-            xml = annotation_processor.xml
+        def _add_annotations_dir_files(processors: list[XmlObjectProcessor], root_path: str) -> None:
+            element = root_path.lstrip("/")
+            for processor in processors:
+                object_id = processor.get_xml_object_identifier().id
+                xml = processor.xml
 
-            # Validate the annotation file paths and extensions
-            for file_elem in xml.xpath("/ANNOTATION/FILES/FILE"):
-                filename = self._prepare_file_path(file_elem.get("filename"))
-                dir_part = str(Path(filename).parent)
-                if dir_part != "ANNOTATIONS":
-                    raise UserException(f"Annotation file '{filename}' must be in directory 'ANNOTATIONS'.")
-                files.append(
-                    File(
-                        submissionId=submission_id,
-                        objectId=object_id,
-                        path=f"DATASET_{submission_id}/{filename}",
-                        checksumMethod=file_elem.get("checksum_method"),
-                        unencryptedChecksum=file_elem.get("unencrypted_checksum"),
-                        encryptedChecksum=file_elem.get("checksum"),
+                # Validate the file paths and extensions
+                for file_elem in xml.xpath(f"{root_path}/FILES/FILE"):
+                    filename = self._prepare_file_path(file_elem.get("filename"))
+                    dir_part = str(Path(filename).parent)
+                    if dir_part != "ANNOTATIONS":
+                        raise UserException(f"{element} file '{filename}' must be in directory 'ANNOTATIONS'.")
+                    _add_file(
+                        element,
+                        File(
+                            submissionId=submission_id,
+                            objectId=object_id,
+                            path=f"DATASET_{submission_id}/{filename}",
+                            checksumMethod=file_elem.get("checksum_method"),
+                            unencryptedChecksum=file_elem.get("unencrypted_checksum"),
+                            encryptedChecksum=file_elem.get("checksum"),
+                        ),
                     )
-                )
+
+        _add_annotations_dir_files(annotation_processors, BP_ANNOTATION_PATH)
+        # Since 3.0.
+        _add_annotations_dir_files(ontology_processors, BP_ONTOLOGY_PATH)
+        _add_annotations_dir_files(annotation_task_processors, BP_ANNOTATION_TASK_PATH)
 
         return files
 

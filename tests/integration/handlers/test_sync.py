@@ -5,9 +5,11 @@ import logging
 import zipfile
 from datetime import timedelta
 
+import pytest
 from lxml.etree import QName
 
 from metadata_backend.api.models.sync import SyncFiles, SyncSubmissions
+from metadata_backend.api.processors.xml.bigpicture import BigpictureVersion
 from metadata_backend.api.processors.xml.datacite import DATACITE_SCHEMA
 from metadata_backend.api.processors.xml.processors import XmlProcessor
 from metadata_backend.api.services.bigpicture import BP_SYNC_FILES_PATH, BP_SYNC_METADATA_DIR
@@ -34,6 +36,13 @@ EXPECTED_OBJECTS: dict[str, list[str]] = {
     "staining": ["STAINING"],
 }
 
+# The metadata objects of the documents added in 3.0.
+EXPECTED_OBJECTS_3: dict[str, list[str]] = {
+    "annotation_task": ["ANNOTATION_TASK"],
+    "annotator": ["ANNOTATOR"],
+    "ontology": ["ONTOLOGY"],
+}
+
 EXPECTED_DATACITE = f"{BP_SYNC_METADATA_DIR}/{DATACITE_SCHEMA}.xml"
 EXPECTED_DATACITE_ROOT = "resource"
 
@@ -51,13 +60,15 @@ async def _read_published_submissions(sync_client, **params: str) -> SyncSubmiss
         return SyncSubmissions.model_validate(await resp.json())
 
 
-async def test_sync_bp(nbis_client, sync_client, bp_submission):
+@pytest.mark.parametrize("version", list(BigpictureVersion))
+async def test_sync_bp(nbis_client, sync_client, bp_submission, version):
     """Test listing a published submission and reading its metadata objects."""
 
     api_prefix_sync = deployment_config().API_PREFIX_SYNC
+    expected_objects = EXPECTED_OBJECTS | (EXPECTED_OBJECTS_3 if version == BigpictureVersion.V3_0 else {})
 
     # Create submission.
-    submission, _ = await bp_submission(is_datacite=True)
+    submission, _ = await bp_submission(is_datacite=True, version=version)
     submission_id = submission.submissionId
 
     # An unpublished submission is not synced.
@@ -97,11 +108,11 @@ async def test_sync_bp(nbis_client, sync_client, bp_submission):
 
     with zipfile.ZipFile(io.BytesIO(archive)) as zip_file:
         assert sorted(zip_file.namelist()) == sorted(
-            [f"{BP_SYNC_METADATA_DIR}/{schema}.xml" for schema in EXPECTED_OBJECTS]
+            [f"{BP_SYNC_METADATA_DIR}/{schema}.xml" for schema in expected_objects]
             + [EXPECTED_DATACITE, BP_SYNC_FILES_PATH]
         )
 
-        for schema, expected in EXPECTED_OBJECTS.items():
+        for schema, expected in expected_objects.items():
             root = XmlProcessor.parse_xml(zip_file.read(f"{BP_SYNC_METADATA_DIR}/{schema}.xml")).getroot()
             assert QName(root.tag).localname == f"{schema.upper()}_SET"
             assert sorted({QName(child.tag).localname for child in root}) == expected

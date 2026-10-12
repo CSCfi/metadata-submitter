@@ -14,9 +14,22 @@ branch_labels = None
 depends_on = None
 
 
+_TABLE = "dispatches"
+
+
+def _tables() -> set[str]:
+    """Return the tables of the database."""
+
+    return set(sa.inspect(op.get_bind()).get_table_names())
+
+
 def upgrade() -> None:
+    tables = _tables()
+    if "submissions" not in tables or _TABLE in tables:
+        return
+
     op.create_table(
-        "dispatches",
+        _TABLE,
         sa.Column(
             "submission_id",
             sa.String(128),
@@ -32,4 +45,5 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_table("dispatches")
+    if _TABLE in _tables():
+        op.drop_table(_TABLE)

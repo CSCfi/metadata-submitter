@@ -1,7 +1,10 @@
 """Tests for publish API handler."""
 
 import uuid
+from types import SimpleNamespace
 from unittest.mock import ANY, AsyncMock, patch
+
+import pytest
 
 from metadata_backend.api.exceptions import SystemException
 from metadata_backend.api.handlers.publish import PublishAPIHandler
@@ -322,6 +325,7 @@ async def test_publish_submission_bp_non_clinical(nbis_client, submission_reposi
 
     submission_entity = create_submission_entity(
         workflow=workflow,
+        metadata_version="2.0",
         document={SUB_FIELD_METADATA: SUBMISSION_METADATA, SUB_FIELD_REMS: to_json_dict(rems)},
     )
     submission_id = await submission_repository.add_submission(submission_entity)
@@ -334,7 +338,9 @@ async def test_publish_submission_bp_non_clinical(nbis_client, submission_reposi
             document=document,
         )
 
-    await object_repository.add_object(_object(BP_DATASET_OBJECT_TYPE), workflow)
+    await object_repository.add_object(
+        _object(BP_DATASET_OBJECT_TYPE, "<DATASET><METADATA_STANDARD>2.0.0</METADATA_STANDARD></DATASET>"), workflow
+    )
     # The policy says the dataset is non-clinical.
     await object_repository.add_object(
         _object(
@@ -388,6 +394,27 @@ async def test_publish_submission_bp_non_clinical(nbis_client, submission_reposi
         assert registration.remsResourceId is None
         assert registration.remsCatalogueId is None
         assert registration.remsUrl is None
+
+
+@pytest.mark.parametrize(
+    ("published_to_rems", "licenses", "license_created"),
+    [
+        (True, [], True),
+        (True, [MOCK_REMS_DEFAULT_LICENSE_ID], False),
+        (False, [], False),
+    ],
+)
+async def test_check_rems_license(published_to_rems, licenses, license_created):
+    """Test that the REMS license is checked only when it is created from the policy."""
+
+    license_provider = AsyncMock()
+    handler = PublishAPIHandler(SimpleNamespace(license_provider=license_provider), SimpleNamespace())
+    rems = Rems(organizationId="org", workflowId=1, licenses=licenses)
+
+    with patch.object(handler, "_is_published_to_rems", AsyncMock(return_value=published_to_rems)):
+        await handler._check_rems_license(SimpleNamespace(submissionId="submission"), rems)
+
+    assert license_provider.get_license.await_count == (1 if license_created else 0)
 
 
 async def test_publish_submission_bp_fails_when_metadata_upload_fails(

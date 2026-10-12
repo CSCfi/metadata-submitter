@@ -15,13 +15,13 @@ from ..models.models import File, Registration, SubmissionId
 from ..models.submission import Rems, Submission, SubmissionMetadata, SubmissionWorkflow
 from ..processors.xml.bigpicture import (
     BP_POLICY_OBJECT_TYPE,
-    BP_XML_OBJECT_CONFIG,
 )
 from ..processors.xml.processors import XmlObjectProcessor
 from ..services.bigpicture import upload_bp_metadata_xmls
 from ..services.datacite import DataciteService
 from ..services.rems import resolve_rems_license_ids
 from ..services.submission.bigpicture_policy import is_clinical_policy
+from ..services.submission.bigpicture_version import get_bp_xml_object_config
 from .restapi import RESTAPIHandler
 from .submission import SubmissionAPIHandler
 
@@ -112,11 +112,10 @@ class PublishAPIHandler(RESTAPIHandler):
         with external_service_call(f"Failed to update submission '{registration.submissionId}' in Metax."):
             await self._handlers.metax.update_dataset_metadata(metadata, registration.metaxId, self._handlers.ror)
 
-    async def _is_published_to_rems(self, submission: Submission, registration: Registration) -> bool:
+    async def _is_published_to_rems(self, submission: Submission) -> bool:
         """Whether the submission is published to REMS.
 
         :param submission: The submission.
-        :param registration: The registration.
         :return: True if the submission is published to REMS.
         """
 
@@ -124,10 +123,28 @@ class PublishAPIHandler(RESTAPIHandler):
             return True
 
         # A non-clinical Bigpicture dataset is not published to REMS.
-        async for xml in self._services.object.get_documents(registration.submissionId, BP_POLICY_OBJECT_TYPE):
-            return is_clinical_policy(XmlObjectProcessor(BP_XML_OBJECT_CONFIG, xml))
+        policies = [
+            xml async for xml in self._services.object.get_documents(submission.submissionId, BP_POLICY_OBJECT_TYPE)
+        ]
+        if not policies:
+            return True
 
-        return True
+        config = get_bp_xml_object_config(submission)
+        return is_clinical_policy(XmlObjectProcessor(config, policies[0]))
+
+    async def _check_rems_license(self, submission: Submission, rems: Rems) -> None:
+        """Check that the REMS license can be created.
+
+        :param submission: The submission.
+        :param rems: The REMS metadata.
+        :raises UserException: if the REMS license cannot be created.
+        """
+
+        if not await self._is_published_to_rems(submission):
+            return
+
+        if not rems.licenses and self._services.license_provider is not None:
+            await self._services.license_provider.get_license(submission)
 
     async def _publish_rems(self, submission: Submission, rems: Rems, registration: Registration) -> None:
         """Prepare dictionary with values to be published to REMS. Adds the metax id if available.
@@ -137,7 +154,7 @@ class PublishAPIHandler(RESTAPIHandler):
         :param registration: The registration
         """
 
-        if not await self._is_published_to_rems(submission, registration):
+        if not await self._is_published_to_rems(submission):
             LOG.info("Submission %s is not published to REMS.", registration.submissionId)
             return
 
@@ -161,7 +178,7 @@ class PublishAPIHandler(RESTAPIHandler):
                     self._handlers.rems,
                     self._services.license_provider,
                     rems,
-                    registration.submissionId,
+                    submission,
                     rems_workflow.organization.id,
                 )
 
@@ -268,7 +285,14 @@ class PublishAPIHandler(RESTAPIHandler):
         if not rems:
             raise UserException(f"Submission '{submission_id}' does not have required REMS information.")
 
+        # TODO(improve): Any error after the DOI is published, for example REMS or Metax being
+        # unavailable, rolls back the registration with the request transaction, so a retry
+        # registers and publishes another DOI. Commit each registration step separately so that a
+        # retry resumes from it.
+
         if deployment_config().ALLOW_REGISTRATION:
+            # Check REMS license creation before the DOI is registered.
+            await self._check_rems_license(submission, rems)
             await self._register_submission(submission, datacite, rems)
 
         # Update submission status to published.

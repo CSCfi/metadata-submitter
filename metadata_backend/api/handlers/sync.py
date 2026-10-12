@@ -98,10 +98,11 @@ class SyncAPIHandler(RESTAPIHandler):
         if self._sync_provider is None:
             raise SystemException("The deployment does not package metadata objects for syncing.")
 
-        if not await self._services.submission.is_published(submission_id):
+        submission = await self._services.submission.get_submission_by_id(submission_id)
+        if submission is None or not submission.published:
             raise NotFoundUserException(f"Published submission '{submission_id}' was not found.")
 
-        archive = await self._sync_provider.get_metadata_archive(submission_id)
+        archive = await self._sync_provider.get_metadata_archive(submission)
         return Response(
             content=archive,
             media_type="application/zip",

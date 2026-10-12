@@ -9,7 +9,9 @@ from pydantic_string_url import AnyUrl
 from metadata_backend.api.models.datacite import DataCiteMetadata, Publisher
 from metadata_backend.api.processors.xml.datacite import _elem, read_datacite_xml
 
-TEST_FILE = Path(__file__).parent.parent.parent.parent.parent / "test_files" / "xml" / "datacite" / "datacite.xml"
+TEST_FILE = (
+    Path(__file__).parent.parent.parent.parent.parent / "test_files" / "xml" / "datacite" / "4.5" / "datacite.xml"
+)
 
 
 def test_read_datacite_xml():

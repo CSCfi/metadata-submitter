@@ -16,6 +16,7 @@ CREATE TABLE submissions (
 	project_id VARCHAR NOT NULL,
 	bucket VARCHAR(64),
 	workflow VARCHAR(10) NOT NULL,
+	metadata_version VARCHAR(16),
 	title VARCHAR,
 	description TEXT,
 	created TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,

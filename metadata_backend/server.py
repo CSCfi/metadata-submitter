@@ -46,6 +46,7 @@ from .conf.conf import (
     DEPLOYMENT_CSC,
     DEPLOYMENT_NBIS,
 )
+from .conf.database import database_config
 from .conf.deployment import deployment_config
 from .conf.openbao import openbao_config
 from .conf.sync import sync_config
@@ -59,6 +60,7 @@ from .database.postgres.repository import (
     _session_context,
     create_engine,
     create_session_factory,
+    migrate_schema,
 )
 from .database.postgres.services.dispatch import DispatchService
 from .database.postgres.services.file import FileService
@@ -528,6 +530,11 @@ def main() -> None:
     config = deployment_config()
     host = "0.0.0.0"  # nosec
     port = 5430 if config.DEPLOYMENT == DEPLOYMENT_CSC else 5431
+
+    # Once, before the workers start.
+    if database_config().DATABASE_MIGRATE:
+        LOG.info("Applying database migrations")
+        migrate_schema()
 
     # Uvicorn applies its logging configuration when it starts, so the filter is added to it.
     log_config = copy.deepcopy(uvicorn.config.LOGGING_CONFIG)

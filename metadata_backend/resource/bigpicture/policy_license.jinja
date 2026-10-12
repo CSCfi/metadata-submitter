@@ -27,7 +27,8 @@ Custom use restrictions: {{ custom_use_restrictions }}
 {% endif %}
 Allowed geographical distribution: {{ allowed_geographical_distribution }}
 
-Duration of access: {{ duration_of_access }}
+{# Renamed in 3.0. #}
+Duration of access: {{ duration_of_access or duration_of_use }}
 
 Type of access: {{ type_of_access }}
 

@@ -5,19 +5,23 @@
 # Fields:
 #   - "tag" is the attribute TAG. It is matched without case, punctuation or whitespace,
 #     and the attribute TAG is changed to match the one defined here.
-#   - "previous_tags" are the TAGs the attribute had in earlier versions of the metadata
-#     standard.
+#   - "aliases" are other TAGs the attribute may be given with. They are matched and changed
+#     the same way as the TAG.
+#   - "versions" are the metadata standard versions the attribute is in, all if not given.
 #   - "attribute_type" is the Bigpicture XML attribute type the value is read from. The
 #     following types are currently supported:
 #       "string" (STRING_ATTRIBUTE)
 #   - "value_type" is one of:
 #       text             any value
-#       controlledValue  one of the controlled values, or their previous values, in the
-#                        "controlled_values" field
+#       controlledValue  one of the values in the "controlled_values" field
 #       boolean          True or False value
 #     A controlledValue is matched without case, punctuation or whitespace,
 #     and the value is changed to match the one defined in "controlled_values" field.
-#   - "mandatory" requires the attribute to be given a value, so it takes no default
+#     A controlled value given "versions" is allowed only in those metadata standard
+#     versions. A controlled value may be given as a "value" with "aliases", which are
+#     other ways of writing it.
+#   - "mandatory" requires the attribute to be given a value in its versions, so it takes
+#     no default
 #   - "multiple" allows the attribute to be given more than once
 #   - "default" is the default value
 
@@ -43,8 +47,9 @@ attributes:
     - Non-Clinical/Cryptonymised
     - Clinical/Anonymized
     - Clinical/Pseudonymized
-    # TODO: Clinical/Scrambled is not supported in V3.
-    - Clinical/Scrambled
+    # Removed in V3.
+    - value: Clinical/Scrambled
+      versions: ["2.0"]
 
   - tag: defined_research_question_required
     mandatory: true
@@ -69,19 +74,37 @@ attributes:
     mandatory: true
     attribute_type: string
     value_type: controlledValue
+    # A 2.0 policy also accepts the 3.0 values, which releases 2026.9.1 and 2026.10.0 stored
+    # in the 2.0 policies they normalised.
     controlled_values:
+    - value: European Union and EEA countries
+      versions: ["2.0"]
+      aliases: ["European Union and EEA countries (N.B. excl UK)"]
     - value: European Union and EEA countries (N.B. excl UK)
-      previous_values:
-      - European Union and EEA countries
+      versions: ["3.0"]
+    - value: Countries with GDPR adequacy
+      versions: ["2.0"]
+      aliases: ["Countries with GDPR adequacy (including UK)"]
     - value: Countries with GDPR adequacy (including UK)
-      previous_values:
-      - Countries with GDPR adequacy
+      versions: ["3.0"]
     - Worldwide
 
-    # Renamed in V3.
+  # Renamed in V3. A 2.0 policy also accepts the 3.0 TAG, which releases 2026.9.1 and
+  # 2026.10.0 stored in the 2.0 policies they normalised.
+  - tag: duration_of_use
+    aliases: [duration_of_access]
+    versions: ["2.0"]
+    mandatory: true
+    attribute_type: string
+    value_type: controlledValue
+    controlled_values:
+    - Unlimited time
+    - Unlimited time, subject to an underlying sustainability agreement being set-up and agreed on by the contributing Beneficiary
+    - Limited to the IMI Bigpicture project term
+    - Limited to the duration of the purpose of the data access request
+
   - tag: duration_of_access
-    previous_tags:
-    - duration_of_use
+    versions: ["3.0"]
     mandatory: true
     attribute_type: string
     value_type: controlledValue

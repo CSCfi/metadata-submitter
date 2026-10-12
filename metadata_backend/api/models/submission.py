@@ -75,6 +75,7 @@ class Submission(StrictBaseModel):
     description: str
     workflow: SubmissionWorkflow | None = None
     bucket: str | None = None  # Stored only in a database column.
+    metadataVersion: str | None = None  # Stored only in a database column.
     metadata: SubmissionMetadata | None = None
     rems: Rems | None = None
     dateCreated: datetime | None = None  # Stored only in a database column.

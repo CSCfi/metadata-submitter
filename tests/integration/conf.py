@@ -20,4 +20,6 @@ openbao_kubernetes_role = os.getenv("OPENBAO_KUBERNETES_ROLE", "sd-submit")
 openbao_kubernetes_service_account = os.getenv("OPENBAO_KUBERNETES_SERVICE_ACCOUNT", "sd-submit")
 openbao_kubernetes_namespace = os.getenv("OPENBAO_KUBERNETES_NAMESPACE", "sd-submit-test")
 
+nbis_database_url = os.getenv("NBIS_DATABASE_URL")
+
 mock_user = "mock_user@test.what"

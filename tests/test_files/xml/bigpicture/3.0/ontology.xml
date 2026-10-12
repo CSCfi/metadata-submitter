@@ -1,0 +1,15 @@
+<ONTOLOGY_SET>
+    <ONTOLOGY alias="1">
+        <FILES>
+            <FILE filename="ANNOTATIONS/ontology.json" checksum_method="SHA256"
+                  unencrypted_checksum="3c3a51adf8f8b1b7a2625d7ac9c12a08dcf9e6a10e87a1f8a215e67f87e7d2a4"
+                  filetype="json"/>
+        </FILES>
+        <ATTRIBUTES>
+            <STRING_ATTRIBUTE>
+                <TAG>description</TAG>
+                <VALUE>test</VALUE>
+            </STRING_ATTRIBUTE>
+        </ATTRIBUTES>
+    </ONTOLOGY>
+</ONTOLOGY_SET>

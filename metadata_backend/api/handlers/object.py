@@ -16,12 +16,12 @@ from ...helpers.logger import LOG
 from ..exceptions import SystemException, UserException
 from ..models.models import Object
 from ..models.submission import Submission, SubmissionWorkflow
-from ..processors.xml.bigpicture import BP_XML_OBJECT_CONFIG
 from ..processors.xml.datacite import DATACITE_OBJECT_TYPE, DATACITE_SCHEMA
 from ..processors.xml.fega import FEGA_XML_OBJECT_CONFIG
 from ..processors.xml.models import XmlObjectConfig
 from ..processors.xml.processors import XmlDocumentProcessor
 from ..services.submission.bigpicture import BigpictureObjectSubmissionService
+from ..services.submission.bigpicture_version import get_bp_xml_object_config
 from ..services.submission.sensitive_data import SensitiveDataObjectSubmissionService
 from ..services.submission.submission import ObjectSubmission, ObjectSubmissionService
 from .restapi import RESTAPIHandler
@@ -215,11 +215,12 @@ class ObjectAPIHandler(RESTAPIHandler):
         except UnknownSubmissionUserException:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
-        # Get workflow and project id from the submission.
-        workflow = await submission_service.get_workflow(submission_id)
+        # Get workflow and metadata version from the submission.
+        submission = await submission_service.get_submission_by_id(submission_id)
+        workflow = submission.workflow
 
         if workflow == SubmissionWorkflow.BP:
-            xml_config = BP_XML_OBJECT_CONFIG
+            xml_config = get_bp_xml_object_config(submission)
         elif workflow == SubmissionWorkflow.FEGA:
             xml_config = FEGA_XML_OBJECT_CONFIG
         else:
@@ -255,11 +256,12 @@ class ObjectAPIHandler(RESTAPIHandler):
         submission_id = await SubmissionAPIHandler.check_submission_retrievable(
             user.user_id, submission_id, submission_service, project_service, project_id=project_id, search_name=True
         )
-        # Get workflow and project id from the submission.
-        workflow = await submission_service.get_workflow(submission_id)
+        # Get workflow and metadata version from the submission.
+        submission = await submission_service.get_submission_by_id(submission_id)
+        workflow = submission.workflow
 
         if workflow == SubmissionWorkflow.BP:
-            xml_config = BP_XML_OBJECT_CONFIG
+            xml_config = get_bp_xml_object_config(submission)
         elif workflow == SubmissionWorkflow.FEGA:
             xml_config = FEGA_XML_OBJECT_CONFIG
         else:

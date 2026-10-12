@@ -9,6 +9,7 @@ import pytest
 from aiohttp import ClientSession
 
 from metadata_backend.api.models.sync import SyncSubmissions
+from metadata_backend.api.processors.xml.bigpicture import BigpictureVersion
 from metadata_backend.api.services.bigpicture import read_bp_public_key
 from metadata_backend.api.services.crypt import Crypt4GHPublicKeyProvider
 from metadata_backend.api.services.file import S3InboxSDAService
@@ -73,7 +74,8 @@ async def test_publish_sd(sd_client, sd_submission):
     await assert_immutable_after_publish_sd(sd_client, submission.submissionId)
 
 
-async def test_publish_bp(nbis_client, sync_client, bp_submission):
+@pytest.mark.parametrize("version", list(BigpictureVersion))
+async def test_publish_bp(nbis_client, sync_client, bp_submission, version):
     """Test publish BP for NBIS deployment."""
 
     # Create bucket for the test user in the mock S3 inbox.
@@ -82,7 +84,7 @@ async def test_publish_bp(nbis_client, sync_client, bp_submission):
 
     for is_datacite in [True, False]:
         # Create submission.
-        submission, object_names = await bp_submission(is_datacite)
+        submission, object_names = await bp_submission(is_datacite, version)
         assert submission.submissionId is not None
         assert submission.published is False
         assert submission.datePublished is None
@@ -107,6 +109,12 @@ async def test_publish_bp(nbis_client, sync_client, bp_submission):
             f"DATASET_{submission_id}/METADATA/staining.xml.c4gh",
             f"DATASET_{submission_id}/LANDING_PAGE/landing_page.xml.c4gh",
         }
+        if version == BigpictureVersion.V3_0:
+            uploaded_metadata_files |= {
+                f"DATASET_{submission_id}/METADATA/annotation_task.xml.c4gh",
+                f"DATASET_{submission_id}/METADATA/annotator.xml.c4gh",
+                f"DATASET_{submission_id}/METADATA/ontology.xml.c4gh",
+            }
 
         # Pre-create stale metadata XML files in inbox so publish must overwrite them.
         stale_payload = b"stale metadata payload"
@@ -159,8 +167,10 @@ async def test_publish_bp(nbis_client, sync_client, bp_submission):
         # Get submission files after publish to check that additional XML and thumbnail files are added
         published_submission_files = await get_files(nbis_client, submission_id)
         published_submission_paths = {file["path"] for file in published_submission_files}
-        # 9 XMLs + 2 image files + 1 annotation file + 2 thumbnails = 14 files in total
-        assert len(published_submission_files) == 14
+        # 2.0: 9 XMLs + 2 image files + 1 annotation file + 2 thumbnails = 14 files in total
+        # 3.0: 12 XMLs + 2 image files + 2 annotation files + 1 ontology file + 1 annotation task file
+        # + 2 thumbnails = 20 files in total
+        assert len(published_submission_files) == (14 if version == BigpictureVersion.V2_0 else 20)
         assert thumbnails.issubset(published_submission_paths)
 
         # Private XML files should not be included in published submission files
@@ -178,7 +188,7 @@ async def test_publish_bp(nbis_client, sync_client, bp_submission):
         assert registration.remsCatalogueId is not None
         assert registration.remsUrl is not None
 
-        await assert_immutable_after_publish_bp(nbis_client, submission_id, object_names, is_datacite)
+        await assert_immutable_after_publish_bp(nbis_client, submission_id, object_names, is_datacite, version)
 
         # The background ingest scanner should progress every file to READY and only mark the
         # submission ingested once the Admin API itself confirms the dataset was released.
@@ -282,13 +292,14 @@ async def assert_immutable_after_publish_bp(
     submission_id: str,
     object_names: BigpictureObjectNames,
     is_datacite: bool,
+    version: BigpictureVersion,
 ):
     """Assert that the submission can't be changes after publishing."""
 
     api_prefix_v1 = deployment_config().API_PREFIX_V1
 
     # Check that submission can't be changed.
-    _, files = bp_update_documents(object_names, is_datacite)
+    _, files = bp_update_documents(object_names, is_datacite, version=version)
     async with client.patch(f"{api_prefix_v1}/submit/{submission_id}", data=files) as resp:
         assert resp.status == 400
 
