@@ -110,7 +110,7 @@ The `submission.json` document contains the following main fields:
 - name: project specific unique name for the dataset.
 - title: the dataset title.
 - description: the dataset description.
-- bucket: the bucket associated with the submission
+- bucket: the bucket associated with the submission.
 - metadata: DataCite metadata associated with the submission.
 - rems: REMS metadata associated with the submission.
 - workflow: type of the submission.
@@ -126,7 +126,6 @@ Most of the Metax fields are mapped from the DataCite metadata (`metadata`) in t
   added to the description.
 - The persistent identifier is the DOI registered through CSC PID during publishing.
 - Organisation identifiers and names are taken from ROR (see [Organisations](#organisations)).
-- Some fields are hardcoded: `data_catalog`, `access_rights` and `issued` (the publish date).
 
 The dataset is created and published as follows:
 
@@ -138,28 +137,8 @@ The dataset is created and published as follows:
    end of the description ("SD Apply Application link: ...").
 4. The dataset is published.
 
-Mapping DataCite V4.5 to Metax V3:
-
-| DataCite property                    | DataCite sub-property                                                      | Metax field                | Metax sub-field                                         | Notes                                                                                                                                                                  |
-|--------------------------------------|----------------------------------------------------------------------------|----------------------------|---------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| –                                    | –                                                                          | persistent_identifier      | –                                                       | The DOI registered through CSC PID. DataCite `identifiers` are ignored.                                                                                                |
-| –                                    | –                                                                          | title                      | –                                                       | The submission `title`. DataCite `titles` are ignored.                                                                                                                 |
-| –                                    | –                                                                          | description                | –                                                       | The submission `description` followed by the REMS application link. DataCite `descriptions` are ignored.                                                               |
-| creators                             | name, nameIdentifiers, affiliation                                         | actors (role=creator)      | person.name, person.external_identifier, organization   | Only the first nameIdentifier and the first affiliation are used. The affiliation is required.                                                                         |
-| contributors                         | name, nameIdentifiers, affiliation                                         | actors (role=contributor)  | person.name, person.external_identifier, organization   | As creators. The contributorType is ignored.                                                                                                                           |
-| publisher                            | name                                                                       | actors (role=publisher)    | organization                                            |                                                                                                                                                                        |
-| publisher, fundingReferences         | name, funderName, awardNumber                                              | projects                   | participating_organizations, funding                    | The publisher is the participating organization. Each funding reference is a funding with `funder.organization` and `funding_identifier` (from awardNumber).           |
-| subjects                             | subject, valueUri                                                          | field_of_science, keyword  | –                                                       | See [Subjects](#subjects). At least one subject is required.                                                                                                           |
-| dates (dateType=Other)               | date                                                                       | temporal                   | start_date, end_date                                    | A single date or a date range separated by `/`. See [Dates](#dates). Other date types are ignored.                                                                     |
-| geoLocations                         | geoLocationPlace                                                           | spatial                    | geographic_name, reference.url                          | The YSO location URL is looked up by the English place name from `resource/metax/geo_locations.json`.                                                                  |
-| geoLocations                         | geoLocationPoint, geoLocationBox, geoLocationPolygon                       | spatial                    | custom_wkt                                              | Converted to WKT `POINT` and `POLYGON`. A polygon is closed if needed. The inPolygonPoint is added as a separate `POINT`.                                               |
-| language                             | –                                                                          | language                   | url                                                     | An ISO 639 code (e.g. `en`, `fi`) mapped to a lexvo.org URL using `resource/metax/languages.json`.                                                                     |
-| –                                    | –                                                                          | issued                     | –                                                       | The publish date.                                                                                                                                                      |
-| –                                    | –                                                                          | data_catalog               | –                                                       | Always `urn:nbn:fi:att:data-catalog-sd`.                                                                                                                               |
-| –                                    | –                                                                          | access_rights              | access_type, license, restriction_grounds               | Always `restricted`, `notspecified` and `personal_data` from the `http://uri.suomi.fi/codelist/fairdata/` code lists. DataCite `rightsList` is ignored.                |
-
-DataCite properties not listed above are not sent to Metax. The Metax fields `relation`,
-`theme`, `bibliographic_citation`, `provenance` and `remote_resources` are not set.
+Please refer to the SD Submit architecture document for full details of how DataCite metadata is
+mapped to Metax metadata.
 
 #### Organisations
 
