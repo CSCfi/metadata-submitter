@@ -88,7 +88,9 @@ database/
 
 For clients mirroring published metadata. `/sync` lists the submissions published within a
 period, most recently published last; `/sync/{submissionId}` serves one submission's metadata
-objects as a zip. Documented in `docs/BP_sync.md`.
+objects as a zip, with `FILES/files.json` listing its file accessions. A listed submission
+carries `ingested` once SDA has released its dataset, since publication comes first. Documented
+in `docs/BP_sync.md`.
 
 Mounted **outside `/v1`**, so `AuthMiddleware` ignores them and `dependencies.py:verify_sync`
 verifies a **signed** bearer token instead. The dependency is on the **router**, so a route

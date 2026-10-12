@@ -1,6 +1,7 @@
 """Tests for packaging the metadata objects of a Bigpicture submission."""
 
 import io
+import json
 import zipfile
 from collections import defaultdict
 from collections.abc import AsyncIterator, Sequence
@@ -10,14 +11,16 @@ from typing import cast
 
 from lxml.etree import QName
 
-from metadata_backend.api.models.models import Object
+from metadata_backend.api.models.models import File, Object
 from metadata_backend.api.processors.xml.bigpicture import BP_SAMPLE_SCHEMA, BP_XML_OBJECT_CONFIG
 from metadata_backend.api.processors.xml.datacite import DATACITE_OBJECT_TYPE, DATACITE_SCHEMA
 from metadata_backend.api.processors.xml.processors import XmlProcessor
 from metadata_backend.api.services.bigpicture import (
+    BP_SYNC_FILES_PATH,
     BP_SYNC_METADATA_DIR,
     BigpictureSyncMetadataProvider,
 )
+from metadata_backend.database.postgres.services.file import FileService
 from metadata_backend.database.postgres.services.object import ObjectService
 
 BP_SUBMISSION_DIR = Path(__file__).parent.parent.parent.parent / "test_files" / "xml" / "bigpicture"
@@ -25,7 +28,7 @@ BP_SUBMISSION_DIR = Path(__file__).parent.parent.parent.parent / "test_files" / 
 SUBMISSION_ID = "submission_1"
 
 
-def _test_documents() -> dict[str, list[str]]:
+def _mock_documents() -> dict[str, list[str]]:
     """The metadata objects of the test submission, by object type."""
 
     documents: dict[str, list[str]] = defaultdict(list)
@@ -40,7 +43,21 @@ def _test_documents() -> dict[str, list[str]]:
     return documents
 
 
-TEST_DOCUMENTS = _test_documents()
+MOCK_DOCUMENTS = _mock_documents()
+
+MOCK_FILES = [
+    File(
+        fileId="file_2",
+        objectId="image_1",
+        path="b.dcm.c4gh",
+        bytes=200,
+        checksumMethod="SHA256",
+        unencryptedChecksum="a" * 64,
+        encryptedChecksum="b" * 64,
+    ),
+    File(fileId="file_1", path="a.dcm.c4gh"),
+]
+
 
 EXPECTED_DOCUMENTS = [
     f"{BP_SYNC_METADATA_DIR}/{name}.xml"
@@ -60,38 +77,49 @@ EXPECTED_DOCUMENTS = [
     )
 ]
 
+
+EXPECTED_FILES = [
+    {"fileId": "file_1", "path": "a.dcm.c4gh"},
+    {"fileId": "file_2", "objectId": "image_1", "path": "b.dcm.c4gh"},
+]
+
 EXPECTED_SAMPLE_TAGS = ("BIOLOGICAL_BEING", "BLOCK", "CASE", "SLIDE", "SPECIMEN")
 
 
 def _provider() -> BigpictureSyncMetadataProvider:
-    """A Bigpicture sync provider over a mocked object service."""
+    """A Bigpicture sync provider using mock object and file services."""
 
-    async def get_objects(_: str, object_type: str | Sequence[str] | None = None) -> list[Object]:
+    async def get_objects(*_: object, **__: object) -> list[Object]:
         return [
             Object(name="1", objectId=object_type, objectType=object_type, submissionId=SUBMISSION_ID)
-            for object_type in TEST_DOCUMENTS
+            for object_type in MOCK_DOCUMENTS
         ]
 
     async def get_documents(_: str, object_type: str | Sequence[str] | None = None) -> AsyncIterator[str]:
         object_types = [object_type] if isinstance(object_type, str) else list(object_type or [])
         for one_object_type in object_types:
-            for document in TEST_DOCUMENTS[one_object_type]:
+            for document in MOCK_DOCUMENTS[one_object_type]:
                 yield document
 
+    async def get_files(*_: object, **__: object) -> AsyncIterator[File]:
+        for file in MOCK_FILES:
+            yield file
+
     object_service = cast(ObjectService, SimpleNamespace(get_objects=get_objects, get_documents=get_documents))
-    return BigpictureSyncMetadataProvider(object_service)
+    file_service = cast(FileService, SimpleNamespace(get_files=get_files))
+    return BigpictureSyncMetadataProvider(object_service, file_service)
 
 
 async def test_metadata_archive():
-    assert set(TEST_DOCUMENTS) == {paths.object_type for paths in BP_XML_OBJECT_CONFIG.object_paths} | {
+    assert set(MOCK_DOCUMENTS) == {paths.object_type for paths in BP_XML_OBJECT_CONFIG.object_paths} | {
         DATACITE_OBJECT_TYPE
     }
 
     archive = await _provider().get_metadata_archive(SUBMISSION_ID)
 
     with zipfile.ZipFile(io.BytesIO(archive)) as zip_file:
-        # Check that expected XML documents exist.
-        assert sorted(zip_file.namelist()) == EXPECTED_DOCUMENTS
+        # Check that the XML documents and the file list exist.
+        assert sorted(zip_file.namelist()) == sorted([*EXPECTED_DOCUMENTS, BP_SYNC_FILES_PATH])
 
         # Check that sample XML tags exist.
         sample = zip_file.read(f"{BP_SYNC_METADATA_DIR}/{BP_SAMPLE_SCHEMA}.xml").decode()
@@ -100,4 +128,7 @@ async def test_metadata_archive():
 
         # Check that DataCite is written as it is.
         datacite = zip_file.read(f"{BP_SYNC_METADATA_DIR}/{DATACITE_SCHEMA}.xml").decode()
-        assert datacite == TEST_DOCUMENTS[DATACITE_OBJECT_TYPE][0]
+        assert datacite == MOCK_DOCUMENTS[DATACITE_OBJECT_TYPE][0]
+
+        # Check that the files are listed by path, without the checksums and empty fields.
+        assert json.loads(zip_file.read(BP_SYNC_FILES_PATH)) == EXPECTED_FILES

@@ -212,7 +212,10 @@ class SubmissionService:
         """
 
         entities = await self.repository.get_published_submissions(published_start, published_end, workflow=workflow)
-        return [SyncSubmission(submissionId=entity.submission_id, published=entity.published) for entity in entities]
+        return [
+            SyncSubmission(submissionId=entity.submission_id, published=entity.published, ingested=entity.ingested)
+            for entity in entities
+        ]
 
     async def get_submissions(
         self,

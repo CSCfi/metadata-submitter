@@ -7,14 +7,14 @@ from datetime import timedelta
 
 from lxml.etree import QName
 
-from metadata_backend.api.models.sync import SyncSubmissions
+from metadata_backend.api.models.sync import SyncFiles, SyncSubmissions
 from metadata_backend.api.processors.xml.datacite import DATACITE_SCHEMA
 from metadata_backend.api.processors.xml.processors import XmlProcessor
-from metadata_backend.api.services.bigpicture import BP_SYNC_METADATA_DIR
+from metadata_backend.api.services.bigpicture import BP_SYNC_FILES_PATH, BP_SYNC_METADATA_DIR
 from metadata_backend.conf.deployment import deployment_config
 from tests.integration.conf import nbis_base_url
 from tests.integration.conftest import sync_signing_claims
-from tests.integration.helpers import publish_submission
+from tests.integration.helpers import get_files, publish_submission
 from tests.sync import sign_sync_token, sync_claims, sync_key_pair
 
 # The metadata objects of each document of the archive. One document per schema, holding
@@ -97,7 +97,8 @@ async def test_sync_bp(nbis_client, sync_client, bp_submission):
 
     with zipfile.ZipFile(io.BytesIO(archive)) as zip_file:
         assert sorted(zip_file.namelist()) == sorted(
-            [f"{BP_SYNC_METADATA_DIR}/{schema}.xml" for schema in EXPECTED_OBJECTS] + [EXPECTED_DATACITE]
+            [f"{BP_SYNC_METADATA_DIR}/{schema}.xml" for schema in EXPECTED_OBJECTS]
+            + [EXPECTED_DATACITE, BP_SYNC_FILES_PATH]
         )
 
         for schema, expected in EXPECTED_OBJECTS.items():
@@ -107,6 +108,13 @@ async def test_sync_bp(nbis_client, sync_client, bp_submission):
 
         datacite = XmlProcessor.parse_xml(zip_file.read(EXPECTED_DATACITE)).getroot()
         assert QName(datacite.tag).localname == EXPECTED_DATACITE_ROOT
+
+        # The files of the submission are listed with their accessions.
+        files = SyncFiles.model_validate_json(zip_file.read(BP_SYNC_FILES_PATH)).root
+        assert files
+        assert {(f.fileId, f.path) for f in files} == {
+            (f["fileId"], f["path"]) for f in await get_files(nbis_client, submission_id)
+        }
 
 
 async def test_sync_without_token(client):

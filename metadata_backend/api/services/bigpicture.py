@@ -8,12 +8,14 @@ from typing import Literal, override
 import httpx
 from pydantic import BaseModel
 
+from ...database.postgres.services.file import FileService
 from ...database.postgres.services.object import ObjectService
 from ...helpers.logger import LOG
 from ..exceptions import SystemException
 from ..handlers.restapi import RESTAPIServices
 from ..models.models import File
 from ..models.submission import SubmissionWorkflow
+from ..models.sync import SyncFile, SyncFiles
 from ..processors.xml.bigpicture import (
     BP_ANNOTATION_OBJECT_TYPE,
     BP_DATASET_OBJECT_TYPE,
@@ -186,24 +188,27 @@ async def upload_bp_metadata_xmls(services: RESTAPIServices, submission_id: str,
             # Add uploaded XML artifacts to submission file records for ingestion workflow.
             if not await services.file.is_file_by_path(submission_id, object_key):
                 await services.file.add_file(
-                    File(submissionId=submission_id, path=object_key, bytes=len(xml_bytes)),
+                    File(submissionId=submission_id, path=object_key),
                     SubmissionWorkflow.BP,
                 )
 
 
 BP_SYNC_METADATA_DIR = "METADATA"
+BP_SYNC_FILES_PATH = "FILES/files.json"
 
 
 class BigpictureSyncMetadataProvider(SyncMetadataProvider):
     """Package the metadata objects of a Bigpicture submission for sync."""
 
-    def __init__(self, object_service: ObjectService) -> None:
+    def __init__(self, object_service: ObjectService, file_service: FileService) -> None:
         """
         Package the metadata objects of a Bigpicture submission for sync.
 
         :param object_service: The object service used to read the metadata objects.
+        :param file_service: The file service used to read the files.
         """
         self._object_service = object_service
+        self._file_service = file_service
 
     @override
     async def get_metadata_archive(self, submission_id: str) -> bytes:
@@ -211,7 +216,8 @@ class BigpictureSyncMetadataProvider(SyncMetadataProvider):
         Get the metadata objects of one submission as a zip archive.
 
         One document per schema, holding every metadata object of that schema. DataCite
-        is handled separately.
+        is handled separately. The files of the submission, with their accessions, are
+        listed in a JSON document.
 
         :param submission_id: The submission id.
         :return: The zip archive of the metadata objects.
@@ -251,4 +257,27 @@ class BigpictureSyncMetadataProvider(SyncMetadataProvider):
 
                 archive.writestr(f"{BP_SYNC_METADATA_DIR}/{schema_type}.xml", document)
 
+            archive.writestr(
+                BP_SYNC_FILES_PATH, (await self._get_files(submission_id)).model_dump_json(indent=2, exclude_none=True)
+            )
+
         return buffer.getvalue()
+
+    async def _get_files(self, submission_id: str) -> SyncFiles:
+        """
+        Get the files of one submission, ordered by path.
+
+        :param submission_id: The submission id.
+        :return: The files of the submission.
+        """
+
+        files = [
+            SyncFile(
+                fileId=file.fileId,
+                objectId=file.objectId,
+                path=file.path,
+            )
+            async for file in self._file_service.get_files(submission_id=submission_id)
+            if file.fileId is not None
+        ]
+        return SyncFiles(root=sorted(files, key=lambda file: file.path))

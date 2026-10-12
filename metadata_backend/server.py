@@ -236,7 +236,7 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
         datacite_handler = _create_handler(DataciteServiceHandler(metax_handler))
         admin_handler = _create_handler(AdminServiceHandler())
         license_provider = BigpictureRemsLicenseProvider(object_service)
-        sync_provider = BigpictureSyncMetadataProvider(object_service)
+        sync_provider = BigpictureSyncMetadataProvider(object_service, file_service)
 
     # Create file provider service.
     file_provider_service = (

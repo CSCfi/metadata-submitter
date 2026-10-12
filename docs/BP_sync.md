@@ -69,7 +69,8 @@ Example response:
   "submissions": [
     {
       "submissionId": "...",
-      "published": "2026-01-15T09:12:03.123456+00:00"
+      "published": "2026-01-15T09:12:03.123456+00:00",
+      "ingested": "2026-01-15T10:02:41.512345+00:00"
     },
     {
       "submissionId": "...",
@@ -78,6 +79,25 @@ Example response:
   ]
 }
 ```
+
+The `ingested` date is set once the files of the submission have been ingested into the
+archive and the dataset has been released. A submission is listed when it is published,
+which may be before its files are ingested.
+
+Clients that only need the metadata can ignore the `ingested` date.
+
+Clients that also need the files must call `/sync` again later to see if a submission
+has been ingested. Because the next call uses a later `publishedStart` date, a
+submission that has not been ingested yet would not be returned again. To avoid this:
+
+1. Keep a list of the submissions returned without an `ingested` date.
+2. Set `publishedStart` slightly before the publication date of the oldest submission in
+   that list, instead of the most recent publication date.
+3. Remove a submission from the list once it is returned with an `ingested` date.
+
+A submission whose files fail to ingest never gets an `ingested` date. Clients should
+remove it from the list after waiting as long as they choose, so that it does not keep
+`publishedStart` in the past.
 
 The list of parameters:
 
@@ -109,6 +129,26 @@ METADATA/datacite.xml
 ```
 
 There is one document per schema, containing all metadata objects of that schema.
+
+The files of the submission are listed in `FILES/files.json`. The list contains every
+file of the dataset, including the image and annotation files and the metadata documents
+uploaded with them, ordered by path.
+
+```json
+[
+  {
+    "fileId": "...",
+    "objectId": "...",
+    "path": "..."
+  }
+]
+```
+
+| Field      | Description                                                              |
+|------------|--------------------------------------------------------------------------|
+| `fileId`   | The file accession.                                                      |
+| `objectId` | The accession of the metadata object that references the file. Optional. |
+| `path`     | The file path.                                                           |
 
 Example request:
 

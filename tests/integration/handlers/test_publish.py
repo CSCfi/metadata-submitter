@@ -1,5 +1,6 @@
 """Test publish handler."""
 
+import asyncio
 import json
 import logging
 from unittest.mock import AsyncMock
@@ -7,6 +8,7 @@ from unittest.mock import AsyncMock
 import pytest
 from aiohttp import ClientSession
 
+from metadata_backend.api.models.sync import SyncSubmissions
 from metadata_backend.api.services.bigpicture import read_bp_public_key
 from metadata_backend.api.services.crypt import Crypt4GHPublicKeyProvider
 from metadata_backend.api.services.file import S3InboxSDAService
@@ -71,7 +73,7 @@ async def test_publish_sd(sd_client, sd_submission):
     await assert_immutable_after_publish_sd(sd_client, submission.submissionId)
 
 
-async def test_publish_bp(nbis_client, bp_submission):
+async def test_publish_bp(nbis_client, sync_client, bp_submission):
     """Test publish BP for NBIS deployment."""
 
     # Create bucket for the test user in the mock S3 inbox.
@@ -181,6 +183,21 @@ async def test_publish_bp(nbis_client, bp_submission):
         # The background ingest scanner should progress every file to READY and only mark the
         # submission ingested once the Admin API itself confirms the dataset was released.
         await wait_for_dataset_released(mock_user, submission_id)
+
+        # The sync endpoint lists the submission with its ingestion date. The date is committed
+        # just after the scanner sees the dataset released, so poll until it appears.
+        synced_submission = None
+        for _ in range(30):
+            async with sync_client.get(deployment_config().API_PREFIX_SYNC) as resp:
+                assert resp.status == 200, await resp.text()
+                synced = SyncSubmissions.model_validate(await resp.json()).submissions
+            synced_submission = next((s for s in synced if s.submissionId == submission_id), None)
+            assert synced_submission is not None, f"Submission {submission_id} is not listed by /sync"
+            if synced_submission.ingested is not None:
+                break
+            await asyncio.sleep(1)
+        assert synced_submission.ingested is not None
+        assert synced_submission.ingested >= synced_submission.published
 
         # The scanner's dispatch-cooldown gate should mean every Admin API action is sent exactly
         # once per file/dataset, even though ingestion runs across several scan cycles -- this is

@@ -116,6 +116,22 @@ async def test_sync_returns_submissions(nbis_client, submission_repository):
     assert response.status_code == status.HTTP_200_OK
     submissions = SyncSubmissions.model_validate(response.json()).submissions
     assert [s.submissionId for s in submissions] == [submission_id]
+    assert "ingested" not in response.json()["submissions"][0]
+
+
+async def test_sync_returns_ingested(nbis_client, submission_repository):
+    """The ingestion date is returned once the submission has been ingested."""
+
+    entity = create_submission_entity(workflow=SubmissionWorkflow.BP)
+    entity.is_published = True
+    entity.is_ingested = True
+    submission_id = await submission_repository.add_submission(entity)
+
+    response = nbis_client.get(_sync_url(), headers=SYNC_HEADERS)
+
+    assert response.status_code == status.HTTP_200_OK
+    submissions = SyncSubmissions.model_validate(response.json()).submissions
+    assert [(s.submissionId, s.ingested) for s in submissions] == [(submission_id, entity.ingested)]
 
 
 async def test_sync_published_without_date(nbis_client, submission_repository):
