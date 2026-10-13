@@ -1262,7 +1262,7 @@ async def assert_bp_files_v3(nbis_client, submission_id, image_aliases: list[str
     # Assert ontology files.
     _assert_file(
         files,
-        f"DATASET_{submission_id}/ANNOTATIONS/ontology.json.c4gh",
+        f"DATASET_{submission_id}/ONTOLOGIES/ontology.json.c4gh",
         "SHA256",
         None,
         "3c3a51adf8f8b1b7a2625d7ac9c12a08dcf9e6a10e87a1f8a215e67f87e7d2a4",
@@ -1271,7 +1271,7 @@ async def assert_bp_files_v3(nbis_client, submission_id, image_aliases: list[str
     # Assert annotation task files.
     _assert_file(
         files,
-        f"DATASET_{submission_id}/ANNOTATIONS/task.pdf.c4gh",
+        f"DATASET_{submission_id}/ANNOTATION_TASKS/task.pdf.c4gh",
         "SHA256",
         None,
         "5c3a51adf8f8b1b7a2625d7ac9c12a08dcf9e6a10e87a1f8a215e67f87e7d2a4",

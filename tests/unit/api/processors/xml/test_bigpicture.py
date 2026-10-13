@@ -1535,12 +1535,12 @@ def test_prepare_files_3():
     service._processor, _, _ = BigpictureObjectSubmissionService._create_processor(_bp_objects(SUBMISSION_3_DIR))
 
     assert sorted(f.path for f in service.prepare_files("1")) == [
-        "DATASET_1/ANNOTATIONS/ontology.json.c4gh",
-        "DATASET_1/ANNOTATIONS/task.pdf.c4gh",
         "DATASET_1/ANNOTATIONS/test.geojson.c4gh",
         "DATASET_1/ANNOTATIONS/test2.geojson.c4gh",
+        "DATASET_1/ANNOTATION_TASKS/task.pdf.c4gh",
         "DATASET_1/IMAGES/IMAGE_1/test.dcm.c4gh",
         "DATASET_1/IMAGES/IMAGE_2/test2.dcm.c4gh",
+        "DATASET_1/ONTOLOGIES/ontology.json.c4gh",
     ]
 
 
@@ -1548,20 +1548,16 @@ def test_prepare_files_3():
     ("replacements", "error"),
     [
         (
-            {"ontology": ("ANNOTATIONS/ontology.json", "ONTOLOGY/ontology.json")},
-            "ONTOLOGY file 'ONTOLOGY/ontology.json.c4gh' must be in directory 'ANNOTATIONS'.",
+            {"ontology": ("ONTOLOGIES/ontology.json", "ANNOTATIONS/ontology.json")},
+            "ONTOLOGY file 'ANNOTATIONS/ontology.json.c4gh' must be in directory 'ONTOLOGIES'.",
         ),
         (
-            {"annotation_task": ("ANNOTATIONS/task.pdf", "TASKS/task.pdf")},
-            "ANNOTATION_TASK file 'TASKS/task.pdf.c4gh' must be in directory 'ANNOTATIONS'.",
+            {"annotation_task": ("ANNOTATION_TASKS/task.pdf", "ANNOTATIONS/task.pdf")},
+            "ANNOTATION_TASK file 'ANNOTATIONS/task.pdf.c4gh' must be in directory 'ANNOTATION_TASKS'.",
         ),
         (
-            {"ontology": ("ANNOTATIONS/ontology.json", "ANNOTATIONS/test.geojson")},
-            "ONTOLOGY file 'ANNOTATIONS/test.geojson.c4gh' is already declared by ANNOTATION.",
-        ),
-        (
-            {"annotation_task": ("ANNOTATIONS/task.pdf", "ANNOTATIONS/ontology.json.c4gh")},
-            "ANNOTATION_TASK file 'ANNOTATIONS/ontology.json.c4gh' is already declared by ONTOLOGY.",
+            {"annotation": ("ANNOTATIONS/test2.geojson", "ANNOTATIONS/test.geojson")},
+            "ANNOTATION file 'ANNOTATIONS/test.geojson.c4gh' is already declared by ANNOTATION.",
         ),
     ],
 )

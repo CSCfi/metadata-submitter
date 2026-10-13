@@ -525,7 +525,12 @@ class BigpictureObjectSubmissionService(ObjectSubmissionService):
                     ),
                 )
 
-        def _add_annotations_dir_files(processors: list[XmlObjectProcessor], root_path: str) -> None:
+        def _add_dir_files(
+            processors: list[XmlObjectProcessor],
+            root_path: str,
+            directory: str,
+            suffixes: tuple[str, ...] | None = None,
+        ) -> None:
             element = root_path.lstrip("/")
             for processor in processors:
                 object_id = processor.get_xml_object_identifier().id
@@ -535,8 +540,12 @@ class BigpictureObjectSubmissionService(ObjectSubmissionService):
                 for file_elem in xml.xpath(f"{root_path}/FILES/FILE"):
                     filename = self._prepare_file_path(file_elem.get("filename"))
                     dir_part = str(Path(filename).parent)
-                    if dir_part != "ANNOTATIONS":
-                        raise UserException(f"{element} file '{filename}' must be in directory 'ANNOTATIONS'.")
+                    if dir_part != directory:
+                        raise UserException(f"{element} file '{filename}' must be in directory '{directory}'.")
+                    if suffixes and not filename.removesuffix(".c4gh").endswith(suffixes):
+                        raise UserException(
+                            f"{element} file '{filename}' must have one of the extensions: {', '.join(suffixes)}."
+                        )
                     _add_file(
                         element,
                         File(
@@ -549,10 +558,12 @@ class BigpictureObjectSubmissionService(ObjectSubmissionService):
                         ),
                     )
 
-        _add_annotations_dir_files(annotation_processors, BP_ANNOTATION_PATH)
+        # Suffixes are not checked for now:
+        # ANNOTATIONS: (".geojson",), ONTOLOGIES: (".json",), ANNOTATION_TASKS: (".pdf", ".txt", ".md")
+        _add_dir_files(annotation_processors, BP_ANNOTATION_PATH, "ANNOTATIONS")
         # Since 3.0.
-        _add_annotations_dir_files(ontology_processors, BP_ONTOLOGY_PATH)
-        _add_annotations_dir_files(annotation_task_processors, BP_ANNOTATION_TASK_PATH)
+        _add_dir_files(ontology_processors, BP_ONTOLOGY_PATH, "ONTOLOGIES")
+        _add_dir_files(annotation_task_processors, BP_ANNOTATION_TASK_PATH, "ANNOTATION_TASKS")
 
         return files
 
