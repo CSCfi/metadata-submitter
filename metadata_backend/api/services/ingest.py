@@ -1,6 +1,8 @@
 """Ingest service."""
 
 import asyncio
+import logging
+from collections import Counter
 from collections.abc import Awaitable, Callable
 from contextlib import suppress
 from datetime import datetime
@@ -24,6 +26,9 @@ _ACTION_FILE_INGEST = "file_ingest"
 _ACTION_FILE_ACCESSION = "file_accession"
 _ACTION_DATASET_CREATE = "dataset_create"
 _ACTION_DATASET_RELEASE = "dataset_release"
+# File step outcomes besides the dispatched action itself.
+_OUTCOME_COOLDOWN = "cooldown"
+_OUTCOME_FAILED = "failed"
 
 
 class IngestService:
@@ -86,11 +91,11 @@ class SDAIngestService(IngestService):
         This will collect Bigpicture workflow submissions that are published but not yet ingested
         and process them concurrently.
         """
-        LOG.info("Starting ingest scan cycle")
+        LOG.debug("Starting ingest scan cycle")
         submission_ids: list[str] = await self._with_session(self._get_submission_ids_for_ingest)
-        LOG.info("Ingest scan found %s candidate submission(s)", len(submission_ids))
+        LOG.debug("Ingest scan found %s candidate submission(s)", len(submission_ids))
         if not submission_ids:
-            LOG.info("Ingest scan cycle finished (no candidates)")
+            LOG.debug("Ingest scan cycle finished (no candidates)")
             return
 
         # Use a semaphore to limit the number of concurrent workers processing submissions.
@@ -101,7 +106,7 @@ class SDAIngestService(IngestService):
                 await self.ingest_submission_with_session(submission_id)
 
         await asyncio.gather(*(_start(submission_id) for submission_id in submission_ids))
-        LOG.info("Ingest scan cycle finished")
+        LOG.debug("Ingest scan cycle finished")
 
     async def ingest_submission_with_session(self, submission_id: str) -> bool:
         """Attempt to claim and fully process one submission.
@@ -111,9 +116,9 @@ class SDAIngestService(IngestService):
             could not be claimed (already processed or locked by another worker) or when ingest
             is still in progress.
         """
-        LOG.info("Starting ingest attempt for submission %s", submission_id)
+        LOG.debug("Starting ingest attempt for submission %s", submission_id)
         completed = await self._with_session(lambda: self.ingest_submission(submission_id))
-        LOG.info("Finished ingest attempt for submission %s (completed=%s)", submission_id, completed)
+        LOG.debug("Finished ingest attempt for submission %s (completed=%s)", submission_id, completed)
         return completed
 
     async def ingest_submission(self, submission_id: str) -> bool:
@@ -136,7 +141,7 @@ class SDAIngestService(IngestService):
             workflow=SubmissionWorkflow.BP,
         )
         if submission is None:
-            LOG.info("Submission %s not claimable for ingest (already ingested or locked)", submission_id)
+            LOG.debug("Submission %s not claimable for ingest (already ingested or locked)", submission_id)
             return False
 
         files = await self._services.file.get_ingest_file_states(submission_id)
@@ -144,25 +149,40 @@ class SDAIngestService(IngestService):
             LOG.info("No files to ingest for submission %s", submission_id)
             return False
 
-        LOG.info("Submission %s has %s file(s) tracked for ingest", submission_id, len(files))
+        LOG.debug("Submission %s has %s file(s) tracked for ingest", submission_id, len(files))
 
         # Gets all previously recorded dispatches for this submission.
         dispatches = await self._services.dispatch.get_dispatches(submission_id, _SDA_ADMIN_SERVICE)
+        # Dispatches are recorded from the first Admin API call until ingest completes, so a submission
+        # without any is starting ingest. Every later scan logs only the progress it makes.
+        if not dispatches:
+            LOG.info("Starting ingest for submission %s with %d file(s)", submission_id, len(files))
 
         # 2. Sync local file statuses with the Admin API to pick up any progress made by a previous run.
+        #    Once every file is READY there is no progress left to pick up, and once the dataset is created
+        #    the Admin API no longer lists its files, so the sync is skipped while waiting for the release.
         user_id = submission.projectId
-        await self._sync_file_ingest_states(user_id=user_id, submission_id=submission_id, file_states=files)
+        if all(file.ingest_status == IngestStatus.READY for file in files):
+            LOG.debug(
+                "All %d file(s) of submission %s are ready, skipping Admin API status sync", len(files), submission_id
+            )
+        else:
+            await self._sync_file_ingest_states(user_id=user_id, submission_id=submission_id, file_states=files)
+            # Step 3 reads the statuses the sync just updated.
+            files = await self._services.file.get_ingest_file_states(submission_id)
 
         # 3. Advance each file that is still in progress by issuing the appropriate Admin API call.
-        files = await self._services.file.get_ingest_file_states(submission_id)
+        outcomes: Counter[str] = Counter()
         for file in files:
             try:
-                await self._ingest_file(
+                outcome = await self._ingest_file(
                     user_id=user_id,
                     submission_id=submission_id,
                     file=file,
                     dispatches=dispatches,
                 )
+                if outcome:
+                    outcomes[outcome] += 1
             except Exception as e:
                 LOG.exception(
                     "File ingest step failed for submission %s, file_id=%s, path=%s",
@@ -177,12 +197,27 @@ class SDAIngestService(IngestService):
                     ingest_error=str(e),
                     ingest_error_type=ingest_error_type,
                 )
-                LOG.info(
+                outcomes[_OUTCOME_FAILED] += 1
+                LOG.debug(
                     "Marked file as error for submission %s, file_id=%s, error_type=%s",
                     submission_id,
                     file.file_id,
                     ingest_error_type,
                 )
+
+        if outcomes:
+            # A scan that only waits on earlier dispatches makes no progress worth logging at info level.
+            progressed = outcomes[_ACTION_FILE_INGEST] or outcomes[_ACTION_FILE_ACCESSION] or outcomes[_OUTCOME_FAILED]
+            LOG.log(
+                logging.INFO if progressed else logging.DEBUG,
+                "Submission %s file ingest step: %d ingest(s) triggered, %d accession id(s) assigned, "
+                "%d awaiting a previous dispatch, %d failed",
+                submission_id,
+                outcomes[_ACTION_FILE_INGEST],
+                outcomes[_ACTION_FILE_ACCESSION],
+                outcomes[_OUTCOME_COOLDOWN],
+                outcomes[_OUTCOME_FAILED],
+            )
 
         # 4. If all files have reached ``READY`` status, create and release the dataset and verify
         #    via the Admin API that the dataset has reached ``released``.
@@ -256,7 +291,7 @@ class SDAIngestService(IngestService):
             dataset_status = await self._admin_handler.get_dataset_status(submission_id)
 
         if dataset_status != DatasetStatus.RELEASED:
-            LOG.info("Dataset for submission %s not yet released (status=%s)", submission_id, dataset_status)
+            LOG.debug("Dataset for submission %s not yet released (status=%s)", submission_id, dataset_status)
             return False
 
         return True
@@ -276,20 +311,24 @@ class SDAIngestService(IngestService):
         """
         # Fetch all submission specific files from user's SDA inbox
         inbox_files: list[FileItem] = await self._admin_handler.get_user_files(user_id, submission_id)
-        LOG.info(
+        LOG.debug(
             "Fetched %s file status(es) from Admin API for submission %s",
             len(inbox_files),
             submission_id,
         )
         admin_status_by_path = {file.inbox_path: file.file_status for file in inbox_files}
 
+        without_status = 0
+        transitions: Counter[str] = Counter()
         for file in file_states:
-            # This is in case the Admin API doesn't have any record of the file yet.
-            # In that case we want to keep the existing status in the DB and avoid overwriting it with None.
+            # This is in case the Admin API doesn't have any record of the file yet, or no longer lists it
+            # because it belongs to a created dataset. In that case we want to keep the existing status in
+            # the DB and avoid overwriting it with None.
             admin_status = admin_status_by_path.get(file.path)
             if admin_status is None:
-                LOG.info(
-                    "No Admin API status for submission %s file_id=%s path=%s yet",
+                without_status += 1
+                LOG.debug(
+                    "No Admin API status for submission %s file_id=%s path=%s",
                     submission_id,
                     file.file_id,
                     file.path,
@@ -311,7 +350,8 @@ class SDAIngestService(IngestService):
             if parsed_status == file.ingest_status:
                 continue
 
-            LOG.info(
+            transitions[f"{file.ingest_status.value} -> {parsed_status.value}"] += 1
+            LOG.debug(
                 "Updating submission %s file_id=%s path=%s status %s -> %s",
                 submission_id,
                 file.file_id,
@@ -322,6 +362,13 @@ class SDAIngestService(IngestService):
 
             # Admin-reported error statuses are persisted with a user-error classification.
             if parsed_status == IngestStatus.ERROR:
+                # Each failed file is named, since someone has to act on it.
+                LOG.warning(
+                    "Admin API reported an error for submission %s file_id=%s path=%s",
+                    submission_id,
+                    file.file_id,
+                    file.path,
+                )
                 await self._services.file.update_ingest_status(
                     file.file_id,
                     IngestStatus.ERROR,
@@ -332,6 +379,21 @@ class SDAIngestService(IngestService):
                 # Non-error statuses clear any prior ingest error metadata in FileService.
                 await self._services.file.update_ingest_status(file.file_id, parsed_status)
 
+        if transitions:
+            LOG.info(
+                "Updated %d file status(es) in submission %s: %s",
+                transitions.total(),
+                submission_id,
+                ", ".join(f"{transition}: {count}" for transition, count in sorted(transitions.items())),
+            )
+        if without_status:
+            LOG.info(
+                "No Admin API status for %d of %d file(s) in submission %s, keeping their current status",
+                without_status,
+                len(file_states),
+                submission_id,
+            )
+
     async def _ingest_file(
         self,
         *,
@@ -339,13 +401,15 @@ class SDAIngestService(IngestService):
         submission_id: str,
         file: IngestFileState,
         dispatches: dict[DispatchKey, datetime],
-    ) -> None:
+    ) -> str | None:
         """Advance a single file by one step along the ingest pipeline.
 
         :param user_id: the user who owns the submission inbox.
         :param submission_id: the submission the file belongs to.
         :param file: current ingest state loaded for this file in the current cycle.
         :param dispatches: dispatches already recorded for this submission, keyed by (action, target).
+        :returns: the action dispatched, ``_OUTCOME_COOLDOWN`` if one was dispatched too recently to repeat,
+            or ``None`` if the file has no step to take.
         """
         # File status: UPLOADED -> trigger Admin API ingest (file moves toward VERIFIED).
         if file.ingest_status == IngestStatus.UPLOADED:
@@ -358,9 +422,9 @@ class SDAIngestService(IngestService):
                     file.file_id,
                     dispatched_at,
                 )
-                return
+                return _OUTCOME_COOLDOWN
 
-            LOG.info(
+            LOG.debug(
                 "Triggering ingest for submission %s file_id=%s path=%s",
                 submission_id,
                 file.file_id,
@@ -370,7 +434,7 @@ class SDAIngestService(IngestService):
             await self._services.dispatch.mark_dispatched(
                 submission_id, _SDA_ADMIN_SERVICE, _ACTION_FILE_INGEST, file.file_id
             )
-            return
+            return _ACTION_FILE_INGEST
 
         # File status: VERIFIED -> assign the accession ID (file moves toward READY).
         if file.ingest_status == IngestStatus.VERIFIED:
@@ -383,9 +447,9 @@ class SDAIngestService(IngestService):
                     file.file_id,
                     dispatched_at,
                 )
-                return
+                return _OUTCOME_COOLDOWN
 
-            LOG.info(
+            LOG.debug(
                 "Assigning accession id for submission %s file_id=%s path=%s",
                 submission_id,
                 file.file_id,
@@ -397,7 +461,9 @@ class SDAIngestService(IngestService):
             await self._services.dispatch.mark_dispatched(
                 submission_id, _SDA_ADMIN_SERVICE, _ACTION_FILE_ACCESSION, file.file_id
             )
-            return
+            return _ACTION_FILE_ACCESSION
+
+        return None
 
     async def _get_submission_ids_for_ingest(self) -> list[str]:
         """Return IDs of all published-but-not-ingested BP submissions."""

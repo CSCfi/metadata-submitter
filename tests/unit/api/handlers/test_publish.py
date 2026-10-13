@@ -496,10 +496,11 @@ async def test_publish_submission_bp_fails_when_metadata_upload_fails(
 
 
 async def test_publish_submission_bp_adds_thumbnail_jpgs_before_orphan_check(
-    nbis_client, submission_repository, object_repository, file_repository
+    nbis_client, submission_repository, object_repository, file_repository, caplog
 ):
     """BP publish should add landing page thumbnail JPG files to submission but not other unexpected files."""
     api_prefix_v1 = deployment_config().API_PREFIX_V1
+    caplog.set_level("INFO", logger="server")
 
     rems = Rems(
         organizationId=MOCK_REMS_DEFAULT_ORGANISATION_ID,
@@ -607,6 +608,9 @@ async def test_publish_submission_bp_adds_thumbnail_jpgs_before_orphan_check(
 
     assert await file_repository.get_file_by_path(submission_id, thumbnail_jpg_path) is not None
     assert await file_repository.get_file_by_path(submission_id, unencrypted_path) is None
+    # The thumbnails added are logged once in total.
+    info = [r.getMessage() for r in caplog.records if r.levelname == "INFO" and "thumbnail" in r.getMessage()]
+    assert info == [f"Added 1 thumbnail file(s) to submission '{submission_id}'"]
 
 
 def test_get_discovery_url_csc():

@@ -19,6 +19,10 @@ from ..conf.admin import admin_config
 from ..helpers.logger import LOG
 from .service_handler import ServiceHandler
 
+# A page of the user files lists up to 1000 files, and the Admin API can take most of the default
+# 10 second timeout to return one while it is busy ingesting.
+USER_FILES_TIMEOUT = 30
+
 
 class AdminServiceHandler(ServiceHandler):
     """NeIC SDA Admin service."""
@@ -45,21 +49,40 @@ class AdminServiceHandler(ServiceHandler):
     async def get_user_files(self, username: str, dataset_id: str = "") -> list[FileItem]:
         """Return information on all the user's files in inbox.
 
+        The Admin API returns the files a page at a time, with an ``X-Next-Cursor`` header while more
+        pages remain, so every page is fetched until the header is absent.
+
         :param username: Username of the user whose files are retrieved
         :param dataset_id: Dataset accession ID for path prefix filtering
         :returns: List of file information
         """
         admin_auth_headers = self.get_admin_auth_headers()
 
-        user_files_resp: list[dict[str, Any]] = await self._request(
-            method="GET",
-            path=f"/users/{username}/files",
-            params={"path_prefix": f"DATASET_{dataset_id}"} if dataset_id else None,
-            headers=admin_auth_headers,
-        )
-        LOG.info("Fetched files from inbox for user %s", username)
-        user_files = self._validate_response(UserFilesResponse, user_files_resp)
-        return user_files.root
+        params: dict[str, Any] = {"path_prefix": f"DATASET_{dataset_id}"} if dataset_id else {}
+        user_files: list[FileItem] = []
+        seen_cursors: set[str] = set()
+        while True:
+            response = await self._send(
+                method="GET",
+                path=f"/users/{username}/files",
+                params=params or None,
+                timeout=USER_FILES_TIMEOUT,
+                headers=admin_auth_headers,
+            )
+            user_files.extend(self._validate_response(UserFilesResponse, self._content(response)).root)
+
+            cursor = response.headers.get("X-Next-Cursor")
+            if not cursor:
+                break
+            # A cursor returned twice would page forever, and a partial list would hide files.
+            if cursor in seen_cursors:
+                LOG.error("Admin API returned pagination cursor %r twice for user %s", cursor, username)
+                raise ServiceHandlerSystemException(self.service_name)
+            seen_cursors.add(cursor)
+            params = {**params, "cursor": cursor}
+
+        LOG.debug("Fetched %d files from inbox for user %s", len(user_files), username)
+        return user_files
 
     async def ingest_file(self, *, data: IngestFileRequest | None = None, file_id: str | None = None) -> None:
         """Start the ingestion of a file.
@@ -77,13 +100,13 @@ class AdminServiceHandler(ServiceHandler):
             await self._request(
                 method="POST", path="/file/ingest", json_data=ingestion_data, headers=admin_auth_headers
             )
-            LOG.info("File with path %r is being ingested", data.filepath)
+            LOG.debug("File with path %r is being ingested", data.filepath)
 
         if file_id:
             await self._request(
                 method="POST", path="/file/ingest", params={"fileid": file_id}, headers=admin_auth_headers
             )
-            LOG.info("File with ID %s is being ingested", file_id)
+            LOG.debug("File with ID %s is being ingested", file_id)
 
     async def post_accession_id(
         self, *, data: PostAccessionIdRequest | None = None, file_id: str | None = None, accession_id: str | None = None
@@ -104,7 +127,7 @@ class AdminServiceHandler(ServiceHandler):
             await self._request(
                 method="POST", path="/file/accession", json_data=accession_data, headers=admin_auth_headers
             )
-            LOG.info("Accession ID %s assigned to file %s", data.accession_id, data.filepath)
+            LOG.debug("Accession ID %s assigned to file %s", data.accession_id, data.filepath)
 
         if file_id and accession_id:
             await self._request(
@@ -113,7 +136,7 @@ class AdminServiceHandler(ServiceHandler):
                 params={"fileid": file_id, "accessionid": accession_id},
                 headers=admin_auth_headers,
             )
-            LOG.info("Accession ID %s assigned to file with ID %s", accession_id, file_id)
+            LOG.debug("Accession ID %s assigned to file with ID %s", accession_id, file_id)
 
     async def create_dataset(self, data: CreateDatasetRequest) -> None:
         """Create dataset for user.

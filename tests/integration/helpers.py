@@ -257,6 +257,11 @@ async def seed_mock_admin_files(
     if extra_inbox_paths:
         inbox_paths.update(extra_inbox_paths)
 
+    await add_mock_admin_files(user_id, inbox_paths)
+
+
+async def add_mock_admin_files(user_id: str, inbox_paths: set[str]) -> None:
+    """Add file paths to the user's mock Admin inbox state."""
     async with aiohttp.ClientSession(base_url=_mock_admin_url(), headers=_mock_admin_headers(user_id)) as admin_client:
         for inbox_path in sorted(inbox_paths):
             payload = {"user": user_id, "filepath": inbox_path}

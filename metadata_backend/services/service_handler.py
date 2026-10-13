@@ -143,6 +143,36 @@ class ServiceHandler(HealthHandler):
         :param log_payload: Is the request payload logged
         :returns: Response body parsed as JSON
         """
+        response = await self._send(
+            method=method,
+            url=url,
+            path=path,
+            params=params,
+            json_data=json_data,
+            timeout=timeout,
+            headers=headers,
+            log_payload=log_payload,
+        )
+        return self._content(response)
+
+    async def _send(
+        self,
+        *,
+        method: str = "GET",
+        url: Optional[URL] = None,
+        path: str = "",
+        params: Optional[str | dict[str, Any]] = None,
+        json_data: Optional[dict[str, Any] | list[dict[str, Any]]] = None,
+        timeout: int = 10,
+        headers: Optional[dict[str, Any]] = None,
+        log_payload: bool = True,
+    ) -> httpx.Response:
+        """Request to service REST API, returning the response for callers that need its headers.
+
+        Takes the same parameters as ``_request``, retrying and reporting failures the same way.
+
+        :returns: The successful response
+        """
         LOG.debug(
             "%s request to: %r, path %r, params %r",
             method,
@@ -171,13 +201,7 @@ class ServiceHandler(HealthHandler):
                     headers=headers,
                 )
                 if response.is_success:
-                    # Successful request.
-                    content = (
-                        response.json()
-                        if response.headers.get("Content-Type", "").startswith("application/json")
-                        else response.text
-                    )
-                    return content
+                    return response
 
                 retryable = not response.is_client_error or response.status_code in RETRY_STATUS_CODES
                 retry = attempt < RETRY_MAX_COUNT and retryable
@@ -204,7 +228,23 @@ class ServiceHandler(HealthHandler):
         except Exception as exc:
             LOG.exception(
                 f"Service handler {method} request to {self.service_name} path {url} raised an "
-                f"unexpected exception: {str(exc)}"
+                f"unexpected exception: {exc!r}"
+            )
+            raise ServiceHandlerSystemException(self.service_name, exc)
+
+    def _content(self, response: httpx.Response) -> Any:
+        """Parse a successful service response body.
+
+        :param response: The response returned by ``_send``.
+        :returns: Response body parsed as JSON, or the text of a non-JSON response.
+        """
+        try:
+            if response.headers.get("Content-Type", "").startswith("application/json"):
+                return response.json()
+            return response.text
+        except Exception as exc:
+            LOG.exception(
+                f"Service handler {self.service_name} response from {response.request.url} could not be parsed: {exc!r}"
             )
             raise ServiceHandlerSystemException(self.service_name, exc)
 

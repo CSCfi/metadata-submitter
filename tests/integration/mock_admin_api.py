@@ -26,6 +26,9 @@ mock_auth_url = getenv("OIDC_URL", "http://localhost:8005")
 admin_token = getenv("ADMIN_TOKEN", "")
 
 admins = ["admin_user@test.what", "mock_user@test.what"]
+# The real Admin API pages user files 1000 at a time by default. The mock pages a few at a time, so
+# the integration tests follow X-Next-Cursor without seeding thousands of files.
+USER_FILES_PAGE_SIZE = 2
 files_in_inbox = {
     "mock_user@test.what": [
         {
@@ -352,7 +355,10 @@ async def release_dataset(req: web.Request) -> web.Response:
 
 
 async def get_user_files(req: web.Request) -> web.Response:
-    """Mock endpoint for getting a user's files that are not part of any dataset."""
+    """Mock endpoint for getting a page of a user's files that are not part of any dataset.
+
+    The cursor is the offset of the next page, encoded so that clients treat it as opaque.
+    """
     resp = isAdmin(req)
     if resp is not None:
         return resp
@@ -363,7 +369,20 @@ async def get_user_files(req: web.Request) -> web.Response:
     if path_prefix:
         user_files = [file for file in user_files if file.get("inboxPath", "").startswith(path_prefix)]
 
-    return web.json_response(user_files)
+    try:
+        cursor = req.query.get("cursor")
+        offset = int(base64.urlsafe_b64decode(cursor).decode()) if cursor else 0
+    except ValueError:  # Includes binascii.Error from an undecodable cursor.
+        raise web.HTTPBadRequest(reason="Invalid cursor parameter")
+    if offset < 0:
+        raise web.HTTPBadRequest(reason="Invalid cursor parameter")
+
+    headers = {}
+    next_offset = offset + USER_FILES_PAGE_SIZE
+    if next_offset < len(user_files):
+        headers["X-Next-Cursor"] = base64.urlsafe_b64encode(str(next_offset).encode()).decode()
+
+    return web.json_response(user_files[offset:next_offset], headers=headers)
 
 
 async def get_accession_ids(req: web.Request) -> web.Response:

@@ -1,5 +1,6 @@
 """Test service handler."""
 
+import httpx
 import pytest
 import respx
 from pydantic import BaseModel
@@ -80,6 +81,57 @@ async def test_request_retries(monkeypatch, status_code: int, expected_requests:
             await service._request(method="GET", path="/thing")
 
         assert route.call_count == expected_requests
+
+
+async def test_send_returns_response():
+    """Test that _send returns the response with its headers, and _request its parsed body."""
+    service = MockService(
+        service_name="mock",
+        base_url=URL("http://example.com"),
+        healthcheck_url=URL("http://example.com/health"),
+    )
+
+    with respx.mock as mock:
+        mock.get("http://example.com/json").respond(json={"key": "value"}, headers={"X-Next-Cursor": "next"})
+        mock.get("http://example.com/text").respond(text="plain")
+
+        response = await service._send(method="GET", path="/json")
+        assert response.headers["X-Next-Cursor"] == "next"
+        assert service._content(response) == {"key": "value"}
+
+        assert await service._request(method="GET", path="/json") == {"key": "value"}
+        assert await service._request(method="GET", path="/text") == "plain"
+
+
+async def test_request_invalid_json():
+    """Test that a response body that is not valid JSON is a service error."""
+    service = MockService(
+        service_name="mock",
+        base_url=URL("http://example.com"),
+        healthcheck_url=URL("http://example.com/health"),
+    )
+
+    with respx.mock as mock:
+        mock.get("http://example.com/thing").respond(content=b"not json", headers={"Content-Type": "application/json"})
+        with pytest.raises(ServiceHandlerSystemException):
+            await service._request(method="GET", path="/thing")
+
+
+async def test_request_exception_logged_with_type(caplog):
+    """Test that an exception without a message, such as a timeout, is logged with its type."""
+    service = MockService(
+        service_name="mock",
+        base_url=URL("http://example.com"),
+        healthcheck_url=URL("http://example.com/health"),
+    )
+
+    with respx.mock as mock:
+        mock.get("http://example.com/thing").mock(side_effect=httpx.ReadTimeout(""))
+        with pytest.raises(ServiceHandlerSystemException) as exc_info:
+            await service._request(method="GET", path="/thing")
+
+    assert exc_info.value.status_code == status.HTTP_504_GATEWAY_TIMEOUT
+    assert "raised an unexpected exception: ReadTimeout('')" in caplog.text
 
 
 class MockResponse(BaseModel):
