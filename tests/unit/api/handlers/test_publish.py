@@ -84,7 +84,8 @@ async def test_publish_submission_sd(csc_client, submission_repository, object_r
         response = csc_client.patch(f"{api_prefix_v1}/publish/{submission_id}")
         data = response.json()
         assert response.status_code == 400
-        assert data["detail"] == f"Submission '{submission_id}' is not linked to any bucket."
+        assert data["detail"] == "User error"
+        assert data["errors"] == [f"Submission '{submission_id}' is not linked to any bucket."]
 
     file_provider_cls = "metadata_backend.api.services.file.FileProviderService"
 
@@ -123,7 +124,8 @@ async def test_publish_submission_sd(csc_client, submission_repository, object_r
         response = csc_client.patch(f"{api_prefix_v1}/publish/{submission_id}")
         data = response.json()
         assert response.status_code == 400
-        assert data["detail"] == f"Submission '{submission_id}' does not have any data files."
+        assert data["detail"] == "User error"
+        assert data["errors"] == [f"Submission '{submission_id}' does not have any data files."]
 
         # Mock file provider
         mock_file_provider.return_value = FileProviderService.Files(
@@ -595,10 +597,11 @@ async def test_publish_submission_bp_adds_thumbnail_jpgs_before_orphan_check(
         data = response.json()
 
         assert response.status_code == 400
-        assert data["detail"] == (
+        assert data["detail"] == "User error"
+        assert data["errors"] == [
             f"Unexpected files found in the inbox for submission '{submission_id}': "
             f"{unencrypted_path}, {unexpected_path}."
-        )
+        ]
 
         mock_find_missing_files.assert_awaited_once()
         orphan_call = mock_find_orphaned_files.await_args

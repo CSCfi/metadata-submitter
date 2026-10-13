@@ -12,6 +12,7 @@ from lxml.etree import QName
 from lxml.etree import _Element as Element  # noqa
 from lxml.etree import _ElementTree as ElementTree  # noqa
 
+from ..exceptions import InvalidDocumentException
 from ..models import ObjectIdentifier
 from ..processors import DocumentsProcessor, ObjectProcessor
 from .exceptions import SchemaValidationException
@@ -38,6 +39,7 @@ class XmlProcessor(ABC):
 
         :param xml: XML contents or file to parse.
         :return: XML element tree.
+        :raises InvalidDocumentException: If the XML is not well-formed.
         """
 
         # Resolve only entities the document defines itself, and never load a DTD or fetch from the
@@ -47,16 +49,19 @@ class XmlProcessor(ABC):
             remove_blank_text=True, remove_comments=True, resolve_entities="internal", load_dtd=False, no_network=True
         )
 
-        if isinstance(xml, Path):
-            return etree.parse(str(xml), parser)
+        try:
+            if isinstance(xml, Path):
+                return etree.parse(str(xml), parser)
 
-        if hasattr(xml, "read"):  # IO[bytes]
-            return etree.parse(xml, parser)
+            if hasattr(xml, "read"):  # IO[bytes]
+                return etree.parse(xml, parser)
 
-        if isinstance(xml, str):
-            xml = xml.encode("utf-8")
+            if isinstance(xml, str):
+                xml = xml.encode("utf-8")
 
-        return etree.ElementTree(etree.fromstring(xml, parser))
+            return etree.ElementTree(etree.fromstring(xml, parser))
+        except etree.XMLSyntaxError as e:
+            raise InvalidDocumentException(str(e)) from e
 
     @staticmethod
     def write_xml(xml: ElementTree | Element) -> str:
@@ -171,7 +176,11 @@ class XmlObjectProcessor(XmlProcessor, ObjectProcessor):
 
         self.root_path = f"/{QName(xml.getroot().tag).localname}"
         self.root_element = self.get_xml_element(self.root_path, self.xml)
-        self._object_type = config.get_object_type(self.root_path)
+        try:
+            self._object_type = config.get_object_type(self.root_path)
+        except ValueError as e:
+            # The root element of the document is not a known metadata object.
+            raise InvalidDocumentException(str(e)) from e
         self._schema_type = config.get_schema_type(self._object_type)
         # Validate XML schema.
         if config.schema_dir is not None and config.schema_file_resolver is not None:
@@ -203,11 +212,11 @@ class XmlObjectProcessor(XmlProcessor, ObjectProcessor):
                     unique_id.add(id_)
 
             if len(unique_name) == 0:
-                raise ValueError("No metadata object name.")
+                raise InvalidDocumentException("No metadata object name.")
             if len(unique_name) > 1:
-                raise ValueError(f"Non-unique metadata object name: {', '.join(unique_name)}")
+                raise InvalidDocumentException(f"Non-unique metadata object name: {', '.join(unique_name)}")
             if len(unique_id) > 1:
-                raise ValueError(f"Non-unique metadata object id.: {', '.join(unique_id)}")
+                raise InvalidDocumentException(f"Non-unique metadata object id.: {', '.join(unique_id)}")
 
             if unique_name:
                 self._set_xml_object_name(next(iter(unique_name)))
@@ -242,11 +251,15 @@ class XmlObjectProcessor(XmlProcessor, ObjectProcessor):
 
                 if ref_cnt:
                     if len(unique_name) == 0:
-                        raise ValueError("No metadata object reference name.")
+                        raise InvalidDocumentException("No metadata object reference name.")
                     if len(unique_name) > 1:
-                        raise ValueError(f"Conflicting metadata object reference name: {', '.join(unique_name)}")
+                        raise InvalidDocumentException(
+                            f"Conflicting metadata object reference name: {', '.join(unique_name)}"
+                        )
                     if len(unique_id) > 1:
-                        raise ValueError(f"Conflicting metadata object reference id: {', '.join(unique_id)}")
+                        raise InvalidDocumentException(
+                            f"Conflicting metadata object reference id: {', '.join(unique_id)}"
+                        )
 
                     for p in r.paths:
                         if unique_name:
@@ -337,11 +350,11 @@ class XmlObjectProcessor(XmlProcessor, ObjectProcessor):
 
         if nodes:
             if len(nodes) > 1:
-                raise ValueError(f"More than on element found with XPath '{path}'")
+                raise InvalidDocumentException(f"More than on element found with XPath '{path}'")
             return nodes[0]
 
         if not optional:
-            raise ValueError(f"Element with XPath '{path}' not found.")
+            raise InvalidDocumentException(f"Element with XPath '{path}' not found.")
         return None
 
     @staticmethod
@@ -399,13 +412,13 @@ class XmlObjectProcessor(XmlProcessor, ObjectProcessor):
         if not result:
             if optional:
                 return None
-            raise ValueError(f"{field_name} not found.")
+            raise InvalidDocumentException(f"{field_name} not found.")
 
         value = result[0]
         if value is None:
             if optional:
                 return None
-            raise ValueError(f"{field_name} not found.")
+            raise InvalidDocumentException(f"{field_name} not found.")
 
         if isinstance(value, str):
             return value
@@ -414,7 +427,7 @@ class XmlObjectProcessor(XmlProcessor, ObjectProcessor):
             if not value.text:
                 if optional:
                     return None
-                raise ValueError(f"{field_name} not found.")
+                raise InvalidDocumentException(f"{field_name} not found.")
 
             return cast(str, value.text)
 
@@ -472,9 +485,9 @@ class XmlObjectProcessor(XmlProcessor, ObjectProcessor):
             if not _nodes:
                 if _parent_node is not None and _insertion_callback is not None:
                     return _insertion_callback(_parent_node)
-                raise ValueError(f"XPath '{path}' not found.")
+                raise InvalidDocumentException(f"XPath '{path}' not found.")
             if len(_nodes) > 1:
-                raise ValueError(f"XPath '{path}' matched multiple nodes.")
+                raise InvalidDocumentException(f"XPath '{path}' matched multiple nodes.")
             return _nodes[0]
 
         if is_attribute:
@@ -760,7 +773,7 @@ class XmlDocumentProcessor(XmlProcessor):
         if self.xml_processors:
             schema_types = {p.schema_type for p in self.xml_processors}
             if len(schema_types) > 1:
-                raise ValueError("All metadata objects in a document must have the same schema type")
+                raise InvalidDocumentException("All metadata objects in a document must have the same schema type")
             self._schema_type = next(iter(schema_types))
 
     def _add_xml_processor(self, config: XmlObjectConfig, xml: ElementTree) -> None:
@@ -776,7 +789,7 @@ class XmlDocumentProcessor(XmlProcessor):
         # Check if we already have metadata object processors for the same names.
         name = p.get_xml_object_identifier().name
         if self.is_xml_object_processor(self.xml_processor, p.schema_type, p.root_path, name):
-            raise ValueError(f"Duplicate '{p.schema_type}' identifier '{name}'")
+            raise InvalidDocumentException(f"Duplicate '{p.schema_type}' identifier '{name}'")
         self.set_xml_object_processor(self.xml_processor, name, p)
 
     @staticmethod
@@ -1032,7 +1045,7 @@ class XmlDocumentsProcessor(XmlProcessor, DocumentsProcessor):
             for p in processor.xml_processors:
                 name = p.get_xml_object_identifier().name
                 if XmlDocumentProcessor.is_xml_object_processor(self.xml_processor, p.schema_type, p.root_path, name):
-                    raise ValueError(f"Duplicate '{p.schema_type}' identifier '{name}'")
+                    raise InvalidDocumentException(f"Duplicate '{p.schema_type}' identifier '{name}'")
                 XmlDocumentProcessor.set_xml_object_processor(self.xml_processor, name, p)
 
         for o in config.object_paths:
@@ -1040,13 +1053,19 @@ class XmlDocumentsProcessor(XmlProcessor, DocumentsProcessor):
             count = sum(1 for i in self.get_object_identifiers(o.schema_type) if i.root_path == o.root_path)
             if o.is_single and o.is_mandatory:
                 if count != 1:
-                    raise ValueError(f"Expecting exactly one '{o.object_type}' metadata object but found {count}.")
+                    raise InvalidDocumentException(
+                        f"Expecting exactly one '{o.object_type}' metadata object but found {count}."
+                    )
             elif o.is_mandatory:
                 if count == 0:
-                    raise ValueError(f"Expecting at least one '{o.object_type}' metadata object but found {count}.")
+                    raise InvalidDocumentException(
+                        f"Expecting at least one '{o.object_type}' metadata object but found {count}."
+                    )
             elif o.is_single:
                 if count > 1:
-                    raise ValueError(f"Expecting at most one '{o.object_type}' metadata object but found {count}.")
+                    raise InvalidDocumentException(
+                        f"Expecting at most one '{o.object_type}' metadata object but found {count}."
+                    )
 
     def get_xml_object_identifier(self, schema_type: str, root_path: str, name: str) -> ObjectIdentifier:
         """

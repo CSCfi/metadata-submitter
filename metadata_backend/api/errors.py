@@ -12,7 +12,7 @@ from starlette.datastructures import URL
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
-from ..api.exceptions import AppException, UserExceptions
+from ..api.exceptions import AppException, UserException, UserExceptions
 from ..helpers.logger import LOG
 
 
@@ -66,6 +66,8 @@ def register_exception_handlers(app: FastAPI) -> None:
                 request.url.path,
                 exc.status_code,
             )
+            if exc.status_code < status.HTTP_500_INTERNAL_SERVER_ERROR:
+                return problem_response(request, exc.status_code, "User error", [str(exc.detail)])
             return problem_response(request, exc.status_code, str(exc.detail))
 
         # Return others errors as 500 and hide error details.
@@ -102,9 +104,10 @@ def register_exception_handlers(app: FastAPI) -> None:
     async def app_exception_handler(request: Request, exc: AppException) -> Response:
         LOG.error("HTTP '%r' request to '%r' raised a AppException.", request.method, request.url.path)
         if isinstance(exc, UserExceptions):
-            return problem_response(request, status.HTTP_400_BAD_REQUEST, "User error", exc.messages)
-        else:
-            return problem_response(request, exc.status_code, str(exc))
+            return problem_response(request, exc.status_code, "User error", exc.messages)
+        if isinstance(exc, UserException):
+            return problem_response(request, exc.status_code, "User error", [str(exc)])
+        return problem_response(request, exc.status_code, str(exc))
 
     # Handle unexpected exceptions.
     #

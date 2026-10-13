@@ -5,6 +5,7 @@ import pytest
 from lxml import etree
 from lxml.etree import _Element as Element  # noqa
 
+from metadata_backend.api.processors.exceptions import InvalidDocumentException
 from metadata_backend.api.processors.models import ObjectIdentifier
 from metadata_backend.api.processors.xml.models import (
     XmlIdentifierPath,
@@ -638,13 +639,19 @@ async def test_mandatory_and_single():
     XmlDocumentsProcessor(_get_config(False, False), xml)
     XmlDocumentsProcessor(_get_config(True, False), xml)
 
-    with pytest.raises(ValueError, match=f"Expecting exactly one '{object_type}' metadata object but found 2."):
+    with pytest.raises(
+        InvalidDocumentException, match=f"Expecting exactly one '{object_type}' metadata object but found 2."
+    ):
         XmlDocumentsProcessor(_get_config(True, True), xml)
 
-    with pytest.raises(ValueError, match=f"Expecting at most one '{object_type}' metadata object but found 2."):
+    with pytest.raises(
+        InvalidDocumentException, match=f"Expecting at most one '{object_type}' metadata object but found 2."
+    ):
         XmlDocumentsProcessor(_get_config(False, True), xml)
 
-    with pytest.raises(ValueError, match=f"Expecting at least one '{object_type}' metadata object but found 0."):
+    with pytest.raises(
+        InvalidDocumentException, match=f"Expecting at least one '{object_type}' metadata object but found 0."
+    ):
         XmlDocumentsProcessor(_get_config(True, False), XmlDocumentProcessor.parse_xml("<Tests></Tests>"))
 
 
