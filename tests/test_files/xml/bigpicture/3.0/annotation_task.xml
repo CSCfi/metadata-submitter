@@ -1,7 +1,7 @@
 <ANNOTATION_TASK_SET>
     <ANNOTATION_TASK alias="1">
         <FILES>
-            <FILE filename="ANNOTATIONS/task.pdf" checksum_method="SHA256"
+            <FILE filename="ANNOTATION_TASKS/task.pdf" checksum_method="SHA256"
                   unencrypted_checksum="5c3a51adf8f8b1b7a2625d7ac9c12a08dcf9e6a10e87a1f8a215e67f87e7d2a4"
                   filetype="pdf"/>
         </FILES>
