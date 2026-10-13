@@ -7,7 +7,6 @@ from lxml import etree
 from pydantic_string_url import AnyUrl
 
 from metadata_backend.api.models.datacite import DataCiteMetadata, Publisher
-from metadata_backend.api.processors.exceptions import InvalidDocumentException
 from metadata_backend.api.processors.xml.datacite import _elem, read_datacite_xml
 
 TEST_FILE = (
@@ -24,7 +23,7 @@ def test_read_datacite_xml():
 def test_elem_rejects_repeated_element():
     """Test that a repeated element is a user error (ValueError), not an internal one."""
     elements = [etree.Element("publisher"), etree.Element("publisher")]
-    with pytest.raises(InvalidDocumentException, match="At most one element expected"):
+    with pytest.raises(ValueError, match="At most one element expected"):
         _elem(elements)
 
 

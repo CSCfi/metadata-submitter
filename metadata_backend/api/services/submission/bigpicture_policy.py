@@ -12,11 +12,9 @@ from typing import override
 from jinja2 import Environment, Template, TemplateError, meta
 
 from ....database.postgres.services.object import ObjectService
-from ....helpers.logger import LOG
 from ...exceptions import SystemException, UserException
 from ...models.rems import RemsLicenseLocalization
 from ...models.submission import Submission
-from ...processors.exceptions import InvalidDocumentException
 from ...processors.xml.bigpicture import (
     BP_POLICY_OBJECT_TYPE,
     BP_POLICY_PATH,
@@ -240,11 +238,5 @@ class BigpictureRemsLicenseProvider(RemsLicenseProvider):
             return None
 
         version = get_bp_version_from_submission(submission)
-        try:
-            policy = XmlObjectProcessor(BP_XML_OBJECT_CONFIGS[version], policies[0])
-        except InvalidDocumentException as ex:
-            reason = f"Stored policy XML is not valid for submission '{submission.submissionId}'"
-            LOG.error(f"{reason}: {ex}")
-            raise SystemException(reason) from ex
-        localization = create_policy_license(policy, version)
+        localization = create_policy_license(XmlObjectProcessor(BP_XML_OBJECT_CONFIGS[version], policies[0]), version)
         return {_BP_POLICY_REMS_LICENSE_LANGUAGE: localization}

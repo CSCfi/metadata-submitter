@@ -98,40 +98,6 @@ def prepare_file_data_bp(_files) -> list[tuple[str, tuple[str, BinaryIO, str]]]:
     return files
 
 
-async def test_submission_sd_invalid_json_rejected(csc_client):
-    """Test that a submission.json that is not valid JSON is a user error."""
-
-    api_prefix_v1 = deployment_config().API_PREFIX_V1
-    project_id = MOCK_PROJECT_ID
-
-    with patch_verify_user_project, patch_verify_authorization:
-        response = csc_client.post(
-            f"{api_prefix_v1}/submit?projectId={project_id}", files=prepare_file_data_sd(io.BytesIO(b"{"))
-        )
-        assert response.status_code == 400
-        problem_json = response.json()
-        assert problem_json["detail"] == "Validation error"
-        assert len(problem_json["errors"]) == 1
-        assert problem_json["errors"][0]["field"] == ""
-        assert problem_json["errors"][0]["message"].startswith("Invalid JSON")
-
-        response = csc_client.post(
-            f"{api_prefix_v1}/submit?projectId={project_id}", files=prepare_file_data_sd(sd_submission_dict())
-        )
-        assert response.status_code == 200
-        submission_id = Submission.model_validate(response.json()).submissionId
-
-        response = csc_client.patch(
-            f"{api_prefix_v1}/submit/{submission_id}?projectId={project_id}",
-            files=prepare_file_data_sd(io.BytesIO(b"{")),
-        )
-        assert response.status_code == 400
-        problem_json = response.json()
-        assert problem_json["detail"] == "User error"
-        assert len(problem_json["errors"]) == 1
-        assert problem_json["errors"][0].startswith("The 'submission.json' document is not valid JSON")
-
-
 async def test_submission_sd(csc_client):
     """Test SD submission."""
 

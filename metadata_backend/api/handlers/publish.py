@@ -13,7 +13,6 @@ from ..exceptions import SystemException, UserException, external_service_call
 from ..models.datacite import DataCiteMetadata
 from ..models.models import File, Registration, SubmissionId
 from ..models.submission import Rems, Submission, SubmissionMetadata, SubmissionWorkflow
-from ..processors.exceptions import InvalidDocumentException
 from ..processors.xml.bigpicture import (
     BP_POLICY_OBJECT_TYPE,
 )
@@ -131,13 +130,7 @@ class PublishAPIHandler(RESTAPIHandler):
             return True
 
         config = get_bp_xml_object_config(submission)
-        try:
-            policy = XmlObjectProcessor(config, policies[0])
-        except InvalidDocumentException as ex:
-            reason = f"Stored policy XML is not valid for submission '{submission.submissionId}'"
-            LOG.error(f"{reason}: {ex}")
-            raise SystemException(reason) from ex
-        return is_clinical_policy(policy)
+        return is_clinical_policy(XmlObjectProcessor(config, policies[0]))
 
     async def _check_rems_license(self, submission: Submission, rems: Rems) -> None:
         """Check that the REMS license can be created.

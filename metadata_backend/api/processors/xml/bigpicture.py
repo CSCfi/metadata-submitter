@@ -8,7 +8,6 @@ from lxml import etree
 from lxml.etree import _Element as Element  # noqa
 
 from ...exceptions import UserException
-from ..exceptions import InvalidDocumentException
 from .models import XmlIdentifierPath, XmlObjectConfig, XmlObjectPaths, XmlReferencePaths, xml_schema_path
 from .processors import XmlDocumentProcessor, XmlObjectProcessor, XmlProcessor
 
@@ -401,10 +400,7 @@ def get_bp_version_from_documents(xml_docs: Iterable[str | bytes]) -> Bigpicture
     for xml in xml_docs:
         if isinstance(xml, str):
             xml = xml.encode("utf-8")
-        try:
-            _, root = next(etree.iterparse(BytesIO(xml), events=("start",)))
-        except etree.XMLSyntaxError as e:
-            raise InvalidDocumentException(str(e)) from e
+        _, root = next(etree.iterparse(BytesIO(xml), events=("start",)))
         if root.tag not in (BP_DATASET_SET_PATH.lstrip("/"), BP_DATASET_PATH.lstrip("/")):
             continue
         versions.add(get_bp_version_from_dataset(XmlProcessor.parse_xml(xml).getroot()))

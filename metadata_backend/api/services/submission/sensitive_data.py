@@ -96,10 +96,7 @@ class SensitiveDataObjectSubmissionService(ObjectSubmissionService):
         :param old_submission: The existing submission.
         :return: The submission document.
         """
-        try:
-            changes = json.loads(self._submission_document)
-        except json.JSONDecodeError as e:
-            raise UserException(f"The '{SD_FILE}' document is not valid JSON: {e}") from e
+        changes = json.loads(self._submission_document)
         if not isinstance(changes, dict):
             raise UserException(f"The '{SD_FILE}' document must be a JSON object.")
 

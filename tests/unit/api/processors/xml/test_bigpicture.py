@@ -5,7 +5,6 @@ from pathlib import Path
 import pytest
 
 from metadata_backend.api.exceptions import UserException
-from metadata_backend.api.processors.exceptions import InvalidDocumentException
 from metadata_backend.api.processors.models import ObjectIdentifier
 from metadata_backend.api.processors.xml.bigpicture import (
     BP_ANNOTATION_PATH,
@@ -1182,7 +1181,7 @@ def test_bp_submission_2_rejects_a_3_file():
 
     objects = _bp_objects(SUBMISSION_2_DIR) + _bp_objects(SUBMISSION_3_DIR, ["annotator.xml"])
 
-    with pytest.raises(InvalidDocumentException, match="Unknown object type for root path: /ANNOTATOR_SET"):
+    with pytest.raises(ValueError, match="Unknown object type for root path: /ANNOTATOR_SET"):
         BigpictureObjectSubmissionService._create_processor(objects)
 
 
@@ -1428,7 +1427,7 @@ def test_bp_documents_reject_a_missing_mandatory_metadata_object():
     Reported before any policy problem, since the processor cannot even be built.
     """
 
-    with pytest.raises(InvalidDocumentException, match="metadata object but found 0"):
+    with pytest.raises(ValueError, match="metadata object but found 0"):
         _bp_documents_processor(exclude="sample.xml", defined_research_question_required="Maybe")
 
 

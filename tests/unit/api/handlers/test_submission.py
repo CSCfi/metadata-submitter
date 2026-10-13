@@ -73,16 +73,14 @@ async def test_get_submission_in_other_project_is_not_found(csc_client):
             response = request(f"{api_prefix_v1}/submissions/{submission_id}")
             assert response.status_code == 404
             problem = response.json()
-            assert problem["detail"] == "User error"
-            assert problem["errors"] == [f"Submission '{submission_id}' not found."]
+            assert problem["detail"] == f"Submission '{submission_id}' not found."
             assert problem.keys() == unknown.keys()
             assert other_project_id not in response.text
 
         # Searching another project by name is refused before the name is looked up.
         response = csc_client.get(f"{api_prefix_v1}/submissions/{name}?projectId={other_project_id}")
         assert response.status_code == 401
-        assert response.json()["detail"] == "User error"
-        assert response.json()["errors"] == ["User is not affiliated with the project."]
+        assert response.json()["detail"] == "User is not affiliated with the project."
         assert other_project_id not in response.text
 
 
@@ -149,8 +147,7 @@ async def test_post_submission_fails_with_duplicate_name(csc_client):
         response = csc_client.post(f"{api_prefix_v1}/submissions", json=data)
         json_resp = response.json()
         assert response.status_code == 400
-        assert json_resp["detail"] == "User error"
-        assert json_resp["errors"] == [f"Submission with name '{name}' already exists in project {project_id}"]
+        assert f"Submission with name '{name}' already exists in project {project_id}" == json_resp["detail"]
 
 
 async def test_get_submissions(csc_client):

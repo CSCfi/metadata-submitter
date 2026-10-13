@@ -25,8 +25,7 @@ def test_problem_json_get_submissions_error(csc_client, nbis_client):
             data = response.json()
             assert response.status_code == 404
             assert data == {
-                "detail": "User error",
-                "errors": ["Submission 'unknown' not found."],
+                "detail": "Submission 'unknown' not found.",
                 "instance": f"{deployment_config().API_PREFIX_V1}/submissions/unknown",
                 "status": 404,
                 "title": "Not Found",

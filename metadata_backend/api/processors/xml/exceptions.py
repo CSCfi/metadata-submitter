@@ -4,13 +4,11 @@ from typing import Sequence
 
 from lxml.etree import _LogEntry  # noqa
 
-from ..exceptions import InvalidDocumentException
-
 # The most schema errors included in the message returned to the client.
 MAX_REPORTED_ERRORS = 20
 
 
-class SchemaValidationException(InvalidDocumentException):
+class SchemaValidationException(Exception):
     """Exception containing XML Schema validation errors."""
 
     def __init__(self, schema_type: str, errors: Sequence[_LogEntry]) -> None:

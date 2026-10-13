@@ -32,7 +32,6 @@ from ...models.datacite import (
     Subject,
     Title,
 )
-from ..exceptions import InvalidDocumentException
 from .processors import XmlProcessor
 
 DATACITE_XML_SCHEMA_DIR = Path(__file__).parent.parent.parent.parent / "schemas" / "xml" / "datacite" / "4.5"
@@ -53,7 +52,7 @@ def _elem(node: Element | list[Element] | None) -> Element | None:
     """
     if isinstance(node, list):
         if len(node) > 1:
-            raise InvalidDocumentException(f"At most one element expected: {[element.tag for element in node]}")
+            raise ValueError(f"At most one element expected: {[element.tag for element in node]}")
         return node[0] if node else None
 
     return node

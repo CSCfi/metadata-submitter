@@ -16,7 +16,6 @@ from ..handlers.restapi import RESTAPIServices
 from ..models.models import File
 from ..models.submission import Submission, SubmissionWorkflow
 from ..models.sync import SyncFile, SyncFiles
-from ..processors.exceptions import InvalidDocumentException
 from ..processors.xml.bigpicture import (
     BP_ANNOTATION_OBJECT_TYPE,
     BP_ANNOTATION_TASK_OBJECT_TYPE,
@@ -141,20 +140,15 @@ async def upload_bp_metadata_xmls(services: RESTAPIServices, submission_id: str,
 
             # For landing page XML, update the REMS and DOI URL value from the registration.
             if BP_LANDING_PAGE_OBJECT_TYPE in file.object_types:
-                try:
-                    xml_docs = [
-                        await update_landing_page_xml(
-                            xml_doc,
-                            config,
-                            datacite_url=registration.dataciteUrl if registration else None,
-                            rems_url=registration.remsUrl if registration else None,
-                        )
-                        for xml_doc in xml_docs
-                    ]
-                except InvalidDocumentException as ex:
-                    reason = f"Stored XML document is not valid for {file.name}"
-                    LOG.error(f"{reason}: {ex}")
-                    raise SystemException(reason) from ex
+                xml_docs = [
+                    await update_landing_page_xml(
+                        xml_doc,
+                        config,
+                        datacite_url=registration.dataciteUrl if registration else None,
+                        rems_url=registration.remsUrl if registration else None,
+                    )
+                    for xml_doc in xml_docs
+                ]
 
             # Compile and validate the XML document.
             if DATACITE_OBJECT_TYPE in file.object_types:

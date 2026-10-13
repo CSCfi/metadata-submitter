@@ -251,7 +251,7 @@ class SubmissionAPIHandler(RESTAPIHandler):
         if existing_submission:
             detail = f"Submission with name '{submission.name}' already exists in project {submission.projectId}"
             LOG.error(detail)
-            raise UserException(detail)
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
 
         submission_id = await submission_service.add_submission(submission)
         return SubmissionId(submissionId=submission_id)
