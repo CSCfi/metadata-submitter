@@ -9,12 +9,15 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Fixed
 
+- (admins) Log lines for failed external service requests name the exception type, for example `ReadTimeout`, where they were previously empty.
+- (users) Bigpicture datasets with more than 1000 files can be published and are fully ingested, instead of only the files on the first page of the SDA inbox listing.
 - The mock LDAP container no longer fails when it is restarted.
 - Bigpicture 2.0 policy attributes and attribute values are not converted to 3.0 ones.
 - Import fixed OpenBao transit keys in docker compose integration tests so stored submissions survive an OpenBao restart.
 
 ### Added
 
+- `ServiceHandler._send` returns the raw response, with its headers, using the same retries and error handling as `_request`, which now parses `_send`'s response with `_content`.
 - (users) Support for Bigpicture metadata standard 3.0 submissions alongside 2.0. The dataset METADATA_STANDARD sets the version of a submission, and it cannot be changed by an update.
 - When new database schema is created, the latest Alembic version is stamped.
 - New database schema is created by the server only if none of the tables exist.
@@ -25,6 +28,10 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- (admins) Ingest scanner and Bigpicture publish logs summarize each step per submission at info level, with one line per file only at debug level.
+- Admin API requests listing a user's inbox files time out after 30 seconds instead of 10.
+- The ingest scanner no longer queries the Admin API for file statuses once every file of a submission is ready, while it waits for the dataset to be released.
+- `AdminServiceHandler.get_user_files` follows the SDA Admin API's `X-Next-Cursor` header and returns the user's files from every page.
 - References added to a Bigpicture 3.0 dataset are placed after BIGPICTURE_NODE, so the dataset remains valid.
 - The Clinical/Scrambled dataset type is not accepted in Bigpicture 3.0 policies.
 - REMS license can be created from policy XML using either 2.0 or 3.0 metadata standard version.
