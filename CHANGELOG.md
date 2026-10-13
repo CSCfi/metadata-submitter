@@ -7,6 +7,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ## [Unreleased]
 
+## [2026.10.1] - 2026-10-13
+
 ### Fixed
 
 - (admins) Log lines for failed external service requests name the exception type, for example `ReadTimeout`, where they were previously empty.
@@ -973,7 +975,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 - Files are also validated during submission process.
 
 
-[Unreleased]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.10.0...HEAD
+[Unreleased]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.10.1...HEAD
+[2026.10.1]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.10.0...2026.10.1
 [2026.10.0]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.9.1...2026.10.0
 [2026.9.1]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.9.0...2026.9.1
 [2026.9.0]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.8.0...2026.9.0
