@@ -136,7 +136,6 @@ async def test_sda_ingest_marks_submission_ingested() -> None:
         dispatch=_dispatch_services(),
     )
     handlers = SimpleNamespace(admin=AsyncMock())
-    handlers.admin.get_user_files.return_value = [_file_item("f1", "ready"), _file_item("f2", "ready")]
     # Not created yet -> create_dataset; registered but not released yet -> release_dataset; then released.
     handlers.admin.get_dataset_status = AsyncMock(side_effect=[None, DatasetStatus.REGISTERED, DatasetStatus.RELEASED])
 
@@ -144,6 +143,8 @@ async def test_sda_ingest_marks_submission_ingested() -> None:
 
     ok = await service.ingest_submission_with_session("dataset-1")
     assert ok is True
+    # Every file is already READY, so there is no inbox status to sync.
+    handlers.admin.get_user_files.assert_not_awaited()
     handlers.admin.create_dataset.assert_awaited_once_with(
         CreateDatasetRequest(user="mock@user@test.what", accession_ids=["id-a", "id-b"], dataset_id="dataset-1")
     )
@@ -170,7 +171,6 @@ async def test_sda_ingest_does_not_mark_ingested_until_dataset_release_is_confir
         dispatch=_dispatch_services(),
     )
     handlers = SimpleNamespace(admin=AsyncMock())
-    handlers.admin.get_user_files.return_value = [_file_item("f1", "ready"), _file_item("f2", "ready")]
     # release_dataset() itself succeeds, but the Admin API still reports the dataset as "registered"
     # (release has not actually taken effect yet).
     handlers.admin.get_dataset_status = AsyncMock(
@@ -300,7 +300,6 @@ async def test_sda_ingest_does_not_redispatch_dataset_create_within_cooldown() -
         dispatch=_dispatch_services({DispatchKey("dataset_create", ""): dispatched_at}),
     )
     handlers = SimpleNamespace(admin=AsyncMock())
-    handlers.admin.get_user_files.return_value = [_file_item("f1", "ready")]
     handlers.admin.get_dataset_status = AsyncMock(return_value=None)
 
     service = _build_service(services, handlers, retry_cooldown_seconds=3600)
@@ -322,7 +321,6 @@ async def test_sda_ingest_does_not_redispatch_dataset_release_within_cooldown() 
         dispatch=_dispatch_services({DispatchKey("dataset_release", ""): dispatched_at}),
     )
     handlers = SimpleNamespace(admin=AsyncMock())
-    handlers.admin.get_user_files.return_value = [_file_item("f1", "ready")]
     handlers.admin.get_dataset_status = AsyncMock(return_value=DatasetStatus.REGISTERED)
 
     service = _build_service(services, handlers, retry_cooldown_seconds=3600)
@@ -331,3 +329,116 @@ async def test_sda_ingest_does_not_redispatch_dataset_release_within_cooldown() 
     assert ok is False
     handlers.admin.release_dataset.assert_not_awaited()
     services.dispatch.mark_dispatched.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_sda_ingest_summarises_files_without_admin_status(caplog) -> None:
+    """Files the Admin API does not list are logged once in total, not once per file."""
+    file_states = [
+        IngestFileState(file_id=f"id-{i}", path=f"f{i}", ingest_status=IngestStatus.VERIFIED) for i in range(3)
+    ]
+    services = SimpleNamespace(submission=_submission_services(), file=_file_services(*file_states))
+    handlers = SimpleNamespace(admin=AsyncMock())
+    handlers.admin.get_user_files.return_value = [_file_item("f0", "verified")]
+    service = _build_service(services, handlers)
+
+    with caplog.at_level("INFO", logger="server"):
+        await service._sync_file_ingest_states(user_id="user", submission_id="dataset-1", file_states=file_states)
+
+    services.file.update_ingest_status.assert_not_awaited()
+    messages = [
+        r.getMessage() for r in caplog.records if r.levelname == "INFO" and "No Admin API status" in r.getMessage()
+    ]
+    assert messages == ["No Admin API status for 2 of 3 file(s) in submission dataset-1, keeping their current status"]
+
+
+@pytest.mark.asyncio
+async def test_sda_ingest_summarises_file_steps(caplog) -> None:
+    """File steps are logged once per submission in total, not once per file."""
+    file_states = [
+        IngestFileState(file_id="id-1", path="f1", ingest_status=IngestStatus.UPLOADED),
+        IngestFileState(file_id="id-2", path="f2", ingest_status=IngestStatus.UPLOADED),
+        IngestFileState(file_id="id-3", path="f3", ingest_status=IngestStatus.UPLOADED),
+        IngestFileState(file_id="id-4", path="f4", ingest_status=IngestStatus.VERIFIED),
+        IngestFileState(file_id="id-5", path="f5", ingest_status=IngestStatus.READY),
+    ]
+    services = SimpleNamespace(
+        submission=_submission_services(),
+        file=_file_services(*file_states),
+        dispatch=_dispatch_services({DispatchKey("file_ingest", "id-2"): datetime.now(timezone.utc)}),
+    )
+    handlers = SimpleNamespace(admin=AsyncMock())
+    handlers.admin.get_user_files.return_value = [_file_item(f.path, f.ingest_status.value) for f in file_states]
+
+    async def _ingest_file(*, data):
+        if data.filepath == "f3":
+            raise RuntimeError("Admin API failure")
+
+    handlers.admin.ingest_file = AsyncMock(side_effect=_ingest_file)
+    service = _build_service(services, handlers, retry_cooldown_seconds=3600)
+
+    with caplog.at_level("INFO", logger="server"):
+        assert await service.ingest_submission_with_session("dataset-1") is False
+
+    info = [r.getMessage() for r in caplog.records if r.levelname == "INFO"]
+    assert (
+        "Submission dataset-1 file ingest step: 1 ingest(s) triggered, 1 accession id(s) assigned, "
+        "1 awaiting a previous dispatch, 1 failed"
+    ) in info
+    assert not [m for m in info if "file_id=" in m]
+
+
+@pytest.mark.asyncio
+async def test_sda_ingest_summarises_status_updates(caplog) -> None:
+    """Status updates are logged once per submission by transition, and only errors per file."""
+    file_states = [
+        IngestFileState(file_id="id-1", path="f1", ingest_status=IngestStatus.UPLOADED),
+        IngestFileState(file_id="id-2", path="f2", ingest_status=IngestStatus.VERIFIED),
+        IngestFileState(file_id="id-3", path="f3", ingest_status=IngestStatus.VERIFIED),
+        IngestFileState(file_id="id-4", path="f4", ingest_status=IngestStatus.VERIFIED),
+    ]
+    services = SimpleNamespace(submission=_submission_services(), file=_file_services(*file_states))
+    handlers = SimpleNamespace(admin=AsyncMock())
+    handlers.admin.get_user_files.return_value = [
+        _file_item("f1", "verified"),
+        _file_item("f2", "ready"),
+        _file_item("f3", "ready"),
+        _file_item("f4", "error"),
+    ]
+    service = _build_service(services, handlers)
+
+    with caplog.at_level("INFO", logger="server"):
+        await service._sync_file_ingest_states(user_id="user", submission_id="dataset-1", file_states=file_states)
+
+    assert services.file.update_ingest_status.await_count == 4
+    info = [r.getMessage() for r in caplog.records if r.levelname == "INFO"]
+    assert (
+        "Updated 4 file status(es) in submission dataset-1: uploaded -> verified: 1, verified -> error: 1, "
+        "verified -> ready: 2"
+    ) in info
+    assert not [m for m in info if "file_id=" in m]
+    warnings = [r.getMessage() for r in caplog.records if r.levelname == "WARNING"]
+    assert warnings == ["Admin API reported an error for submission dataset-1 file_id=id-4 path=f4"]
+
+
+@pytest.mark.asyncio
+async def test_sda_ingest_logs_start_once(caplog) -> None:
+    """The scan that starts ingesting a submission logs it, and so does no scan after it."""
+    file_state = IngestFileState(file_id="id-1", path="f1", ingest_status=IngestStatus.UPLOADED)
+    services = SimpleNamespace(
+        submission=_submission_services(), file=_file_services(file_state), dispatch=_dispatch_services()
+    )
+    handlers = SimpleNamespace(admin=AsyncMock())
+    handlers.admin.get_user_files.return_value = [_file_item("f1", "uploaded")]
+    service = _build_service(services, handlers, retry_cooldown_seconds=3600)
+
+    with caplog.at_level("INFO", logger="server"):
+        await service.ingest_submission_with_session("dataset-1")
+        first = [r.getMessage() for r in caplog.records if r.levelname == "INFO"]
+        caplog.clear()
+        # The first scan recorded its ingest dispatch, so the next one only waits on it.
+        await service.ingest_submission_with_session("dataset-1")
+        second = [r.getMessage() for r in caplog.records if r.levelname == "INFO"]
+
+    assert "Starting ingest for submission dataset-1 with 1 file(s)" in first
+    assert second == []

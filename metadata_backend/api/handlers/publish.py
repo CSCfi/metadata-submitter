@@ -449,6 +449,7 @@ class PublishAPIHandler(RESTAPIHandler):
 
         inbox_files = await file_provider_service.list_submission_inbox_files(user_id, submission_id)
 
+        added = 0
         for inbox_file in inbox_files:
             file_path = inbox_file.inbox_path
 
@@ -460,4 +461,8 @@ class PublishAPIHandler(RESTAPIHandler):
             if file_path.startswith(thumbnails_prefix) and file_path.lower().endswith(".jpg.c4gh"):
                 submission_file = File(submissionId=submission_id, path=file_path)
                 await file_service.add_file(submission_file, SubmissionWorkflow.BP)
-                LOG.info("Added thumbnail file '%s' to submission '%s'", file_path, submission_id)
+                added += 1
+                LOG.debug("Added thumbnail file '%s' to submission '%s'", file_path, submission_id)
+
+        if added:
+            LOG.info("Added %d thumbnail file(s) to submission '%s'", added, submission_id)
