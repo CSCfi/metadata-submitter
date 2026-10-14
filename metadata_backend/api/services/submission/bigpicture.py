@@ -588,7 +588,7 @@ class BigpictureObjectSubmissionService(ObjectSubmissionService):
                 raise UserException(f"Invalid file name: {obj.filename}. Expected file names: {', '.join(filenames)}.")
 
             if filename_lower in filenames_seen:
-                raise ValueError(f"Duplicate file name: {obj.filename}")
+                raise UserException(f"Duplicate file name: {obj.filename}")
 
             filenames_seen.add(filename_lower)
 
@@ -608,7 +608,7 @@ class BigpictureObjectSubmissionService(ObjectSubmissionService):
         :param project_id: The project id.
         :param objects: The metadata object documents.
         :returns: The submission document.
-        :raises UserErrors: If case of any user errors.
+        :raises UserException: In case of any user errors.
         """
 
         # Store all XMLs except DataCite XML.
@@ -645,7 +645,7 @@ class BigpictureObjectSubmissionService(ObjectSubmissionService):
         :param submission_id: The submission id.
         :param objects: The metadata object documents.
         :returns: The submission document.
-        :raises UserErrors: If case of any user errors.
+        :raises UserException: In case of any user errors.
         """
         # Update all other XMLs except DataCite XML.
         submission = await super().update(user_id, project_id, submission_id, objects)

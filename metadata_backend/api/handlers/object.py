@@ -16,6 +16,7 @@ from ...helpers.logger import LOG
 from ..exceptions import SystemException, UserException
 from ..models.models import Object
 from ..models.submission import Submission, SubmissionWorkflow
+from ..processors.exceptions import invalid_documents_as_user_errors
 from ..processors.xml.datacite import DATACITE_OBJECT_TYPE, DATACITE_SCHEMA
 from ..processors.xml.fega import FEGA_XML_OBJECT_CONFIG
 from ..processors.xml.models import XmlObjectConfig
@@ -70,7 +71,8 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         # Process submission.
         object_submission_service = await self._get_object_submission_service(workflow)
-        submission = await object_submission_service.create(user_id, project_id, objects)
+        with invalid_documents_as_user_errors():
+            submission = await object_submission_service.create(user_id, project_id, objects)
 
         return submission
 
@@ -184,7 +186,8 @@ class ObjectAPIHandler(RESTAPIHandler):
         files = await self.get_files(request)
         objects = await ObjectAPIHandler._get_object_submission_files(files)
         object_submission_service = await self._get_object_submission_service(workflow)
-        await object_submission_service.update(user_id, project_id, submission_id, objects)
+        with invalid_documents_as_user_errors():
+            await object_submission_service.update(user_id, project_id, submission_id, objects)
 
         return Response(status_code=status.HTTP_200_OK)
 

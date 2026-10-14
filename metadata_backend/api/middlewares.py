@@ -9,7 +9,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from ..api.errors import problem_response
+from ..api.errors import app_exception_response, server_error_response
 from ..api.exceptions import AppException, SystemException, UnauthorizedUserException
 from ..api.models.models import User
 from ..api.services.auth import AuthService
@@ -169,10 +169,10 @@ async def _send_error_response(scope: Scope, receive: Receive, send: Send, exc: 
     """Send error response for middleware exceptions."""
     request = Request(scope, receive)
     if isinstance(exc, AppException):
-        response: Response = problem_response(request, exc.status_code, str(exc))
+        response: Response = app_exception_response(request, exc)
     else:
         LOG.error("Unexpected middleware exception: %s", exc)
-        response = problem_response(request, 500, "Unexpected error")
+        response = server_error_response(request, 500, "Unexpected error")
     await response(scope, receive, send)
 
 

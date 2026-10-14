@@ -5,6 +5,7 @@ import pytest
 from lxml import etree
 from lxml.etree import _Element as Element  # noqa
 
+from metadata_backend.api.processors.exceptions import InvalidDocumentException
 from metadata_backend.api.processors.models import ObjectIdentifier
 from metadata_backend.api.processors.xml.models import (
     XmlIdentifierPath,
@@ -638,14 +639,51 @@ async def test_mandatory_and_single():
     XmlDocumentsProcessor(_get_config(False, False), xml)
     XmlDocumentsProcessor(_get_config(True, False), xml)
 
-    with pytest.raises(ValueError, match=f"Expecting exactly one '{object_type}' metadata object but found 2."):
+    with pytest.raises(
+        InvalidDocumentException, match=f"Expecting exactly one '{object_type}' metadata object but found 2."
+    ):
         XmlDocumentsProcessor(_get_config(True, True), xml)
 
-    with pytest.raises(ValueError, match=f"Expecting at most one '{object_type}' metadata object but found 2."):
+    with pytest.raises(
+        InvalidDocumentException, match=f"Expecting at most one '{object_type}' metadata object but found 2."
+    ):
         XmlDocumentsProcessor(_get_config(False, True), xml)
 
-    with pytest.raises(ValueError, match=f"Expecting at least one '{object_type}' metadata object but found 0."):
+    with pytest.raises(
+        InvalidDocumentException, match=f"Expecting at least one '{object_type}' metadata object but found 0."
+    ):
         XmlDocumentsProcessor(_get_config(True, False), XmlDocumentProcessor.parse_xml("<Tests></Tests>"))
+
+
+async def test_processing_instruction_in_set_ignored():
+    """Test that a processing instruction in a set element is not processed as a metadata object."""
+    name = f"{str(uuid.uuid4())}"
+
+    xml_str = f"""
+    <Tests>
+        <?test instruction?>
+        <Test>
+          <Name>{name}</Name>
+        </Test>
+    </Tests>
+    """
+
+    config = XmlObjectConfig(
+        schema_paths=[XmlSchemaPath(schema_type="test_schema_type", set_path="/Tests", root_paths=["/Test"])],
+        object_paths=[
+            XmlObjectPaths(
+                schema_type="test_schema_type",
+                object_type="test_object_type",
+                root_path="/Test",
+                identifier_paths=[XmlIdentifierPath(name_path="Name", id_path="ID")],
+            ),
+        ],
+        reference_paths=[],
+    )
+
+    processor = XmlDocumentsProcessor(config, XmlDocumentsProcessor.parse_xml(xml_str))
+
+    assert [i.name for i in processor.get_object_identifiers()] == [name]
 
 
 def assert_object(

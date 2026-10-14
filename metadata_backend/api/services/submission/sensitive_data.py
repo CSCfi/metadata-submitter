@@ -1,7 +1,7 @@
 """Service for processing Sensitive Data submissions."""
 
 import json
-from typing import override
+from typing import Any, override
 
 from ....database.postgres.services.file import FileService
 from ....database.postgres.services.object import ObjectService
@@ -84,8 +84,9 @@ class SensitiveDataObjectSubmissionService(ObjectSubmissionService):
         :return: The submission document.
         """
 
-        return Submission.model_validate_json(
-            self._submission_document, context={"projectId": project_id, "workflow": SubmissionWorkflow.SD.value}
+        return Submission.model_validate(
+            self._parse_submission_document(),
+            context={"projectId": project_id, "workflow": SubmissionWorkflow.SD.value},
         )
 
     @override
@@ -96,12 +97,25 @@ class SensitiveDataObjectSubmissionService(ObjectSubmissionService):
         :param old_submission: The existing submission.
         :return: The submission document.
         """
-        changes = json.loads(self._submission_document)
-        if not isinstance(changes, dict):
-            raise UserException(f"The '{SD_FILE}' document must be a JSON object.")
+        changes = self._parse_submission_document()
 
         # Merge changes to the existing submission document.
         return Submission.model_validate({**to_json_dict(old_submission), **changes})
+
+    def _parse_submission_document(self) -> dict[str, Any]:
+        """
+        Parse the submission document as a JSON object.
+
+        :return: The parsed submission document.
+        :raises UserException: If the document is not a JSON object.
+        """
+        try:
+            document = json.loads(self._submission_document)
+        except json.JSONDecodeError as e:
+            raise UserException(f"The '{SD_FILE}' document is not valid JSON: {e}") from e
+        if not isinstance(document, dict):
+            raise UserException(f"The '{SD_FILE}' document must be a JSON object.")
+        return document
 
     @override
     def prepare_files(self, submission_id: str) -> list[File]:
