@@ -7,6 +7,30 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ## [Unreleased]
 
+### Removed
+
+- the `USER_ERRORS` and `PRESERVED_ERRORS` tuples and the duplicated exception handling in `ObjectSubmissionService.create()` and `update()`.
+- `problem_response()` and `problem_json()`. Use `user_error_response()`, `validation_error_response()`, `server_error_response()` or `app_exception_response()` instead.
+
+### Added
+
+- (users) The OpenAPI schema documents the error responses of every operation: user errors (4xx), validation errors (400) and server errors (5xx). The 422 response, which the API never returns, is no longer documented.
+- `UserErrorProblem`, `ValidationErrorProblem` and `ServerErrorProblem` models for the problem JSON error responses, used by both the exception handlers and the OpenAPI schema.
+- `InvalidDocumentException`, raised by the XML processors for an invalid metadata document. It is a `SystemException`, since a stored document can also be invalid; `invalid_documents_as_user_errors()` reports it as a user error in the `/submit` handlers.
+
+### Fixed
+
+- (users) Processing instructions in XML set elements are ignored. Before, a processing instruction inside a set element was processed as a metadata object and caused a 500 error.
+- (users) Errors in the service's own code while processing a submission, and invalid stored metadata documents found when publishing, are reported as 500 errors instead of 400.
+
+### Changed
+
+- (admins) Every server error (`SystemException`), including external service errors (502/504), is logged with a full traceback.
+- (admins) Errors in the service's own code during a submission are logged with a full traceback as unexpected errors instead of as user errors.
+- (users) A `submission.json` that is not valid JSON is reported as a user error when a submission is created, as it already was when one is updated, instead of as a validation error.
+- (users) Authentication failures, unknown paths and unsupported methods also return a user error in problem JSON, instead of only a `detail`.
+- (users) User errors (HTTP 4xx) are returned as `{"detail": "User error", "errors": [...]}`. Read the error messages from `errors` instead of `detail`. Validation errors keep their shape: `{"detail": "Validation error", "errors": [{"field": ..., "message": ...}]}`.
+
 ## [2026.10.1] - 2026-10-13
 
 ### Fixed
