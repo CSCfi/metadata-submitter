@@ -6,11 +6,8 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from typing import Sequence, cast
 
-from fastapi import HTTPException
-from lxml.etree import XMLSyntaxError
 from lxml.etree import _ElementTree as ElementTree  # noqa
-from pydantic import BaseModel, ValidationError
-from starlette import status
+from pydantic import BaseModel
 
 from ....database.postgres.services.file import FileService
 from ....database.postgres.services.object import ObjectService, UnknownObjectException
@@ -21,17 +18,9 @@ from ...models.models import File
 from ...models.submission import Submission, SubmissionWorkflow
 from ...processors.models import ObjectIdentifier
 from ...processors.processors import DocumentsProcessor, ObjectProcessor
-from ...processors.xml.exceptions import SchemaValidationException
 from ...processors.xml.processors import XmlObjectProcessor, XmlProcessor
 from ..accession import generate_accession
 from ..project import ProjectService
-
-# Errors whose message is written for the submitter. Any other error, for example one raised by the
-# database, may carry SQL, parameters or configuration and is left to the generic 500 handler.
-USER_ERRORS = (UserException, SchemaValidationException, XMLSyntaxError, ValueError)
-# Errors that already have a status and a message meant for the client. ValidationError must be
-# matched before USER_ERRORS, since it is a ValueError.
-PRESERVED_ERRORS = (ValidationError, SystemException, HTTPException, UserExceptions)
 
 
 class ObjectSubmission(BaseModel):
@@ -146,115 +135,105 @@ class ObjectSubmissionService(ABC):
         :param project_id: The project id.
         :param objects: The metadata object documents.
         :returns: The submission document.
-        :raises UserErrors: If case of any user errors.
+        :raises UserException: In case of any user errors.
         """
 
         errors: list[str] = []
 
-        try:
-            # Check that user is affiliated with the project.
-            await self._project_service.verify_user_project(user_id, project_id)
+        # Check that user is affiliated with the project.
+        await self._project_service.verify_user_project(user_id, project_id)
 
-            processor = self.create_processor(objects)
+        processor = self.create_processor(objects)
 
-            if processor:
-                #  Validate documents using workflow specific rules.
-                self.validate_documents()
+        if processor:
+            #  Validate documents using workflow specific rules.
+            self.validate_documents()
 
-            object_identifiers: Sequence[ObjectIdentifier] = []
-            if processor:
-                # Get metadata object identifiers from the documents processor
-                # that contains all XMLs.
-                object_identifiers = processor.get_object_identifiers()
+        object_identifiers: Sequence[ObjectIdentifier] = []
+        if processor:
+            # Get metadata object identifiers from the documents processor
+            # that contains all XMLs.
+            object_identifiers = processor.get_object_identifiers()
 
-                # Check that no metadata objects are accessioned.
-                for identifier in object_identifiers:
+            # Check that no metadata objects are accessioned.
+            for identifier in object_identifiers:
+                if identifier.id is not None:
+                    errors.append(
+                        f"Update of previously submitted '{identifier.schema_type}' "
+                        f"metadata object '{identifier.id}' is not supported"
+                    )
+
+            if not self._supports_references:
+                # Check that no metadata object references are accessioned.
+                for identifier in processor.get_object_references():
                     if identifier.id is not None:
                         errors.append(
-                            f"Update of previously submitted '{identifier.schema_type}' "
-                            f"metadata object '{identifier.id}' is not supported"
+                            f"Reference to previously submitted '{identifier.schema_type}' metadata object "
+                            f"'{identifier.id}' is not supported"
                         )
 
-                if not self._supports_references:
-                    # Check that no metadata object references are accessioned.
-                    for identifier in processor.get_object_references():
-                        if identifier.id is not None:
-                            errors.append(
-                                f"Reference to previously submitted '{identifier.schema_type}' metadata object "
-                                f"'{identifier.id}' is not supported"
-                            )
+            # Report metadata objects that already have accessions, and references to metadata objects
+            # outside the submission, which are allowed only if supports_references is set.
+            if errors:
+                raise UserExceptions(errors)
 
-                # Report metadata objects that already have accessions, and references to metadata objects
-                # outside the submission, which are allowed only if supports_references is set.
-                if errors:
-                    raise UserExceptions(errors)
+        if processor:
+            # Assign metadata object accessions.
+            for identifier in object_identifiers:
+                identifier.id = generate_accession(self._workflow, identifier.object_type)
+                processor.set_object_id(identifier)
 
-            if processor:
-                # Assign metadata object accessions.
-                for identifier in object_identifiers:
-                    identifier.id = generate_accession(self._workflow, identifier.object_type)
-                    processor.set_object_id(identifier)
+            # Check that all metadata object references have accessions.
+            unknown_references = {
+                f"Unknown '{identifier.schema_type}' metadata object '{identifier.name}' reference"
+                for identifier in processor.get_references_without_ids()
+            }
+            if unknown_references:
+                raise UserExceptions(sorted(unknown_references))
 
-                # Check that all metadata object references have accessions.
-                unknown_references = {
-                    f"Unknown '{identifier.schema_type}' metadata object '{identifier.name}' reference"
-                    for identifier in processor.get_references_without_ids()
-                }
-                if unknown_references:
-                    raise UserExceptions(sorted(unknown_references))
+        # Assign submission accession.
+        submission_id = self.assign_submission_accession()
 
-            # Assign submission accession.
-            submission_id = self.assign_submission_accession()
+        if submission_id is None:
+            raise SystemException("Failed to assign submission id")
 
-            if submission_id is None:
-                raise SystemException("Failed to assign submission id")
+        # Prepare submission document.
+        submission = self.prepare_create_submission(project_id, submission_id)
 
-            # Prepare submission document.
-            submission = self.prepare_create_submission(project_id, submission_id)
+        # Prepare submission files.
+        files = self.prepare_files(submission_id)
 
-            # Prepare submission files.
-            files = self.prepare_files(submission_id)
+        # Create and save submission and metadata objects.
 
-            # Create and save submission and metadata objects.
+        # Add submission.
+        saved_submission_id = await self._submission_service.add_submission(submission, submission_id=submission_id)
+        if saved_submission_id != submission_id:
+            raise SystemException("Failed to save generated submission id")
 
-            # Add submission.
-            saved_submission_id = await self._submission_service.add_submission(submission, submission_id=submission_id)
-            if saved_submission_id != submission_id:
-                raise SystemException("Failed to save generated submission id")
+        # Get saved submission.
+        submission = Submission.model_validate(await self._submission_service.get_submission_by_id(submission_id))
 
-            # Get saved submission.
-            submission = Submission.model_validate(await self._submission_service.get_submission_by_id(submission_id))
+        if processor:
+            # Add metadata objects.
+            for identifier in object_identifiers:
+                # Get the object processor for each object identifier retrieved
+                # earlier from the documents processor. One object processor contains
+                # the XML for one individual accessioned object within an XML document.
+                object_processor = cast(XmlObjectProcessor, await self._get_object_processor(identifier, processor))
 
-            if processor:
-                # Add metadata objects.
-                for identifier in object_identifiers:
-                    # Get the object processor for each object identifier retrieved
-                    # earlier from the documents processor. One object processor contains
-                    # the XML for one individual accessioned object within an XML document.
-                    object_processor = cast(XmlObjectProcessor, await self._get_object_processor(identifier, processor))
-
-                    await self._add_object(
-                        project_id,
-                        submission_id,
-                        identifier.name,
-                        identifier.object_type,
-                        identifier.id,
-                        object_processor.get_object_title(),
-                        object_processor.get_object_description(),
-                        object_processor.xml,
-                    )
-            # Save files.
-            for file in files:
-                await self._file_service.add_file(file, self._workflow)
-
-        except PRESERVED_ERRORS:
-            # Preserve errors that already have a status and a message meant for the client.
-            raise
-        except USER_ERRORS as e:
-            if isinstance(e, UserException) and e.status_code != status.HTTP_400_BAD_REQUEST:
-                raise
-            errors.append(str(e))
-            raise UserExceptions(errors) from e
+                await self._add_object(
+                    project_id,
+                    submission_id,
+                    identifier.name,
+                    identifier.object_type,
+                    identifier.id,
+                    object_processor.get_object_title(),
+                    object_processor.get_object_description(),
+                    object_processor.xml,
+                )
+        # Save files.
+        for file in files:
+            await self._file_service.add_file(file, self._workflow)
 
         return submission
 
@@ -269,7 +248,7 @@ class ObjectSubmissionService(ABC):
         :param submission_id: The submission id.
         :param objects: The metadata object documents.
         :returns: The submission document.
-        :raises UserErrors: If case of any user errors.
+        :raises UserException: In case of any user errors.
         """
 
         if not self._supports_updates:
@@ -277,183 +256,171 @@ class ObjectSubmissionService(ABC):
 
         errors: list[str] = []
 
-        try:
-            # Check that user is affiliated with the project.
-            await self._project_service.verify_user_project(user_id, project_id)
+        # Check that user is affiliated with the project.
+        await self._project_service.verify_user_project(user_id, project_id)
 
-            new_object_identifiers = []
-            updated_object_identifiers = []
-            deleted_objects = []
+        new_object_identifiers = []
+        updated_object_identifiers = []
+        deleted_objects = []
 
-            processor = self.create_processor(objects)
+        processor = self.create_processor(objects)
 
-            if processor:
-                #  Validate XML documents in addition to the XML schema and reference validation.
-                self.validate_documents()
-                # Validate the update against the stored submission using workflow specific rules.
-                await self.validate_update(submission_id)
+        if processor:
+            #  Validate XML documents in addition to the XML schema and reference validation.
+            self.validate_documents()
+            # Validate the update against the stored submission using workflow specific rules.
+            await self.validate_update(submission_id)
 
-            if processor:
-                # Get metadata object identifiers.
-                identifiers = processor.get_object_identifiers()
+        if processor:
+            # Get metadata object identifiers.
+            identifiers = processor.get_object_identifiers()
 
-                # Get existing metadata objects.
-                old_objects = await self._object_service.get_objects(submission_id)
-                old_name_to_id: defaultdict[str, dict[str, str]] = defaultdict(dict)
-                old_id_to_name: defaultdict[str, dict[str, str]] = defaultdict(dict)
-                for obj in old_objects:
-                    old_name_to_id[obj.objectType][obj.name] = obj.objectId
-                    old_id_to_name[obj.objectType][obj.objectId] = obj.name
+            # Get existing metadata objects.
+            old_objects = await self._object_service.get_objects(submission_id)
+            old_name_to_id: defaultdict[str, dict[str, str]] = defaultdict(dict)
+            old_id_to_name: defaultdict[str, dict[str, str]] = defaultdict(dict)
+            for obj in old_objects:
+                old_name_to_id[obj.objectType][obj.name] = obj.objectId
+                old_id_to_name[obj.objectType][obj.objectId] = obj.name
 
-                def _is_old_object_by_name(_identifier: ObjectIdentifier) -> bool:
-                    return _identifier.name in old_name_to_id.get(_identifier.object_type, {})
+            def _is_old_object_by_name(_identifier: ObjectIdentifier) -> bool:
+                return _identifier.name in old_name_to_id.get(_identifier.object_type, {})
 
-                def _is_old_object_by_id(_identifier: ObjectIdentifier) -> bool:
-                    return _identifier.id in old_id_to_name.get(_identifier.object_type, {})
+            def _is_old_object_by_id(_identifier: ObjectIdentifier) -> bool:
+                return _identifier.id in old_id_to_name.get(_identifier.object_type, {})
 
-                def _get_old_id_by_name(_identifier: ObjectIdentifier) -> str | None:
-                    return old_name_to_id.get(_identifier.object_type, {}).get(_identifier.name)
+            def _get_old_id_by_name(_identifier: ObjectIdentifier) -> str | None:
+                return old_name_to_id.get(_identifier.object_type, {}).get(_identifier.name)
 
-                def _get_old_name_by_id(_identifier: ObjectIdentifier) -> str | None:
-                    return old_id_to_name.get(_identifier.object_type, {}).get(_identifier.id)
+            def _get_old_name_by_id(_identifier: ObjectIdentifier) -> str | None:
+                return old_id_to_name.get(_identifier.object_type, {}).get(_identifier.id)
 
-                # Find deleted objects.
-                identifier_names = {identifier.name for identifier in identifiers}
-                identifier_ids = {identifier.id for identifier in identifiers}
-                deleted_objects = [
-                    obj
-                    for obj in old_objects
-                    if obj.name not in identifier_names and obj.objectId not in identifier_ids
-                ]
+            # Find deleted objects.
+            identifier_names = {identifier.name for identifier in identifiers}
+            identifier_ids = {identifier.id for identifier in identifiers}
+            deleted_objects = [
+                obj for obj in old_objects if obj.name not in identifier_names and obj.objectId not in identifier_ids
+            ]
 
-                # Find old objects and assign ids.
-                # Find new objects.
-                for identifier in identifiers:
-                    if _is_old_object_by_name(identifier):
-                        # Updated object: name found for object type in existing submission.
-                        old_id = _get_old_id_by_name(identifier)
-                        if identifier.id and identifier.id != old_id:
-                            errors.append(
-                                f"Accession conflict in metadata object '{identifier.object_type}'. "
-                                f"Expected: '{old_id}', Found: '{identifier.id}'"
-                            )
-                        else:
-                            # Make sure the identifier and all references have name and id.
-                            identifier.id = old_id
-                            processor.set_object_id(identifier)
-                            updated_object_identifiers.append(identifier)
-                    elif _is_old_object_by_id(identifier):
-                        # Updated object: id found for object type in existing submission.
-                        old_name = _get_old_name_by_id(identifier)
-                        if identifier.name and identifier.name != old_name:
-                            errors.append(
-                                f"Name conflict in metadata object '{identifier.object_type}'. "
-                                f"Expected: '{old_name}', Found: '{identifier.name}'"
-                            )
-                        else:
-                            # Make sure the identifier and all references have name and id.
-                            identifier.name = old_name
-                            processor.set_object_id(identifier)
-                            updated_object_identifiers.append(identifier)
+            # Find old objects and assign ids.
+            # Find new objects.
+            for identifier in identifiers:
+                if _is_old_object_by_name(identifier):
+                    # Updated object: name found for object type in existing submission.
+                    old_id = _get_old_id_by_name(identifier)
+                    if identifier.id and identifier.id != old_id:
+                        errors.append(
+                            f"Accession conflict in metadata object '{identifier.object_type}'. "
+                            f"Expected: '{old_id}', Found: '{identifier.id}'"
+                        )
                     else:
-                        if identifier.id is not None:
+                        # Make sure the identifier and all references have name and id.
+                        identifier.id = old_id
+                        processor.set_object_id(identifier)
+                        updated_object_identifiers.append(identifier)
+                elif _is_old_object_by_id(identifier):
+                    # Updated object: id found for object type in existing submission.
+                    old_name = _get_old_name_by_id(identifier)
+                    if identifier.name and identifier.name != old_name:
+                        errors.append(
+                            f"Name conflict in metadata object '{identifier.object_type}'. "
+                            f"Expected: '{old_name}', Found: '{identifier.name}'"
+                        )
+                    else:
+                        # Make sure the identifier and all references have name and id.
+                        identifier.name = old_name
+                        processor.set_object_id(identifier)
+                        updated_object_identifiers.append(identifier)
+                else:
+                    if identifier.id is not None:
+                        errors.append(
+                            f"Unexpected accession {identifier.id} in metadata object '{identifier.schema_type}'."
+                        )
+                    # New object.
+                    new_object_identifiers.append(identifier)
+
+            if not self._supports_references:
+                # Check that no metadata objects are referenced outside the submission.
+                for ref_identifier in processor.get_object_references():
+                    if ref_identifier.id is not None:
+                        error = True
+                        for identifier in identifiers:
+                            if ref_identifier.id == identifier.id:
+                                error = False
+                                break
+                        if error:
                             errors.append(
-                                f"Unexpected accession {identifier.id} in metadata object '{identifier.schema_type}'."
+                                f"Unsupported reference to '{ref_identifier.schema_type}' "
+                                f"metadata object '{ref_identifier.id}' outside the submission."
                             )
-                        # New object.
-                        new_object_identifiers.append(identifier)
 
-                if not self._supports_references:
-                    # Check that no metadata objects are referenced outside the submission.
-                    for ref_identifier in processor.get_object_references():
-                        if ref_identifier.id is not None:
-                            error = True
-                            for identifier in identifiers:
-                                if ref_identifier.id == identifier.id:
-                                    error = False
-                                    break
-                            if error:
-                                errors.append(
-                                    f"Unsupported reference to '{ref_identifier.schema_type}' "
-                                    f"metadata object '{ref_identifier.id}' outside the submission."
-                                )
+            # Report accession and name conflicts with the existing metadata objects, unexpected
+            # accessions in new metadata objects, and references to metadata objects outside the
+            # submission, which are allowed only if supports_references is set.
+            if errors:
+                raise UserExceptions(errors)
 
-                # Report accession and name conflicts with the existing metadata objects, unexpected
-                # accessions in new metadata objects, and references to metadata objects outside the
-                # submission, which are allowed only if supports_references is set.
-                if errors:
-                    raise UserExceptions(errors)
+        if processor:
+            # Assign metadata object accessions.
+            for identifier in new_object_identifiers:
+                identifier.id = generate_accession(self._workflow, identifier.object_type)
+                processor.set_object_id(identifier)
 
-            if processor:
-                # Assign metadata object accessions.
-                for identifier in new_object_identifiers:
-                    identifier.id = generate_accession(self._workflow, identifier.object_type)
-                    processor.set_object_id(identifier)
+            # Check that all metadata object references have accessions.
+            unknown_references = {
+                f"Unknown '{identifier.schema_type}' metadata object '{identifier.name}' reference"
+                for identifier in processor.get_references_without_ids()
+            }
+            if unknown_references:
+                raise UserExceptions(sorted(unknown_references))
 
-                # Check that all metadata object references have accessions.
-                unknown_references = {
-                    f"Unknown '{identifier.schema_type}' metadata object '{identifier.name}' reference"
-                    for identifier in processor.get_references_without_ids()
-                }
-                if unknown_references:
-                    raise UserExceptions(sorted(unknown_references))
+        # Prepare submission document.
+        old_submission = await self._submission_service.get_submission_by_id(submission_id)
+        submission = self.prepare_update_submission(old_submission)
 
-            # Prepare submission document.
-            old_submission = await self._submission_service.get_submission_by_id(submission_id)
-            submission = self.prepare_update_submission(old_submission)
+        # Prepare submission files.
+        files = self.prepare_files(submission_id)
 
-            # Prepare submission files.
-            files = self.prepare_files(submission_id)
+        # Create and save submission and metadata objects.
+        # Update submission.
+        await self._submission_service.update_submission(submission_id, to_json_dict(submission))
 
-            # Create and save submission and metadata objects.
-            # Update submission.
-            await self._submission_service.update_submission(submission_id, to_json_dict(submission))
+        # Get saved submission.
+        submission = Submission.model_validate(await self._submission_service.get_submission_by_id(submission_id))
 
-            # Get saved submission.
-            submission = Submission.model_validate(await self._submission_service.get_submission_by_id(submission_id))
+        if processor:
+            # Add new metadata objects.
+            for identifier in new_object_identifiers:
+                object_processor = cast(XmlObjectProcessor, await self._get_object_processor(identifier, processor))
+                await self._add_object(
+                    project_id,
+                    submission_id,
+                    identifier.name,
+                    identifier.object_type,
+                    identifier.id,
+                    object_processor.get_object_title(),
+                    object_processor.get_object_description(),
+                    object_processor.xml,
+                )
 
-            if processor:
-                # Add new metadata objects.
-                for identifier in new_object_identifiers:
-                    object_processor = cast(XmlObjectProcessor, await self._get_object_processor(identifier, processor))
-                    await self._add_object(
-                        project_id,
-                        submission_id,
-                        identifier.name,
-                        identifier.object_type,
-                        identifier.id,
-                        object_processor.get_object_title(),
-                        object_processor.get_object_description(),
-                        object_processor.xml,
-                    )
+            # Update existing metadata objects.
+            for identifier in updated_object_identifiers:
+                object_processor = cast(XmlObjectProcessor, await self._get_object_processor(identifier, processor))
+                await self._update_object(
+                    identifier.id,
+                    object_processor.get_object_title(),
+                    object_processor.get_object_description(),
+                    object_processor.xml,
+                )
+            # Delete removed metadata objects.
+            for obj in deleted_objects:
+                await self._object_service.delete_object_by_id(obj.objectId)
 
-                # Update existing metadata objects.
-                for identifier in updated_object_identifiers:
-                    object_processor = cast(XmlObjectProcessor, await self._get_object_processor(identifier, processor))
-                    await self._update_object(
-                        identifier.id,
-                        object_processor.get_object_title(),
-                        object_processor.get_object_description(),
-                        object_processor.xml,
-                    )
-                # Delete removed metadata objects.
-                for obj in deleted_objects:
-                    await self._object_service.delete_object_by_id(obj.objectId)
-
-            # Replace files.
-            async for file in self._file_service.get_files(submission_id=submission_id):
-                await self._file_service.delete_file_by_id(file.fileId)
-            for file in files:
-                await self._file_service.add_file(file, self._workflow)
-
-        except PRESERVED_ERRORS:
-            # Preserve errors that already have a status and a message meant for the client.
-            raise
-        except USER_ERRORS as e:
-            if isinstance(e, UserException) and e.status_code != status.HTTP_400_BAD_REQUEST:
-                raise
-            errors.append(str(e))
-            raise UserExceptions(errors) from e
+        # Replace files.
+        async for file in self._file_service.get_files(submission_id=submission_id):
+            await self._file_service.delete_file_by_id(file.fileId)
+        for file in files:
+            await self._file_service.add_file(file, self._workflow)
 
         return submission
 

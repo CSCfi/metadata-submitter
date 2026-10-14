@@ -66,6 +66,7 @@ from metadata_backend.api.processors.xml.processors import (
     XmlProcessor,
 )
 from metadata_backend.api.services.accession import generate_bp_accession_prefix
+from metadata_backend.api.services.submission.bigpicture import BigpictureObjectSubmissionService
 from metadata_backend.conf.deployment import deployment_config
 from metadata_backend.database.postgres.services.file import FileService
 from tests.unit.patches.user import (
@@ -96,6 +97,39 @@ def prepare_file_data_bp(_files) -> list[tuple[str, tuple[str, BinaryIO, str]]]:
     for name, _bytes in _files.items():
         files.append((name, (name, _bytes, "application/xml")))
     return files
+
+
+async def test_submission_sd_invalid_json_rejected(csc_client):
+    """Test that a submission.json that is not valid JSON is a user error."""
+
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+    project_id = MOCK_PROJECT_ID
+
+    with patch_verify_user_project, patch_verify_authorization:
+        response = csc_client.post(
+            f"{api_prefix_v1}/submit?projectId={project_id}", files=prepare_file_data_sd(io.BytesIO(b"{"))
+        )
+        assert response.status_code == 400
+        problem_json = response.json()
+        assert problem_json["detail"] == "User error"
+        assert len(problem_json["errors"]) == 1
+        assert problem_json["errors"][0].startswith("The 'submission.json' document is not valid JSON")
+
+        response = csc_client.post(
+            f"{api_prefix_v1}/submit?projectId={project_id}", files=prepare_file_data_sd(sd_submission_dict())
+        )
+        assert response.status_code == 200
+        submission_id = Submission.model_validate(response.json()).submissionId
+
+        response = csc_client.patch(
+            f"{api_prefix_v1}/submit/{submission_id}?projectId={project_id}",
+            files=prepare_file_data_sd(io.BytesIO(b"{")),
+        )
+        assert response.status_code == 400
+        problem_json = response.json()
+        assert problem_json["detail"] == "User error"
+        assert len(problem_json["errors"]) == 1
+        assert problem_json["errors"][0].startswith("The 'submission.json' document is not valid JSON")
 
 
 async def test_submission_sd(csc_client):
@@ -870,6 +904,34 @@ async def test_submission_bp_duplicate_dataset_alias_rejected(nbis_client):
         ]
 
 
+async def test_submission_bp_user_error(nbis_client):
+    """Test that a submitted document that is not well-formed is a user error on create and update."""
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+
+    def _files(*, invalid: bool):
+        _, files = bp_submission_documents(is_datacite=False)
+        if invalid:
+            files["policy.xml"] = io.BytesIO(b"<POLICY>")
+        return prepare_file_data_bp(files)
+
+    def _assert_user_error(response):
+        assert response.status_code == 400, response.text
+        problem_json = response.json()
+        assert problem_json["detail"] == "User error"
+        assert problem_json["errors"] == [
+            "Premature end of data in tag POLICY line 1, line 1, column 9 (<string>, line 1)"
+        ]
+
+    with patch_get_user_projects, patch_verify_user_project, patch_verify_authorization:
+        _assert_user_error(nbis_client.post(f"{api_prefix_v1}/submit", files=_files(invalid=True)))
+
+        response = nbis_client.post(f"{api_prefix_v1}/submit", files=_files(invalid=False))
+        assert response.status_code == 200, response.text
+        submission_id = Submission.model_validate(response.json()).submissionId
+
+        _assert_user_error(nbis_client.patch(f"{api_prefix_v1}/submit/{submission_id}", files=_files(invalid=True)))
+
+
 async def test_submission_bp_unknown_reference_rejected(nbis_client):
     api_prefix_v1 = deployment_config().API_PREFIX_V1
 
@@ -909,6 +971,27 @@ async def test_submission_bp_database_error_not_disclosed(nbis_client):
         assert "errors" not in problem_json
         assert "INSERT" not in response.text
         assert "secret-parameter" not in response.text
+
+
+async def test_submission_bp_value_error(nbis_client):
+    """Test that a ValueError during POST /v1/submit is a 500 error."""
+
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+
+    _, files = bp_submission_documents(is_datacite=False)
+
+    with (
+        patch_get_user_projects,
+        patch_verify_user_project,
+        patch_verify_authorization,
+        patch.object(BigpictureObjectSubmissionService, "prepare_files", side_effect=ValueError("value error")),
+    ):
+        response = nbis_client.post(f"{api_prefix_v1}/submit", files=prepare_file_data_bp(files))
+        assert response.status_code == 500
+        problem_json = response.json()
+        assert problem_json["detail"] == "Unexpected error"
+        assert "errors" not in problem_json
+        assert "value error" not in response.text
 
 
 async def test_get_submission_by_id_or_name(nbis_client):

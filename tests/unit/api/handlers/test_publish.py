@@ -84,7 +84,8 @@ async def test_publish_submission_sd(csc_client, submission_repository, object_r
         response = csc_client.patch(f"{api_prefix_v1}/publish/{submission_id}")
         data = response.json()
         assert response.status_code == 400
-        assert data["detail"] == f"Submission '{submission_id}' is not linked to any bucket."
+        assert data["detail"] == "User error"
+        assert data["errors"] == [f"Submission '{submission_id}' is not linked to any bucket."]
 
     file_provider_cls = "metadata_backend.api.services.file.FileProviderService"
 
@@ -123,7 +124,8 @@ async def test_publish_submission_sd(csc_client, submission_repository, object_r
         response = csc_client.patch(f"{api_prefix_v1}/publish/{submission_id}")
         data = response.json()
         assert response.status_code == 400
-        assert data["detail"] == f"Submission '{submission_id}' does not have any data files."
+        assert data["detail"] == "User error"
+        assert data["errors"] == [f"Submission '{submission_id}' does not have any data files."]
 
         # Mock file provider
         mock_file_provider.return_value = FileProviderService.Files(
@@ -396,6 +398,79 @@ async def test_publish_submission_bp_non_clinical(nbis_client, submission_reposi
         assert registration.remsUrl is None
 
 
+async def test_publish_submission_bp_invalid_stored_policy(nbis_client, submission_repository, object_repository):
+    """Test that an invalid stored policy XML is a server error, not a user error."""
+
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+
+    rems = Rems(
+        organizationId=MOCK_REMS_DEFAULT_ORGANISATION_ID,
+        workflowId=MOCK_REMS_DEFAULT_WORKFLOW_ID,
+        licenses=[MOCK_REMS_DEFAULT_LICENSE_ID],
+    )
+
+    workflow = SubmissionWorkflow.BP
+
+    submission_entity = create_submission_entity(
+        workflow=workflow,
+        metadata_version="2.0",
+        document={SUB_FIELD_METADATA: SUBMISSION_METADATA, SUB_FIELD_REMS: to_json_dict(rems)},
+    )
+    submission_id = await submission_repository.add_submission(submission_entity)
+
+    def _object(object_type: str, document: str | None = None) -> ObjectEntity:
+        return create_object_entity(
+            project_id=submission_entity.project_id,
+            submission_id=submission_id,
+            object_type=object_type,
+            document=document,
+        )
+
+    await object_repository.add_object(
+        _object(BP_DATASET_OBJECT_TYPE, "<DATASET><METADATA_STANDARD>2.0.0</METADATA_STANDARD></DATASET>"), workflow
+    )
+    # The stored policy is not well-formed XML.
+    await object_repository.add_object(_object(BP_POLICY_OBJECT_TYPE, "<POLICY>"), workflow)
+
+    with (
+        patch_verify_user_project,
+        patch_verify_authorization,
+        patch(
+            "metadata_backend.api.handlers.publish.upload_bp_metadata_xmls",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "metadata_backend.api.services.file.S3InboxSDAService.find_missing_files", new_callable=AsyncMock
+        ) as mock_find_missing_files,
+        patch(
+            "metadata_backend.api.services.file.S3InboxSDAService.list_submission_inbox_files", new_callable=AsyncMock
+        ) as mock_list_submission_inbox_files,
+        patch(
+            "metadata_backend.api.services.file.S3InboxSDAService.find_orphaned_files", new_callable=AsyncMock
+        ) as mock_find_orphaned_files,
+        patch_datacite_create_draft_doi(f"doi_{str(uuid.uuid4())}/doi_{str(uuid.uuid4())}"),
+        patch_datacite_publish(),
+        patch_rems_create_resource(),
+        patch_rems_create_catalogue_item(),
+    ):
+        mock_list_submission_inbox_files.return_value = []
+        mock_find_missing_files.return_value = []
+        mock_find_orphaned_files.return_value = []
+
+        response = nbis_client.patch(
+            f"{api_prefix_v1}/publish/{submission_id}", headers={"Authorization": "Bearer oidc-token"}
+        )
+
+        assert response.status_code == 500, response.text
+        problem_json = response.json()
+        assert problem_json["detail"].startswith("Premature end of data in tag POLICY")
+        assert "errors" not in problem_json
+
+    stored = await submission_repository.get_submission_by_id(submission_id)
+    assert stored is not None
+    assert not stored.is_published
+
+
 @pytest.mark.parametrize(
     ("published_to_rems", "licenses", "license_created"),
     [
@@ -595,10 +670,11 @@ async def test_publish_submission_bp_adds_thumbnail_jpgs_before_orphan_check(
         data = response.json()
 
         assert response.status_code == 400
-        assert data["detail"] == (
+        assert data["detail"] == "User error"
+        assert data["errors"] == [
             f"Unexpected files found in the inbox for submission '{submission_id}': "
             f"{unencrypted_path}, {unexpected_path}."
-        )
+        ]
 
         mock_find_missing_files.assert_awaited_once()
         orphan_call = mock_find_orphaned_files.await_args

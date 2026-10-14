@@ -29,10 +29,10 @@ async def test_sd_submission(sd_client, sd_submission, sd_submission_update):
     async with sd_client.post(f"{api_prefix_v1}/submissions", json=to_json_dict(submission)) as resp:
         res = await resp.json()
         assert resp.status == 400
-        assert (
-            res["detail"]
-            == f"Submission with name '{submission.name}' already exists in project {submission.projectId}"
-        )
+        assert res["detail"] == "User error"
+        assert res["errors"] == [
+            f"Submission with name '{submission.name}' already exists in project {submission.projectId}"
+        ]
 
     # Get submission.
     saved_submission = await get_submission(sd_client, submission_id)

@@ -130,7 +130,8 @@ class PublishAPIHandler(RESTAPIHandler):
             return True
 
         config = get_bp_xml_object_config(submission)
-        return is_clinical_policy(XmlObjectProcessor(config, policies[0]))
+        policy = XmlObjectProcessor(config, policies[0])
+        return is_clinical_policy(policy)
 
     async def _check_rems_license(self, submission: Submission, rems: Rems) -> None:
         """Check that the REMS license can be created.

@@ -1,3 +1,4 @@
+import json
 from contextvars import ContextVar
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, Mock
@@ -266,6 +267,14 @@ async def test_auth_middleware_missing_authorization_returns_401():
     assert sent_messages
     assert sent_messages[0]["type"] == "http.response.start"
     assert sent_messages[0]["status"] == 401
+    assert json.loads(sent_messages[1]["body"]) == {
+        "type": "about:blank",
+        "title": "Unauthorized",
+        "detail": "User error",
+        "status": 401,
+        "instance": f"{deployment_config().API_PREFIX_V1}/test",
+        "errors": ["Authorization failed"],
+    }
 
 
 async def test_auth_middleware_does_not_replace_started_response(monkeypatch):

@@ -19,7 +19,7 @@ from starlette.types import ASGIApp
 
 from . import __version__
 from .api.dependencies import verify_sync
-from .api.errors import register_exception_handlers
+from .api.errors import ERRORS_DESCRIPTION, add_error_responses, register_exception_handlers
 from .api.handlers.auth import AuthAPIHandler
 from .api.handlers.files import FilesAPIHandler
 from .api.handlers.health import HealthAPIHandler
@@ -159,7 +159,9 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
 
     title = f"SD Submit API ({config.DEPLOYMENT})"
     version = __version__
-    description = "Please login or provide a JWT or API key bearer token to use the Submission endpoints."
+    description = (
+        "Please login or provide a JWT or API key bearer token to use the Submission endpoints.\n" + ERRORS_DESCRIPTION
+    )
 
     app = FastAPI(
         title=title,
@@ -482,6 +484,9 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
             description=description,
             routes=app.routes,
         )
+
+        # Document the problem JSON error responses.
+        add_error_responses(openapi_schema)
 
         # Add security scheme.
         openapi_schema["components"]["securitySchemes"] = {

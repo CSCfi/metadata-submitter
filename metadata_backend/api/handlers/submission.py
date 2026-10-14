@@ -4,14 +4,14 @@ from datetime import date, datetime, time
 from math import ceil
 from typing import Annotated, Any
 
-from fastapi import Body, HTTPException, Query, Request, Response, status
+from fastapi import Body, Query, Request, Response, status
 from fastapi.responses import JSONResponse
 
 from ...api.dependencies import SubmissionIdOrNamePathParam, SubmissionIdPathParam, UserDependency, WorkflowDependency
 from ...conf.deployment import deployment_config
 from ...database.postgres.services.submission import SubmissionService, UnknownSubmissionUserException
 from ...helpers.logger import LOG
-from ..exceptions import UserException
+from ..exceptions import NotFoundUserException, UserException
 from ..json import to_json_dict
 from ..models.models import File, Registration, SubmissionId
 from ..models.submission import PaginatedSubmissions, PaginatedSubmissionsPage, Submission, SubmissionWorkflow
@@ -251,7 +251,7 @@ class SubmissionAPIHandler(RESTAPIHandler):
         if existing_submission:
             detail = f"Submission with name '{submission.name}' already exists in project {submission.projectId}"
             LOG.error(detail)
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
+            raise UserException(detail)
 
         submission_id = await submission_service.add_submission(submission)
         return SubmissionId(submissionId=submission_id)
@@ -364,5 +364,5 @@ class SubmissionAPIHandler(RESTAPIHandler):
         registration = await registration_service.get_registration(submission_id)
 
         if not registration:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Registration not found")
+            raise NotFoundUserException("Registration not found")
         return registration

@@ -238,5 +238,6 @@ class BigpictureRemsLicenseProvider(RemsLicenseProvider):
             return None
 
         version = get_bp_version_from_submission(submission)
-        localization = create_policy_license(XmlObjectProcessor(BP_XML_OBJECT_CONFIGS[version], policies[0]), version)
+        policy = XmlObjectProcessor(BP_XML_OBJECT_CONFIGS[version], policies[0])
+        localization = create_policy_license(policy, version)
         return {_BP_POLICY_REMS_LICENSE_LANGUAGE: localization}
