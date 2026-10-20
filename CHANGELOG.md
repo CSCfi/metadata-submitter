@@ -14,17 +14,26 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- (admins) SERVER_PORT environment variable to override the server port (default 5430 for CSC, 5431 for NBIS). It must be between 1 and 65535.
 - (users) The OpenAPI schema documents the error responses of every operation: user errors (4xx), validation errors (400) and server errors (5xx). The 422 response, which the API never returns, is no longer documented.
 - `UserErrorProblem`, `ValidationErrorProblem` and `ServerErrorProblem` models for the problem JSON error responses, used by both the exception handlers and the OpenAPI schema.
 - `InvalidDocumentException`, raised by the XML processors for an invalid metadata document. It is a `SystemException`, since a stored document can also be invalid; `invalid_documents_as_user_errors()` reports it as a user error in the `/submit` handlers.
 
 ### Fixed
 
+- (users) An unknown objectType or schemaType in an objects request is a 400. Before, an unknown schemaType was a 500 when listing objects, and getting documents with an unknown type returned a 200 with an empty body.
 - (users) Processing instructions in XML set elements are ignored. Before, a processing instruction inside a set element was processed as a metadata object and caused a 500 error.
 - (users) Errors in the service's own code while processing a submission, and invalid stored metadata documents found when publishing, are reported as 500 errors instead of 400.
 
 ### Changed
 
+- (users) Listing the objects of an SD submission without a filter returns an empty list instead of a 400. An objectType or schemaType for an SD submission is a 400 "Unknown object type" or "Unknown schema type" instead of "Unsupported workflow".
+- (users) Listing objects with an unknown objectType is a 400 instead of an empty list.
+- Publish rejects submissions of another workflow.
+- DataCite metadata is required for the SD workflow, not the CSC deployment.
+- DEPLOYMENT is a `Deployment` enum, and a deployment's workflow is `Deployment.workflow`.
+- Move deployment-specific wiring from server.py into deployment profiles.
+- Move workflow-specific behaviour from the object and publish handlers into workflow profiles.
 - (admins) Every server error (`SystemException`), including external service errors (502/504), is logged with a full traceback.
 - (admins) Errors in the service's own code during a submission are logged with a full traceback as unexpected errors instead of as user errors.
 - (users) A `submission.json` that is not valid JSON is reported as a user error when a submission is created, as it already was when one is updated, instead of as a validation error.
