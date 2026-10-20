@@ -4,24 +4,17 @@ from datetime import datetime
 
 from fastapi import Request
 
-from ...api.dependencies import SubmissionIdPathParam, UserDependency
-from ...conf.conf import DEPLOYMENT_CSC
+from ...api.dependencies import SubmissionIdPathParam, UserDependency, WorkflowDependency
 from ...conf.deployment import deployment_config
 from ...conf.discovery import discovery_config
 from ...helpers.logger import LOG
 from ..exceptions import SystemException, UserException, external_service_call
 from ..models.datacite import DataCiteMetadata
-from ..models.models import File, Registration, SubmissionId
-from ..models.submission import Rems, Submission, SubmissionMetadata, SubmissionWorkflow
-from ..processors.xml.bigpicture import (
-    BP_POLICY_OBJECT_TYPE,
-)
-from ..processors.xml.processors import XmlObjectProcessor
-from ..services.bigpicture import upload_bp_metadata_xmls
+from ..models.models import Registration, SubmissionId
+from ..models.submission import Rems, Submission, SubmissionMetadata
 from ..services.datacite import DataciteService
 from ..services.rems import resolve_rems_license_ids
-from ..services.submission.bigpicture_policy import is_clinical_policy
-from ..services.submission.bigpicture_version import get_bp_xml_object_config
+from ..services.workflow import workflow_profile
 from .restapi import RESTAPIHandler
 from .submission import SubmissionAPIHandler
 
@@ -37,20 +30,7 @@ class PublishAPIHandler(RESTAPIHandler):
         :param registration: The registration
         :returns: The discovery URL
         """
-        if submission.workflow == SubmissionWorkflow.BP:
-            # Use dataset id for Bigpicture.
-            _id = submission.submissionId
-        else:
-            # Use Metax id if available. Otherwise use DOI, and if that is not available,
-            # use the submission id.
-            if registration.metaxId:
-                _id = registration.metaxId
-            elif registration.doi:
-                _id = registration.doi
-            else:
-                # Use submission id.
-                _id = submission.submissionId
-
+        _id = workflow_profile(submission.workflow).discovery_id(submission, registration)
         return discovery_config().DISCOVERY_URL.format(id=_id)
 
     async def _register_draft_doi(self) -> str:
@@ -118,20 +98,7 @@ class PublishAPIHandler(RESTAPIHandler):
         :param submission: The submission.
         :return: True if the submission is published to REMS.
         """
-
-        if submission.workflow != SubmissionWorkflow.BP:
-            return True
-
-        # A non-clinical Bigpicture dataset is not published to REMS.
-        policies = [
-            xml async for xml in self._services.object.get_documents(submission.submissionId, BP_POLICY_OBJECT_TYPE)
-        ]
-        if not policies:
-            return True
-
-        config = get_bp_xml_object_config(submission)
-        policy = XmlObjectProcessor(config, policies[0])
-        return is_clinical_policy(policy)
+        return await workflow_profile(submission.workflow).is_published_to_rems(self._services, submission)
 
     async def _check_rems_license(self, submission: Submission, rems: Rems) -> None:
         """Check that the REMS license can be created.
@@ -165,15 +132,7 @@ class PublishAPIHandler(RESTAPIHandler):
         with external_service_call(f"Failed to publish submission '{registration.submissionId}' to REMS."):
             # Create REMS resource.
             if not registration.remsResourceId:
-                if submission.workflow == SubmissionWorkflow.BP:
-                    # Use Bigpicture dataset id as the REMS resource id.
-                    resid = submission.submissionId
-                elif registration.doi is not None:
-                    # Use DOI as the REMS resource id.
-                    resid = registration.doi
-                else:
-                    # If DOI is unavailable use submission id as the REMS resource id.
-                    resid = registration.submissionId
+                resid = workflow_profile(submission.workflow).rems_resource_id(submission, registration)
 
                 license_ids = await resolve_rems_license_ids(
                     self._handlers.rems,
@@ -229,15 +188,15 @@ class PublishAPIHandler(RESTAPIHandler):
             await self._handlers.metax.publish_dataset(registration.metaxId, registration.doi)
 
     @staticmethod
-    def _require_doi(submission_id: str, datacite: DataCiteMetadata) -> None:
-        if deployment_config().DEPLOYMENT == DEPLOYMENT_CSC:
-            if datacite is None:
-                raise UserException(f"Submission '{submission_id}' does not have required DataCite information.")
+    def _require_datacite(submission: Submission, datacite: DataCiteMetadata | None) -> None:
+        if workflow_profile(submission.workflow).requires_datacite and datacite is None:
+            raise UserException(f"Submission '{submission.submissionId}' does not have required DataCite information.")
 
     async def publish_submission(
         self,
         req: Request,
         user: UserDependency,
+        workflow: WorkflowDependency,
         submission_id: SubmissionIdPathParam,
     ) -> SubmissionId:
         """Publish submission, ingest data files and register submission in discovery services."""
@@ -250,25 +209,16 @@ class PublishAPIHandler(RESTAPIHandler):
 
         # Check that the user can modify this submission.
         await SubmissionAPIHandler.check_submission_modifiable(
-            user.user_id, submission_id, submission_service, project_service
+            user.user_id, submission_id, submission_service, project_service, workflow=workflow
         )
 
-        workflow = await self._services.submission.get_workflow(submission_id)
-
-        if workflow == SubmissionWorkflow.SD and not no_files:
-            await self._add_sd_files_for_publish(submission_id)
-
-        elif workflow == SubmissionWorkflow.BP and not no_files:
-            # Upload Bigpicture submission metadata XML files to SDA inbox.
-            headers = req.headers
-            jwt = self._services.auth._get_bearer_token(headers)
-            if not jwt:
-                raise UserException("Missing OIDC access token in Authorization bearer header for SDA inbox upload.")
-            await upload_bp_metadata_xmls(self._services, submission_id, user.user_id, jwt)
-
-            await self._check_bp_files_for_publish(user.user_id, submission_id)
-
         submission = await submission_service.get_submission_by_id(submission_id)
+
+        if not no_files:
+            jwt = self._services.auth._get_bearer_token(req.headers)
+            await workflow_profile(submission.workflow).prepare_publish(
+                self._services, submission_id, user.user_id, jwt
+            )
 
         # Get DataCite metadata.
         datacite = None
@@ -277,7 +227,7 @@ class PublishAPIHandler(RESTAPIHandler):
             # Set DataCite publication year.
             datacite.publicationYear = datetime.now().year
 
-        self._require_doi(submission_id, datacite)
+        self._require_datacite(submission, datacite)
 
         # Get REMS metadata.
         rems = submission.rems
@@ -322,7 +272,7 @@ class PublishAPIHandler(RESTAPIHandler):
 
         registration: Registration = await registration_service.get_registration(submission_id)
 
-        self._require_doi(submission_id, datacite)
+        self._require_datacite(submission, datacite)
 
         # Create registration.
         if registration is None:
@@ -331,15 +281,8 @@ class PublishAPIHandler(RESTAPIHandler):
                 # Create DOI if DataCite metadata is available.
                 doi = await self._register_draft_doi()
 
-            if submission.workflow == SubmissionWorkflow.BP:
-                # The REMS catalogue item title format is:
-                # <dataset short name> (<REMS organisation id>, <dataset id>).
-                # The dataset short name, and dataset id are available from submission
-                # name and id, respectively. The registration title is later used as
-                # the REMS catalogue item title.
-                title = f"{submission.name} ({rems.organizationId}, {submission.submissionId})"
-            else:
-                title = submission.title
+            # The registration title is later used as the DataCite, Metax and REMS catalogue item title.
+            title = workflow_profile(submission.workflow).registration_title(submission, rems)
 
             registration = self._create_registration(submission_id, title, submission.description, doi)
             await registration_service.add_registration(registration)
@@ -384,86 +327,3 @@ class PublishAPIHandler(RESTAPIHandler):
             description=description,
             doi=doi,
         )
-
-    async def _add_sd_files_for_publish(self, submission_id: str) -> None:
-        """Add all files from the linked bucket to the submission and validate at least one file exists.
-
-        :param submission_id: The submission id
-        """
-        bucket = await self._services.submission.get_bucket(submission_id)
-        if not bucket:
-            raise UserException(f"Submission '{submission_id}' is not linked to any bucket.")
-
-        files = await self._services.file_provider.list_files_in_bucket(bucket)
-        for file in files.root:
-            # Check that we have not added the file already.
-            # For now, accept that file bytes might have changed and some files
-            # might have been removed if a call to this endpoint has failed before.
-            if not await self._services.file.is_file_by_path(submission_id, file.path):
-                await self._services.file.add_file(
-                    File(submissionId=submission_id, path=file.path, bytes=file.bytes),
-                    SubmissionWorkflow.SD,
-                )
-
-        # Check that the submission has at least one file.
-        if await self._services.file.count_files(submission_id) == 0:
-            raise UserException(f"Submission '{submission_id}' does not have any data files.")
-
-    async def _check_bp_files_for_publish(self, user_id: str, submission_id: str) -> None:
-        """Check files in the S3 inbox for Bigpicture submission and sync with submission files.
-
-        :param user_id: The user id
-        :param submission_id: The submission id
-        """
-        # Add any thumbnail files the user has uploaded to the inbox bucket for the submission as submission files.
-        await self._add_bp_thumbnail_files(submission_id, user_id)
-
-        submission_files = [file async for file in self._services.file.get_files(submission_id=submission_id)]
-        LOG.info("Found %d files in submission '%s'.", len(submission_files), submission_id)
-
-        # Check that all submission files are present in the S3 inbox.
-        missing_files = await self._services.file_provider.find_missing_files(user_id, submission_id, submission_files)
-        if missing_files:
-            missing_paths = ", ".join(sorted(missing_files))
-            raise UserException(f"Submission files for '{submission_id}' are missing from the inbox: {missing_paths}.")
-
-        # Check that the submission directory in the inbox doesn't have unexpected files anymore at this point.
-        unexpected_files = await self._services.file_provider.find_orphaned_files(
-            user_id, submission_id, submission_files
-        )
-        if unexpected_files:
-            unexpected_paths = ", ".join(sorted(unexpected_files))
-            raise UserException(
-                f"Unexpected files found in the inbox for submission '{submission_id}': {unexpected_paths}."
-            )
-
-    async def _add_bp_thumbnail_files(self, submission_id: str, user_id: str) -> None:
-        """Discover BP thumbnail files from inbox and add missing ones as submission files.
-
-        :param submission_id: The submission id
-        :param user_id: The user id
-        """
-        thumbnails_prefix = f"DATASET_{submission_id}/LANDING_PAGE/THUMBNAILS/"
-
-        file_service = self._services.file
-        file_provider_service = self._services.file_provider
-
-        inbox_files = await file_provider_service.list_submission_inbox_files(user_id, submission_id)
-
-        added = 0
-        for inbox_file in inbox_files:
-            file_path = inbox_file.inbox_path
-
-            # Skip adding files that may already be added to the submission.
-            if await file_service.is_file_by_path(submission_id, file_path):
-                continue
-
-            # Thumbnail files are expected to be in the LANDING_PAGE/THUMBNAILS directory AND have .jpg.c4gh extension
-            if file_path.startswith(thumbnails_prefix) and file_path.lower().endswith(".jpg.c4gh"):
-                submission_file = File(submissionId=submission_id, path=file_path)
-                await file_service.add_file(submission_file, SubmissionWorkflow.BP)
-                added += 1
-                LOG.debug("Added thumbnail file '%s' to submission '%s'", file_path, submission_id)
-
-        if added:
-            LOG.info("Added %d thumbnail file(s) to submission '%s'", added, submission_id)

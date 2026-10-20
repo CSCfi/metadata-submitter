@@ -44,22 +44,25 @@ export VAULT_ADDR=https://...
 make get_env
 ```
 
-Server listens on `localhost:5430` (CSC) or `localhost:5431` (NBIS).
+Server listens on `localhost:5430` (CSC) or `localhost:5431` (NBIS) by default; `SERVER_PORT` overrides the port.
 
 ## Architecture
 
 ### Dual-deployment design
 
-The app has two deployment modes controlled by the `DEPLOYMENT` env var: `CSC` (default) and `NBIS`. `server.py:create_app()` conditionally wires different services, routes, and behaviours depending on the deployment. Key differences:
+The app has two deployment modes controlled by the `DEPLOYMENT` env var: `CSC` (default) and `NBIS`. Each has a profile in `deployment.py` (`CscDeploymentProfile`, `NbisDeploymentProfile`, looked up with `deployment_profile()`) that holds its default server port, the flags for the endpoints it serves, and the factory for its services and service handlers. `server.py:create_app()` wires the app from the profile rather than checking the deployment. Key differences:
 
 - **CSC**: OIDC login/logout routes, Keystone (OpenStack), Metax, PID, S3/Allas file provider, API key management, submission CRUD.
 - **NBIS**: DataCite DOIs, SDA Admin API, S3-Inbox file provider, background ingest scanner task (`SDAIngestService`), no OIDC login routes.
+
+Each submission workflow (SD, FEGA, Bigpicture) likewise has a profile in `api/services/workflow.py`, looked up with `workflow_profile()`, which holds its workflow-specific submission, publishing and metadata object behaviour. A deployment's workflow is `Deployment.workflow` (`conf/deployment.py`), kept off the profile so that `dependencies.py` need not import every service. A deployment accepts only submissions of its own workflow (`dependencies.py:get_workflow`).
 
 When working on CSC-side infrastructure (Allas/S3, Rahti, Pouta, Slurm), the `csc-docs` MCP server (configured in `.mcp.json`) can search `docs.csc.fi` for relevant reference material.
 
 ### Layered structure inside `metadata_backend/`
 
 ```
+deployment.py # Deployment profiles: per-deployment workflow, port, endpoints and services
 conf/         # Pydantic-settings config classes, one per external service
 services/     # HTTP client wrappers for external services (ServiceHandler base class)
 api/

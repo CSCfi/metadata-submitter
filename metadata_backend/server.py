@@ -5,7 +5,7 @@ import copy
 import logging
 from contextlib import asynccontextmanager
 from enum import Enum
-from typing import Any, AsyncGenerator, Final, TypeVar, override
+from typing import Any, AsyncGenerator, Final, override
 
 import uvicorn
 from fastapi import APIRouter, Depends, FastAPI, status
@@ -35,17 +35,8 @@ from .api.middlewares import AuthMiddleware, SessionMiddleware
 from .api.models.app import app_state
 from .api.models.submission import PaginatedSubmissions
 from .api.services.auth import AuthService
-from .api.services.bigpicture import BigpictureSyncMetadataProvider, read_bp_public_key
-from .api.services.crypt import Crypt4GHPublicKeyProvider
-from .api.services.file import S3AllasFileProviderService, S3InboxSDAService
 from .api.services.ingest import SDAIngestService
 from .api.services.openbao import OpenBaoService
-from .api.services.project import CscProjectService, NbisProjectService, ProjectService
-from .api.services.submission.bigpicture_policy import BigpictureRemsLicenseProvider
-from .conf.conf import (
-    DEPLOYMENT_CSC,
-    DEPLOYMENT_NBIS,
-)
 from .conf.database import database_config
 from .conf.deployment import deployment_config
 from .conf.openbao import openbao_config
@@ -67,19 +58,11 @@ from .database.postgres.services.file import FileService
 from .database.postgres.services.object import ObjectService
 from .database.postgres.services.registration import RegistrationService
 from .database.postgres.services.submission import SubmissionService
+from .deployment import ServiceHandlerType, deployment_profile
 from .health import DatabaseHealthHandler
 from .helpers.logger import LOG, CallbackQueryFilter
-from .services.admin_service import AdminServiceHandler
-from .services.auth_service import AuthServiceHandler
-from .services.datacite_service import DataciteServiceHandler
-from .services.keystone_service import KeystoneServiceHandler
-from .services.metax_service import MetaxServiceHandler
-from .services.pid_service import PIDServiceHandler
 from .services.rems_service import RemsServiceHandler
-from .services.ror_service import RorServiceHandler
 from .services.service_handler import ServiceHandler
-
-ServiceHandlerType = TypeVar("ServiceHandlerType", bound=ServiceHandler)
 
 GET: Final[list[str]] = ["GET"]
 POST: Final[list[str]] = ["POST"]
@@ -156,6 +139,7 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
     """
 
     config = deployment_config()
+    profile = deployment_profile()
 
     title = f"SD Submit API ({config.DEPLOYMENT})"
     version = __version__
@@ -203,14 +187,6 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
     auth_service = AuthService(api_key_repository)
     dispatch_service = DispatchService(dispatch_repository)
 
-    # Create project service.
-    project_service: ProjectService | None = None
-
-    if config.DEPLOYMENT == DEPLOYMENT_NBIS:
-        project_service = NbisProjectService()
-    elif config.DEPLOYMENT == DEPLOYMENT_CSC:
-        project_service = CscProjectService()
-
     # Create service handlers.
     def _create_handler(handler: ServiceHandlerType) -> ServiceHandlerType:
         async def _shutdown() -> None:
@@ -219,35 +195,8 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
         app.router.add_event_handler("shutdown", _shutdown)
         return handler
 
-    metax_handler = None
-    ror_handler = None
-    datacite_handler = None
-    pid_handler = None
-    admin_handler = None
-    keystone_handler = None
-    auth_handler = None
-    license_provider = None
-    sync_provider = None
-
-    if config.DEPLOYMENT == DEPLOYMENT_CSC:
-        metax_handler = _create_handler(MetaxServiceHandler())
-        ror_handler = _create_handler(RorServiceHandler())
-        pid_handler = _create_handler(PIDServiceHandler(metax_handler))
-        keystone_handler = _create_handler(KeystoneServiceHandler())
-        auth_handler = _create_handler(AuthServiceHandler())
-
-    if config.DEPLOYMENT == DEPLOYMENT_NBIS:
-        datacite_handler = _create_handler(DataciteServiceHandler(metax_handler))
-        admin_handler = _create_handler(AdminServiceHandler())
-        license_provider = BigpictureRemsLicenseProvider(object_service)
-        sync_provider = BigpictureSyncMetadataProvider(object_service, file_service)
-
-    # Create file provider service.
-    file_provider_service = (
-        S3AllasFileProviderService()
-        if config.DEPLOYMENT == DEPLOYMENT_CSC
-        else S3InboxSDAService(admin_handler, Crypt4GHPublicKeyProvider(read_bp_public_key))
-    )
+    # Create deployment-specific services and service handlers.
+    deployment_services = profile.create_services(_create_handler, object_service, file_service)
 
     rems_handler = _create_handler(RemsServiceHandler())
 
@@ -261,28 +210,28 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
         dispatch=dispatch_service,
         # Other services.
         auth=auth_service,
-        project=project_service,
-        file_provider=file_provider_service,
-        license_provider=license_provider,
+        project=deployment_services.project,
+        file_provider=deployment_services.file_provider,
+        license_provider=deployment_services.license_provider,
     )
 
     # Provide service handlers for FastAPI routes.
     handlers = RESTAPIServiceHandlers(
-        datacite=datacite_handler,
-        pid=pid_handler,
-        metax=metax_handler,
-        ror=ror_handler,
+        datacite=deployment_services.datacite,
+        pid=deployment_services.pid,
+        metax=deployment_services.metax,
+        ror=deployment_services.ror,
         rems=rems_handler,
-        keystone=keystone_handler,
-        auth=auth_handler,
-        admin=admin_handler,
+        keystone=deployment_services.keystone,
+        auth=deployment_services.auth,
+        admin=deployment_services.admin,
         database=DatabaseHealthHandler(lambda: state.session_factory),
         openbao=openbao_service,
     )
 
-    # Provide ingest scanner service for NBIS deployment.
+    # Provide ingest scanner service.
     app.state.ingest_scanner_service = None
-    if config.DEPLOYMENT == DEPLOYMENT_NBIS and admin_handler is not None and not session:
+    if profile.sda_ingest and deployment_services.admin is not None and not session:
         app.state.ingest_scanner_service = SDAIngestService(
             services,
             handlers,
@@ -297,7 +246,7 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
     _health = HealthAPIHandler(services, handlers)
     _key = KeyAPIHandler(services, handlers)
     _user = UserAPIHandler(services, handlers)
-    _auth = AuthAPIHandler(auth_handler)
+    _auth = AuthAPIHandler(deployment_services.auth)
 
     # API router (authorization required).
     #
@@ -355,8 +304,7 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
         response_model=PaginatedSubmissions,
         tags=submission_tag,
     )
-    if config.DEPLOYMENT == DEPLOYMENT_CSC:
-        # Create, update, delete /submissions endpoints are not supported for NBIS deployment.
+    if profile.submission_endpoints:
         api_router.add_api_route(
             "/submissions",
             _submission.create_submission,
@@ -392,13 +340,13 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
     )
 
     # Key routes.
-    if config.DEPLOYMENT == DEPLOYMENT_CSC:
+    if profile.api_key_endpoints:
         api_router.add_api_route("/api/keys", _key.create_api_key, methods=POST, tags=key_tag)
         api_router.add_api_route("/api/keys", _key.delete_api_key, methods=DELETE, tags=key_tag)
         api_router.add_api_route("/api/keys", _key.get_api_keys, methods=GET, tags=key_tag)
 
     # File routes.
-    if config.DEPLOYMENT == DEPLOYMENT_CSC:
+    if profile.bucket_endpoints:
         api_router.add_api_route("/buckets", _file.get_project_buckets, methods=GET, tags=bucket_tag)
         api_router.add_api_route("/buckets/{bucket}/files", _file.get_files_in_bucket, methods=GET, tags=bucket_tag)
         api_router.add_api_route("/buckets/{bucket}", _file.grant_access_to_bucket, methods=["PUT"], tags=bucket_tag)
@@ -411,7 +359,7 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
     #
 
     auth_router = None
-    if config.DEPLOYMENT == DEPLOYMENT_CSC:
+    if profile.login_endpoints:
         auth_router = APIRouter(prefix=config.API_PREFIX, tags=["Authentication"])
         auth_router.add_api_route(path="/login", endpoint=_auth.login, methods=GET)
         auth_router.add_api_route(path="/callback", endpoint=_auth.callback, methods=GET, include_in_schema=False)
@@ -423,7 +371,7 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
     sync_router = None
     if sync_config().SYNC_CLIENTS:
         # Add sync routes only if SYNC_CLIENTS has been defined.
-        _sync = SyncAPIHandler(services, handlers, sync_provider)
+        _sync = SyncAPIHandler(services, handlers, deployment_services.sync_provider)
         sync_router = APIRouter(
             prefix=config.API_PREFIX_SYNC,
             tags=["Sync"],
@@ -431,7 +379,7 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
             dependencies=[Depends(verify_sync)],
         )
         sync_router.add_api_route("", _sync.list_published_submissions, methods=GET)
-        if sync_provider:
+        if deployment_services.sync_provider:
             sync_router.add_api_route(
                 "/{submissionId}",
                 _sync.get_submission_metadata,
@@ -532,9 +480,10 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
 
 def main() -> None:
     """Launch the FastAPI server."""
-    config = deployment_config()
     host = "0.0.0.0"  # nosec
-    port = 5430 if config.DEPLOYMENT == DEPLOYMENT_CSC else 5431
+    port = deployment_config().SERVER_PORT
+    if port is None:
+        port = deployment_profile().default_port
 
     # Once, before the workers start.
     if database_config().DATABASE_MIGRATE:

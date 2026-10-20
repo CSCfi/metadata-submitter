@@ -85,7 +85,7 @@ class SubmissionAPIHandler(RESTAPIHandler):
             # Check that the workflow matches.
             actual_workflow = await submission_service.get_workflow(submission_id)
             if workflow != actual_workflow:
-                raise UserException(f"Submission belongs to a different workflow: {actual_workflow}")
+                raise UserException(f"Submission belongs to a different workflow: '{actual_workflow.value}'")
 
         if project_id:
             # Check that the project matches.
