@@ -18,9 +18,9 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from metadata_backend.conf.admin import AdminConfig
 from metadata_backend.conf.bigpicture import BigpictureConfig
-from metadata_backend.conf.conf import DEPLOYMENT_CSC, DEPLOYMENT_NBIS
 from metadata_backend.conf.database import DatabaseConfig
 from metadata_backend.conf.datacite import DataciteConfig
+from metadata_backend.conf.deployment import Deployment
 from metadata_backend.conf.keystone import KeystoneConfig
 from metadata_backend.conf.ldap import CscLdapConfig
 from metadata_backend.conf.metax import MetaxConfig
@@ -237,7 +237,7 @@ def dispatch_service() -> DispatchService:
 
 @pytest.fixture
 def csc_client(monkeypatch, session) -> Generator[TestClient]:
-    monkeypatch.setenv("DEPLOYMENT", DEPLOYMENT_CSC)
+    monkeypatch.setenv("DEPLOYMENT", Deployment.CSC)
     monkeypatch.setenv("JWT_KEY", "bW9jay1zZWNyZXQtd2hpY2gtaXMtYXQtbGVhc3QtMzItYnl0ZXM=")
     app = create_app(session)
     with TestClient(app) as client:
@@ -246,7 +246,7 @@ def csc_client(monkeypatch, session) -> Generator[TestClient]:
 
 @pytest.fixture
 def nbis_client(monkeypatch, session) -> Generator[TestClient]:
-    monkeypatch.setenv("DEPLOYMENT", DEPLOYMENT_NBIS)
+    monkeypatch.setenv("DEPLOYMENT", Deployment.NBIS)
     monkeypatch.setenv("JWT_KEY", "bW9jay1zZWNyZXQtd2hpY2gtaXMtYXQtbGVhc3QtMzItYnl0ZXM=")
     monkeypatch.setenv("SYNC_CLIENTS", sync_clients((TEST_SYNC_ISSUER, TEST_SYNC_PUBLIC_KEY)))
     monkeypatch.setenv("SYNC_AUDIENCE", TEST_SYNC_AUDIENCE)

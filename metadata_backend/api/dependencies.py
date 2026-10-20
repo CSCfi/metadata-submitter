@@ -8,11 +8,10 @@ from fastapi.security.utils import get_authorization_scheme_param
 from starlette.requests import Request
 
 from ..api.models.models import User
-from ..conf.conf import DEPLOYMENT_CSC, DEPLOYMENT_NBIS
 from ..conf.deployment import deployment_config
 from ..conf.sync import sync_config
 from ..helpers.logger import LOG
-from .exceptions import SystemException, UnauthorizedUserException
+from .exceptions import UnauthorizedUserException
 from .models.app import request_state
 from .models.submission import SubmissionWorkflow
 
@@ -24,14 +23,7 @@ def get_user(request: Request) -> User:
 
 def get_workflow() -> SubmissionWorkflow:
     """Get deployment-specific workflow."""
-
-    if deployment_config().DEPLOYMENT == DEPLOYMENT_CSC:
-        return SubmissionWorkflow.SD
-
-    if deployment_config().DEPLOYMENT == DEPLOYMENT_NBIS:
-        return SubmissionWorkflow.BP
-
-    raise SystemException(f"No workflow specified for {deployment_config().DEPLOYMENT} deployment")
+    return deployment_config().DEPLOYMENT.workflow
 
 
 # The allowlist for algorithms the sync JWT tokens are signed with.

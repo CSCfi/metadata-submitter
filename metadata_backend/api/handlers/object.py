@@ -1,6 +1,6 @@
 """Object API handler."""
 
-from typing import Annotated, AsyncGenerator, AsyncIterator, Sequence
+from typing import Annotated, AsyncGenerator, AsyncIterator
 
 from fastapi import HTTPException, Query, Request, Response, status
 from fastapi.responses import StreamingResponse
@@ -15,16 +15,12 @@ from ...database.postgres.services.submission import UnknownSubmissionUserExcept
 from ...helpers.logger import LOG
 from ..exceptions import SystemException, UserException
 from ..models.models import Object
-from ..models.submission import Submission, SubmissionWorkflow
+from ..models.submission import Submission
 from ..processors.exceptions import invalid_documents_as_user_errors
 from ..processors.xml.datacite import DATACITE_OBJECT_TYPE, DATACITE_SCHEMA
-from ..processors.xml.fega import FEGA_XML_OBJECT_CONFIG
-from ..processors.xml.models import XmlObjectConfig
 from ..processors.xml.processors import XmlDocumentProcessor
-from ..services.submission.bigpicture import BigpictureObjectSubmissionService
-from ..services.submission.bigpicture_version import get_bp_xml_object_config
-from ..services.submission.sensitive_data import SensitiveDataObjectSubmissionService
-from ..services.submission.submission import ObjectSubmission, ObjectSubmissionService
+from ..services.submission.submission import ObjectSubmission
+from ..services.workflow import XmlSubmissionWorkflowProfile, workflow_profile
 from .restapi import RESTAPIHandler
 from .submission import SubmissionAPIHandler
 
@@ -70,7 +66,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         objects = await ObjectAPIHandler._get_object_submission_files(files)
 
         # Process submission.
-        object_submission_service = await self._get_object_submission_service(workflow)
+        object_submission_service = workflow_profile(workflow).object_submission_service(self._services)
         with invalid_documents_as_user_errors():
             submission = await object_submission_service.create(user_id, project_id, objects)
 
@@ -185,7 +181,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         # Update submission.
         files = await self.get_files(request)
         objects = await ObjectAPIHandler._get_object_submission_files(files)
-        object_submission_service = await self._get_object_submission_service(workflow)
+        object_submission_service = workflow_profile(workflow).object_submission_service(self._services)
         with invalid_documents_as_user_errors():
             await object_submission_service.update(user_id, project_id, submission_id, objects)
 
@@ -218,22 +214,14 @@ class ObjectAPIHandler(RESTAPIHandler):
         except UnknownSubmissionUserException:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
-        # Get workflow and metadata version from the submission.
-        submission = await submission_service.get_submission_by_id(submission_id)
-        workflow = submission.workflow
-
-        if workflow == SubmissionWorkflow.BP:
-            xml_config = get_bp_xml_object_config(submission)
-        elif workflow == SubmissionWorkflow.FEGA:
-            xml_config = FEGA_XML_OBJECT_CONFIG
-        else:
-            raise UserException(f"Unsupported workflow: {workflow.value}")
-
         if (schema_type is not None) and (object_type is not None):
             raise UserException("Specify either objectType or schemaType but not both.")
 
         # Get object types.
-        object_types = self._get_xml_object_types(xml_config, object_type, schema_type)
+        submission = await submission_service.get_submission_by_id(submission_id)
+        object_types = workflow_profile(submission.workflow).object_types(
+            submission, object_type=object_type, schema_type=schema_type
+        )
 
         # Get objects.
         objects = await object_service.get_objects(submission_id, object_types)
@@ -259,16 +247,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         submission_id = await SubmissionAPIHandler.check_submission_retrievable(
             user.user_id, submission_id, submission_service, project_service, project_id=project_id, search_name=True
         )
-        # Get workflow and metadata version from the submission.
         submission = await submission_service.get_submission_by_id(submission_id)
-        workflow = submission.workflow
-
-        if workflow == SubmissionWorkflow.BP:
-            xml_config = get_bp_xml_object_config(submission)
-        elif workflow == SubmissionWorkflow.FEGA:
-            xml_config = FEGA_XML_OBJECT_CONFIG
-        else:
-            raise UserException(f"Unsupported workflow: {workflow.value}")
 
         if not (schema_type is not None) ^ (object_type is not None):
             raise UserException("Either objectType or schemaType must be defined.")
@@ -279,14 +258,18 @@ class ObjectAPIHandler(RESTAPIHandler):
         # handled separately from these XMLs.
         is_datacite = object_type == DATACITE_OBJECT_TYPE or schema_type == DATACITE_SCHEMA
 
+        profile = workflow_profile(submission.workflow)
+        object_types = profile.object_types(submission, object_type=object_type, schema_type=schema_type)
+
+        # TODO(improve): documents in other formats than XML.
+        if not isinstance(profile, XmlSubmissionWorkflowProfile):
+            raise SystemException(
+                f"Workflow '{submission.workflow}' has no XML documents. Its object_types should have rejected "
+                "the request."
+            )
+        xml_config = profile.xml_config(submission)
+
         async def xmls() -> AsyncIterator[str]:
-
-            if is_datacite:
-                object_types: Sequence[str] = [DATACITE_OBJECT_TYPE]
-            else:
-                # Get object types.
-                object_types = self._get_xml_object_types(xml_config, object_type, schema_type)
-
             # Get objects.
             objects = await object_service.get_objects(
                 submission_id, object_types, object_id=object_id, name=object_name
@@ -347,43 +330,3 @@ class ObjectAPIHandler(RESTAPIHandler):
             raise UserException("No files in the multipart request")
 
         return objects
-
-    async def _get_object_submission_service(self, workflow: SubmissionWorkflow) -> ObjectSubmissionService:
-        """
-        Get object submission service.
-
-        :param workflow: The submission workflow.
-        :return: The object submission service.
-        """
-        project_service = self._services.project
-        submission_service = self._services.submission
-        object_service = self._services.object
-        file_service = self._services.file
-
-        if workflow == SubmissionWorkflow.SD:
-            return SensitiveDataObjectSubmissionService(
-                project_service, submission_service, object_service, file_service
-            )
-        elif workflow == SubmissionWorkflow.BP:
-            return BigpictureObjectSubmissionService(project_service, submission_service, object_service, file_service)
-        else:
-            raise UserException(f"Unsupported workflow: {workflow.value}")
-
-    @staticmethod
-    def _get_xml_object_types(
-        config: XmlObjectConfig, object_type: str | None = None, schema_type: str | None = None
-    ) -> Sequence[str] | None:
-        """
-        Get XML metadata object types.
-
-        :param config: The XML processor configuration.
-        :param object_type: The object type.
-        :param schema_type: The schema type.
-
-        :returns: The XML metadata object types.
-        """
-        if object_type is not None:
-            return [object_type]
-        if schema_type is not None:
-            return config.get_object_types(schema_type)
-        return None

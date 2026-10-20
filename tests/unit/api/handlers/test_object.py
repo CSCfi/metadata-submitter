@@ -1371,3 +1371,46 @@ async def list_metadata_objects(client, project_id, is_submission_name, submissi
     assert response.status_code == 200
     objects = Objects.model_validate(response.json()).root
     return objects
+
+
+@pytest.mark.parametrize("path", ["objects", "objects/docs"])
+@pytest.mark.parametrize(("query", "message"), [("objectType", "object type"), ("schemaType", "schema type")])
+async def test_get_objects_sd(csc_client, path, query, message):
+    """Test that an object or schema type is a user error for an SD submission, which has no metadata objects."""
+
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+    project_id = MOCK_PROJECT_ID
+
+    with patch_verify_user_project, patch_verify_authorization:
+        response = csc_client.post(
+            f"{api_prefix_v1}/submit?projectId={project_id}", files=prepare_file_data_sd(sd_submission_dict())
+        )
+        assert response.status_code == 200
+        submission_id = Submission.model_validate(response.json()).submissionId
+
+        response = csc_client.get(
+            f"{api_prefix_v1}/submissions/{submission_id}/{path}?projectId={project_id}&{query}=study"
+        )
+        assert response.status_code == 400
+        assert f"Unknown {message}: study" in response.text
+
+
+@pytest.mark.parametrize("path", ["objects", "objects/docs"])
+async def test_get_objects_bp_unknown_type(nbis_client, path):
+    """Test that an unknown schema or object type is a user error when listing or getting Bigpicture objects."""
+
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+    _, files = bp_submission_documents(is_datacite=False)
+
+    with patch_get_user_projects, patch_verify_user_project, patch_verify_authorization:
+        response = nbis_client.post(f"{api_prefix_v1}/submit", files=prepare_file_data_bp(files))
+        assert response.status_code == 200
+        submission_id = Submission.model_validate(response.json()).submissionId
+
+        response = nbis_client.get(f"{api_prefix_v1}/submissions/{submission_id}/{path}?schemaType=unknown")
+        assert response.status_code == 400
+        assert "Unknown schema type: unknown" in response.text
+
+        response = nbis_client.get(f"{api_prefix_v1}/submissions/{submission_id}/{path}?objectType=unknown")
+        assert response.status_code == 400
+        assert "Unknown object type: unknown" in response.text

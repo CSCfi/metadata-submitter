@@ -93,7 +93,7 @@ async def test_publish_submission_sd(csc_client, submission_repository, object_r
         patch_verify_user_project,
         patch_verify_authorization,
         patch(
-            "metadata_backend.api.handlers.publish.upload_bp_metadata_xmls",
+            "metadata_backend.api.services.workflow.upload_bp_metadata_xmls",
             new_callable=AsyncMock,
         ) as mock_upload_bp_metadata,
         # File provider
@@ -242,7 +242,7 @@ async def test_publish_submission_bp(nbis_client, submission_repository, object_
         patch_verify_user_project,
         patch_verify_authorization,
         patch(
-            "metadata_backend.api.handlers.publish.upload_bp_metadata_xmls",
+            "metadata_backend.api.services.workflow.upload_bp_metadata_xmls",
             new_callable=AsyncMock,
         ) as mock_upload_bp_metadata,
         patch(
@@ -358,7 +358,7 @@ async def test_publish_submission_bp_non_clinical(nbis_client, submission_reposi
         patch_verify_user_project,
         patch_verify_authorization,
         patch(
-            "metadata_backend.api.handlers.publish.upload_bp_metadata_xmls",
+            "metadata_backend.api.services.workflow.upload_bp_metadata_xmls",
             new_callable=AsyncMock,
         ),
         patch(
@@ -436,7 +436,7 @@ async def test_publish_submission_bp_invalid_stored_policy(nbis_client, submissi
         patch_verify_user_project,
         patch_verify_authorization,
         patch(
-            "metadata_backend.api.handlers.publish.upload_bp_metadata_xmls",
+            "metadata_backend.api.services.workflow.upload_bp_metadata_xmls",
             new_callable=AsyncMock,
         ),
         patch(
@@ -469,6 +469,41 @@ async def test_publish_submission_bp_invalid_stored_policy(nbis_client, submissi
     stored = await submission_repository.get_submission_by_id(submission_id)
     assert stored is not None
     assert not stored.is_published
+
+
+@pytest.mark.parametrize(
+    ("client_fixture", "workflow"),
+    [
+        pytest.param("csc_client", SubmissionWorkflow.BP, id="bp_submission_in_sd_deployment"),
+        pytest.param("nbis_client", SubmissionWorkflow.SD, id="sd_submission_in_bp_deployment"),
+    ],
+)
+@pytest.mark.parametrize("no_files", [False, True])
+async def test_publish_submission_of_other_workflow(request, submission_repository, client_fixture, workflow, no_files):
+    """Test that a deployment does not publish a submission of another workflow."""
+
+    client = request.getfixturevalue(client_fixture)
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+
+    submission_id = await submission_repository.add_submission(
+        create_submission_entity(
+            workflow=workflow, metadata_version="2.0" if workflow == SubmissionWorkflow.BP else None
+        )
+    )
+
+    with (
+        patch_verify_user_project,
+        patch_verify_authorization,
+        patch("metadata_backend.api.handlers.publish.workflow_profile") as mock_workflow_profile,
+    ):
+        response = client.patch(f"{api_prefix_v1}/publish/{submission_id}?no_files={str(no_files).lower()}")
+        assert response.status_code == 400
+        assert f"Submission belongs to a different workflow: '{workflow.value}'" in response.text
+        mock_workflow_profile.assert_not_called()
+
+        response = client.get(f"{api_prefix_v1}/submissions/{submission_id}")
+        assert response.status_code == 200
+        assert not Submission.model_validate(response.json()).published
 
 
 @pytest.mark.parametrize(
@@ -535,7 +570,7 @@ async def test_publish_submission_bp_fails_when_metadata_upload_fails(
         patch_verify_user_project,
         patch_verify_authorization,
         patch(
-            "metadata_backend.api.handlers.publish.upload_bp_metadata_xmls",
+            "metadata_backend.api.services.workflow.upload_bp_metadata_xmls",
             new_callable=AsyncMock,
             side_effect=SystemException("metadata upload failed"),
         ) as mock_upload_bp_metadata,
@@ -620,7 +655,7 @@ async def test_publish_submission_bp_adds_thumbnail_jpgs_before_orphan_check(
         patch_verify_user_project,
         patch_verify_authorization,
         patch(
-            "metadata_backend.api.handlers.publish.upload_bp_metadata_xmls",
+            "metadata_backend.api.services.workflow.upload_bp_metadata_xmls",
             new_callable=AsyncMock,
         ),
         patch(
