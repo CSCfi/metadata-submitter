@@ -85,7 +85,7 @@ class MockOpenBaoService(OpenBaoService):
     async def _transit(self, key_name: str, path: str, json: dict[str, Any]) -> dict[str, Any]:
         self.key_names.append(key_name)
 
-        if path == "transit/datakey/plaintext":
+        if path == "datakey/plaintext":
             data_key = AESGCM.generate_key(bit_length=json["bits"])
             return {
                 "plaintext": base64.b64encode(data_key).decode("ascii"),
@@ -93,10 +93,10 @@ class MockOpenBaoService(OpenBaoService):
                 "key_version": 1,
             }
 
-        if path == "transit/encrypt":
+        if path == "encrypt":
             return {"ciphertext": self._encrypt(base64.b64decode(json["plaintext"]))}
 
-        if path == "transit/decrypt":
+        if path == "decrypt":
             return {"plaintext": base64.b64encode(self._decrypt(json["ciphertext"])).decode("ascii")}
 
         raise AssertionError(f"Unexpected transit call: {path}")

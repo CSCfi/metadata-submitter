@@ -46,9 +46,16 @@ def service_account_token(monkeypatch, tmp_path):
     return path
 
 
-def _service(**overrides: str) -> OpenBaoService:
-    fields = {"OPENBAO_URL": URL, "OPENBAO_KUBERNETES_ROLE": ROLE, "OPENBAO_OBJECT_KEY_NAME": KEY_NAME}
-    return OpenBaoService(OpenBaoConfig(**(fields | overrides)))
+def _service(**config: str) -> OpenBaoService:
+    """
+    Create an OpenBao service that logs in with Kubernetes.
+
+    :param config: OpenBao settings to add or replace, for example OPENBAO_TRANSIT_MOUNT="my-transit".
+    """
+
+    defaults = {"OPENBAO_URL": URL, "OPENBAO_KUBERNETES_ROLE": ROLE, "OPENBAO_OBJECT_KEY_NAME": KEY_NAME}
+    # A setting in config replaces the default of the same name.
+    return OpenBaoService(OpenBaoConfig(**(defaults | config)))
 
 
 def _login_response(token: str = OPENBAO_TOKEN, lease: int = LEASE_SECONDS) -> httpx.Response:
