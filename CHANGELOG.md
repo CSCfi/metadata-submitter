@@ -29,6 +29,10 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Fixed
 
+- (users) Updating a submission no longer stores system fields such as datePublished.
+- (users) Updating a Bigpicture submission without datacite.xml also removes its DataCite metadata.
+- (users) Updating a Bigpicture submission deletes a removed metadata object even if an object of another type has the same alias.
+- The Bigpicture submission update keeps the DataCite object instead of deleting and recreating it.
 - (users) A retried publish no longer duplicates the mapped Metax fields, and a Metax draft with one of these fields as null no longer fails the publish.
 - (users) Creating an API key with an existing key id returns 400 instead of 500.
 - (users) The DataCite alternate identifier had its value and type swapped. The submission id is now the value and LocalID the type.
@@ -42,6 +46,9 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- A submission update ignores the same fields as a new submission, including those sent in the update.
+- A workflow now lists metadata object types that the generic update does not delete. Bigpicture lists the DataCite object.
+- The generic submission update finds removed metadata objects by object type and name, or object type and accession.
 - A duplicate API key id is detected from IntegrityError instead of PostgreSQL's error message.
 - The Metax mapper raises UserException instead of ValueError for metadata that can't be mapped.
 - MetaxMapper.map_metadata returns the mapped fields as MetaxMappedFields instead of appending them to the dataset read from Metax.
