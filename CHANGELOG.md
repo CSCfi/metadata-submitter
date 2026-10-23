@@ -27,6 +27,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- Update the uv base image to 0.13.5. Its pip 26.2.2 bundles certifi 2026.10.19, fixing XRAY-1139995.
 - (users) Listing the objects of an SD submission without a filter returns an empty list instead of a 400. An objectType or schemaType for an SD submission is a 400 "Unknown object type" or "Unknown schema type" instead of "Unsupported workflow".
 - (users) Listing objects with an unknown objectType is a 400 instead of an empty list.
 - Publish rejects submissions of another workflow.
