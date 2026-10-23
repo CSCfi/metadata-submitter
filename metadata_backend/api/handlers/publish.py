@@ -96,6 +96,15 @@ class PublishAPIHandler(RESTAPIHandler):
         with external_service_call(f"Failed to update submission '{registration.submissionId}' in Metax."):
             await self._handlers.metax.update_dataset_metadata(metadata, registration.metaxId, self._handlers.ror)
 
+    async def _validate_metax(self, submission: Submission) -> None:
+        """Check that the submission metadata can be mapped to Metax.
+
+        :param submission: The submission
+        :raises UserException: If the metadata can't be mapped to Metax.
+        """
+        with external_service_call(f"Failed to validate submission '{submission.submissionId}' for Metax."):
+            await self._handlers.metax.validate_dataset_metadata(submission.metadata, self._handlers.ror)
+
     async def _is_published_to_rems(self, submission: Submission) -> bool:
         """Whether the submission is published to REMS.
 
@@ -302,6 +311,11 @@ class PublishAPIHandler(RESTAPIHandler):
         registration_service = self._services.registration
 
         submission_id = submission.submissionId
+
+        # Check the metadata for Metax before anything is registered, so that a user error
+        # is reported before the DOI is published rather than after.
+        if self._handlers.metax is not None:
+            await self._validate_metax(submission)
 
         # Registrations are external identifiers assigned to the submission, e.g. a DOI or Metax ID.
         # We provide title, description and other descriptive information to register external

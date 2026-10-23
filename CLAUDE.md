@@ -82,8 +82,8 @@ database/
 
 ### Request lifecycle
 
-1. `AuthMiddleware` validates JWT bearer token or session cookie on every `/v1/...` request. Paths outside `/v1` — `/health`, the OIDC login routes, `/openapi.json`, `/sync/...` — are passed through and authorize themselves, or not at all.
-2. `SessionMiddleware` opens a SQLAlchemy async transaction and stores it in a `ContextVar`; commits or rolls back after the response.
+1. `SessionMiddleware` opens a SQLAlchemy async transaction for `/v1/...` and `/sync/...` requests and stores it in a `ContextVar`; commits or rolls back when the response starts. It is the outer middleware (`middlewares.py:add_middlewares`), so that the session exists when an API key is validated.
+2. `AuthMiddleware` validates a JWT bearer token, session cookie or API key on every `/v1/...` request. Paths outside `/v1` — `/health`, the OIDC login routes, `/openapi.json`, `/sync/...` — are passed through and authorize themselves, or not at all.
 3. FastAPI dispatches to a handler in `api/handlers/`. Handlers call `api/services/` for business logic and `services/` for external service calls.
 4. Repositories retrieve the session from the `ContextVar` directly — they never manage transactions themselves.
 

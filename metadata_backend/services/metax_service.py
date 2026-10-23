@@ -82,10 +82,26 @@ class MetaxServiceHandler(MetaxService, ServiceHandler):
 
         metax_mapper = MetaxMapper(self, ror_service)
 
-        metax_data: dict[str, Any] = await self.get_dataset(metax_id)
+        existing_metax_fields = MetaxFields(**await self.get_dataset(metax_id))
         # Map DataCite metadata to Metax metadata.
-        mapped_metax_data = await metax_mapper.map_metadata(MetaxFields(**metax_data), metadata)
-        await self._patch(metax_id, mapped_metax_data.model_dump())
+        mapped_metax_fields = await metax_mapper.map_metadata(metadata)
+        # Mapped fields are derived from the metadata alone, so they replace the existing ones,
+        # and a field with nothing mapped is cleared.
+        updated_metax_fields = existing_metax_fields.model_copy(
+            update={name: value or None for name, value in mapped_metax_fields}
+        )
+        await self._patch(metax_id, updated_metax_fields.model_dump())
+
+    async def validate_dataset_metadata(self, metadata: SubmissionMetadata, ror_service: RorService) -> None:
+        """Check that the submission metadata can be mapped to Metax.
+
+        :param metadata: The submission metadata
+        :param ror_service: The ROR service
+        :raises UserException: If the metadata can't be mapped to Metax.
+        """
+
+        # The mapper changes the metadata it maps.
+        await MetaxMapper(self, ror_service).map_metadata(metadata.model_copy(deep=True))
 
     async def update_dataset_description(self, metax_id: str, description: str) -> None:
         """Update the draft dataset's description.
