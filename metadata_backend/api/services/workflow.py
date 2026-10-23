@@ -4,19 +4,20 @@ A workflow profile holds the workflow-specific behaviour of a submission.
 """
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, ClassVar, Sequence, override
+from typing import TYPE_CHECKING, ClassVar, Iterable, Sequence, override
 
 from ...helpers.logger import LOG
 from ..exceptions import UserException
 from ..models.models import File, Registration
 from ..models.submission import Rems, Submission, SubmissionWorkflow
-from ..processors.xml.bigpicture import BP_POLICY_OBJECT_TYPE
+from ..processors.xml.bigpicture import BP_POLICY_OBJECT_TYPE, get_bp_default_dataset_dir
 from ..processors.xml.datacite import DATACITE_OBJECT_TYPE, DATACITE_SCHEMA
 from ..processors.xml.fega import FEGA_XML_OBJECT_CONFIG
 from ..processors.xml.models import XmlObjectConfig
 from ..processors.xml.processors import XmlObjectProcessor
-from .bigpicture import upload_bp_metadata_xmls
+from .bigpicture import generate_bp_metadata_xmls, upload_bp_metadata_xmls
 from .submission.bigpicture import BigpictureObjectSubmissionService
+from .submission.bigpicture_import import BigpictureObjectImportService
 from .submission.bigpicture_policy import is_clinical_policy
 from .submission.bigpicture_version import get_bp_xml_object_config
 from .submission.sensitive_data import SensitiveDataObjectSubmissionService
@@ -24,7 +25,7 @@ from .submission.submission import ObjectSubmissionService
 
 if TYPE_CHECKING:
     # Only needed for type annotations.
-    from ..handlers.restapi import RESTAPIServices
+    from ..handlers.restapi import RESTAPIServiceHandlers, RESTAPIServices
 
 
 class SubmissionWorkflowProfile(ABC):
@@ -43,6 +44,19 @@ class SubmissionWorkflowProfile(ABC):
         :param services: The REST API services.
         :returns: The object submission service.
         """
+
+    def object_import_service(
+        self, services: RESTAPIServices, handlers: RESTAPIServiceHandlers
+    ) -> ObjectSubmissionService:
+        """
+        Get the service that creates submissions from datasets accessioned and ingested outside SD Submit.
+
+        :param services: The REST API services.
+        :param handlers: The REST API service handlers.
+        :returns: The object import service.
+        :raises UserException: If the workflow does not support imports.
+        """
+        raise UserException(f"Import is not supported for workflow: {self.workflow.value}")
 
     @abstractmethod
     def object_types(
@@ -64,6 +78,25 @@ class SubmissionWorkflowProfile(ABC):
     ) -> None:
         """
         Prepare the submission data and metadata files for publishing.
+
+        Called before the submission is registered with external services, so that a submission that
+        can't be published fails before any registration is made.
+
+        :param services: The REST API services.
+        :param submission_id: The submission id.
+        :param user_id: The user id.
+        :param jwt: The user's OIDC access token.
+        """
+
+    @abstractmethod
+    async def finish_publish(
+        self, services: RESTAPIServices, submission_id: str, user_id: str, jwt: str | None
+    ) -> None:
+        """
+        Finish publishing the submission data and metadata files.
+
+        Called after the submission is registered with external services, so that the registration
+        identifiers and URLs are available.
 
         :param services: The REST API services.
         :param submission_id: The submission id.
@@ -197,6 +230,12 @@ class SDSubmissionWorkflow(SubmissionWorkflowProfile):
             raise UserException(f"Submission '{submission_id}' does not have any data files.")
 
     @override
+    async def finish_publish(
+        self, services: RESTAPIServices, submission_id: str, user_id: str, jwt: str | None
+    ) -> None:
+        """The SD ingest is done by an external service."""
+
+    @override
     def registration_title(self, submission: Submission, rems: Rems) -> str:
         return submission.title
 
@@ -233,6 +272,12 @@ class FegaSubmissionWorkflow(XmlSubmissionWorkflowProfile):
         raise UserException(f"Unsupported workflow: {self.workflow.value}")
 
     @override
+    async def finish_publish(
+        self, services: RESTAPIServices, submission_id: str, user_id: str, jwt: str | None
+    ) -> None:
+        raise UserException(f"Unsupported workflow: {self.workflow.value}")
+
+    @override
     def registration_title(self, submission: Submission, rems: Rems) -> str:
         raise UserException(f"Unsupported workflow: {self.workflow.value}")
 
@@ -260,22 +305,52 @@ class BigpictureSubmissionWorkflow(XmlSubmissionWorkflowProfile):
         return BigpictureObjectSubmissionService(services.project, services.submission, services.object, services.file)
 
     @override
+    def object_import_service(
+        self, services: RESTAPIServices, handlers: RESTAPIServiceHandlers
+    ) -> ObjectSubmissionService:
+        return BigpictureObjectImportService(
+            services.project, services.submission, services.object, services.file, handlers.admin, handlers.rems
+        )
+
+    @override
     async def prepare_publish(
         self, services: RESTAPIServices, submission_id: str, user_id: str, jwt: str | None
     ) -> None:
-        """Upload the metadata XMLs to the SDA inbox and check the data files in the inbox."""
+        """Validate the metadata XMLs and check the data files in the SDA inbox.
+
+        The metadata XMLs are uploaded only by finish_publish, after registration, so that the landing page
+        XML has the DataCite and REMS URLs.
+        """
+        if not jwt:
+            raise UserException("Missing OIDC access token in Authorization bearer header for SDA inbox upload.")
+
+        # Generate the metadata XMLs to validate them, so that an invalid XML fails before registration.
+        metadata_xml_paths = (await generate_bp_metadata_xmls(services, submission_id)).keys()
+
+        # Check the files in the SDA inbox. Add uploaded thumbnails as submission files, and check that every
+        # submission file references by the XMLs is in the inbox and that there are no unexpected files. Skipped
+        # for an imported submission, whose data files and thumbnails have already been ingested.
+        if not await services.submission.is_imported(submission_id):
+            await self._check_files_for_publish(services, user_id, submission_id, metadata_xml_paths)
+
+    @override
+    async def finish_publish(
+        self, services: RESTAPIServices, submission_id: str, user_id: str, jwt: str | None
+    ) -> None:
+        """Upload the metadata XMLs to the SDA inbox, with the registration's URLs in the landing page XML."""
         if not jwt:
             raise UserException("Missing OIDC access token in Authorization bearer header for SDA inbox upload.")
         await upload_bp_metadata_xmls(services, submission_id, user_id, jwt)
 
-        await self._check_files_for_publish(services, user_id, submission_id)
-
-    async def _check_files_for_publish(self, services: RESTAPIServices, user_id: str, submission_id: str) -> None:
+    async def _check_files_for_publish(
+        self, services: RESTAPIServices, user_id: str, submission_id: str, metadata_xml_paths: Iterable[str]
+    ) -> None:
         """Check files in the S3 inbox for Bigpicture submission and sync with submission files.
 
         :param services: The REST API services.
         :param user_id: The user id
         :param submission_id: The submission id
+        :param metadata_xml_paths: The inbox paths of the metadata XMLs, which are uploaded after this check.
         """
         # Add any thumbnail files the user has uploaded to the inbox bucket for the submission as submission files.
         await self._add_thumbnail_files(services, submission_id, user_id)
@@ -290,7 +365,13 @@ class BigpictureSubmissionWorkflow(XmlSubmissionWorkflowProfile):
             raise UserException(f"Submission files for '{submission_id}' are missing from the inbox: {missing_paths}.")
 
         # Check that the submission directory in the inbox doesn't have unexpected files anymore at this point.
-        unexpected_files = await services.file_provider.find_orphaned_files(user_id, submission_id, submission_files)
+        # The metadata XMLs are uploaded only after this check, so they are not submission files yet. A publish
+        # that failed after uploading them leaves them in the inbox, so they are counted as expected here.
+        # Otherwise a retry would be refused for unexpected files.
+        metadata_xml_files = [File(submissionId=submission_id, path=path) for path in metadata_xml_paths]
+        unexpected_files = await services.file_provider.find_orphaned_files(
+            user_id, submission_id, submission_files + metadata_xml_files
+        )
         if unexpected_files:
             unexpected_paths = ", ".join(sorted(unexpected_files))
             raise UserException(
@@ -304,7 +385,7 @@ class BigpictureSubmissionWorkflow(XmlSubmissionWorkflowProfile):
         :param submission_id: The submission id.
         :param user_id: The user id.
         """
-        thumbnails_prefix = f"DATASET_{submission_id}/LANDING_PAGE/THUMBNAILS/"
+        thumbnails_prefix = f"{get_bp_default_dataset_dir(submission_id)}/LANDING_PAGE/THUMBNAILS/"
 
         file_service = services.file
         file_provider_service = services.file_provider

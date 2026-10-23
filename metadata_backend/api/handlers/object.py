@@ -8,18 +8,20 @@ from starlette.datastructures import UploadFile as StarletteUploadFile
 
 from ...api.dependencies import (
     SubmissionIdOrNamePathParam,
+    SubmissionIdPathParam,
     UserDependency,
     WorkflowDependency,
 )
+from ...conf.deployment import deployment_config
 from ...database.postgres.services.submission import UnknownSubmissionUserException
 from ...helpers.logger import LOG
-from ..exceptions import SystemException, UserException
+from ..exceptions import ForbiddenUserException, SystemException, UserException
 from ..models.models import Object
 from ..models.submission import Submission
 from ..processors.exceptions import invalid_documents_as_user_errors
 from ..processors.xml.datacite import DATACITE_OBJECT_TYPE, DATACITE_SCHEMA
 from ..processors.xml.processors import XmlDocumentProcessor
-from ..services.submission.submission import ObjectSubmission
+from ..services.submission.submission import ObjectSubmission, ObjectSubmissionService
 from ..services.workflow import XmlSubmissionWorkflowProfile, workflow_profile
 from .restapi import RESTAPIHandler
 from .submission import SubmissionAPIHandler
@@ -53,24 +55,8 @@ class ObjectAPIHandler(RESTAPIHandler):
     ) -> Submission:
         """Create a new submission using workflow specific documents and return the submission document."""
 
-        project_service = self._services.project
-        user_id = user.user_id
-
-        if not project_id:
-            project_id = await self._services.project.get_project_id(user_id)
-
-        # Verify project.
-        await project_service.verify_user_project(user_id, project_id)
-
-        files = await self.get_files(request)
-        objects = await ObjectAPIHandler._get_object_submission_files(files)
-
-        # Process submission.
         object_submission_service = workflow_profile(workflow).object_submission_service(self._services)
-        with invalid_documents_as_user_errors():
-            submission = await object_submission_service.create(user_id, project_id, objects)
-
-        return submission
+        return await self._create_submission(request, user.user_id, project_id, object_submission_service)
 
     async def delete_submission(
         self,
@@ -104,6 +90,7 @@ class ObjectAPIHandler(RESTAPIHandler):
                 search_name=True,
                 unsafe=unsafe,
             )
+            await self._check_not_imported(submission_id)
             # Delete submission.
             await submission_service.delete_submission(submission_id)
             return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -178,6 +165,8 @@ class ObjectAPIHandler(RESTAPIHandler):
         except UnknownSubmissionUserException:
             return Response(status_code=status.HTTP_404_NOT_FOUND)
 
+        await self._check_not_imported(submission_id)
+
         # Update submission.
         files = await self.get_files(request)
         objects = await ObjectAPIHandler._get_object_submission_files(files)
@@ -186,6 +175,112 @@ class ObjectAPIHandler(RESTAPIHandler):
             await object_submission_service.update(user_id, project_id, submission_id, objects)
 
         return Response(status_code=status.HTTP_200_OK)
+
+    async def import_submission(
+        self,
+        request: Request,
+        user: UserDependency,
+        workflow: WorkflowDependency,
+        project_id: ProjectIdQueryParam = None,
+    ) -> Submission:
+        """Create a new submission from a dataset accessioned and archived outside SD Submit."""
+
+        self._check_import_user(user.user_id)
+
+        object_import_service = workflow_profile(workflow).object_import_service(self._services, self._handlers)
+        return await self._create_submission(request, user.user_id, project_id, object_import_service)
+
+    async def _create_submission(
+        self,
+        request: Request,
+        user_id: str,
+        project_id: str | None,
+        object_submission_service: ObjectSubmissionService,
+    ) -> Submission:
+        """
+        Create a new submission from the workflow specific documents in the request.
+
+        :param request: The request with the documents.
+        :param user_id: The user id.
+        :param project_id: The project id, or None for the user's project.
+        :param object_submission_service: The service that creates the submission.
+        :returns: The submission document.
+        """
+        if not project_id:
+            project_id = await self._services.project.get_project_id(user_id)
+
+        # Verify project.
+        await self._services.project.verify_user_project(user_id, project_id)
+
+        files = await self.get_files(request)
+        objects = await ObjectAPIHandler._get_object_submission_files(files)
+
+        # Process submission.
+        with invalid_documents_as_user_errors():
+            return await object_submission_service.create(user_id, project_id, objects)
+
+    async def delete_imported_submission(
+        self,
+        user: UserDependency,
+        workflow: WorkflowDependency,
+        submission_id: SubmissionIdPathParam,
+    ) -> Response:
+        """Delete an unpublished imported submission."""
+
+        submission_service = self._services.submission
+        user_id = user.user_id
+
+        self._check_import_user(user_id)
+
+        try:
+            # Check that submission is modifiable.
+            submission_id = await SubmissionAPIHandler.check_submission_modifiable(
+                user_id, submission_id, submission_service, self._services.project, workflow=workflow
+            )
+            await self._check_imported(submission_id)
+            # Delete submission.
+            await submission_service.delete_submission(submission_id)
+            return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+        except UnknownSubmissionUserException:
+            return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    @staticmethod
+    def _check_import_user(user_id: str) -> None:
+        """
+        Check that the user is allowed to import datasets.
+
+        :param user_id: The user id.
+        :raises ForbiddenUserException: If the user is not allowed to import datasets.
+        """
+        if user_id not in deployment_config().IMPORT_USERS:
+            raise ForbiddenUserException("The user is not allowed to import datasets.")
+
+    async def _check_not_imported(self, submission_id: str) -> None:
+        """
+        Check that the submission was not imported.
+
+        :param submission_id: The submission id.
+        :raises UserException: If the submission was imported.
+        """
+        if await self._services.submission.is_imported(submission_id):
+            raise UserException(
+                f"Submission '{submission_id}' was imported. Use the {deployment_config().API_PREFIX_V1}/import "
+                "endpoints instead."
+            )
+
+    async def _check_imported(self, submission_id: str) -> None:
+        """
+        Check that the submission was imported.
+
+        :param submission_id: The submission id.
+        :raises UserException: If the submission was not imported.
+        """
+        if not await self._services.submission.is_imported(submission_id):
+            raise UserException(
+                f"Submission '{submission_id}' was not imported. Use the {deployment_config().API_PREFIX_V1}/submit "
+                "endpoints instead."
+            )
 
     async def list_objects(
         self,

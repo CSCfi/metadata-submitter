@@ -3,7 +3,7 @@
 import io
 import zipfile
 from collections import defaultdict
-from typing import Literal, override
+from typing import Iterable, Literal, Mapping, override
 
 import httpx
 from pydantic import BaseModel
@@ -30,6 +30,7 @@ from ..processors.xml.bigpicture import (
     BP_SAMPLE_OBJECT_TYPES,
     BP_STAINING_OBJECT_TYPE,
     as_xml_set_document,
+    get_bp_default_dataset_dir,
     get_xml_object_type_schema,
     update_landing_page_xml,
 )
@@ -56,13 +57,13 @@ class XmlOutputDir(BaseModel):
     dir: Literal["METADATA", "LANDING_PAGE", "PRIVATE"]
     files: list[XmlOutputFile]
 
-    def get_full_dir(self, submission_id: str) -> str:
+    def get_full_dir(self, dataset_dir: str) -> str:
         """Get the full XML file directory including the dataset directory name.
 
-        :param submission_id: the submission (dataset) id.
+        :param dataset_dir: the root directory of the submission's files.
         :returns: the full XML file directory including the dataset directory name.
         """
-        return f"DATASET_{submission_id}/{self.dir}"
+        return f"{dataset_dir}/{self.dir}"
 
 
 # XML output files written to the METADATA, LANDING_PAGE and PRIVATE directories.
@@ -73,9 +74,9 @@ XML_OUTPUT_FILES: list[XmlOutputDir] = [
             XmlOutputFile(name="dataset.xml.c4gh", object_types=[BP_DATASET_OBJECT_TYPE]),
             XmlOutputFile(name="policy.xml.c4gh", object_types=[BP_POLICY_OBJECT_TYPE]),
             XmlOutputFile(name="image.xml.c4gh", object_types=[BP_IMAGE_OBJECT_TYPE]),
-            XmlOutputFile(name="annotation.xml.c4gh", object_types=[BP_ANNOTATION_OBJECT_TYPE]),
+            XmlOutputFile(name="annotation.xml.c4gh", object_types=[BP_ANNOTATION_OBJECT_TYPE], mandatory=False),
             XmlOutputFile(name="observation.xml.c4gh", object_types=[BP_OBSERVATION_OBJECT_TYPE]),
-            XmlOutputFile(name="observer.xml.c4gh", object_types=[BP_OBSERVER_OBJECT_TYPE]),
+            XmlOutputFile(name="observer.xml.c4gh", object_types=[BP_OBSERVER_OBJECT_TYPE], mandatory=False),
             XmlOutputFile(name="sample.xml.c4gh", object_types=BP_SAMPLE_OBJECT_TYPES),
             XmlOutputFile(name="staining.xml.c4gh", object_types=[BP_STAINING_OBJECT_TYPE]),
             # Since 3.0.
@@ -95,6 +96,112 @@ XML_OUTPUT_FILES: list[XmlOutputDir] = [
 ]
 
 
+def get_bp_ingested_dataset_root(paths: Iterable[str]) -> str | None:
+    """
+    Get the root directory that all ingested files in a dataset share.
+
+    :param paths: The file paths.
+    :returns: The first directory of every path, or None if the paths have no shared root directory.
+    """
+    # A path with a leading slash has an empty first directory, which is no root directory.
+    roots = {path.split("/", 1)[0] or None if "/" in path else None for path in paths}
+    if len(roots) != 1:
+        return None
+    return roots.pop()
+
+
+def get_bp_metadata_file_paths(object_types: Iterable[str] | None = None) -> frozenset[str]:
+    """
+    Get the paths of the metadata XML files below the dataset root directory.
+
+    :param object_types: Only the files of these object types, or None for all files.
+    :returns: The paths without the encryption suffix.
+    """
+    return frozenset(
+        f"{xml_output_dir.dir}/{file.name}".removesuffix(".c4gh")
+        for xml_output_dir in XML_OUTPUT_FILES
+        for file in xml_output_dir.files
+        if object_types is None or not set(object_types).isdisjoint(file.object_types)
+    )
+
+
+# The paths of all metadata XML files below the dataset root directory, without the encryption suffix.
+BP_METADATA_FILE_PATHS = get_bp_metadata_file_paths()
+
+
+def _is_bp_metadata_file(path: str) -> bool:
+    """
+    Check if a dataset file is a metadata XML file, by its path including the root directory.
+
+    :param path: The file path.
+    :returns: True if the file is a metadata XML file.
+    """
+    _, _, relative_path = path.partition("/")
+    return relative_path.removesuffix(".c4gh") in BP_METADATA_FILE_PATHS
+
+
+class BigpictureMetadataFileReplacements(BaseModel):
+    """Accessions of BigPicture metadata XML files to add to or delete from SDA
+    to synchronize its contents with the updated set of metadata files."""
+
+    # The new metadata XMLs to add to the SDA dataset.
+    new_accessions: list[str]
+    # The old metadata XMLs to remove from the SDA dataset.
+    old_accessions: list[str]
+
+
+def get_bp_metadata_file_replacements(
+    submission_path_by_accession: Mapping[str, str], sda_path_by_accession: Mapping[str, str]
+) -> BigpictureMetadataFileReplacements:
+    """
+    Get the accessions of BigPicture metadata XML files to add to or delete from SDA
+    to synchronize its contents with the updated set of metadata files.
+
+    The .c4gh suffix is ignored when comparing metadata XML file paths.
+
+    :param submission_path_by_accession: The submission's files, as accession to path.
+    :param sda_path_by_accession: The files in the SDA dataset, as accession to path.
+    :returns: The accessions of the new metadata XMLs to add, and of the old ones to remove.
+    """
+    new_xmls = {
+        accession: path.removesuffix(".c4gh")
+        for accession, path in submission_path_by_accession.items()
+        if _is_bp_metadata_file(path)
+    }
+    replaced_paths = set(new_xmls.values())
+
+    return BigpictureMetadataFileReplacements(
+        new_accessions=sorted(new_xmls.keys() - sda_path_by_accession.keys()),
+        old_accessions=sorted(
+            accession
+            for accession, path in sda_path_by_accession.items()
+            if accession not in new_xmls and path.removesuffix(".c4gh") in replaced_paths
+        ),
+    )
+
+
+def get_bp_dataset_dir(submission: Submission, paths: Iterable[str]) -> str:
+    """
+    Get the root directory of the files of a submission.
+
+    A new submission's files are under DATASET_{submission id}. An imported submission keeps the root
+    directory of the dataset in SDA, which all its file paths start with.
+
+    :param submission: The submission.
+    :param paths: The paths of the submission files. Used only for an imported submission.
+    :returns: The root directory.
+    :raises SystemException: If the files of an imported submission are not under one root directory.
+    """
+    submission_id = submission.submissionId
+    if not submission.imported:
+        return get_bp_default_dataset_dir(submission_id)
+
+    root = get_bp_ingested_dataset_root(paths)
+    if root is None:
+        raise SystemException(f"Files of imported submission '{submission_id}' are not under one root directory.")
+    return root
+
+
 def read_bp_public_key(response: httpx.Response) -> str:
     """
     Read the public key from the SDA login service's /info endpoint.
@@ -107,24 +214,35 @@ def read_bp_public_key(response: httpx.Response) -> str:
     return public_key
 
 
-async def upload_bp_metadata_xmls(services: RESTAPIServices, submission_id: str, user_id: str, jwt: str) -> None:
-    """Upload encrypted Bigpicture metadata XML files to SDA inbox.
+async def generate_bp_metadata_xmls(services: RESTAPIServices, submission_id: str) -> dict[str, str]:
+    """Generate and validate the Bigpicture metadata XML files of a submission, without uploading them.
+
+    The landing page XML gets the DataCite and REMS URLs from the submission's registration, if it has
+    them. Publishing calls this function twice:
+
+    1. Before the submission is registered, from BigpictureSubmissionWorkflow.prepare_publish. This is
+       done to validate the XMLs before registrations. The landing page XML does not have the DataCite
+       and REMS URLs.
+    2. After the submission is registered, from BigpictureSubmissionWorkflow.finish_publish. This is
+       done to generate XMLs for the SDA inbox. The landing page XML has the DataCite and REMS URLs.
 
     :param services: REST API services.
     :param submission_id: Submission ID.
-    :param user_id: User ID.
-    :param jwt: User JWT token.
+    :returns: The XML documents, by their paths in the SDA inbox.
+    :raises SystemException: If a mandatory XML has no objects, or a generated XML is not valid.
     """
-    file_provider = services.file_provider
-    if not isinstance(file_provider, S3InboxSDAService):
-        reason = "Bigpicture metadata upload requires SDA inbox file provider service."
-        LOG.error(reason)
-        raise SystemException(reason)
-
-    bucket = user_id.replace("@", "_")  # SDA inbox bucket name is the user id with @ replaced by underscore
     registration = await services.registration.get_registration(submission_id)  # For landing page XML update
-    config = get_bp_xml_object_config(await services.submission.get_submission_by_id(submission_id))
+    submission = await services.submission.get_submission_by_id(submission_id)
+    config = get_bp_xml_object_config(submission)
+    # The files are listed only for an imported submission, whose root directory they give.
+    paths = (
+        [file.path async for file in services.file.get_files(submission_id=submission_id)]
+        if submission.imported
+        else []
+    )
+    dataset_dir = get_bp_dataset_dir(submission, paths)
 
+    xmls: dict[str, str] = {}
     for xml_output_dir in XML_OUTPUT_FILES:
         for file in xml_output_dir.files:
             # Get all XML documents for the schema type of the file.
@@ -183,26 +301,45 @@ async def upload_bp_metadata_xmls(services: RESTAPIServices, submission_id: str,
                     LOG.error(f"reason: {str(ex)}")
                     raise SystemException(reason)
 
-            # Upload the XML document to SDA inbox.
-            LOG.info(f"Uploading XML document for {file.name} in submission {submission_id} to SDA inbox.")
-            prefix = xml_output_dir.get_full_dir(submission_id)
-            object_key = f"{prefix}/{file.name}"
-            xml_bytes = xml.encode("utf-8")
-            await file_provider._add_file_to_bucket(
-                bucket_name=bucket,
-                object_key=object_key,
-                access_key=bucket,
-                secret_key=bucket,
-                session_token=jwt,
-                body=xml_bytes,
-            )
+            xmls[f"{xml_output_dir.get_full_dir(dataset_dir)}/{file.name}"] = xml
 
-            # Add uploaded XML artifacts to submission file records for ingestion workflow.
-            if not await services.file.is_file_by_path(submission_id, object_key):
-                await services.file.add_file(
-                    File(submissionId=submission_id, path=object_key),
-                    SubmissionWorkflow.BP,
-                )
+    return xmls
+
+
+async def upload_bp_metadata_xmls(services: RESTAPIServices, submission_id: str, user_id: str, jwt: str) -> None:
+    """Generate the Bigpicture metadata XML files of a submission, and upload them encrypted to the SDA inbox.
+
+    :param services: REST API services.
+    :param submission_id: Submission ID.
+    :param user_id: User ID.
+    :param jwt: User JWT token.
+    """
+    file_provider = services.file_provider
+    if not isinstance(file_provider, S3InboxSDAService):
+        reason = "Bigpicture metadata upload requires SDA inbox file provider service."
+        LOG.error(reason)
+        raise SystemException(reason)
+
+    bucket = user_id.replace("@", "_")  # SDA inbox bucket name is the user id with @ replaced by underscore
+
+    for inbox_path, xml in (await generate_bp_metadata_xmls(services, submission_id)).items():
+        # Upload the XML document to SDA inbox.
+        LOG.info(f"Uploading XML document {inbox_path} in submission {submission_id} to SDA inbox.")
+        await file_provider._add_file_to_bucket(
+            bucket_name=bucket,
+            object_key=inbox_path,
+            access_key=bucket,
+            secret_key=bucket,
+            session_token=jwt,
+            body=xml.encode("utf-8"),
+        )
+
+        # Add uploaded XML artifacts to submission file records for ingestion workflow.
+        if not await services.file.is_file_by_path(submission_id, inbox_path):
+            await services.file.add_file(
+                File(submissionId=submission_id, path=inbox_path),
+                SubmissionWorkflow.BP,
+            )
 
 
 BP_SYNC_METADATA_DIR = "METADATA"

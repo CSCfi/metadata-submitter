@@ -34,7 +34,7 @@ async def test_get_user_files_all_pages(monkeypatch, admin_handler):
         return await send(**kwargs)
 
     monkeypatch.setattr(admin_handler, "_send", _send)
-    files = await admin_handler.get_user_files(mock_user, dataset_id)
+    files = await admin_handler.get_user_files(mock_user, f"DATASET_{dataset_id}")
 
     assert sorted(f.inbox_path for f in files) == sorted(paths)
     # Otherwise the mock returned every file at once, and nothing above followed a cursor.

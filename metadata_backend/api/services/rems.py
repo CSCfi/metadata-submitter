@@ -3,13 +3,16 @@
 from abc import ABC, abstractmethod
 
 from ...services.rems_service import RemsServiceHandler
+from ..exceptions import UserException
 from ..models.rems import (
     License,
     Organization,
     OrganizationsMap,
+    RemsCatalogueItem,
     RemsLicense,
     RemsLicenseLocalization,
     RemsOrganization,
+    RemsResource,
     RemsWorkflow,
     Workflow,
 )
@@ -90,6 +93,78 @@ async def resolve_rems_license_ids(
     # Generate license.
     license_id = await generate_rems_license_id(rems_service, license_provider, submission, organization_id)
     return [license_id] if license_id is not None else []
+
+
+async def find_rems_resource(rems_service: RemsServiceHandler, resid: str, organization_id: str) -> RemsResource | None:
+    """Find the active REMS resource with the given external id, to reuse it.
+
+    The resource's licenses are not checked against the submission's licenses. This is by design:
+    the REMS API cannot modify the licenses of an existing resource, so a reused resource keeps
+    the licenses it was created with.
+
+    :param rems_service: The REMS service.
+    :param resid: The external resource id.
+    :param organization_id: The REMS organization id the resource must belong to.
+    :raises UserException: if there are several resources, or the resource belongs to another organization.
+    :returns: The REMS resource, or None if there is none.
+    """
+
+    resources = [resource for resource in await rems_service.get_resources(resid) if resource.resid == resid]
+    if not resources:
+        return None
+    if len(resources) > 1:
+        ids = ", ".join(str(resource.id) for resource in resources)
+        raise UserException(f"REMS has several resources '{resid}': {ids}.")
+    resource = resources[0]
+    if resource.organization.id != organization_id:
+        raise UserException(
+            f"REMS resource '{resid}' belongs to REMS organization '{resource.organization.id}', "
+            f"not '{organization_id}'."
+        )
+    return resource
+
+
+async def find_rems_catalogue_item(
+    rems_service: RemsServiceHandler, resid: str, organization_id: str, workflow_id: int, resource_id: int | None
+) -> RemsCatalogueItem | None:
+    """Find the active REMS catalogue item of the resource with the given external id, to reuse it.
+
+    Only the resource, organization and workflow are checked. The title and discovery URL are not
+    compared, by design: a reused catalogue item is kept as it is.
+
+    :param rems_service: The REMS service.
+    :param resid: The external resource id.
+    :param organization_id: The REMS organization id the catalogue item must belong to.
+    :param workflow_id: The REMS workflow id the catalogue item must have.
+    :param resource_id: The REMS id of the active resource the catalogue item must belong to, or None if
+        there is no active resource yet.
+    :raises UserException: if there are several catalogue items, or the catalogue item belongs to
+        another resource or organization, or has another workflow.
+    :returns: The REMS catalogue item, or None if there is none.
+    """
+
+    items = [item for item in await rems_service.get_catalogue_items(resid) if item.resid == resid and not item.expired]
+    if not items:
+        return None
+    if len(items) > 1:
+        ids = ", ".join(str(item.id) for item in items)
+        raise UserException(f"REMS resource '{resid}' has several catalogue items: {ids}.")
+    item = items[0]
+    if item.resource_id != resource_id:
+        active = f"the active REMS resource '{resource_id}'" if resource_id is not None else "an active REMS resource"
+        raise UserException(
+            f"REMS catalogue item '{item.id}' belongs to REMS resource '{item.resource_id}', not to {active}."
+        )
+    if item.organization.id != organization_id:
+        raise UserException(
+            f"REMS catalogue item '{item.id}' belongs to REMS organization '{item.organization.id}', "
+            f"not '{organization_id}'."
+        )
+    if item.workflow_id is not None and item.workflow_id != workflow_id:
+        raise UserException(
+            f"REMS catalogue item '{item.id}' has REMS workflow '{item.workflow_id}', not '{workflow_id}'."
+        )
+    return item
 
 
 class RemsOrganisationsService:

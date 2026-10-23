@@ -13,7 +13,11 @@ from ..models.datacite import DataCiteMetadata
 from ..models.models import Registration, SubmissionId
 from ..models.submission import Rems, Submission, SubmissionMetadata
 from ..services.datacite import DataciteService
-from ..services.rems import resolve_rems_license_ids
+from ..services.rems import (
+    find_rems_catalogue_item,
+    find_rems_resource,
+    resolve_rems_license_ids,
+)
 from ..services.workflow import workflow_profile
 from .restapi import RESTAPIHandler
 from .submission import SubmissionAPIHandler
@@ -128,40 +132,71 @@ class PublishAPIHandler(RESTAPIHandler):
 
         # Check that the workflow exists and get the organisation id.
         rems_workflow = await self._handlers.rems.get_workflow(rems.organizationId, rems.workflowId)
+        organization_id = rems_workflow.organization.id
+
+        # External REMS identifier assigned by us.
+        resid = workflow_profile(submission.workflow).rems_resource_id(submission, registration)
 
         with external_service_call(f"Failed to publish submission '{registration.submissionId}' to REMS."):
-            # Create REMS resource.
+            # Create REMS resource, or reuse the existing one.
             if not registration.remsResourceId:
-                resid = workflow_profile(submission.workflow).rems_resource_id(submission, registration)
+                resource = await find_rems_resource(self._handlers.rems, resid, organization_id)
+                if resource is not None:
+                    # Internal REMS identifier assigned by REMS.
+                    resource_id = resource.id
+                    # Existing licenses are kept by design. The REMS API cannot modify licenses
+                    # on an existing resource, so the kept licenses are logged rather than rejected.
+                    LOG.warning(
+                        "Reusing REMS resource %s for submission %s, keeping its licenses %s.",
+                        resid,
+                        registration.submissionId,
+                        [rems_license.id for rems_license in resource.licenses],
+                    )
+                else:
+                    # No active resource was found, so an active catalogue item for this resid belongs to a
+                    # disabled or archived resource, and the check below would reject it for the created one.
+                    # Checked first, since the created resource stays in REMS after the rollback and every
+                    # retry would reuse it and fail the same way.
+                    await find_rems_catalogue_item(self._handlers.rems, resid, organization_id, rems.workflowId, None)
+                    license_ids = await resolve_rems_license_ids(
+                        self._handlers.rems,
+                        self._services.license_provider,
+                        rems,
+                        submission,
+                        organization_id,
+                    )
 
-                license_ids = await resolve_rems_license_ids(
-                    self._handlers.rems,
-                    self._services.license_provider,
-                    rems,
-                    submission,
-                    rems_workflow.organization.id,
-                )
-
-                resource_id = await self._handlers.rems.create_resource(
-                    rems_workflow.organization.id, license_ids, resid
-                )
+                    resource_id = await self._handlers.rems.create_resource(organization_id, license_ids, resid)
                 await self._services.registration.update_rems_resource_id(registration.submissionId, str(resource_id))
                 registration.remsResourceId = str(resource_id)
             else:
                 resource_id = int(registration.remsResourceId)
 
-            # Create REMS catalogue item.
+            # Create REMS catalogue item, or reuse the existing one.
             catalogue_id = registration.remsCatalogueId
             if not catalogue_id:
-                catalogue_id = str(
-                    await self._handlers.rems.create_catalogue_item(
-                        rems_workflow.organization.id,
-                        rems.workflowId,
-                        resource_id,
-                        registration.title,
-                        self.get_discovery_url(submission, registration),
-                    )
+                catalogue_item = await find_rems_catalogue_item(
+                    self._handlers.rems, resid, organization_id, rems.workflowId, resource_id
                 )
+                if catalogue_item is not None:
+                    # By design, the existing catalogue item is reused unchanged. Its title and discovery URL
+                    # are neither compared with nor updated to match the registration.
+                    LOG.info(
+                        "Reusing REMS catalogue item %s for submission %s.",
+                        catalogue_item.id,
+                        registration.submissionId,
+                    )
+                    catalogue_id = str(catalogue_item.id)
+                else:
+                    catalogue_id = str(
+                        await self._handlers.rems.create_catalogue_item(
+                            organization_id,
+                            rems.workflowId,
+                            resource_id,
+                            registration.title,
+                            self.get_discovery_url(submission, registration),
+                        )
+                    )
                 await self._services.registration.update_rems_catalogue_id(registration.submissionId, catalogue_id)
                 registration.remsCatalogueId = catalogue_id
 
@@ -214,8 +249,8 @@ class PublishAPIHandler(RESTAPIHandler):
 
         submission = await submission_service.get_submission_by_id(submission_id)
 
+        jwt = self._services.auth._get_bearer_token(req.headers)
         if not no_files:
-            jwt = self._services.auth._get_bearer_token(req.headers)
             await workflow_profile(submission.workflow).prepare_publish(
                 self._services, submission_id, user.user_id, jwt
             )
@@ -237,14 +272,18 @@ class PublishAPIHandler(RESTAPIHandler):
             raise UserException(f"Submission '{submission_id}' does not have required REMS information.")
 
         # TODO(improve): Any error after the DOI is published, for example REMS or Metax being
-        # unavailable, rolls back the registration with the request transaction, so a retry
-        # registers and publishes another DOI. Commit each registration step separately so that a
-        # retry resumes from it.
+        # unavailable, or a file upload to the SDA inbox failing, rolls back the registration with the
+        # request transaction, so a retry registers and publishes another DOI. Commit each registration step
+        # separately so that a retry resumes from it.
 
         if deployment_config().ALLOW_REGISTRATION:
             # Check REMS license creation before the DOI is registered.
             await self._check_rems_license(submission, rems)
             await self._register_submission(submission, datacite, rems)
+
+        # Finish publishing after registrations.
+        if not no_files:
+            await workflow_profile(submission.workflow).finish_publish(self._services, submission_id, user.user_id, jwt)
 
         # Update submission status to published.
         await submission_service.publish(submission_id)

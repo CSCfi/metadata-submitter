@@ -129,12 +129,22 @@ class SubmissionEntity(Base):
         index=True,
     )
 
+    is_imported: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=false())
     is_published: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=false(), index=True)
     is_ingested: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=false(), index=True)
+    imported: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
     published: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
     ingested: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
 
     document: Mapped[dict[str, Any]] = mapped_column(MutableDict.as_mutable(TypeJSON), nullable=False)
+
+
+@event.listens_for(SubmissionEntity.is_imported, "set")
+def set_date_imported(target: SubmissionEntity, value: bool, old_value: bool, _: object) -> None:
+    """Automatically set imported date in application."""
+
+    if value is True and old_value is not True:
+        target.imported = datetime.now(timezone.utc)
 
 
 @event.listens_for(SubmissionEntity.is_published, "set")

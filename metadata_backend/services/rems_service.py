@@ -286,6 +286,18 @@ class RemsServiceHandler(ServiceHandler):
         response: dict[str, Any] = await self._request(method="GET", path="/resources", params=params)
         return [self._validate_response(RemsResource, resource) for resource in response]
 
+    async def get_catalogue_items(self, resid: str) -> list[RemsCatalogueItem]:
+        """
+        Get the active REMS catalogue items of a resource.
+
+        :param resid: The external resource id of the REMS resource.
+        :returns: The list of active REMS catalogue items.
+        """
+
+        params = {"resource": resid, "disabled": "false", "archived": "false"}
+        response: dict[str, Any] = await self._request(method="GET", path="/catalogue-items", params=params)
+        return [self._validate_response(RemsCatalogueItem, item) for item in response]
+
     async def get_catalogue_item(self, catalogue_id: int) -> RemsCatalogueItem:
         """
         Get REMS catalogue item.

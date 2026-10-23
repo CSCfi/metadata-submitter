@@ -77,6 +77,10 @@ class DeploymentProfile(ABC):
     # Enables a background task that ingests the files of published submissions with the SDA Admin API.
     sda_ingest: ClassVar[bool]
 
+    # Enables the {API_PREFIX_V1}/import endpoint, which creates a submission from a dataset
+    # accessioned and archived outside SD Submit.
+    import_endpoints: ClassVar[bool]
+
     @abstractmethod
     def create_services(
         self, create_handler: CreateHandler, object_service: ObjectService, file_service: FileService
@@ -101,6 +105,7 @@ class CscDeploymentProfile(DeploymentProfile):
     bucket_endpoints = True
     login_endpoints = True
     sda_ingest = False
+    import_endpoints = False
 
     @override
     def create_services(
@@ -135,6 +140,7 @@ class NbisDeploymentProfile(DeploymentProfile):
     bucket_endpoints = False
     login_endpoints = False
     sda_ingest = True
+    import_endpoints = True
 
     @override
     def create_services(

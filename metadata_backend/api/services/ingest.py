@@ -9,7 +9,7 @@ from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from ...api.exceptions import ServiceHandlerSystemException
+from ...api.exceptions import ServiceHandlerSystemException, SystemException
 from ...conf.admin import admin_config
 from ...database.postgres.repository import _session_context
 from ...database.postgres.services.dispatch import DispatchKey, is_due
@@ -18,6 +18,7 @@ from ..handlers.restapi import RESTAPIServiceHandlers, RESTAPIServices
 from ..models.models import IngestErrorType, IngestFileState, IngestStatus
 from ..models.sda import CreateDatasetRequest, DatasetStatus, FileItem, IngestFileRequest, PostAccessionIdRequest
 from ..models.submission import SubmissionWorkflow
+from .bigpicture import get_bp_dataset_dir, get_bp_metadata_file_replacements
 
 # Dispatch tracking uses the DispatchService (database.postgres.services.dispatch), which treats
 # service/action/target as opaque strings — these constants are this module's own vocabulary.
@@ -26,6 +27,7 @@ _ACTION_FILE_INGEST = "file_ingest"
 _ACTION_FILE_ACCESSION = "file_accession"
 _ACTION_DATASET_CREATE = "dataset_create"
 _ACTION_DATASET_RELEASE = "dataset_release"
+_ACTION_DATASET_REMOVE_FILE = "dataset_remove_file"
 # File step outcomes besides the dispatched action itself.
 _OUTCOME_COOLDOWN = "cooldown"
 _OUTCOME_FAILED = "failed"
@@ -167,7 +169,11 @@ class SDAIngestService(IngestService):
                 "All %d file(s) of submission %s are ready, skipping Admin API status sync", len(files), submission_id
             )
         else:
-            await self._sync_file_ingest_states(user_id=user_id, submission_id=submission_id, file_states=files)
+            # An imported submission keeps the dataset root directory.
+            dataset_dir = get_bp_dataset_dir(submission, (file.path for file in files))
+            await self._sync_file_ingest_states(
+                user_id=user_id, submission_id=submission_id, file_states=files, dataset_dir=dataset_dir
+            )
             # Step 3 reads the statuses the sync just updated.
             files = await self._services.file.get_ingest_file_states(submission_id)
 
@@ -226,7 +232,12 @@ class SDAIngestService(IngestService):
             return False
 
         file_ids = [file.file_id for file in files]
-        if not await self._finalize_dataset(
+        if submission.imported:
+            if not await self._reconcile_and_finalize_dataset(
+                user_id=user_id, submission_id=submission_id, files=files, dispatches=dispatches
+            ):
+                return False
+        elif not await self._finalize_dataset(
             user_id=user_id, submission_id=submission_id, file_ids=file_ids, dispatches=dispatches
         ):
             return False
@@ -296,21 +307,136 @@ class SDAIngestService(IngestService):
 
         return True
 
+    async def _reconcile_and_finalize_dataset(
+        self,
+        *,
+        user_id: str,
+        submission_id: str,
+        files: list[IngestFileState],
+        dispatches: dict[DispatchKey, datetime],
+    ) -> bool:
+        """Replace the old metadata XMLs of an imported dataset with the new ones, and release it.
+
+        Each scan does one step, then returns until the next scan:
+
+        1. Remove the old metadata XMLs from the dataset.
+        2. Add the new metadata XMLs to the dataset.
+        3. Release the dataset.
+
+        ``get_bp_metadata_file_replacements`` decides which files are added and removed: only the new metadata
+        XMLs are added, and only the old ones they replace are removed. Files added to or removed from the
+        dataset outside SD Submit after the /import call are left as they are.
+
+        The order matters. SDA only releases a dataset whose status is ``registered``. Removing a file sets
+        the status to ``file_removed``, and adding files sets it back to ``registered``. So the removal must
+        come before the addition.
+
+        Each scan lists the dataset in SDA to see which step is next. The Admin API accepts a request without
+        a guarantee to complete it. So if a request has not taken effect when its cooldown ends, it is sent again.
+
+        :param user_id: ID of the user who owns the submission inbox.
+        :param submission_id: the submission ID (dataset accession ID).
+        :param files: the submission's files, whose file ids are their accession IDs.
+        :param dispatches: dispatches already recorded for this submission, keyed by (action, target).
+        :returns: ``True`` once the dataset holds the new metadata XMLs instead of the old ones, and is released.
+        """
+        sda_files = await self._admin_handler.list_ingested_files(submission_id)
+        if sda_files is None:
+            raise SystemException(f"Imported dataset '{submission_id}' does not exist in SDA.")
+
+        submission_path_by_accession = {file.file_id: file.path for file in files}
+        sda_path_by_accession = {file.accession_id: file.path for file in sda_files}
+        sda_file_id_by_accession = {file.accession_id: file.file_id for file in sda_files}
+
+        replacements = get_bp_metadata_file_replacements(submission_path_by_accession, sda_path_by_accession)
+
+        # 1. Remove the old metadata XMLs.
+        if replacements.old_accessions:
+            for accession_id in replacements.old_accessions:
+                dispatched_at = dispatches.get(DispatchKey(_ACTION_DATASET_REMOVE_FILE, accession_id))
+                if not is_due(dispatched_at, self._retry_cooldown_seconds):
+                    continue
+                if dispatched_at is not None:
+                    LOG.warning(
+                        "File %s is still in imported dataset %s, requesting its removal again",
+                        accession_id,
+                        submission_id,
+                    )
+                LOG.info(
+                    "Removing file %s (%s) from imported dataset %s",
+                    accession_id,
+                    sda_path_by_accession[accession_id],
+                    submission_id,
+                )
+                # Removing a file from a dataset leaves the file's own status unchanged, so the inbox of the
+                # user who uploaded it would list the old file again. Its file id is listed only while
+                # it is in the dataset, so it is marked removed before the first removal request.
+                if dispatched_at is None:
+                    await self._admin_handler.mark_file_removed(
+                        sda_file_id_by_accession[accession_id],
+                        f"Replaced by a new file in imported dataset {submission_id}",
+                    )
+                await self._admin_handler.remove_ingested_file(submission_id, accession_id)
+                await self._services.dispatch.mark_dispatched(
+                    submission_id, _SDA_ADMIN_SERVICE, _ACTION_DATASET_REMOVE_FILE, accession_id
+                )
+            return False
+
+        # 2. Add the new metadata XMLs.
+        if replacements.new_accessions:
+            create_dispatched_at = dispatches.get(DispatchKey(_ACTION_DATASET_CREATE, ""))
+            if not is_due(create_dispatched_at, self._retry_cooldown_seconds):
+                LOG.debug(
+                    "Files already added to imported dataset %s at %s, cooldown not elapsed",
+                    submission_id,
+                    create_dispatched_at,
+                )
+                return False
+
+            LOG.info("Adding %d file(s) to imported dataset %s", len(replacements.new_accessions), submission_id)
+            await self._admin_handler.create_dataset(
+                CreateDatasetRequest(user=user_id, accession_ids=replacements.new_accessions, dataset_id=submission_id)
+            )
+            await self._services.dispatch.mark_dispatched(submission_id, _SDA_ADMIN_SERVICE, _ACTION_DATASET_CREATE)
+            return False
+
+        # 3. Release the dataset.
+
+        # Adding files sets the SDA dataset status to 'registered' and releasing it sets it to
+        # 'released'. A SDA file change made outside SD Submit can result in another dataset
+        # status. These changes should not happen during the ingest process, are not supported,
+        # and are reported here.
+        dataset_status = await self._admin_handler.get_dataset_status(submission_id)
+        if dataset_status not in (DatasetStatus.REGISTERED, DatasetStatus.RELEASED):
+            status = dataset_status.value if dataset_status else "unknown"
+            raise SystemException(
+                f"Imported dataset '{submission_id}' can't be released from status '{status}' in SDA."
+            )
+
+        return await self._finalize_dataset(
+            user_id=user_id,
+            submission_id=submission_id,
+            file_ids=[file.file_id for file in files],
+            dispatches=dispatches,
+        )
+
     async def _sync_file_ingest_states(
         self,
         *,
         user_id: str,
         submission_id: str,
         file_states: list[IngestFileState],
+        dataset_dir: str,
     ) -> None:
         """Sync file ingest statuses in the DB with the current state reported by the Admin API.
 
         :param user_id: the user who owns the submission inbox.
         :param submission_id: the submission whose files should be reconciled.
         :param file_states: current file ingest states.
+        :param dataset_dir: the root directory of the submission's files.
         """
         # Fetch all submission specific files from user's SDA inbox
-        inbox_files: list[FileItem] = await self._admin_handler.get_user_files(user_id, submission_id)
+        inbox_files: list[FileItem] = await self._admin_handler.get_user_files(user_id, path_prefix=dataset_dir)
         LOG.debug(
             "Fetched %s file status(es) from Admin API for submission %s",
             len(inbox_files),

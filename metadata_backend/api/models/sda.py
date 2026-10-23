@@ -40,11 +40,29 @@ class CreateDatasetRequest(BaseModel):
     user: str
 
 
+class DatasetFile(BaseModel):
+    """A file in a dataset."""
+
+    file_id: str = Field(..., alias="id")
+    accession_id: str = Field(..., alias="accessionID")
+    # The download path override, or the original submission file path.
+    path: str
+
+
+class DatasetFilesResponse(RootModel[list[DatasetFile]]):
+    """Admin API response model for listing the files in a dataset."""
+
+
 class DatasetStatus(enum.Enum):
-    """Dataset status reported by the Admin API."""
+    """Dataset status reported by the Admin API.
+
+    The latest event logged for the dataset.
+    """
 
     REGISTERED = "registered"
     RELEASED = "released"
+    FILE_REMOVED = "file_removed"
+    DEPRECATED = "deprecated"
 
 
 class GetDatasetResponse(BaseModel):

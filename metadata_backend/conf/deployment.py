@@ -39,6 +39,10 @@ class DeploymentConfig(BaseSettings):
     ALLOW_REGISTRATION: bool = Field(
         default=True, description="Allow published submissions to be registered with external services."
     )
+    IMPORT_USERS: list[str] = Field(
+        default_factory=list,
+        description="JSON array of the ids of the users allowed to import submissions accessioned outside SD Submit.",
+    )
 
     @property
     def API_PREFIX_V1(self) -> str:

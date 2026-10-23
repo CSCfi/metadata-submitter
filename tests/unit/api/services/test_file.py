@@ -290,7 +290,7 @@ async def test_find_missing_files():
 
     missing_files = await service.find_missing_files("test_user", "test_submission", submission_files)
     assert missing_files == []
-    admin_handler.get_user_files.assert_awaited_once_with("test_user", "test_submission")
+    admin_handler.get_user_files.assert_awaited_once_with("test_user", "DATASET_test_submission")
 
     # File missing from inbox.
     admin_handler = get_mock_admin_handler([])
@@ -299,7 +299,7 @@ async def test_find_missing_files():
 
     missing_files = await service.find_missing_files("test_user", "test_submission", submission_files)
     assert missing_files == ["IMAGES/IMAGE_1/img1.dcm"]
-    admin_handler.get_user_files.assert_awaited_once_with("test_user", "test_submission")
+    admin_handler.get_user_files.assert_awaited_once_with("test_user", "DATASET_test_submission")
 
 
 @pytest.mark.asyncio
@@ -311,7 +311,7 @@ async def test_find_orphaned_files():
 
     orphaned_files = await service.find_orphaned_files("test_user", "test_submission", submission_files)
     assert orphaned_files == []
-    admin_handler.get_user_files.assert_awaited_once_with("test_user", "test_submission")
+    admin_handler.get_user_files.assert_awaited_once_with("test_user", "DATASET_test_submission")
 
     # File missing from submission.
     admin_handler = get_mock_admin_handler(["IMAGES/IMAGE_1/img1.dcm"])
@@ -320,7 +320,7 @@ async def test_find_orphaned_files():
 
     orphaned_files = await service.find_orphaned_files("test_user", "test_submission", submission_files)
     assert orphaned_files == ["IMAGES/IMAGE_1/img1.dcm"]
-    admin_handler.get_user_files.assert_awaited_once_with("test_user", "test_submission")
+    admin_handler.get_user_files.assert_awaited_once_with("test_user", "DATASET_test_submission")
 
 
 async def test__find_missing_files():
@@ -356,4 +356,4 @@ async def test_list_submission_inbox_files():
     inbox_files = await service.list_submission_inbox_files("user1", "1")
 
     assert [file.inbox_path for file in inbox_files] == ["DATASET_1/LANDING_PAGE/THUMBNAILS/thumb.jpg"]
-    admin_handler.get_user_files.assert_awaited_once_with("user1", "1")
+    admin_handler.get_user_files.assert_awaited_once_with("user1", "DATASET_1")

@@ -1,8 +1,10 @@
 """Tests for publish API handler."""
 
 import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
 from types import SimpleNamespace
-from unittest.mock import ANY, AsyncMock, patch
+from unittest.mock import ANY, AsyncMock, Mock, patch
 
 import pytest
 
@@ -16,7 +18,7 @@ from metadata_backend.api.models.submission import Rems, Submission, SubmissionM
 from metadata_backend.api.processors.xml.bigpicture import BP_DATASET_OBJECT_TYPE, BP_POLICY_OBJECT_TYPE
 from metadata_backend.api.services.file import FileProviderService
 from metadata_backend.conf.deployment import deployment_config
-from metadata_backend.database.postgres.models import FileEntity, ObjectEntity
+from metadata_backend.database.postgres.models import FileEntity, ObjectEntity, SubmissionEntity
 from metadata_backend.database.postgres.repositories.submission import (
     SUB_FIELD_METADATA,
     SUB_FIELD_REMS,
@@ -45,23 +47,107 @@ from ...patches.rems_service import (
     MOCK_REMS_DEFAULT_ORGANISATION_ID,
     MOCK_REMS_DEFAULT_WORKFLOW_ID,
     mock_rems_catalogue_id,
+    mock_rems_existing_catalogue_item,
     mock_rems_resource_id,
     patch_rems_create_catalogue_item,
     patch_rems_create_resource,
 )
 from .common import SUBMISSION_METADATA
 
+REMS = Rems(
+    organizationId=MOCK_REMS_DEFAULT_ORGANISATION_ID,
+    workflowId=MOCK_REMS_DEFAULT_WORKFLOW_ID,
+    licenses=[MOCK_REMS_DEFAULT_LICENSE_ID],
+)
+
+
+async def _add_bp_submission(submission_repository, **kwargs) -> SubmissionEntity:
+    """Add a BP submission with the default REMS information."""
+    submission_entity = create_submission_entity(
+        workflow=SubmissionWorkflow.BP,
+        document={SUB_FIELD_METADATA: SUBMISSION_METADATA, SUB_FIELD_REMS: to_json_dict(REMS)},
+        **kwargs,
+    )
+    await submission_repository.add_submission(submission_entity)
+    return submission_entity
+
+
+async def _add_bp_object(
+    object_repository, submission_entity: SubmissionEntity, object_type: str, **kwargs
+) -> ObjectEntity:
+    """Add a metadata object to a BP submission."""
+    object_entity = create_object_entity(
+        project_id=submission_entity.project_id,
+        submission_id=submission_entity.submission_id,
+        object_type=object_type,
+        **kwargs,
+    )
+    await object_repository.add_object(object_entity, SubmissionWorkflow.BP)
+    return object_entity
+
+
+@contextmanager
+def _patch_bp_publish(doi: str = "10.1/test") -> Iterator[SimpleNamespace]:
+    """Patch every external call made when publishing a BP submission.
+
+    - ProjectService.verify_user_project: accept any project id.
+    - middlewares.verify_authorization: accept any user bearer token.
+    - generate_bp_metadata_xmls: generate no metadata XMLs to validate before registration.
+    - upload_bp_metadata_xmls: upload no metadata XMLs to the SDA inbox.
+    - S3InboxSDAService.list_submission_inbox_files: list no files in the SDA inbox.
+    - S3InboxSDAService.find_missing_files: no submission file is missing from the SDA inbox.
+    - S3InboxSDAService.find_orphaned_files: the SDA inbox has no unexpected files.
+    - DataciteServiceHandler.create_draft_doi: create ``doi`` as the draft DOI.
+    - DataciteServiceHandler.publish: do not publish the draft DOI in DataCite.
+    - RemsServiceHandler.create_resource: create the resource in the mock REMS.
+    - RemsServiceHandler.create_catalogue_item: create the catalogue item in the mock REMS.
+
+    Args:
+        doi: The DOI DataCite creates for the submission.
+
+    Yields:
+        The mocks by name, so that a test can assert their calls or change what they return.
+    """
+    with (
+        patch_verify_user_project,
+        patch_verify_authorization,
+        patch(
+            "metadata_backend.api.services.workflow.generate_bp_metadata_xmls", new=AsyncMock(return_value={})
+        ) as generate_bp_metadata,
+        patch(
+            "metadata_backend.api.services.workflow.upload_bp_metadata_xmls", new_callable=AsyncMock
+        ) as upload_bp_metadata,
+        patch(
+            "metadata_backend.api.services.file.S3InboxSDAService.list_submission_inbox_files",
+            new=AsyncMock(return_value=[]),
+        ) as list_submission_inbox_files,
+        patch(
+            "metadata_backend.api.services.file.S3InboxSDAService.find_missing_files", new=AsyncMock(return_value=[])
+        ) as find_missing_files,
+        patch(
+            "metadata_backend.api.services.file.S3InboxSDAService.find_orphaned_files", new=AsyncMock(return_value=[])
+        ) as find_orphaned_files,
+        patch_datacite_create_draft_doi(doi) as datacite_create_draft_doi,
+        patch_datacite_publish() as datacite_publish,
+        patch_rems_create_resource() as rems_create_resource,
+        patch_rems_create_catalogue_item() as rems_create_catalogue_item,
+    ):
+        yield SimpleNamespace(
+            generate_bp_metadata=generate_bp_metadata,
+            upload_bp_metadata=upload_bp_metadata,
+            list_submission_inbox_files=list_submission_inbox_files,
+            find_missing_files=find_missing_files,
+            find_orphaned_files=find_orphaned_files,
+            datacite_create_draft_doi=datacite_create_draft_doi,
+            datacite_publish=datacite_publish,
+            rems_create_resource=rems_create_resource,
+            rems_create_catalogue_item=rems_create_catalogue_item,
+        )
+
 
 async def test_publish_submission_sd(csc_client, submission_repository, object_repository, file_repository):
     """Test publishing of CSC submission."""
     api_prefix_v1 = deployment_config().API_PREFIX_V1
-
-    # REMS information.
-    rems = Rems(
-        organizationId=MOCK_REMS_DEFAULT_ORGANISATION_ID,
-        workflowId=MOCK_REMS_DEFAULT_WORKFLOW_ID,
-        licenses=[MOCK_REMS_DEFAULT_LICENSE_ID],
-    )
 
     submission_title = f"title_{str(uuid.uuid4())}"
     submission_description = f"description_{str(uuid.uuid4())}"
@@ -114,7 +200,7 @@ async def test_publish_submission_sd(csc_client, submission_repository, object_r
         submission_entity = create_submission_entity(
             title=submission_title,
             description=submission_description,
-            document={SUB_FIELD_METADATA: SUBMISSION_METADATA, SUB_FIELD_REMS: to_json_dict(rems)},
+            document={SUB_FIELD_METADATA: SUBMISSION_METADATA, SUB_FIELD_REMS: to_json_dict(REMS)},
             bucket="test-bucket",
         )
 
@@ -166,10 +252,10 @@ async def test_publish_submission_sd(csc_client, submission_repository, object_r
         mock_metax_publish_dataset.assert_awaited_once_with(metax_id, doi)
 
         # Assert Rems.
-        mock_rems_create_resource.assert_awaited_once_with(rems.organizationId, rems.licenses, doi)
+        mock_rems_create_resource.assert_awaited_once_with(REMS.organizationId, REMS.licenses, doi)
         mock_rems_create_catalogue_item.assert_awaited_once_with(
-            rems.organizationId,
-            rems.workflowId,
+            REMS.organizationId,
+            REMS.workflowId,
             mock_rems_resource_id,
             submission_title,
             TEST_DISCOVERY_URL.format(id=metax_id),
@@ -183,88 +269,40 @@ async def test_publish_submission_bp(nbis_client, submission_repository, object_
     """Test publishing of BP submission."""
     api_prefix_v1 = deployment_config().API_PREFIX_V1
 
-    # REMS information.
-    rems = Rems(
-        organizationId=MOCK_REMS_DEFAULT_ORGANISATION_ID,
-        workflowId=MOCK_REMS_DEFAULT_WORKFLOW_ID,
-        licenses=[MOCK_REMS_DEFAULT_LICENSE_ID],
-    )
-
-    # The submission contains one dataset metadata object.
-    dataset_object_type = "dataset"
+    # The submission contains one dataset metadata object and one file.
     dataset_title = f"title_{str(uuid.uuid4())}"
-    dataset_description = f"description_{str(uuid.uuid4())}"
-
-    # The submission contains one file.
-    file_path = f"path_{str(uuid.uuid4())}"
-    file_bytes = 1024
-
-    # Mock data.
-    doi_part1 = f"doi_{str(uuid.uuid4())}"
-    doi_part2 = f"doi_{str(uuid.uuid4())}"
-    doi = f"{doi_part1}/{doi_part2}"
-
-    # Create submission and files to allow the submission to be published.
-
-    # Create submission.
-    workflow = SubmissionWorkflow.BP
-    submission_entity = create_submission_entity(
-        workflow=workflow,
-        document={SUB_FIELD_METADATA: SUBMISSION_METADATA, SUB_FIELD_REMS: to_json_dict(rems)},
-        bucket="test-bucket",
+    submission_entity = await _add_bp_submission(submission_repository, bucket="test-bucket", title=dataset_title)
+    submission_id = submission_entity.submission_id
+    object_entity = await _add_bp_object(
+        object_repository,
+        submission_entity,
+        BP_DATASET_OBJECT_TYPE,
         title=dataset_title,
+        description=f"description_{str(uuid.uuid4())}",
     )
-    submission_id = await submission_repository.add_submission(submission_entity)
-
-    # Create metadata object.
-    object_entity = create_object_entity(
-        project_id=submission_entity.project_id,
-        submission_id=submission_id,
-        object_type=dataset_object_type,
-        title=dataset_title,
-        description=dataset_description,
+    await file_repository.add_file(
+        FileEntity(
+            submission_id=submission_id,
+            object_id=object_entity.object_id,
+            path=f"path_{str(uuid.uuid4())}",
+            bytes=1024,
+        ),
+        SubmissionWorkflow.BP,
     )
-    await object_repository.add_object(object_entity, workflow)
 
-    # Create file.
-    file_entity = FileEntity(
-        submission_id=submission_id,
-        object_id=object_entity.object_id,
-        path=file_path,
-        bytes=file_bytes,
-    )
-    await file_repository.add_file(file_entity, workflow)
-
-    # Publish submission.
-    #
+    doi = f"doi_{str(uuid.uuid4())}/doi_{str(uuid.uuid4())}"
 
     with (
-        patch_verify_user_project,
-        patch_verify_authorization,
-        patch(
-            "metadata_backend.api.services.workflow.upload_bp_metadata_xmls",
-            new_callable=AsyncMock,
-        ) as mock_upload_bp_metadata,
-        patch(
-            "metadata_backend.api.services.file.S3InboxSDAService.find_missing_files", new_callable=AsyncMock
-        ) as mock_find_missing_files,
-        patch(
-            "metadata_backend.api.services.file.S3InboxSDAService.list_submission_inbox_files", new_callable=AsyncMock
-        ) as mock_list_submission_inbox_files,
-        patch(
-            "metadata_backend.api.services.file.S3InboxSDAService.find_orphaned_files", new_callable=AsyncMock
-        ) as mock_find_orphaned_files,
-        patch_datacite_create_draft_doi(doi) as mock_datacite_create_draft_doi,
-        patch_datacite_publish() as mock_datacite_publish,
+        _patch_bp_publish(doi) as mocks,
         patch_pid_create_draft_doi(doi) as mock_pid_create_draft_doi,
         patch_pid_publish() as mock_pid_publish,
-        # Rems
-        patch_rems_create_resource() as mock_rems_create_resource,
-        patch_rems_create_catalogue_item() as mock_rems_create_catalogue_item,
     ):
-        mock_list_submission_inbox_files.return_value = []
-        mock_find_missing_files.return_value = []
-        mock_find_orphaned_files.return_value = []
+        # Records the order of the calls to these mocks.
+        call_order = Mock()
+        call_order.attach_mock(mocks.generate_bp_metadata, "generate_bp_metadata_xmls")
+        call_order.attach_mock(mocks.datacite_create_draft_doi, "create_draft_doi")
+        call_order.attach_mock(mocks.rems_create_catalogue_item, "create_catalogue_item")
+        call_order.attach_mock(mocks.upload_bp_metadata, "upload_bp_metadata_xmls")
 
         # Publish submission.
         response = nbis_client.patch(
@@ -274,8 +312,8 @@ async def test_publish_submission_bp(nbis_client, submission_repository, object_
         assert response.status_code == 200
         assert data == {"submissionId": submission_id}
 
-        mock_datacite_create_draft_doi.assert_awaited_once()
-        mock_datacite_publish.assert_awaited_once()
+        mocks.datacite_create_draft_doi.assert_awaited_once()
+        mocks.datacite_publish.assert_awaited_once()
         mock_pid_create_draft_doi.assert_not_awaited()
         mock_pid_publish.assert_not_awaited()
 
@@ -283,16 +321,25 @@ async def test_publish_submission_bp(nbis_client, submission_repository, object_
         # TODO(improve): BP beacon service not implement
 
         # Assert Rems.
-        mock_rems_create_resource.assert_awaited_once_with(rems.organizationId, rems.licenses, submission_id)
-        mock_rems_create_catalogue_item.assert_awaited_once_with(
-            rems.organizationId,
-            rems.workflowId,
+        mocks.rems_create_resource.assert_awaited_once_with(REMS.organizationId, REMS.licenses, submission_id)
+        mocks.rems_create_catalogue_item.assert_awaited_once_with(
+            REMS.organizationId,
+            REMS.workflowId,
             1,  # REMS resource id
-            f"{submission_entity.name} ({rems.organizationId}, {submission_id})",
+            f"{submission_entity.name} ({REMS.organizationId}, {submission_id})",
             TEST_DISCOVERY_URL.format(id=submission_id),
         )
-        mock_list_submission_inbox_files.assert_awaited_once_with("mock-userid", submission_id)
-        mock_upload_bp_metadata.assert_awaited_once_with(ANY, submission_id, "mock-userid", "oidc-token")
+        mocks.list_submission_inbox_files.assert_awaited_once_with("mock-userid", submission_id)
+        mocks.upload_bp_metadata.assert_awaited_once_with(ANY, submission_id, "mock-userid", "oidc-token")
+
+        # Assert the call order of XML generation for validation, registration and XML generation for upload. Only the
+        # generation for upload adds the DOI and REMS links to the landing page XML.
+        assert [name for name, _args, _kwargs in call_order.mock_calls] == [
+            "generate_bp_metadata_xmls",
+            "create_draft_doi",
+            "create_catalogue_item",
+            "upload_bp_metadata_xmls",
+        ]
 
         # Assert registrations.
         response = nbis_client.get(f"{api_prefix_v1}/submissions/{submission_id}/registrations")
@@ -317,68 +364,25 @@ async def test_publish_submission_bp_non_clinical(nbis_client, submission_reposi
 
     api_prefix_v1 = deployment_config().API_PREFIX_V1
 
-    rems = Rems(
-        organizationId=MOCK_REMS_DEFAULT_ORGANISATION_ID,
-        workflowId=MOCK_REMS_DEFAULT_WORKFLOW_ID,
-        licenses=[MOCK_REMS_DEFAULT_LICENSE_ID],
-    )
-
-    workflow = SubmissionWorkflow.BP
-
-    submission_entity = create_submission_entity(
-        workflow=workflow,
-        metadata_version="2.0",
-        document={SUB_FIELD_METADATA: SUBMISSION_METADATA, SUB_FIELD_REMS: to_json_dict(rems)},
-    )
-    submission_id = await submission_repository.add_submission(submission_entity)
-
-    def _object(object_type: str, document: str | None = None) -> ObjectEntity:
-        return create_object_entity(
-            project_id=submission_entity.project_id,
-            submission_id=submission_id,
-            object_type=object_type,
-            document=document,
-        )
-
-    await object_repository.add_object(
-        _object(BP_DATASET_OBJECT_TYPE, "<DATASET><METADATA_STANDARD>2.0.0</METADATA_STANDARD></DATASET>"), workflow
+    submission_entity = await _add_bp_submission(submission_repository, metadata_version="2.0")
+    submission_id = submission_entity.submission_id
+    await _add_bp_object(
+        object_repository,
+        submission_entity,
+        BP_DATASET_OBJECT_TYPE,
+        document="<DATASET><METADATA_STANDARD>2.0.0</METADATA_STANDARD></DATASET>",
     )
     # The policy says the dataset is non-clinical.
-    await object_repository.add_object(
-        _object(
-            BP_POLICY_OBJECT_TYPE,
-            '<POLICY alias="1"><DATASET_REF alias="1"/><ATTRIBUTES>'
-            "<STRING_ATTRIBUTE><TAG>type_of_dataset</TAG><VALUE>Non-Clinical/Obscured</VALUE></STRING_ATTRIBUTE>"
-            "</ATTRIBUTES></POLICY>",
-        ),
-        workflow,
+    await _add_bp_object(
+        object_repository,
+        submission_entity,
+        BP_POLICY_OBJECT_TYPE,
+        document='<POLICY alias="1"><DATASET_REF alias="1"/><ATTRIBUTES>'
+        "<STRING_ATTRIBUTE><TAG>type_of_dataset</TAG><VALUE>Non-Clinical/Obscured</VALUE></STRING_ATTRIBUTE>"
+        "</ATTRIBUTES></POLICY>",
     )
 
-    with (
-        patch_verify_user_project,
-        patch_verify_authorization,
-        patch(
-            "metadata_backend.api.services.workflow.upload_bp_metadata_xmls",
-            new_callable=AsyncMock,
-        ),
-        patch(
-            "metadata_backend.api.services.file.S3InboxSDAService.find_missing_files", new_callable=AsyncMock
-        ) as mock_find_missing_files,
-        patch(
-            "metadata_backend.api.services.file.S3InboxSDAService.list_submission_inbox_files", new_callable=AsyncMock
-        ) as mock_list_submission_inbox_files,
-        patch(
-            "metadata_backend.api.services.file.S3InboxSDAService.find_orphaned_files", new_callable=AsyncMock
-        ) as mock_find_orphaned_files,
-        patch_datacite_create_draft_doi(f"doi_{str(uuid.uuid4())}/doi_{str(uuid.uuid4())}"),
-        patch_datacite_publish(),
-        patch_rems_create_resource() as mock_rems_create_resource,
-        patch_rems_create_catalogue_item() as mock_rems_create_catalogue_item,
-    ):
-        mock_list_submission_inbox_files.return_value = []
-        mock_find_missing_files.return_value = []
-        mock_find_orphaned_files.return_value = []
-
+    with _patch_bp_publish() as mocks:
         response = nbis_client.patch(
             f"{api_prefix_v1}/publish/{submission_id}", headers={"Authorization": "Bearer oidc-token"}
         )
@@ -387,8 +391,8 @@ async def test_publish_submission_bp_non_clinical(nbis_client, submission_reposi
         assert response.json() == {"submissionId": submission_id}
 
         # Nothing of the submission reaches REMS.
-        mock_rems_create_resource.assert_not_awaited()
-        mock_rems_create_catalogue_item.assert_not_awaited()
+        mocks.rems_create_resource.assert_not_awaited()
+        mocks.rems_create_catalogue_item.assert_not_awaited()
 
         response = nbis_client.get(f"{api_prefix_v1}/submissions/{submission_id}/registrations")
         assert response.status_code == 200
@@ -403,60 +407,18 @@ async def test_publish_submission_bp_invalid_stored_policy(nbis_client, submissi
 
     api_prefix_v1 = deployment_config().API_PREFIX_V1
 
-    rems = Rems(
-        organizationId=MOCK_REMS_DEFAULT_ORGANISATION_ID,
-        workflowId=MOCK_REMS_DEFAULT_WORKFLOW_ID,
-        licenses=[MOCK_REMS_DEFAULT_LICENSE_ID],
-    )
-
-    workflow = SubmissionWorkflow.BP
-
-    submission_entity = create_submission_entity(
-        workflow=workflow,
-        metadata_version="2.0",
-        document={SUB_FIELD_METADATA: SUBMISSION_METADATA, SUB_FIELD_REMS: to_json_dict(rems)},
-    )
-    submission_id = await submission_repository.add_submission(submission_entity)
-
-    def _object(object_type: str, document: str | None = None) -> ObjectEntity:
-        return create_object_entity(
-            project_id=submission_entity.project_id,
-            submission_id=submission_id,
-            object_type=object_type,
-            document=document,
-        )
-
-    await object_repository.add_object(
-        _object(BP_DATASET_OBJECT_TYPE, "<DATASET><METADATA_STANDARD>2.0.0</METADATA_STANDARD></DATASET>"), workflow
+    submission_entity = await _add_bp_submission(submission_repository, metadata_version="2.0")
+    submission_id = submission_entity.submission_id
+    await _add_bp_object(
+        object_repository,
+        submission_entity,
+        BP_DATASET_OBJECT_TYPE,
+        document="<DATASET><METADATA_STANDARD>2.0.0</METADATA_STANDARD></DATASET>",
     )
     # The stored policy is not well-formed XML.
-    await object_repository.add_object(_object(BP_POLICY_OBJECT_TYPE, "<POLICY>"), workflow)
+    await _add_bp_object(object_repository, submission_entity, BP_POLICY_OBJECT_TYPE, document="<POLICY>")
 
-    with (
-        patch_verify_user_project,
-        patch_verify_authorization,
-        patch(
-            "metadata_backend.api.services.workflow.upload_bp_metadata_xmls",
-            new_callable=AsyncMock,
-        ),
-        patch(
-            "metadata_backend.api.services.file.S3InboxSDAService.find_missing_files", new_callable=AsyncMock
-        ) as mock_find_missing_files,
-        patch(
-            "metadata_backend.api.services.file.S3InboxSDAService.list_submission_inbox_files", new_callable=AsyncMock
-        ) as mock_list_submission_inbox_files,
-        patch(
-            "metadata_backend.api.services.file.S3InboxSDAService.find_orphaned_files", new_callable=AsyncMock
-        ) as mock_find_orphaned_files,
-        patch_datacite_create_draft_doi(f"doi_{str(uuid.uuid4())}/doi_{str(uuid.uuid4())}"),
-        patch_datacite_publish(),
-        patch_rems_create_resource(),
-        patch_rems_create_catalogue_item(),
-    ):
-        mock_list_submission_inbox_files.return_value = []
-        mock_find_missing_files.return_value = []
-        mock_find_orphaned_files.return_value = []
-
+    with _patch_bp_publish():
         response = nbis_client.patch(
             f"{api_prefix_v1}/publish/{submission_id}", headers={"Authorization": "Bearer oidc-token"}
         )
@@ -533,29 +495,11 @@ async def test_publish_submission_bp_fails_when_metadata_upload_fails(
     """BP publish should fail and remain unpublished if metadata encryption/upload fails."""
     api_prefix_v1 = deployment_config().API_PREFIX_V1
 
-    rems = Rems(
-        organizationId=MOCK_REMS_DEFAULT_ORGANISATION_ID,
-        workflowId=MOCK_REMS_DEFAULT_WORKFLOW_ID,
-        licenses=[MOCK_REMS_DEFAULT_LICENSE_ID],
+    submission_entity = await _add_bp_submission(submission_repository, bucket="test-bucket", title="bp-title")
+    submission_id = submission_entity.submission_id
+    object_entity = await _add_bp_object(
+        object_repository, submission_entity, BP_DATASET_OBJECT_TYPE, title="bp-title", description="bp-description"
     )
-
-    submission_entity = create_submission_entity(
-        workflow=SubmissionWorkflow.BP,
-        document={SUB_FIELD_METADATA: SUBMISSION_METADATA, SUB_FIELD_REMS: to_json_dict(rems)},
-        bucket="test-bucket",
-        title="bp-title",
-    )
-    submission_id = await submission_repository.add_submission(submission_entity)
-
-    object_entity = create_object_entity(
-        project_id=submission_entity.project_id,
-        submission_id=submission_id,
-        object_type="dataset",
-        title="bp-title",
-        description="bp-description",
-    )
-    await object_repository.add_object(object_entity, SubmissionWorkflow.BP)
-
     await file_repository.add_file(
         FileEntity(
             submission_id=submission_id,
@@ -566,31 +510,8 @@ async def test_publish_submission_bp_fails_when_metadata_upload_fails(
         SubmissionWorkflow.BP,
     )
 
-    with (
-        patch_verify_user_project,
-        patch_verify_authorization,
-        patch(
-            "metadata_backend.api.services.workflow.upload_bp_metadata_xmls",
-            new_callable=AsyncMock,
-            side_effect=SystemException("metadata upload failed"),
-        ) as mock_upload_bp_metadata,
-        patch(
-            "metadata_backend.api.services.file.S3InboxSDAService.find_missing_files", new_callable=AsyncMock
-        ) as mock_find_missing_files,
-        patch(
-            "metadata_backend.api.services.file.S3InboxSDAService.list_submission_inbox_files", new_callable=AsyncMock
-        ) as mock_list_submission_inbox_files,
-        patch(
-            "metadata_backend.api.services.file.S3InboxSDAService.find_orphaned_files", new_callable=AsyncMock
-        ) as mock_find_orphaned_files,
-        patch_datacite_create_draft_doi("10.1/test"),
-        patch_datacite_publish(),
-        patch_rems_create_resource(),
-        patch_rems_create_catalogue_item(),
-    ):
-        mock_list_submission_inbox_files.return_value = []
-        mock_find_missing_files.return_value = []
-        mock_find_orphaned_files.return_value = []
+    with _patch_bp_publish() as mocks:
+        mocks.upload_bp_metadata.side_effect = SystemException("metadata upload failed")
 
         response = nbis_client.patch(
             f"{api_prefix_v1}/publish/{submission_id}", headers={"Authorization": "Bearer oidc-token"}
@@ -598,7 +519,39 @@ async def test_publish_submission_bp_fails_when_metadata_upload_fails(
         data = response.json()
         assert response.status_code == 500
         assert "metadata upload failed" in data["detail"]
-        mock_upload_bp_metadata.assert_awaited_once_with(ANY, submission_id, "mock-userid", "oidc-token")
+        mocks.upload_bp_metadata.assert_awaited_once_with(ANY, submission_id, "mock-userid", "oidc-token")
+
+    stored = await submission_repository.get_submission_by_id(submission_id)
+    assert stored is not None
+    assert not stored.is_published
+
+
+async def test_publish_submission_bp_invalid_metadata_fails_before_registration(
+    nbis_client, submission_repository, object_repository, file_repository
+):
+    """BP publish fails on an invalid metadata XML before registering a DOI or uploading anything."""
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+
+    submission_entity = await _add_bp_submission(submission_repository, bucket="test-bucket", title="bp-title")
+    submission_id = submission_entity.submission_id
+    object_entity = await _add_bp_object(
+        object_repository, submission_entity, BP_DATASET_OBJECT_TYPE, title="bp-title", description="bp-description"
+    )
+    await file_repository.add_file(
+        FileEntity(submission_id=submission_id, object_id=object_entity.object_id, path="test-path", bytes=1),
+        SubmissionWorkflow.BP,
+    )
+
+    with _patch_bp_publish() as mocks:
+        mocks.generate_bp_metadata.side_effect = SystemException("Generated XML document is not valid")
+
+        response = nbis_client.patch(
+            f"{api_prefix_v1}/publish/{submission_id}", headers={"Authorization": "Bearer oidc-token"}
+        )
+        assert response.status_code == 500
+
+        mocks.datacite_create_draft_doi.assert_not_awaited()
+        mocks.upload_bp_metadata.assert_not_awaited()
 
     stored = await submission_repository.get_submission_by_id(submission_id)
     assert stored is not None
@@ -612,28 +565,11 @@ async def test_publish_submission_bp_adds_thumbnail_jpgs_before_orphan_check(
     api_prefix_v1 = deployment_config().API_PREFIX_V1
     caplog.set_level("INFO", logger="server")
 
-    rems = Rems(
-        organizationId=MOCK_REMS_DEFAULT_ORGANISATION_ID,
-        workflowId=MOCK_REMS_DEFAULT_WORKFLOW_ID,
-        licenses=[MOCK_REMS_DEFAULT_LICENSE_ID],
+    submission_entity = await _add_bp_submission(submission_repository, bucket="test-bucket", title="bp-title")
+    submission_id = submission_entity.submission_id
+    object_entity = await _add_bp_object(
+        object_repository, submission_entity, BP_DATASET_OBJECT_TYPE, title="bp-title", description="bp-description"
     )
-
-    submission_entity = create_submission_entity(
-        workflow=SubmissionWorkflow.BP,
-        document={SUB_FIELD_METADATA: SUBMISSION_METADATA, SUB_FIELD_REMS: to_json_dict(rems)},
-        bucket="test-bucket",
-        title="bp-title",
-    )
-    submission_id = await submission_repository.add_submission(submission_entity)
-
-    object_entity = create_object_entity(
-        project_id=submission_entity.project_id,
-        submission_id=submission_id,
-        object_type="dataset",
-        title="bp-title",
-        description="bp-description",
-    )
-    await object_repository.add_object(object_entity, SubmissionWorkflow.BP)
 
     existing_path = f"{submission_id}/IMAGES/IMAGE_1/img1.dcm.c4gh"
     thumbnail_jpg_path = f"DATASET_{submission_id}/LANDING_PAGE/THUMBNAILS/thumb.jpg.c4gh"
@@ -651,29 +587,9 @@ async def test_publish_submission_bp_adds_thumbnail_jpgs_before_orphan_check(
         SubmissionWorkflow.BP,
     )
 
-    with (
-        patch_verify_user_project,
-        patch_verify_authorization,
-        patch(
-            "metadata_backend.api.services.workflow.upload_bp_metadata_xmls",
-            new_callable=AsyncMock,
-        ),
-        patch(
-            "metadata_backend.api.services.file.S3InboxSDAService.list_submission_inbox_files", new_callable=AsyncMock
-        ) as mock_list_submission_inbox_files,
-        patch(
-            "metadata_backend.api.services.file.S3InboxSDAService.find_missing_files", new_callable=AsyncMock
-        ) as mock_find_missing_files,
-        patch(
-            "metadata_backend.api.services.file.S3InboxSDAService.find_orphaned_files", new_callable=AsyncMock
-        ) as mock_find_orphaned_files,
-        patch_datacite_create_draft_doi("10.1/test"),
-        patch_datacite_publish(),
-        patch_rems_create_resource(),
-        patch_rems_create_catalogue_item(),
-    ):
+    with _patch_bp_publish() as mocks:
         # thumbnail_jpg_path should be added to submission files before the orphaned files check
-        mock_list_submission_inbox_files.return_value = [
+        mocks.list_submission_inbox_files.return_value = [
             FileItem(
                 fileID="12345678-1234-4234-8234-1234567890ab",
                 inboxPath=thumbnail_jpg_path,
@@ -693,9 +609,8 @@ async def test_publish_submission_bp_adds_thumbnail_jpgs_before_orphan_check(
                 createdAt="2024-01-01T00:00:00Z",
             ),
         ]
-        mock_find_missing_files.return_value = []
         # unencrypted_path and unexpected_path should not be added to submission files and are thus orphaned files
-        mock_find_orphaned_files.side_effect = lambda _user_id, _submission_id, files: [
+        mocks.find_orphaned_files.side_effect = lambda _user_id, _submission_id, files: [
             path for path in [unencrypted_path, unexpected_path] if path not in {file.path for file in files}
         ]
 
@@ -711,8 +626,8 @@ async def test_publish_submission_bp_adds_thumbnail_jpgs_before_orphan_check(
             f"{unencrypted_path}, {unexpected_path}."
         ]
 
-        mock_find_missing_files.assert_awaited_once()
-        orphan_call = mock_find_orphaned_files.await_args
+        mocks.find_missing_files.assert_awaited_once()
+        orphan_call = mocks.find_orphaned_files.await_args
         checked_paths = {file.path for file in orphan_call.args[2]}
         assert thumbnail_jpg_path in checked_paths
         assert unencrypted_path not in checked_paths
@@ -772,3 +687,54 @@ def test_get_discovery_url_bp():
     assert PublishAPIHandler.get_discovery_url(submission, registration) == TEST_DISCOVERY_URL.format(
         id=submission.submissionId
     )
+
+
+async def test_publish_submission_bp_reuses_rems(nbis_client, submission_repository, object_repository, caplog):
+    """Test that publishing a BP submission reuses the REMS resource and catalogue item of its dataset."""
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+
+    submission_entity = await _add_bp_submission(submission_repository, bucket="test-bucket")
+    submission_id = submission_entity.submission_id
+    await _add_bp_object(object_repository, submission_entity, BP_DATASET_OBJECT_TYPE)
+
+    with mock_rems_existing_catalogue_item(submission_id) as (resource, item), _patch_bp_publish() as mocks:
+        response = nbis_client.patch(
+            f"{api_prefix_v1}/publish/{submission_id}?no_files=true", headers={"Authorization": "Bearer oidc-token"}
+        )
+        assert response.status_code == 200, response.text
+        mocks.rems_create_resource.assert_not_awaited()
+        mocks.rems_create_catalogue_item.assert_not_awaited()
+
+        response = nbis_client.get(f"{api_prefix_v1}/submissions/{submission_id}/registrations")
+        registration = Registration.model_validate(response.json())
+        assert registration.remsResourceId == str(resource.id)
+        assert registration.remsCatalogueId == str(item.id)
+
+    assert f"keeping its licenses [{MOCK_REMS_DEFAULT_LICENSE_ID}]" in caplog.text
+
+
+async def test_publish_submission_bp_rems_catalogue_item_without_resource(
+    nbis_client, submission_repository, object_repository
+):
+    """Test that a REMS catalogue item without an active resource fails publishing before a resource is created."""
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+
+    submission_entity = await _add_bp_submission(submission_repository, bucket="test-bucket")
+    submission_id = submission_entity.submission_id
+    await _add_bp_object(object_repository, submission_entity, BP_DATASET_OBJECT_TYPE)
+
+    with (
+        mock_rems_existing_catalogue_item(submission_id) as (resource, item),
+        # The catalogue item's resource is no longer active, so REMS lists no resource.
+        patch.object(RemsServiceHandler, "get_resources", new=AsyncMock(return_value=[])),
+        _patch_bp_publish() as mocks,
+    ):
+        response = nbis_client.patch(
+            f"{api_prefix_v1}/publish/{submission_id}?no_files=true", headers={"Authorization": "Bearer oidc-token"}
+        )
+        assert response.status_code == 400, response.text
+        assert response.json()["errors"] == [
+            f"REMS catalogue item '{item.id}' belongs to REMS resource '{resource.id}', not to an active REMS resource."
+        ]
+        mocks.rems_create_resource.assert_not_awaited()
+        mocks.rems_create_catalogue_item.assert_not_awaited()

@@ -90,6 +90,14 @@ from metadata_backend.api.services.submission.bigpicture_attributes import (
     BigpictureVersionedStringAttribute,
 )
 from metadata_backend.api.services.submission.submission import ObjectSubmission
+from tests.utils import (
+    BP_ANNOTATION_1_FILE,
+    BP_ANNOTATION_2_FILE,
+    BP_ANNOTATION_TASK_FILE,
+    BP_IMAGE_1_FILE,
+    BP_IMAGE_2_FILE,
+    BP_ONTOLOGY_FILE,
+)
 
 from .test_utils import TEST_FILES_DIR, assert_object, assert_ref, assert_ref_length
 
@@ -1536,12 +1544,12 @@ def test_prepare_files_3():
     service._processor, _, _ = BigpictureObjectSubmissionService._create_processor(_bp_objects(SUBMISSION_3_DIR))
 
     assert sorted(f.path for f in service.prepare_files("1")) == [
-        "DATASET_1/ANNOTATIONS/test.geojson.c4gh",
-        "DATASET_1/ANNOTATIONS/test2.geojson.c4gh",
-        "DATASET_1/ANNOTATION_TASKS/task.pdf.c4gh",
-        "DATASET_1/IMAGES/IMAGE_1/test.dcm.c4gh",
-        "DATASET_1/IMAGES/IMAGE_2/test2.dcm.c4gh",
-        "DATASET_1/ONTOLOGIES/ontology.json.c4gh",
+        f"DATASET_1/{BP_ANNOTATION_1_FILE}.c4gh",
+        f"DATASET_1/{BP_ANNOTATION_2_FILE}.c4gh",
+        f"DATASET_1/{BP_ANNOTATION_TASK_FILE}.c4gh",
+        f"DATASET_1/{BP_IMAGE_1_FILE}.c4gh",
+        f"DATASET_1/{BP_IMAGE_2_FILE}.c4gh",
+        f"DATASET_1/{BP_ONTOLOGY_FILE}.c4gh",
     ]
 
 
@@ -1549,16 +1557,16 @@ def test_prepare_files_3():
     ("replacements", "error"),
     [
         (
-            {"ontology": ("ONTOLOGIES/ontology.json", "ANNOTATIONS/ontology.json")},
+            {"ontology": (BP_ONTOLOGY_FILE, "ANNOTATIONS/ontology.json")},
             "ONTOLOGY file 'ANNOTATIONS/ontology.json.c4gh' must be in directory 'ONTOLOGIES'.",
         ),
         (
-            {"annotation_task": ("ANNOTATION_TASKS/task.pdf", "ANNOTATIONS/task.pdf")},
+            {"annotation_task": (BP_ANNOTATION_TASK_FILE, "ANNOTATIONS/task.pdf")},
             "ANNOTATION_TASK file 'ANNOTATIONS/task.pdf.c4gh' must be in directory 'ANNOTATION_TASKS'.",
         ),
         (
-            {"annotation": ("ANNOTATIONS/test2.geojson", "ANNOTATIONS/test.geojson")},
-            "ANNOTATION file 'ANNOTATIONS/test.geojson.c4gh' is already declared by ANNOTATION.",
+            {"annotation": (BP_ANNOTATION_2_FILE, BP_ANNOTATION_1_FILE)},
+            f"ANNOTATION file '{BP_ANNOTATION_1_FILE}.c4gh' is already declared by ANNOTATION.",
         ),
     ],
 )

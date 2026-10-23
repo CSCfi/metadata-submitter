@@ -56,9 +56,11 @@ class SubmissionService:
         submission.submissionId = None
         submission.metadataVersion = None
         submission.published = None
+        submission.imported = None
         submission.dateCreated = None
         submission.lastModified = None
         submission.datePublished = None
+        submission.dateImported = None
         if submission.metadata:
             submission.metadata.identifiers = None
 
@@ -158,6 +160,9 @@ class SubmissionService:
             submission.lastModified = entity.modified
         if entity.published is not None:
             submission.datePublished = entity.published
+        if entity.is_imported:
+            submission.imported = True
+            submission.dateImported = entity.imported
 
         return submission
 
@@ -401,6 +406,30 @@ class SubmissionService:
 
         if await self.repository.update_submission(submission_id, update_callback) is None:
             raise UnknownSubmissionUserException(submission_id)
+
+    async def update_imported(self, submission_id: str) -> None:
+        """Update submission imported flag to true.
+
+        :param submission_id: the submission id
+        """
+
+        async def update_callback(submission: SubmissionEntity) -> None:
+            if not submission.is_imported:
+                submission.is_imported = True
+
+        if await self.repository.update_submission(submission_id, update_callback) is None:
+            raise UnknownSubmissionUserException(submission_id)
+
+    async def is_imported(self, submission_id: str) -> bool:
+        """Check if the submission was imported.
+
+        :param submission_id: the submission id
+        :returns: True if the submission was imported
+        """
+        submission = await self.repository.get_submission_by_id(submission_id)
+        if submission is None:
+            raise UnknownSubmissionUserException(submission_id)
+        return submission.is_imported is True
 
     async def update_ingested(self, submission_id: str) -> None:
         """Update submission ingested flag to true.

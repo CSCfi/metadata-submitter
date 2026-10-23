@@ -70,14 +70,20 @@ class FileService:
             encryptedChecksum=entity.encrypted_checksum,
         )
 
-    async def add_file(self, file: File, workflow: SubmissionWorkflow) -> str:
+    async def add_file(
+        self, file: File, workflow: SubmissionWorkflow, *, ingest_status: IngestStatus | None = None
+    ) -> str:
         """Add a new submission file.
 
         :param file: the submission file
         :param workflow: the submission workflow
+        :param ingest_status: the initial ingest status, or None for the default
         :returns: the automatically assigned file id
         """
-        return await self.__repository.add_file(self.convert_to_entity(file), workflow)
+        entity = self.convert_to_entity(file)
+        if ingest_status is not None:
+            entity.ingest_status = ingest_status
+        return await self.__repository.add_file(entity, workflow)
 
     async def is_file_by_path(self, submission_id: str, path: str) -> bool:
         """
