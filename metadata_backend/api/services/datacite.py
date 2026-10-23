@@ -56,9 +56,7 @@ class DataciteService(ABC):
         if datacite.alternateIdentifiers is None:
             datacite.alternateIdentifiers = []
         datacite.alternateIdentifiers.append(
-            AlternateIdentifier(
-                alternateIdentifier="Local accession number", alternateIdentifierType=registration.submissionId
-            )
+            AlternateIdentifier(alternateIdentifier=registration.submissionId, alternateIdentifierType="LocalID")
         )
 
         # Set title.

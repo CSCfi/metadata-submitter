@@ -259,3 +259,17 @@ async def test_list_api_keys(jwt_config, service) -> None:
     assert keys[0].created_at is not None
     assert keys[1].created_at is not None
     assert keys[2].created_at is not None
+
+
+async def test_create_api_key_duplicate_key_id(jwt_config, service) -> None:
+    """Test that a duplicate key id is reported as a user error when the key is created."""
+    user_id = "test_user"
+    key_id = "duplicate_key"
+
+    await service.create_api_key(user_id, key_id)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await service.create_api_key(user_id, key_id)
+
+    assert exc_info.value.status_code == status.HTTP_400_BAD_REQUEST
+    assert exc_info.value.detail == "API key already exists with this key id."

@@ -8,7 +8,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.types import Receive, Send
 
-from metadata_backend.api.middlewares import AuthMiddleware, SessionMiddleware
+from metadata_backend.api.middlewares import AuthMiddleware, SessionMiddleware, add_middlewares
 from metadata_backend.conf.deployment import deployment_config
 
 mock_session_context: ContextVar[AsyncSession | None] = ContextVar("mock_session_context", default=None)
@@ -21,8 +21,6 @@ async def test_session_middleware_api_route(session_factory):
     mock_asgi_app_called = False
 
     mock_app = MagicMock()
-    mock_app.state = SimpleNamespace()
-    mock_app.state.session_factory = session_factory
 
     async def _call(_scope, _receive, _send):
         nonlocal mock_asgi_app_called
@@ -34,7 +32,7 @@ async def test_session_middleware_api_route(session_factory):
 
     mock_app.side_effect = _call
 
-    middleware = SessionMiddleware(mock_app, mock_session_context)
+    middleware = SessionMiddleware(mock_app, mock_session_context, lambda: session_factory)
 
     scope = {
         "type": "http",
@@ -53,8 +51,6 @@ async def test_session_middleware_non_api_route(session_factory):
     mock_asgi_app_called = False
 
     mock_app = MagicMock()
-    mock_app.state = SimpleNamespace()
-    mock_app.state.session_factory = session_factory
 
     async def _call(_scope, _receive, _send):
         nonlocal mock_asgi_app_called
@@ -62,7 +58,7 @@ async def test_session_middleware_non_api_route(session_factory):
 
     mock_app.side_effect = _call
 
-    middleware = SessionMiddleware(mock_app, mock_session_context)
+    middleware = SessionMiddleware(mock_app, mock_session_context, lambda: session_factory)
 
     scope = {
         "type": "http",
@@ -79,8 +75,6 @@ async def test_session_middleware_non_api_route(session_factory):
 async def test_session_middleware_set_and_reset_context(session_factory):
     """Test that session middleware sets and resets the session context."""
     mock_app = MagicMock()
-    mock_app.state = SimpleNamespace()
-    mock_app.state.session_factory = session_factory
 
     assert mock_session_context.get() is None, "Session not reset before request"
 
@@ -92,7 +86,7 @@ async def test_session_middleware_set_and_reset_context(session_factory):
         await send({"type": "http.response.body", "body": b"ok", "more_body": False})
 
     mock_app.side_effect = _call
-    middleware = SessionMiddleware(mock_app, mock_session_context)
+    middleware = SessionMiddleware(mock_app, mock_session_context, lambda: session_factory)
 
     scope = {
         "type": "http",
@@ -122,14 +116,12 @@ async def test_session_middleware_returns_problem_json_on_exception(session_fact
     """Test session middleware catches exceptions and returns problem json with 500 response."""
     api_prefix_v1 = deployment_config().API_PREFIX_V1
     mock_app = MagicMock()
-    mock_app.state = SimpleNamespace()
-    mock_app.state.session_factory = session_factory
 
     async def _call(_scope, _receive, _send):
         raise RuntimeError("boom")
 
     mock_app.side_effect = _call
-    middleware = SessionMiddleware(mock_app, mock_session_context)
+    middleware = SessionMiddleware(mock_app, mock_session_context, lambda: session_factory)
 
     scope = {
         "type": "http",
@@ -198,8 +190,6 @@ async def test_session_middleware_commit_and_rollback(status_code, expected_acti
         return _mock_session_factory
 
     mock_app = MagicMock()
-    mock_app.state = SimpleNamespace()
-    mock_app.state.session_factory = mock_session_factory
 
     async def _call(_scope, _receive, _send):
         await _send({"type": "http.response.start", "status": status_code, "headers": []})
@@ -207,7 +197,7 @@ async def test_session_middleware_commit_and_rollback(status_code, expected_acti
 
     mock_app.side_effect = _call
 
-    middleware = SessionMiddleware(mock_app, mock_session_context)
+    middleware = SessionMiddleware(mock_app, mock_session_context, lambda: mock_session_factory)
 
     scope = {
         "type": "http",
@@ -311,3 +301,26 @@ async def test_auth_middleware_does_not_replace_started_response(monkeypatch):
 
     assert [m["type"] for m in sent_messages] == ["http.response.start", "http.response.body"]
     assert sent_messages[1]["body"] == b"generic"
+
+
+async def test_add_middlewares_api_key_has_session(session_factory):
+    """Test that the session is available when the auth middleware validates an API key."""
+    session_context: ContextVar[AsyncSession | None] = ContextVar("api_key_session_context", default=None)
+
+    auth_service = MagicMock()
+    # The API key is valid only if the session is available when it is validated.
+    auth_service.validate_api_key = AsyncMock(side_effect=lambda _api_key: session_context.get() and "user")
+    mock_app = AsyncMock()
+    mock_app.state = SimpleNamespace(session_factory=session_factory)
+
+    scope = {
+        "type": "http",
+        "method": "GET",
+        "path": f"{deployment_config().API_PREFIX_V1}/test",
+        "headers": [(b"authorization", b"Bearer keyid.secret")],
+    }
+    await add_middlewares(mock_app, auth_service, session_context)(scope, AsyncMock(), AsyncMock())
+
+    auth_service.validate_api_key.assert_awaited_once_with("keyid.secret")
+    # The request reaches the app only if the API key was valid.
+    mock_app.assert_awaited_once()

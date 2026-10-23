@@ -31,7 +31,7 @@ from .api.handlers.restapi import RESTAPIServiceHandlers, RESTAPIServices
 from .api.handlers.submission import SubmissionAPIHandler
 from .api.handlers.sync import SyncAPIHandler
 from .api.handlers.user import UserAPIHandler
-from .api.middlewares import AuthMiddleware, SessionMiddleware
+from .api.middlewares import AuthMiddleware, add_middlewares
 from .api.models.app import app_state
 from .api.models.submission import PaginatedSubmissions
 from .api.services.auth import AuthService
@@ -485,13 +485,10 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
 
     # ASGI middleware is used to handle authentication and sessions,
     # before any FastAPI/Starlette route is processed.
-    asgi_app: ASGIApp = app
-    if not session:
-        # Create SQLAlchemy sessions with ASGI middleware.
-        asgi_app = SessionMiddleware(asgi_app, _session_context)
-    # Authenticate users with ASGI middleware.
-    asgi_app = AuthMiddleware(asgi_app, auth_service)
-    return asgi_app
+    if session:
+        # The session is managed by the caller.
+        return AuthMiddleware(app, auth_service)
+    return add_middlewares(app, auth_service, _session_context)
 
 
 def main() -> None:

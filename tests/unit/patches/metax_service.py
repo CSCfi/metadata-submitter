@@ -9,6 +9,10 @@ def patch_metax_create_draft_dataset(metax_id: str):
     return patch.object(MetaxServiceHandler, "create_draft_dataset", new=AsyncMock(return_value=metax_id))
 
 
+def patch_metax_validate_dataset_metadata():
+    return patch.object(MetaxServiceHandler, "validate_dataset_metadata", new=AsyncMock(return_value=None))
+
+
 def patch_metax_update_dataset_metadata():
     return patch.object(MetaxServiceHandler, "update_dataset_metadata", new=AsyncMock(return_value=None))
 

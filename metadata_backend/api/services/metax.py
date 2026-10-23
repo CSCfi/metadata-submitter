@@ -25,7 +25,7 @@ from ..models.metax import (
     Funder,
     Funding,
     Language,
-    MetaxFields,
+    MetaxMappedFields,
     Organization,
     Person,
     Project,
@@ -167,14 +167,19 @@ class MetaxMapper:
         self._metax_service = metax_service
         self._ror_service = ror_service
 
-    async def map_metadata(self, metax_metadata: MetaxFields, datacite_metadata: DataCiteMetadata) -> MetaxFields:
+    async def map_metadata(self, datacite_metadata: DataCiteMetadata) -> MetaxMappedFields:
         """Map DataCite metadata to Metax metadata.
 
-        :param metax_metadata: existing Metax metadata
+        The mapper changes the DataCite metadata: organisation names are replaced with the ROR
+        preferred names and their ROR identifiers are added.
+
         :param datacite_metadata: DataCite metadata
-        :returns: Metax metadata.
+        :returns: The mapped Metax fields.
+        :raises UserException: If the DataCite metadata can't be mapped to Metax.
         """
         LOG.info("Mapping DataCite metadata to Metax metadata.")
+
+        metax_metadata = MetaxMappedFields()
 
         await self._map_actors(datacite_metadata.creators, Roles.creator, metax_metadata)
         await self._map_publisher(datacite_metadata.publisher, metax_metadata)
@@ -196,10 +201,14 @@ class MetaxMapper:
         if datacite_metadata.subjects:
             await self._map_field_of_science_and_keyword(datacite_metadata.subjects, metax_metadata)
 
+        # Metax requires keywords to publish, and they are mapped from the subjects alone.
+        if not metax_metadata.keyword:
+            raise UserException("At least one Metax keyword is required.")
+
         return metax_metadata
 
     async def _map_actors(
-        self, people: list[Creator] | list[Contributor], role: str, metax_metadata: MetaxFields
+        self, people: list[Creator] | list[Contributor], role: str, metax_metadata: MetaxMappedFields
     ) -> None:
         """
         Map DataCite creators or contributors to Metax actors.
@@ -210,7 +219,7 @@ class MetaxMapper:
         """
         for p in people:
             if not p.affiliation:
-                raise ValueError("Affiliation is required to map a Metax Actor.")
+                raise UserException(f"Affiliation is required for {p.name}.")
 
             # Metax supports only one organization.
             affiliation = p.affiliation[0]
@@ -228,7 +237,7 @@ class MetaxMapper:
             actor = Actor(organization=organization, roles=[role], person=person)
             metax_metadata.actors.append(actor)
 
-    async def _map_publisher(self, publisher: Publisher, metax_metadata: MetaxFields) -> None:
+    async def _map_publisher(self, publisher: Publisher, metax_metadata: MetaxMappedFields) -> None:
         """Map Datacite publisher to Metax actor with role Publisher.
 
         :param publisher: DataCite publisher.
@@ -241,7 +250,9 @@ class MetaxMapper:
         actor = Actor(organization=organization, roles=[Roles.publisher])
         metax_metadata.actors.append(actor)
 
-    async def _map_field_of_science_and_keyword(self, subjects: list[Subject], metax_metadata: MetaxFields) -> None:
+    async def _map_field_of_science_and_keyword(
+        self, subjects: list[Subject], metax_metadata: MetaxMappedFields
+    ) -> None:
         """
         Map Datacite subjects to Metax fields of science and keywords.
 
@@ -262,11 +273,8 @@ class MetaxMapper:
                 # Subject was not a Metax field of science.
                 metax_metadata.keyword.append(subject.subject)
 
-        if not metax_metadata.keyword:
-            raise ValueError("At least one Metax keyword is required.")
-
     @staticmethod
-    def _map_issued(metax_metadata: MetaxFields) -> None:
+    def _map_issued(metax_metadata: MetaxMappedFields) -> None:
         """Set Metax issued date to the publish date.
 
         :param metax_metadata: Metax metadata.
@@ -274,7 +282,7 @@ class MetaxMapper:
 
         metax_metadata.issued = datetime.now().strftime("%Y-%m-%d")
 
-    def _map_temporal(self, dates: list[Date], metax_metadata: MetaxFields) -> None:
+    def _map_temporal(self, dates: list[Date], metax_metadata: MetaxMappedFields) -> None:
         """Map DataCite dates to Metax temporal.
 
         :param dates: Datacite dates
@@ -295,10 +303,10 @@ class MetaxMapper:
                         )
                     )
                 else:
-                    raise ValueError(f"Invalid Metax temporal date format: {date.date}")
+                    raise UserException(f"Invalid date range: {date.date}")
 
     @staticmethod
-    def _map_language(language: str, metax_metadata: MetaxFields) -> None:
+    def _map_language(language: str, metax_metadata: MetaxMappedFields) -> None:
         """Map DataCite language to Metax language.
 
         :param language: DataCite language
@@ -311,7 +319,7 @@ class MetaxMapper:
         metax_metadata.language = [Language(url=METAX_MAPPING_LANGUAGES[language].uri)]
 
     async def _map_projects(
-        self, publisher: Publisher, funding_references: list[FundingReference] | None, metax_metadata: MetaxFields
+        self, publisher: Publisher, funding_references: list[FundingReference] | None, metax_metadata: MetaxMappedFields
     ) -> None:
         """
         Map DataCite publisher and funding references to Metax project.
@@ -349,7 +357,7 @@ class MetaxMapper:
         )
 
     @staticmethod
-    def _map_spatial(locations: list[GeoLocation], metax_metadata: MetaxFields) -> None:
+    def _map_spatial(locations: list[GeoLocation], metax_metadata: MetaxMappedFields) -> None:
         """Map DataCite geolocation to Metax spatial.
 
         :param locations: Datacite geoLocations.
@@ -424,7 +432,7 @@ class MetaxMapper:
         - Datacite date range follows https://www.ukoln.ac.uk/metadata/dcmi/collection-RKMS-ISO8601/
         - Metax supports dates in YYYY-MM-DD format.
 
-        :raises ValueError: If input date can't be mapped to Metax.
+        :raises UserException: If input date can't be mapped to Metax.
         """
         date_value = date.strip()
 
@@ -450,7 +458,7 @@ class MetaxMapper:
         except ValueError:
             pass
 
-        raise ValueError(f"Invalid date value: {date_value}")
+        raise UserException(f"Invalid date value: {date_value}")
 
     async def _map_organization(self, organisation: str) -> tuple[AnyUrl, str]:
         """

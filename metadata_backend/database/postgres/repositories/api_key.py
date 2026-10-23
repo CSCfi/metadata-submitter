@@ -18,6 +18,8 @@ class ApiKeyRepository:
             api_key: The API key row.
         """
         session().add(api_key)
+        # Flush so that a duplicate key id fails here.
+        await session().flush()
 
     async def get_api_key(self, key_id: str) -> ApiKeyEntity | None:
         """

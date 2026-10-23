@@ -1,6 +1,6 @@
 from contextvars import ContextVar
 from http.cookies import SimpleCookie
-from typing import Any, MutableMapping
+from typing import Any, Callable, MutableMapping
 
 import jwt
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +14,7 @@ from ..api.exceptions import AppException, SystemException, UnauthorizedUserExce
 from ..api.models.models import User
 from ..api.services.auth import AuthService
 from ..conf.deployment import deployment_config
+from ..database.postgres.repository import SessionFactory
 from ..helpers.logger import LOG
 from .models.app import app_state
 
@@ -32,9 +33,22 @@ class SessionMiddleware:
     to use the database. The repositories should not begin, commit or rollback the transaction.
     """
 
-    def __init__(self, app: ASGIApp, session_context: ContextVar[AsyncSession]):
+    def __init__(
+        self,
+        app: ASGIApp,
+        session_context: ContextVar[AsyncSession],
+        session_factory_provider: Callable[[], SessionFactory],
+    ):
+        """
+        Initialize the middleware.
+
+        :param app: The wrapped ASGI app.
+        :param session_context: The context variable for the request session.
+        :param session_factory_provider: Returns the session factory, which is set when the app starts.
+        """
         self.app = app
         self.session_context = session_context
+        self.session_factory_provider = session_factory_provider
         config = deployment_config()
         # The paths whose requests are wrapped in a database transaction.
         self.transaction_paths = (config.API_PREFIX_V1, config.API_PREFIX_SYNC)
@@ -56,12 +70,7 @@ class SessionMiddleware:
                 LOG.error("Session middleware context already set: method: %s, path: %s", method, path)
                 raise SystemException("Session context is already set")
 
-            session_factory = app_state(self.app).session_factory
-
-            if session_factory is None:
-                raise SystemException("Missing session factory")
-
-            async with session_factory() as session:
+            async with self.session_factory_provider()() as session:
                 response_started = False
 
                 async def transactional_send(message: Message) -> None:
@@ -163,6 +172,22 @@ class AuthMiddleware:
                     LOG.exception("Exception after the response started: method: %s, path: %s", method, path)
                 else:
                     await _send_error_response(scope, receive, send, exc)
+
+
+def add_middlewares(app: ASGIApp, auth_service: AuthService, session_context: ContextVar[AsyncSession]) -> ASGIApp:
+    """
+    Wrap the app with the session and authentication middleware.
+
+    The session middleware is the outer one, so that the database session is available
+    when the authentication middleware validates an API key.
+
+    :param app: The FastAPI app.
+    :param auth_service: The service to validate JWT tokens and API keys.
+    :param session_context: The context variable for the request session.
+    :returns: The wrapped app.
+    """
+    auth_middleware = AuthMiddleware(app, auth_service)
+    return SessionMiddleware(auth_middleware, session_context, lambda: app_state(app).session_factory)
 
 
 async def _send_error_response(scope: Scope, receive: Receive, send: Send, exc: Exception) -> None:

@@ -37,6 +37,7 @@ from ...patches.metax_service import (
     patch_metax_publish_dataset,
     patch_metax_update_dataset_description,
     patch_metax_update_dataset_metadata,
+    patch_metax_validate_dataset_metadata,
 )
 from ...patches.pid_service import (
     patch_pid_create_draft_doi,
@@ -189,6 +190,7 @@ async def test_publish_submission_sd(csc_client, submission_repository, object_r
         # Metax
         patch_metax_create_draft_dataset(metax_id) as mock_metax_create_draft_dataset,
         patch_metax_update_dataset_metadata() as mock_metax_update_dataset_metadata,
+        patch_metax_validate_dataset_metadata() as mock_metax_validate_dataset_metadata,
         patch_metax_update_dataset_description() as mock_metax_update_dataset_description,
         patch_metax_publish_dataset() as mock_metax_publish_dataset,
         # Rems
@@ -242,6 +244,7 @@ async def test_publish_submission_sd(csc_client, submission_repository, object_r
             for s in SUBMISSION_METADATA.get("subjects", [])
         ]
 
+        mock_metax_validate_dataset_metadata.assert_awaited_once()
         mock_metax_update_dataset_metadata.assert_awaited_once()
         mock_metax_update_dataset_description.assert_awaited_once_with(
             metax_id,

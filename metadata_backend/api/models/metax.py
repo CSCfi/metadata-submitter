@@ -157,8 +157,9 @@ class MetaxFields(DraftMetax):
 
     # required fields
     access_rights: AccessRights = Field(default_factory=AccessRights)
-    actors: list[Actor]
-    keyword: list[str]
+    # Required to publish, but a draft read from Metax is allowed not to have them.
+    actors: list[Actor] | None = None
+    keyword: list[str] | None = None
     # optional fields
     field_of_science: list[Url] | None = None
     issued: str | None = None
@@ -169,6 +170,19 @@ class MetaxFields(DraftMetax):
     # postpone for MVP
     relation: list[Relation] | None = None
     theme: list[Theme] | None = None
+
+
+class MetaxMappedFields(BaseModel):
+    """Metax fields mapped from DataCite metadata."""
+
+    actors: list[Actor] = Field(default_factory=list)
+    keyword: list[str] = Field(default_factory=list)
+    field_of_science: list[Url] = Field(default_factory=list)
+    issued: str | None = None
+    language: list[Language] | None = None
+    projects: list[Project] = Field(default_factory=list)
+    spatial: list[Spatial] = Field(default_factory=list)
+    temporal: list[Temporal] = Field(default_factory=list)
 
 
 def convert_to_dict(value: str | dict[str, str]) -> dict[str, str]:
