@@ -1,5 +1,5 @@
 #=======================
-FROM ghcr.io/astral-sh/uv:0.12.10-python3.14-trixie-slim@sha256:d5ddd498c5a28ec77ff1c70276f8f3c4a116a303c8b5583a018ea43c2e89e366 AS build-backend
+FROM ghcr.io/astral-sh/uv:0.13.5-python3.14-trixie-slim@sha256:d8e732839dfc4225a1ff698803b478b2223c05636c055d3add41ab9dbec0f315 AS build-backend
 #=======================
 
 WORKDIR /app
@@ -21,7 +21,7 @@ RUN --mount=type=secret,id=vault_secrets \
     ./uv-artifactory.sh uv sync --frozen
 
 #=======================
-FROM ghcr.io/astral-sh/uv:0.12.10-python3.14-trixie-slim@sha256:d5ddd498c5a28ec77ff1c70276f8f3c4a116a303c8b5583a018ea43c2e89e366
+FROM ghcr.io/astral-sh/uv:0.13.5-python3.14-trixie-slim@sha256:d8e732839dfc4225a1ff698803b478b2223c05636c055d3add41ab9dbec0f315
 #=======================
 
 LABEL maintainer="CSC Developers"
