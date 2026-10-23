@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, ValidationInfo, field_validator, model_validator
 from pydantic_settings import BaseSettings
 from typing_extensions import Self
 
@@ -50,7 +50,16 @@ class OpenBaoConfig(BaseSettings):
     )
     OPENBAO_KUBERNETES_MOUNT: str = Field(
         default="kubernetes",
-        description="Where OpenBao mounts the Kubernetes authentication method.",
+        description=(
+            "Where OpenBao mounts the Kubernetes authentication method. Leading and trailing slashes are ignored."
+        ),
+    )
+    OPENBAO_TRANSIT_MOUNT: str = Field(
+        default="transit",
+        description=(
+            "Where OpenBao mounts the transit secrets engine that holds OPENBAO_OBJECT_KEY_NAME. "
+            "Leading and trailing slashes are ignored."
+        ),
     )
     OPENBAO_OBJECT_KEY_NAME: str | None = Field(
         default=None,
@@ -74,6 +83,18 @@ class OpenBaoConfig(BaseSettings):
             "direct encryption."
         ),
     )
+
+    @field_validator("OPENBAO_KUBERNETES_MOUNT", "OPENBAO_TRANSIT_MOUNT")
+    @classmethod
+    def _check_mount(cls, value: str, info: ValidationInfo) -> str:
+        mount = value.strip().strip("/")
+        segments = mount.split("/")
+        if not all(s and s not in (".", "..") and s.isprintable() and not s.isspace() for s in segments):
+            raise ValueError(
+                f"{info.field_name} '{value}' must be one or more slash separated segments, "
+                f"none of them empty, '.' or '..'."
+            )
+        return mount
 
     @model_validator(mode="after")
     def _check_key_name(self) -> Self:

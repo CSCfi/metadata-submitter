@@ -101,6 +101,7 @@ class OpenBaoService(ServiceHandler):
 
         self._url = self._config.OPENBAO_URL
         self._key_name = self._config.OPENBAO_OBJECT_KEY_NAME
+        self._transit_mount = self._config.OPENBAO_TRANSIT_MOUNT
 
         if not self._key_name.isascii() or len(self._key_name) > _MAX_KEY_NAME_LENGTH:
             raise SystemException(f"OPENBAO_OBJECT_KEY_NAME must be at most {_MAX_KEY_NAME_LENGTH} ASCII characters.")
@@ -169,7 +170,7 @@ class OpenBaoService(ServiceHandler):
         # Ask OpenBao to generate a data encryption key. OpenBao returns
         # the plaintext version of that key and a version encrypted by
         # the key management key defined by OPENBAO_OBJECT_KEY_NAME.
-        data = await self._transit(self._key_name, "transit/datakey/plaintext", {"bits": _DATA_KEY_BITS})
+        data = await self._transit(self._key_name, "datakey/plaintext", {"bits": _DATA_KEY_BITS})
         data_key = base64.b64decode(data["plaintext"])
         encrypted_data_key = str(data["ciphertext"])
 
@@ -282,7 +283,7 @@ class OpenBaoService(ServiceHandler):
         return await self._openbao_request(
             f"Failed to read the OpenBao key encryption key '{self._key_name}'.",
             method="GET",
-            path=f"transit/keys/{self._key_name}",
+            path=f"{self._transit_mount}/keys/{self._key_name}",
         )
 
     async def _transit_encrypt(self, plaintext: bytes) -> str:
@@ -294,7 +295,7 @@ class OpenBaoService(ServiceHandler):
         """
 
         data = await self._transit(
-            self._key_name, "transit/encrypt", {"plaintext": base64.b64encode(plaintext).decode("ascii")}
+            self._key_name, "encrypt", {"plaintext": base64.b64encode(plaintext).decode("ascii")}
         )
         return str(data["ciphertext"])
 
@@ -307,7 +308,7 @@ class OpenBaoService(ServiceHandler):
         :return: What it was made from.
         """
 
-        data = await self._transit(key_name, "transit/decrypt", {"ciphertext": ciphertext})
+        data = await self._transit(key_name, "decrypt", {"ciphertext": ciphertext})
         return base64.b64decode(data["plaintext"])
 
     async def _transit(self, key_name: str, path: str, json: dict[str, Any]) -> dict[str, Any]:
@@ -315,12 +316,13 @@ class OpenBaoService(ServiceHandler):
         Call the OpenBao transit secrets engine.
 
         :param key_name: The name of the encryption key.
-        :param path: The endpoint path.
+        :param path: The endpoint path within the transit secrets engine.
         :param json: The request body.
         :raises SystemException: If the call fails.
         :return: The data of the response.
         """
 
+        path = f"{self._transit_mount}/{path}"
         return await self._openbao_request(
             f"The OpenBao request to '{path}' for key '{key_name}' failed.",
             method="POST",

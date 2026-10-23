@@ -91,7 +91,7 @@ async def test_openbao_generates_the_data_key(openbao: OpenBaoFactory) -> None:
     key_name = openbao_object_key_name_asymmetric
     service = openbao(ENVELOPE, key_name)
 
-    data = await service._transit(key_name, "transit/datakey/plaintext", {"bits": _DATA_KEY_BITS})
+    data = await service._transit(key_name, "datakey/plaintext", {"bits": _DATA_KEY_BITS})
     data_key = base64.b64decode(data["plaintext"])
     encrypted_data_key = str(data["ciphertext"])
 

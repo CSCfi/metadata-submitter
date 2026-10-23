@@ -1,5 +1,7 @@
 """Test encrypting and decrypting metadata objects with OpenBao."""
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
 
 from metadata_backend.api.exceptions import SystemException
@@ -144,6 +146,22 @@ def test_missing_url() -> None:
 def test_invalid_key_name(key_name: str) -> None:
     with pytest.raises(SystemException, match="ASCII characters"):
         OpenBaoService(_set_openbao_env(OPENBAO_OBJECT_KEY_NAME=key_name))
+
+
+async def test_transit_mount() -> None:
+    """Test that the paths of OpenBao requests start with OPENBAO_TRANSIT_MOUNT."""
+
+    service = OpenBaoService(_set_openbao_env(OPENBAO_TRANSIT_MOUNT="sd-submit-transit"))
+
+    # Record the requests instead of sending them.
+    with patch.object(service, "_openbao_request", AsyncMock(return_value={"ciphertext": "vault:v1:abc"})) as request:
+        await service._read_key()
+        await service._transit_encrypt(b"document")
+
+    assert [call.kwargs["path"] for call in request.call_args_list] == [
+        "sd-submit-transit/keys/test-key",
+        "sd-submit-transit/encrypt/test-key",
+    ]
 
 
 @pytest.mark.parametrize("asymmetric", [True, False])

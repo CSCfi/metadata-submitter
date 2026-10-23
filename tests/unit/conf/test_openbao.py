@@ -13,6 +13,7 @@ def unset_openbao_env(monkeypatch) -> None:
         "OPENBAO_TOKEN",
         "OPENBAO_KUBERNETES_ROLE",
         "OPENBAO_KUBERNETES_MOUNT",
+        "OPENBAO_TRANSIT_MOUNT",
         "OPENBAO_OBJECT_KEY_NAME",
         "OPENBAO_OBJECT_ENCRYPTION",
     ):
@@ -39,6 +40,28 @@ def test_url_and_key(monkeypatch) -> None:
     assert config.OPENBAO_OBJECT_KEY_NAME == "test-key"
     # An envelope is the default.
     assert config.OPENBAO_OBJECT_ENCRYPTION == ENVELOPE
+    assert config.OPENBAO_TRANSIT_MOUNT == "transit"
+
+
+@pytest.mark.parametrize("field", ["OPENBAO_KUBERNETES_MOUNT", "OPENBAO_TRANSIT_MOUNT"])
+@pytest.mark.parametrize(
+    "mount, expected",
+    [
+        ("mount", "mount"),
+        ("/mount/", "mount"),
+        (" moun t/mount_1.0 ", "moun t/mount_1.0"),
+        ("moun t/mount@1", "moun t/mount@1"),
+    ],
+)
+def test_mount_normalised(field: str, mount: str, expected: str) -> None:
+    assert getattr(OpenBaoConfig(**{field: mount}), field) == expected
+
+
+@pytest.mark.parametrize("field", ["OPENBAO_KUBERNETES_MOUNT", "OPENBAO_TRANSIT_MOUNT"])
+@pytest.mark.parametrize("mount", ["", " ", "/", "a//b", "..", "a/../b", "./a", "a/ /b", "a\nb", "a\tb"])
+def test_invalid_mount(field: str, mount: str) -> None:
+    with pytest.raises(ValidationError, match=field):
+        OpenBaoConfig(**{field: mount})
 
 
 def test_url_no_key(monkeypatch) -> None:
