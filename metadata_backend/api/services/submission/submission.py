@@ -35,6 +35,10 @@ class ObjectSubmission(BaseModel):
 class ObjectSubmissionService(ABC):
     """Service for processing metadata object submissions."""
 
+    # Metadata object types the workflow adds, updates and deletes itself, outside the documents processor.
+    # The generic update does not delete them.
+    _separately_managed_object_types: frozenset[str] = frozenset()
+
     @abstractmethod
     def create_processor(self, objects: list[ObjectSubmission]) -> DocumentsProcessor | None:
         """
@@ -327,10 +331,14 @@ class ObjectSubmissionService(ABC):
                 return old_id_to_name.get(_identifier.object_type, {}).get(_identifier.id)
 
             # Find deleted objects.
-            identifier_names = {identifier.name for identifier in identifiers}
-            identifier_ids = {identifier.id for identifier in identifiers}
+            identifier_names = {(identifier.object_type, identifier.name) for identifier in identifiers}
+            identifier_ids = {(identifier.object_type, identifier.id) for identifier in identifiers}
             deleted_objects = [
-                obj for obj in old_objects if obj.name not in identifier_names and obj.objectId not in identifier_ids
+                obj
+                for obj in old_objects
+                if obj.objectType not in self._separately_managed_object_types
+                and (obj.objectType, obj.name) not in identifier_names
+                and (obj.objectType, obj.objectId) not in identifier_ids
             ]
 
             # Find old objects and assign ids.

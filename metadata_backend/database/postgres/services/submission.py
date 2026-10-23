@@ -110,10 +110,10 @@ class SubmissionService:
         """
         old_submission = await SubmissionService.convert_from_entity(old_entity)
 
-        SubmissionService.ignore_fields(old_submission)
-
         # Merge changes to the existing submission document.
         updated_submission = Submission.model_validate({**to_json_dict(old_submission), **submission})
+
+        SubmissionService.ignore_fields(updated_submission)
 
         # Some field values can't be changed.
         if updated_submission.name != old_entity.name:
