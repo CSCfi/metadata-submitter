@@ -14,6 +14,14 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- (admins) Database migration that adds the submission's imported flag and date columns.
+- (admins) `IMPORT_USERS` setting: a JSON array of the ids of the users allowed to import datasets. Default `[]`, so nobody can import. Import is available only in the NBIS deployment.
+- (users) `DELETE /v1/import/{submissionId}` to delete an unpublished imported submission.
+- (users) Import of Bigpicture datasets archived in SDA outside SD Submit with `POST /v1/import`. The dataset keeps its accession, which becomes the submission id, and every other metadata object gets a new accession. The XMLs are validated as for a new submission. Documented in `docs/BP_import.md`.
+- `object_import_service` on the workflow profiles, implemented only by Bigpicture (`BigpictureObjectImportService`).
+- REMS catalogue item lookup by resource id, and lookup of existing REMS resources and catalogue items when publishing.
+- Admin API calls to list the files of a dataset (`GET /dataset/{id}/files`) and to remove a file from a dataset (`DELETE /dataset/{id}/files/{accession}`).
+- `imported` flag and import date columns to the submissions table (Alembic migration `20261016_01`), shown as `imported` and `dateImported` on submissions.
 - (admins) SERVER_PORT environment variable to override the server port (default 5430 for CSC, 5431 for NBIS). It must be between 1 and 65535.
 - (users) The OpenAPI schema documents the error responses of every operation: user errors (4xx), validation errors (400) and server errors (5xx). The 422 response, which the API never returns, is no longer documented.
 - `UserErrorProblem`, `ValidationErrorProblem` and `ServerErrorProblem` models for the problem JSON error responses, used by both the exception handlers and the OpenAPI schema.
@@ -21,12 +29,19 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Fixed
 
+- (users) Bigpicture metadata XMLs are now  uploaded to the SDA inbox after the submission is registered, so the landing page XML has the DOI and REMS links.
+- (users) Publishing a Bigpicture submission without annotations or observers failed because `annotation.xml` and `observer.xml` were treated as mandatory metadata XMLs.
 - (users) An unknown objectType or schemaType in an objects request is a 400. Before, an unknown schemaType was a 500 when listing objects, and getting documents with an unknown type returned a 200 with an empty body.
 - (users) Processing instructions in XML set elements are ignored. Before, a processing instruction inside a set element was processed as a metadata object and caused a 500 error.
 - (users) Errors in the service's own code while processing a submission, and invalid stored metadata documents found when publishing, are reported as 500 errors instead of 400.
 
 ### Changed
 
+- (admins) For an imported dataset, ingest removes the old metadata XMLs from the SDA dataset, adds the new ones and releases the dataset. The SDA Admin API token must allow removing files from datasets.
+- (users) Publishing reuses an existing REMS resource and catalogue item for the submission instead of creating duplicates. A reused resource keeps its licenses.
+- (users) The `/v1/submit` endpoints refuse to update or delete an imported submission.
+- The Bigpicture dataset root directory is no longer hard-coded to `DATASET_{submission id}`. An imported submission keeps the dataset's own root directory in SDA.
+- Submission services can now customise the accession checks and the resolution of submission files when a submission is created.
 - Update the uv base image to 0.13.5. Its pip 26.2.2 bundles certifi 2026.10.19, fixing XRAY-1139995.
 - (users) Listing the objects of an SD submission without a filter returns an empty list instead of a 400. An objectType or schemaType for an SD submission is a 400 "Unknown object type" or "Unknown schema type" instead of "Unsupported workflow".
 - (users) Listing objects with an unknown objectType is a 400 instead of an empty list.
