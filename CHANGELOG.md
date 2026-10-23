@@ -14,6 +14,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- (admins) made the OpenBao transit mount configurable using OPENBAO_TRANSIT_MOUNT env variable (defaults to 'transit').
 - (admins) Database migration that adds the submission's imported flag and date columns.
 - (admins) `IMPORT_USERS` setting: a JSON array of the ids of the users allowed to import datasets. Default `[]`, so nobody can import. Import is available only in the NBIS deployment.
 - (users) `DELETE /v1/import/{submissionId}` to delete an unpublished imported submission.
