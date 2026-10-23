@@ -75,7 +75,15 @@ from tests.unit.patches.user import (
     patch_verify_authorization,
     patch_verify_user_project,
 )
-from tests.utils import bp_submission_documents, bp_update_documents, sd_submission_dict
+from tests.utils import (
+    BP_ANNOTATION_1_FILE,
+    BP_ANNOTATION_2_FILE,
+    BP_ANNOTATION_TASK_FILE,
+    BP_ONTOLOGY_FILE,
+    bp_submission_documents,
+    bp_update_documents,
+    sd_submission_dict,
+)
 
 from ..processors.xml.test_datacite import assert_datacite
 
@@ -1291,7 +1299,7 @@ async def assert_bp_files_v2(nbis_client, submission_id, image_aliases: list[str
         # Assert annotation files.
         _assert_file(
             files,
-            f"DATASET_{submission_id}/ANNOTATIONS/test.geojson.c4gh",
+            f"DATASET_{submission_id}/{BP_ANNOTATION_1_FILE}.c4gh",
             "SHA256",
             "8c3a51adf8f8b1b7a2625d7ac9c12a08dcf9e6a10e87a1f8a215e67f87e7d2a4",
             None,
@@ -1329,14 +1337,14 @@ async def assert_bp_files_v3(nbis_client, submission_id, image_aliases: list[str
     # Assert annotation files. The encrypted checksum is optional since 3.0.
     _assert_file(
         files,
-        f"DATASET_{submission_id}/ANNOTATIONS/test.geojson.c4gh",
+        f"DATASET_{submission_id}/{BP_ANNOTATION_1_FILE}.c4gh",
         "SHA256",
         None,
         "8c3a51adf8f8b1b7a2625d7ac9c12a08dcf9e6a10e87a1f8a215e67f87e7d2a4",
     )
     _assert_file(
         files,
-        f"DATASET_{submission_id}/ANNOTATIONS/test2.geojson.c4gh",
+        f"DATASET_{submission_id}/{BP_ANNOTATION_2_FILE}.c4gh",
         "SHA256",
         None,
         "6c3a51adf8f8b1b7a2625d7ac9c12a08dcf9e6a10e87a1f8a215e67f87e7d2a4",
@@ -1345,7 +1353,7 @@ async def assert_bp_files_v3(nbis_client, submission_id, image_aliases: list[str
     # Assert ontology files.
     _assert_file(
         files,
-        f"DATASET_{submission_id}/ONTOLOGIES/ontology.json.c4gh",
+        f"DATASET_{submission_id}/{BP_ONTOLOGY_FILE}.c4gh",
         "SHA256",
         None,
         "3c3a51adf8f8b1b7a2625d7ac9c12a08dcf9e6a10e87a1f8a215e67f87e7d2a4",
@@ -1354,7 +1362,7 @@ async def assert_bp_files_v3(nbis_client, submission_id, image_aliases: list[str
     # Assert annotation task files.
     _assert_file(
         files,
-        f"DATASET_{submission_id}/ANNOTATION_TASKS/task.pdf.c4gh",
+        f"DATASET_{submission_id}/{BP_ANNOTATION_TASK_FILE}.c4gh",
         "SHA256",
         None,
         "5c3a51adf8f8b1b7a2625d7ac9c12a08dcf9e6a10e87a1f8a215e67f87e7d2a4",

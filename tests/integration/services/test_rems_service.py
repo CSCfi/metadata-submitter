@@ -14,6 +14,7 @@ from metadata_backend.api.models.rems import (
     RemsWorkflow,
     RemsWorkflowDetails,
 )
+from metadata_backend.api.services.rems import find_rems_catalogue_item, find_rems_resource
 from metadata_backend.conf.discovery import discovery_config
 from metadata_backend.services.rems_service import REMS_LICENSE_TYPE_TEXT, RemsServiceHandler
 
@@ -32,8 +33,6 @@ def create_doi():
 
 async def test_get_licenses(secret_env):
     """Test REMS get licenses using test service and test data."""
-
-    from metadata_backend.services.rems_service import RemsServiceHandler
 
     service = RemsServiceHandler()
 
@@ -99,8 +98,6 @@ async def test_get_license_unknown_license(secret_env):
 
 async def test_get_workflows(secret_env):
     """Test REMS get workflows using test service and test data."""
-
-    from metadata_backend.services.rems_service import RemsServiceHandler
 
     service = RemsServiceHandler()
 
@@ -186,8 +183,6 @@ async def test_get_workflows(secret_env):
 async def test_get_resources(secret_env):
     """Test REMS get resources using test service and test data."""
 
-    from metadata_backend.services.rems_service import RemsServiceHandler
-
     service = RemsServiceHandler()
 
     expected_resource = RemsResource(
@@ -211,8 +206,6 @@ async def test_get_resources(secret_env):
 async def test_create_resource(secret_env):
     """Test REMS create resource using test service and test data."""
 
-    from metadata_backend.services.rems_service import RemsServiceHandler
-
     service = RemsServiceHandler()
 
     doi = create_doi()
@@ -227,8 +220,6 @@ async def test_create_resource(secret_env):
 
 async def test_create_catalogue_item(secret_env):
     """Test REMS create catalogue item using test service and test data."""
-
-    from metadata_backend.services.rems_service import RemsServiceHandler
 
     handler = RemsServiceHandler()
 
@@ -249,3 +240,57 @@ async def test_create_catalogue_item(secret_env):
     assert item.enabled
     assert not item.archived
     assert not item.expired
+
+
+async def test_get_catalogue_items(secret_env):
+    """Test REMS get catalogue items of a resource using test service and test data."""
+
+    handler = RemsServiceHandler()
+
+    doi = create_doi()
+    resource_id = await handler.create_resource(organization_id="nbn", license_ids=[1], resid=doi)
+    item_id = await handler.create_catalogue_item(
+        organization_id="nbn",
+        workflow_id=1,
+        resource_id=resource_id,
+        title=f"test_{uuid.uuid4()}",
+        discovery_url=discovery_config().DISCOVERY_URL.format(id=doi),
+    )
+
+    items = await handler.get_catalogue_items(doi)
+    assert [(item.id, item.resource_id, item.resid, item.workflow_id) for item in items] == [
+        (item_id, resource_id, doi, 1)
+    ]
+
+    assert await handler.get_catalogue_items(create_doi()) == []
+
+
+async def test_find_rems_resource_and_catalogue_item(secret_env):
+    """Test finding the REMS resource and catalogue item to reuse using test service and test data."""
+
+    handler = RemsServiceHandler()
+
+    doi = create_doi()
+    assert await find_rems_resource(handler, doi, "nbn") is None
+
+    resource_id = await handler.create_resource(organization_id="nbn", license_ids=[1], resid=doi)
+    assert await find_rems_catalogue_item(handler, doi, "nbn", 1, resource_id) is None
+    item_id = await handler.create_catalogue_item(
+        organization_id="nbn",
+        workflow_id=1,
+        resource_id=resource_id,
+        title=f"test_{uuid.uuid4()}",
+        discovery_url=discovery_config().DISCOVERY_URL.format(id=doi),
+    )
+
+    resource = await find_rems_resource(handler, doi, "nbn")
+    assert resource is not None and resource.id == resource_id
+    item = await find_rems_catalogue_item(handler, doi, "nbn", 1, resource_id)
+    assert item is not None and item.id == item_id
+
+    with pytest.raises(UserException, match="not 'other'"):
+        await find_rems_resource(handler, doi, "other")
+    with pytest.raises(UserException, match="has REMS workflow '1', not '2'"):
+        await find_rems_catalogue_item(handler, doi, "nbn", 2, resource_id)
+    with pytest.raises(UserException, match=f"belongs to REMS resource '{resource_id}', not to an active"):
+        await find_rems_catalogue_item(handler, doi, "nbn", 1, None)

@@ -12,7 +12,7 @@ from metadata_backend.api.services.submission.bigpicture import (
     validate_bigpicture_documents,
 )
 from metadata_backend.api.services.submission.submission import ObjectSubmission
-from tests.utils import bp_objects
+from tests.utils import BP_ANNOTATION_1_FILE, BP_IMAGE_1_FILE, BP_IMAGE_2_FILE, bp_objects
 
 
 def _replace_object_document(
@@ -71,9 +71,9 @@ def test_prepare_files_valid_image_and_annotation():
 
     paths = {f.path for f in files}
     expected_paths = {
-        "DATASET_SUB_1/IMAGES/IMAGE_1/test.dcm.c4gh",
-        "DATASET_SUB_1/IMAGES/IMAGE_2/test2.dcm.c4gh",
-        "DATASET_SUB_1/ANNOTATIONS/test.geojson.c4gh",
+        f"DATASET_SUB_1/{BP_IMAGE_1_FILE}.c4gh",
+        f"DATASET_SUB_1/{BP_IMAGE_2_FILE}.c4gh",
+        f"DATASET_SUB_1/{BP_ANNOTATION_1_FILE}.c4gh",
     }
     assert expected_paths == paths
 
@@ -84,7 +84,7 @@ def test_prepare_files_wrong_directory_raises():
     objects = _replace_object_document(
         objects,
         "image.xml",
-        "IMAGES/IMAGE_1/test.dcm",
+        BP_IMAGE_1_FILE,
         "IMAGES/IMAGE_X/test.dcm",
     )
 
@@ -98,7 +98,7 @@ def test_prepare_files_wrong_directory_raises():
     objects = _replace_object_document(
         objects,
         "annotation.xml",
-        "ANNOTATIONS/test.geojson",
+        BP_ANNOTATION_1_FILE,
         "OTHER_DIR/test.geojson",
     )
 

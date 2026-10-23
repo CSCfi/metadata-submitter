@@ -79,8 +79,10 @@ class Submission(StrictBaseModel):
     metadata: SubmissionMetadata | None = None
     rems: Rems | None = None
     dateCreated: datetime | None = None  # Stored only in a database column.
+    dateImported: datetime | None = None  # Stored only in a database column.
     datePublished: datetime | None = None  # Stored only in a database column.
     lastModified: datetime | None = None  # Stored only in a database column.
+    imported: bool | None = None  # Stored only in a database column.
     published: bool | None = None  # Stored only in a database column.
 
     @model_validator(mode="before")

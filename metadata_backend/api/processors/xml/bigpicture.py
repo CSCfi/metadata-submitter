@@ -539,3 +539,13 @@ async def as_xml_set_document(xml_docs: list[str], schema_type: str, config: Xml
     ]
 
     return b"".join(parts).decode("utf-8")
+
+
+def get_bp_default_dataset_dir(dataset_id: str) -> str:
+    """
+    Get the dataset root directory for new submissions.
+
+    :param dataset_id: The dataset ID.
+    :returns: The root directory.
+    """
+    return f"DATASET_{dataset_id}"

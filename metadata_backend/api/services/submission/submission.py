@@ -97,6 +97,49 @@ class ObjectSubmissionService(ABC):
         :param submission_id: The submission id.
         """
 
+    def check_submitted_object_accessions(self, identifiers: Sequence[ObjectIdentifier]) -> list[str]:
+        """
+        Check the accessions of the metadata objects in a new submission.
+
+        :param identifiers: The metadata object identifiers.
+        :returns: The errors.
+        """
+        return [
+            f"Update of previously submitted '{identifier.schema_type}' metadata object '{identifier.id}' "
+            "is not supported"
+            for identifier in identifiers
+            if identifier.id is not None
+        ]
+
+    def check_submitted_reference_accessions(self, references: Sequence[ObjectIdentifier]) -> list[str]:
+        """
+        Check the accessions of the metadata object references in a new submission.
+
+        :param references: The metadata object references.
+        :returns: The errors.
+        """
+        if self._supports_references:
+            return []
+        return [
+            f"Reference to previously submitted '{identifier.schema_type}' metadata object "
+            f"'{identifier.id}' is not supported"
+            for identifier in references
+            if identifier.id is not None
+        ]
+
+    async def resolve_files(self, submission: Submission, files: list[File]) -> list[File]:
+        """
+        Resolve the submission files against external state before they are saved.
+
+        Called when a submission is created, after the documents are validated and accessioned, and
+        before anything is saved.
+
+        :param submission: The prepared submission document, not yet saved.
+        :param files: The submission files.
+        :returns: The submission files to save.
+        """
+        return files
+
     def __init__(
         self,
         project_service: ProjectService,
@@ -155,22 +198,9 @@ class ObjectSubmissionService(ABC):
             # that contains all XMLs.
             object_identifiers = processor.get_object_identifiers()
 
-            # Check that no metadata objects are accessioned.
-            for identifier in object_identifiers:
-                if identifier.id is not None:
-                    errors.append(
-                        f"Update of previously submitted '{identifier.schema_type}' "
-                        f"metadata object '{identifier.id}' is not supported"
-                    )
-
-            if not self._supports_references:
-                # Check that no metadata object references are accessioned.
-                for identifier in processor.get_object_references():
-                    if identifier.id is not None:
-                        errors.append(
-                            f"Reference to previously submitted '{identifier.schema_type}' metadata object "
-                            f"'{identifier.id}' is not supported"
-                        )
+            # Check the metadata object and reference accessions using workflow specific rules.
+            errors.extend(self.check_submitted_object_accessions(object_identifiers))
+            errors.extend(self.check_submitted_reference_accessions(processor.get_object_references()))
 
             # Report metadata objects that already have accessions, and references to metadata objects
             # outside the submission, which are allowed only if supports_references is set.
@@ -178,9 +208,10 @@ class ObjectSubmissionService(ABC):
                 raise UserExceptions(errors)
 
         if processor:
-            # Assign metadata object accessions.
+            # Assign metadata object accessions. Accessions may already have been assigned during import.
             for identifier in object_identifiers:
-                identifier.id = generate_accession(self._workflow, identifier.object_type)
+                if identifier.id is None:
+                    identifier.id = generate_accession(self._workflow, identifier.object_type)
                 processor.set_object_id(identifier)
 
             # Check that all metadata object references have accessions.
@@ -201,7 +232,7 @@ class ObjectSubmissionService(ABC):
         submission = self.prepare_create_submission(project_id, submission_id)
 
         # Prepare submission files.
-        files = self.prepare_files(submission_id)
+        files = await self.resolve_files(submission, self.prepare_files(submission_id))
 
         # Create and save submission and metadata objects.
 
@@ -233,7 +264,7 @@ class ObjectSubmissionService(ABC):
                 )
         # Save files.
         for file in files:
-            await self._file_service.add_file(file, self._workflow)
+            await self._add_file(file)
 
         return submission
 
@@ -420,9 +451,18 @@ class ObjectSubmissionService(ABC):
         async for file in self._file_service.get_files(submission_id=submission_id):
             await self._file_service.delete_file_by_id(file.fileId)
         for file in files:
-            await self._file_service.add_file(file, self._workflow)
+            await self._add_file(file)
 
         return submission
+
+    async def _add_file(self, file: File) -> None:
+        """
+        Add a submission file to the database.
+
+        :param file: The submission file.
+        """
+
+        await self._file_service.add_file(file, self._workflow)
 
     @staticmethod
     async def _get_object_processor(identifier: ObjectIdentifier, processor: DocumentsProcessor) -> ObjectProcessor:

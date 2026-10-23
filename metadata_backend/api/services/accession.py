@@ -1,5 +1,6 @@
 """Service for creating accessions."""
 
+import re
 from secrets import choice
 from string import ascii_lowercase, digits
 
@@ -14,6 +15,9 @@ from ..processors.xml.bigpicture import (
     BP_SUBMISSION_OBJECT_TYPE,
 )
 from ..processors.xml.datacite import DATACITE_OBJECT_TYPE
+
+# The characters of the random part of a Bigpicture accession: lowercase letters and digits excluding i, l, o, 0, 1.
+_BP_ACCESSION_CHARS = "".join(c for c in ascii_lowercase + digits if c not in "ilo01")
 
 
 def generate_accession(workflow: SubmissionWorkflow, object_type: str) -> str:
@@ -83,10 +87,22 @@ def generate_bp_accession(object_type: str) -> str:
     """
 
     # https://docs.google.com/document/d/1SSu3wxiCL2-EEWgW77Ob7Kjv9EBmE9zDhUU6DB1gzIM
-    allowed_chars = "".join(c for c in ascii_lowercase + digits if c not in "ilo01")
-    sequence = "".join(choice(allowed_chars) for _ in range(12))
+    sequence = "".join(choice(_BP_ACCESSION_CHARS) for _ in range(12))
 
     return f"{generate_bp_accession_prefix(object_type)}-{sequence[0:6]}-{sequence[6:12]}"
+
+
+def is_bp_accession(accession: str, object_type: str) -> bool:
+    """
+    Check that an accession has the format of the Bigpicture accessions generated for the object type.
+
+    :param accession: the accession
+    :param object_type: the object type
+    :returns: True if the accession has the format of generate_bp_accession.
+    """
+    prefix = re.escape(generate_bp_accession_prefix(object_type))
+    pattern = rf"{prefix}-[{_BP_ACCESSION_CHARS}]{{6}}-[{_BP_ACCESSION_CHARS}]{{6}}"
+    return re.fullmatch(pattern, accession) is not None
 
 
 def generate_bp_accession_prefix(object_type: str) -> str:

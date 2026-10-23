@@ -82,6 +82,7 @@ class RemsCatalogueItem(BaseModel):
     id: int
     resource_id: int = Field(alias="resource-id")
     resid: str
+    workflow_id: int | None = Field(default=None, alias="wfid")
     organization: RemsOrganization
     localizations: dict[str, RemsCatalogueItemLocalization]  # language, localization
     archived: bool

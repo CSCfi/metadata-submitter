@@ -1,11 +1,18 @@
+import uuid
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
+
 import pytest
 
 from metadata_backend.api.exceptions import SystemException, UserException
-from metadata_backend.api.models.models import Registration
+from metadata_backend.api.models.models import File, Registration
+from metadata_backend.api.models.sda import FileItem
 from metadata_backend.api.models.submission import Rems, Submission, SubmissionWorkflow
 from metadata_backend.api.processors.xml.bigpicture import BP_XML_OBJECT_CONFIGS, BigpictureVersion
 from metadata_backend.api.processors.xml.datacite import DATACITE_OBJECT_TYPE, DATACITE_SCHEMA
 from metadata_backend.api.processors.xml.fega import FEGA_XML_OBJECT_CONFIG
+from metadata_backend.api.services.crypt import Crypt4GHPublicKeyProvider
+from metadata_backend.api.services.file import S3InboxSDAService
 from metadata_backend.api.services.workflow import XmlSubmissionWorkflowProfile, workflow_profile
 
 SD = workflow_profile(SubmissionWorkflow.SD)
@@ -251,3 +258,32 @@ def test_fega_cannot_register():
         FEGA.discovery_id(submission, registration)
     with pytest.raises(UserException, match=FEGA_UNSUPPORTED):
         FEGA.rems_resource_id(submission, registration)
+
+
+@pytest.mark.parametrize("xml_in_inbox", [True, False])
+async def test_bp_check_files_for_publish(xml_in_inbox):
+    """Test that Bigpicture check files for publish succeeds with and without metadata XMLw already in the SDA inbox.
+
+    A publish that fails after uploading may leave metadata XMLs in the SDA inbox.
+    """
+    data_file_path = f"DATASET_{SUBMISSION_ID}/IMAGES/IMAGE_1/img1.dcm.c4gh"
+    dataset_xml_path = f"DATASET_{SUBMISSION_ID}/METADATA/dataset.xml.c4gh"
+    inbox_paths = [data_file_path, dataset_xml_path] if xml_in_inbox else [data_file_path]
+
+    # The SDA Admin API lists the files in the inbox.
+    admin_handler = AsyncMock()
+    admin_handler.get_user_files.return_value = [
+        FileItem(fileID=str(uuid.uuid4()), inboxPath=path, fileStatus="uploaded", createdAt="2026-01-01T00:00:00Z")
+        for path in inbox_paths
+    ]
+
+    async def get_files(**_kwargs):
+        yield File(submissionId=SUBMISSION_ID, path=data_file_path)
+
+    services = SimpleNamespace(
+        file_provider=S3InboxSDAService(admin_handler, AsyncMock(spec=Crypt4GHPublicKeyProvider)),
+        file=SimpleNamespace(get_files=get_files, is_file_by_path=AsyncMock(return_value=True)),
+    )
+
+    # Raises if a file is missing from the inbox, or the inbox has an unexpected file.
+    await BP._check_files_for_publish(services, "user-id", SUBMISSION_ID, [dataset_xml_path])

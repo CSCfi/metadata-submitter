@@ -290,6 +290,22 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
         tags=submission_tag,
         summary="Check if submission exists",
     )
+    if profile.import_endpoints:
+        api_router.add_api_route(
+            "/import",
+            _object.import_submission,
+            methods=POST,
+            tags=submission_tag,
+            openapi_extra=openapi_multipart,
+            summary="Import a dataset accessioned and archived outside SD Submit",
+        )
+        api_router.add_api_route(
+            "/import/{submissionId}",
+            _object.delete_imported_submission,
+            methods=DELETE,
+            tags=submission_tag,
+            summary="Delete an unpublished imported submission",
+        )
     # Submissions routes.
     api_router.add_api_route(
         "/submissions/{submissionId}/objects", _object.list_objects, methods=GET, tags=submission_tag

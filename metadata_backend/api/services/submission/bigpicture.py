@@ -38,6 +38,7 @@ from ...processors.xml.bigpicture import (
     BP_REMS_PATH,
     BP_REMS_SCHEMA,
     BP_XML_OBJECT_CONFIGS,
+    get_bp_default_dataset_dir,
     get_bp_version_from_dataset,
     get_bp_version_from_documents,
 )
@@ -483,7 +484,7 @@ class BigpictureObjectSubmissionService(ObjectSubmissionService):
 
         def _add_file(object_type: str, file: File) -> None:
             if (other_object_type := file_path_to_object_type.get(file.path)) is not None:
-                filename = file.path.removeprefix(f"DATASET_{submission_id}/")
+                filename = file.path.removeprefix(f"{get_bp_default_dataset_dir(submission_id)}/")
                 raise UserException(f"{object_type} file '{filename}' is already declared by {other_object_type}.")
             file_path_to_object_type[file.path] = object_type
             files.append(file)
@@ -518,7 +519,7 @@ class BigpictureObjectSubmissionService(ObjectSubmissionService):
                     File(
                         submissionId=submission_id,
                         objectId=object_id,
-                        path=f"DATASET_{submission_id}/{filename}",
+                        path=f"{get_bp_default_dataset_dir(submission_id)}/{filename}",
                         checksumMethod=file_elem.get("checksum_method"),
                         unencryptedChecksum=file_elem.get("unencrypted_checksum"),
                         encryptedChecksum=file_elem.get("checksum"),
@@ -551,7 +552,7 @@ class BigpictureObjectSubmissionService(ObjectSubmissionService):
                         File(
                             submissionId=submission_id,
                             objectId=object_id,
-                            path=f"DATASET_{submission_id}/{filename}",
+                            path=f"{get_bp_default_dataset_dir(submission_id)}/{filename}",
                             checksumMethod=file_elem.get("checksum_method"),
                             unencryptedChecksum=file_elem.get("unencrypted_checksum"),
                             encryptedChecksum=file_elem.get("checksum"),

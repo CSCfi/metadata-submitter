@@ -81,9 +81,16 @@ SD_SUBMISSION = TEST_FILES_ROOT / "submission" / "submission.json"
 BP_SUBMISSION_2_DIR = TEST_FILES_ROOT / "xml" / "bigpicture" / "2.0"
 BP_SUBMISSION_3_DIR = TEST_FILES_ROOT / "xml" / "bigpicture" / "3.0"
 BP_UPDATE_2_DIR = BP_SUBMISSION_2_DIR / "update"
-BP_FIX_2_DIR = BP_SUBMISSION_2_DIR / "fix"
 BP_UPDATE_3_DIR = BP_SUBMISSION_3_DIR / "update"
+BP_FIX_2_DIR = BP_SUBMISSION_2_DIR / "fix"
 BP_FIX_3_DIR = BP_SUBMISSION_3_DIR / "fix"
+
+BP_IMAGE_1_FILE = "IMAGES/IMAGE_1/test.dcm"
+BP_IMAGE_2_FILE = "IMAGES/IMAGE_2/test2.dcm"
+BP_ANNOTATION_1_FILE = "ANNOTATIONS/test.geojson"
+BP_ANNOTATION_2_FILE = "ANNOTATIONS/test2.geojson"
+BP_ANNOTATION_TASK_FILE = "ANNOTATION_TASKS/task.pdf"
+BP_ONTOLOGY_FILE = "ONTOLOGIES/ontology.json"
 
 TEST_KEYS_DIR = TEST_FILES_ROOT / "keys"
 
@@ -127,6 +134,27 @@ def bp_objects(
             objects.append(ObjectSubmission(filename=file.name, document=document))
 
     return objects, files
+
+
+def bp_objects_with_dataset_id(
+    dataset_id: str, version: BigpictureVersion = BigpictureVersion.V2_0
+) -> list[ObjectSubmission]:
+    """Get BP XML test files with the dataset accession.
+
+    :param dataset_id: The dataset accession.
+    :param version: The Bigpicture metadata version of the XML files.
+    :return: ObjectSubmission list.
+    """
+    objects, _ = bp_objects(is_update=False, version=version)
+    return [
+        ObjectSubmission(
+            filename=o.filename,
+            document=o.document.replace('<DATASET alias="1">', f'<DATASET alias="1" accession="{dataset_id}">'),
+        )
+        if o.filename == "dataset.xml"
+        else o
+        for o in objects
+    ]
 
 
 def _bp_submission_documents(

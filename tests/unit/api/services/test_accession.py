@@ -24,7 +24,11 @@ from metadata_backend.api.processors.xml.bigpicture import (
     BP_SAMPLE_SPECIMEN_OBJECT_TYPE,
     BP_STAINING_OBJECT_TYPE,
 )
-from metadata_backend.api.services.accession import generate_bp_accession, generate_default_accession
+from metadata_backend.api.services.accession import (
+    generate_bp_accession,
+    generate_default_accession,
+    is_bp_accession,
+)
 from metadata_backend.conf.bigpicture import bp_config
 
 
@@ -67,3 +71,13 @@ def test_generate_bp_accession_invalid_type():
     with patch.dict(os.environ, {"BP_CENTER_ID": "TEST"}, clear=True):
         with pytest.raises(RuntimeError, match="Unsupported object type 'invalid'."):
             generate_bp_accession("invalid")
+
+
+def test_is_bp_accession():
+    accession = generate_bp_accession(BP_DATASET_OBJECT_TYPE)
+    assert is_bp_accession(accession, BP_DATASET_OBJECT_TYPE)
+    assert not is_bp_accession(accession, BP_IMAGE_OBJECT_TYPE)
+    assert not is_bp_accession(accession.upper(), BP_DATASET_OBJECT_TYPE)
+    assert not is_bp_accession(f"{accession}-x", BP_DATASET_OBJECT_TYPE)
+    assert not is_bp_accession(f"{accession[:-1]}0", BP_DATASET_OBJECT_TYPE)
+    assert not is_bp_accession(f"x{accession}", BP_DATASET_OBJECT_TYPE)

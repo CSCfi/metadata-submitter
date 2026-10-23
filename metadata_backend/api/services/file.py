@@ -16,6 +16,7 @@ from ...services.keystone_service import KeystoneServiceHandler
 from ..exceptions import ForbiddenUserException, SystemException, UserException
 from ..models.models import File as SubmissionFile
 from ..models.sda import FileItem
+from ..processors.xml.bigpicture import get_bp_default_dataset_dir
 from .crypt import Crypt4GHPublicKeyProvider, generate_private_key
 
 
@@ -476,7 +477,10 @@ class S3InboxSDAService(FileProviderService):
         Returns:
             The list of any missing file paths.
         """
-        inbox_file_paths = {f.inbox_path for f in await self._admin_handler.get_user_files(user_id, submission_id)}
+        inbox_file_paths = {
+            f.inbox_path
+            for f in await self._admin_handler.get_user_files(user_id, get_bp_default_dataset_dir(submission_id))
+        }
         file_paths = [f.path for f in files]
         return await self._find_missing_files(inbox_file_paths, file_paths)
 
@@ -503,7 +507,7 @@ class S3InboxSDAService(FileProviderService):
         Returns:
             The list of files found in the inbox for the submission.
         """
-        return await self._admin_handler.get_user_files(user_id, submission_id)
+        return await self._admin_handler.get_user_files(user_id, get_bp_default_dataset_dir(submission_id))
 
     async def find_orphaned_files(self, user_id: str, submission_id: str, files: list[SubmissionFile]) -> list[str]:
         """Return submission file paths that are not present in the inbox.
@@ -516,7 +520,10 @@ class S3InboxSDAService(FileProviderService):
         Returns:
             The list of any orphaned file paths.
         """
-        inbox_file_paths = [f.inbox_path for f in await self._admin_handler.get_user_files(user_id, submission_id)]
+        inbox_file_paths = [
+            f.inbox_path
+            for f in await self._admin_handler.get_user_files(user_id, get_bp_default_dataset_dir(submission_id))
+        ]
         file_paths = {f.path for f in files}
         return await self._find_orphaned_files(inbox_file_paths, file_paths)
 

@@ -1,5 +1,7 @@
 # Rems service handler patches.
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from metadata_backend.api.exceptions import UserException
@@ -111,8 +113,12 @@ async def _mock_rems_create_license(organization_id: str, localization: RemsLice
 
 async def _mock_rems_get_resources(doi: str | None = None) -> list[RemsResource]:
     if doi:
-        return [resource for resource in _mock_rems_resources.values() if resource.doi == doi]
+        return [resource for resource in _mock_rems_resources.values() if resource.resid == doi]
     return list(_mock_rems_resources.values())
+
+
+async def _mock_rems_get_catalogue_items(resid: str) -> list[RemsCatalogueItem]:
+    return [item for item in _mock_rems_catalogue_items.values() if item.resid == resid]
 
 
 async def _mock_rems_create_resource(organization_id: str | None, license_ids: list[int] | None, doi: str) -> int:
@@ -147,6 +153,40 @@ async def _mock_rems_create_catalogue_item(
         expired=False,
     )
     return mock_rems_catalogue_id
+
+
+@contextmanager
+def mock_rems_existing_catalogue_item(
+    resid: str, resource_id: int = 101, catalogue_id: int = 102
+) -> Iterator[tuple[RemsResource, RemsCatalogueItem]]:
+    """Register a REMS resource and catalogue item of the default organisation, workflow and license."""
+    organization = _mock_rems_organisations[MOCK_REMS_DEFAULT_ORGANISATION_ID]
+    resource = RemsResource(
+        id=resource_id,
+        resid=resid,
+        organization=organization,
+        licenses=[_mock_rems_licenses[MOCK_REMS_DEFAULT_LICENSE_ID]],
+        archived=False,
+        enabled=True,
+    )
+    item = RemsCatalogueItem(
+        id=catalogue_id,
+        resource_id=resource_id,
+        resid=resid,
+        wfid=MOCK_REMS_DEFAULT_WORKFLOW_ID,
+        organization=organization,
+        localizations={"en": RemsCatalogueItemLocalization(title="old title", discovery_url="https://old.test")},
+        archived=False,
+        enabled=True,
+        expired=False,
+    )
+    _mock_rems_resources[resource_id] = resource
+    _mock_rems_catalogue_items[catalogue_id] = item
+    try:
+        yield resource, item
+    finally:
+        _mock_rems_resources.pop(resource_id)
+        _mock_rems_catalogue_items.pop(catalogue_id)
 
 
 def patch_rems_get_application_url(url_prefix: str = "test_application"):
@@ -189,6 +229,12 @@ def patch_rems_get_catalogue_item():
     )
 
 
+def patch_rems_get_catalogue_items():
+    return patch.object(
+        RemsServiceHandler, "get_catalogue_items", new=AsyncMock(side_effect=_mock_rems_get_catalogue_items)
+    )
+
+
 def patch_rems_create_license():
     return patch.object(RemsServiceHandler, "create_license", new=AsyncMock(side_effect=_mock_rems_create_license))
 
@@ -212,5 +258,6 @@ patch_rems_get_license().start()
 patch_rems_create_license().start()
 patch_rems_get_resources().start()
 patch_rems_get_catalogue_item().start()
+patch_rems_get_catalogue_items().start()
 patch_rems_create_resource().start()
 patch_rems_create_catalogue_item().start()
