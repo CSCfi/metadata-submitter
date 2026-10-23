@@ -29,6 +29,11 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Fixed
 
+- (users) A retried publish no longer duplicates the mapped Metax fields, and a Metax draft with one of these fields as null no longer fails the publish.
+- (users) Creating an API key with an existing key id returns 400 instead of 500.
+- (users) The DataCite alternate identifier had its value and type swapped. The submission id is now the value and LocalID the type.
+- (users) Publishing checks the metadata for Metax before a DOI is registered, so a missing affiliation, an invalid date or language, or missing keywords returns 400 before the DOI is created instead of 500 after it is public.
+- (users) Authenticating with an API key, which always failed with 401.
 - (users) Bigpicture metadata XMLs are now  uploaded to the SDA inbox after the submission is registered, so the landing page XML has the DOI and REMS links.
 - (users) Publishing a Bigpicture submission without annotations or observers failed because `annotation.xml` and `observer.xml` were treated as mandatory metadata XMLs.
 - (users) An unknown objectType or schemaType in an objects request is a 400. Before, an unknown schemaType was a 500 when listing objects, and getting documents with an unknown type returned a 200 with an empty body.
@@ -37,6 +42,10 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- A duplicate API key id is detected from IntegrityError instead of PostgreSQL's error message.
+- The Metax mapper raises UserException instead of ValueError for metadata that can't be mapped.
+- MetaxMapper.map_metadata returns the mapped fields as MetaxMappedFields instead of appending them to the dataset read from Metax.
+- SessionMiddleware is now the outer middleware.
 - (admins) For an imported dataset, ingest removes the old metadata XMLs from the SDA dataset, adds the new ones and releases the dataset. The SDA Admin API token must allow removing files from datasets.
 - (users) Publishing reuses an existing REMS resource and catalogue item for the submission instead of creating duplicates. A reused resource keeps its licenses.
 - (users) The `/v1/submit` endpoints refuse to update or delete an imported submission.
