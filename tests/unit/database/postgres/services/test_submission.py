@@ -262,6 +262,23 @@ async def test_update_submission(submission_repository: SubmissionRepository, su
     assert (await submission_repository.get_submission_by_id(submission.submission_id)).published is not None
 
 
+async def test_update_submission_ignores_fields(
+    submission_repository: SubmissionRepository, submission_service: SubmissionService
+):
+    """Test that an update does not store the fields a new submission does not store either."""
+    submission = create_submission_entity()
+    await submission_repository.add_submission(submission)
+
+    await submission_service.update_submission(
+        submission.submission_id, {"datePublished": "2020-01-01T00:00:00Z", "dateCreated": "2020-01-01T00:00:00Z"}
+    )
+
+    document = (await submission_repository.get_submission_by_id(submission.submission_id)).document
+    assert "datePublished" not in document
+    assert "dateCreated" not in document
+    assert (await submission_service.get_submission_by_id(submission.submission_id)).datePublished is None
+
+
 async def test_delete_submission(submission_repository: SubmissionRepository, submission_service: SubmissionService):
     submission = create_submission_entity()
     await submission_repository.add_submission(submission)

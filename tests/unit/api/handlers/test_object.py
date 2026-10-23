@@ -912,6 +912,82 @@ async def test_submission_bp_duplicate_dataset_alias_rejected(nbis_client):
         ]
 
 
+async def test_submission_bp_update_deletes_removed_object(nbis_client):
+    """Test that an update deletes only the image although an observer has the same alias."""
+
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+    alias = f"1_{uuid.uuid4()}"
+
+    async def object_types_with_alias() -> list[str]:
+        objects = await list_metadata_objects(nbis_client, None, False, submission_id)
+        return sorted(obj.objectType for obj in objects if obj.name == alias)
+
+    with patch_get_user_projects, patch_verify_user_project, patch_verify_authorization:
+        # 1. Create a submission where image "2" and observer "1" of the test XMLs have the same alias.
+        #    The other objects are given unique aliases.
+        object_names, files = bp_submission_documents(
+            is_datacite=False,
+            object_names={
+                BP_IMAGE_SCHEMA: {BP_IMAGE_OBJECT_TYPE: {"2": alias}},
+                BP_OBSERVER_SCHEMA: {BP_OBSERVER_OBJECT_TYPE: {"1": alias}},
+            },
+        )
+        response = nbis_client.post(f"{api_prefix_v1}/submit", files=prepare_file_data_bp(files))
+        assert response.status_code == 200, response.text
+        submission_id = response.json()["submissionId"]
+        assert await object_types_with_alias() == [BP_IMAGE_OBJECT_TYPE, BP_OBSERVER_OBJECT_TYPE]
+
+        # 2. Update with the XMLs in the update directory, whose image.xml has images "1" and "3" but no "2".
+        #    The observer XML is unchanged.
+        _, files = bp_update_documents(object_names, is_datacite=False)
+        response = nbis_client.patch(f"{api_prefix_v1}/submit/{submission_id}", files=prepare_file_data_bp(files))
+        assert response.status_code == 200, response.text
+
+        # 3. The image is deleted and the observer is kept.
+        assert await object_types_with_alias() == [BP_OBSERVER_OBJECT_TYPE]
+
+
+async def test_submission_bp_update_datacite_object(nbis_client):
+    """Test that an update keeps the DataCite object and its accession, and removes the DataCite object and
+    metadata if datacite.xml is left out."""
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+
+    async def datacite_object_ids() -> list[str]:
+        objects = await list_metadata_objects(nbis_client, None, False, submission_id)
+        return [obj.objectId for obj in objects if obj.objectType == DATACITE_OBJECT_TYPE]
+
+    def datacite_metadata() -> dict | None:
+        response = nbis_client.get(f"{api_prefix_v1}/submissions/{submission_id}")
+        assert response.status_code == 200, response.text
+        return response.json().get("metadata")
+
+    def update(is_datacite: bool) -> None:
+        _, files = bp_submission_documents(is_datacite=is_datacite, object_names=object_names)
+        response = nbis_client.patch(f"{api_prefix_v1}/submit/{submission_id}", files=prepare_file_data_bp(files))
+        assert response.status_code == 200, response.text
+
+    with patch_get_user_projects, patch_verify_user_project, patch_verify_authorization:
+        # 1. Create a submission with datacite.xml.
+        object_names, files = bp_submission_documents(is_datacite=True)
+        response = nbis_client.post(f"{api_prefix_v1}/submit", files=prepare_file_data_bp(files))
+        assert response.status_code == 200, response.text
+        submission_id = response.json()["submissionId"]
+        datacite_ids = await datacite_object_ids()
+        assert len(datacite_ids) == 1
+        metadata = datacite_metadata()
+        assert metadata is not None
+
+        # 2. Update with datacite.xml.
+        update(is_datacite=True)
+        assert await datacite_object_ids() == datacite_ids
+        assert datacite_metadata() == metadata
+
+        # 3. Update without datacite.xml.
+        update(is_datacite=False)
+        assert await datacite_object_ids() == []
+        assert datacite_metadata() is None
+
+
 async def test_submission_bp_user_error(nbis_client):
     """Test that a submitted document that is not well-formed is a user error on create and update."""
     api_prefix_v1 = deployment_config().API_PREFIX_V1

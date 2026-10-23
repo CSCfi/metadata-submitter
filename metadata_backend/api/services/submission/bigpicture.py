@@ -8,6 +8,7 @@ from typing import override
 from lxml.etree import Element
 from lxml.etree import _ElementTree as ElementTree  # noqa
 
+from ....database.postgres.repositories.submission import SUB_FIELD_METADATA
 from ....database.postgres.services.file import FileService
 from ....database.postgres.services.object import ObjectService
 from ....database.postgres.services.submission import SubmissionService
@@ -275,6 +276,9 @@ def _check_mandatory_constraint_7(processor: XmlDocumentsProcessor, max_reported
 
 class BigpictureObjectSubmissionService(ObjectSubmissionService):
     """Service for processing Bigpicture submissions."""
+
+    # The DataCite XML is not processed with the Bigpicture XMLs.
+    _separately_managed_object_types = frozenset({DATACITE_OBJECT_TYPE})
 
     def __init__(
         self,
@@ -684,6 +688,14 @@ class BigpictureObjectSubmissionService(ObjectSubmissionService):
         elif datacite_object is not None:
             # Delete DataCite XML if it exists.
             await self._delete_object(datacite_object.objectId)
+
+        if self._datacite is None and submission.metadata is not None:
+            # Remove DataCite metadata. This explicit write is needed because the generic
+            # update() merges the prepared submission through to_json_dict(), which drops
+            # None values, so a metadata field that the new XMLs no longer set would
+            # otherwise keep its old stored value.
+            await self._submission_service.update_submission(submission_id, {SUB_FIELD_METADATA: None})
+            submission = submission.model_copy(update={"metadata": None})
 
         return submission
 
