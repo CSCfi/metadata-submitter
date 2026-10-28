@@ -249,6 +249,10 @@ def patch_rems_create_catalogue_item():
     )
 
 
+def patch_rems_edit_catalogue_item():
+    return patch.object(RemsServiceHandler, "edit_catalogue_item", new=AsyncMock(return_value=None))
+
+
 # Apply default Rems service handler patches.
 patch_rems_get_application_url().start()
 patch_rems_get_workflows().start()

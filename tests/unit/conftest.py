@@ -44,6 +44,7 @@ from metadata_backend.database.postgres.repositories.submission import Submissio
 from metadata_backend.database.postgres.repository import (
     SessionFactory,
     _session_context,
+    allow_no_committed_session,
     create_engine,
     create_session_factory,
     get_sqllite_db_url,
@@ -169,6 +170,8 @@ async def session(session_factory):
     async with session_factory() as session:
         async with session.begin():
             token = _session_context.set(session)
+            # Run committed transactions in the test session.
+            token_no_commit = allow_no_committed_session.set(True)
             try:
                 # Delete existing rows from tables.
                 for table in [REGISTRATIONS_TABLE, DISPATCHES_TABLE, FILES_TABLE, OBJECTS_TABLE, SUBMISSIONS_TABLE]:
@@ -176,6 +179,7 @@ async def session(session_factory):
                 yield session
                 await session.rollback()
             finally:
+                allow_no_committed_session.reset(token_no_commit)
                 _session_context.reset(token)
 
 
@@ -235,10 +239,19 @@ def dispatch_service() -> DispatchService:
     return DispatchService(_dispatch_repository)
 
 
+def set_deployment_env(monkeypatch, deployment: Deployment) -> None:
+    """Set the environment variables with which the app is created for the deployment."""
+    monkeypatch.setenv("DEPLOYMENT", deployment)
+    monkeypatch.setenv("JWT_KEY", "bW9jay1zZWNyZXQtd2hpY2gtaXMtYXQtbGVhc3QtMzItYnl0ZXM=")
+    if deployment == Deployment.NBIS:
+        monkeypatch.setenv("SYNC_CLIENTS", sync_clients((TEST_SYNC_ISSUER, TEST_SYNC_PUBLIC_KEY)))
+        monkeypatch.setenv("SYNC_AUDIENCE", TEST_SYNC_AUDIENCE)
+        monkeypatch.setenv("CRYPT4GH_PUBLIC_KEY_URL", "http://keys.test/key")
+
+
 @pytest.fixture
 def csc_client(monkeypatch, session) -> Generator[TestClient]:
-    monkeypatch.setenv("DEPLOYMENT", Deployment.CSC)
-    monkeypatch.setenv("JWT_KEY", "bW9jay1zZWNyZXQtd2hpY2gtaXMtYXQtbGVhc3QtMzItYnl0ZXM=")
+    set_deployment_env(monkeypatch, Deployment.CSC)
     app = create_app(session)
     with TestClient(app) as client:
         yield client
@@ -246,11 +259,7 @@ def csc_client(monkeypatch, session) -> Generator[TestClient]:
 
 @pytest.fixture
 def nbis_client(monkeypatch, session) -> Generator[TestClient]:
-    monkeypatch.setenv("DEPLOYMENT", Deployment.NBIS)
-    monkeypatch.setenv("JWT_KEY", "bW9jay1zZWNyZXQtd2hpY2gtaXMtYXQtbGVhc3QtMzItYnl0ZXM=")
-    monkeypatch.setenv("SYNC_CLIENTS", sync_clients((TEST_SYNC_ISSUER, TEST_SYNC_PUBLIC_KEY)))
-    monkeypatch.setenv("SYNC_AUDIENCE", TEST_SYNC_AUDIENCE)
-    monkeypatch.setenv("CRYPT4GH_PUBLIC_KEY_URL", "http://keys.test/key")
+    set_deployment_env(monkeypatch, Deployment.NBIS)
     app = create_app(session)
     with TestClient(app) as client:
         yield client

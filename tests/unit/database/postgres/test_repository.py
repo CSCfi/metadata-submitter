@@ -1,16 +1,31 @@
 """Test the database repository functions."""
 
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 import sqlalchemy as sa
 from alembic.config import Config
 from alembic.script import ScriptDirectory
 
-from metadata_backend.database.postgres.models import Base
+from metadata_backend.api.exceptions import SystemException
+from metadata_backend.api.models.models import Registration
+from metadata_backend.database.postgres.models import Base, SubmissionEntity
+from metadata_backend.database.postgres.repositories.registration import RegistrationRepository
+from metadata_backend.database.postgres.repositories.submission import SubmissionRepository
 from metadata_backend.database.postgres.repository import (
     _ALEMBIC_DIR,
+    COMMITTED_SESSION_LOCK_TIMEOUT,
+    _session_context,
+    allow_no_committed_session,
+    committed_session,
     create_engine,
+    create_session_factory,
     get_sqllite_db_url,
     migrate_schema,
+    session_factory_context,
 )
+from metadata_backend.database.postgres.services.registration import RegistrationService
+from tests.unit.database.postgres.helpers import create_submission_entity
 
 
 def _head() -> str:
@@ -92,3 +107,102 @@ async def test_test_create_engine_existing_tables(monkeypatch, tmp_path):
     engine = await create_engine()
     await engine.dispose()
     assert _tables(path) == {"submissions"}
+
+
+async def test_committed_session(monkeypatch, tmp_path):
+    """Test that the committed session is kept when the outer transaction is rolled back."""
+    monkeypatch.setenv("DATABASE_URL", get_sqllite_db_url(str(tmp_path / "committed.db")))
+    engine = await create_engine()
+    session_factory = create_session_factory(engine)
+    token = session_factory_context.set(session_factory)
+    try:
+        async with session_factory() as outer_session:
+            await outer_session.begin()
+            async with committed_session():
+                submission_id = await SubmissionRepository().add_submission(create_submission_entity())
+            await outer_session.rollback()
+
+        async with session_factory() as new_session:
+            assert await new_session.get(SubmissionEntity, submission_id) is not None
+    finally:
+        session_factory_context.reset(token)
+        await engine.dispose()
+
+
+async def test_allow_no_committed_session(session):
+
+    # The session fixture permits committed_session() calls.
+    async with committed_session():
+        submission_id = await SubmissionRepository().add_submission(create_submission_entity())
+    assert await session.get(SubmissionEntity, submission_id) is not None
+
+    token = allow_no_committed_session.set(False)
+    try:
+        with pytest.raises(SystemException, match="No session factory has been defined"):
+            async with committed_session():
+                pass
+    finally:
+        allow_no_committed_session.reset(token)
+
+
+@pytest.mark.parametrize("dialect, lock_timeout", [("postgresql", True), ("sqlite", False)])
+async def test_committed_session_lock_timeout(dialect, lock_timeout):
+    """Test that a committed transaction in PostgreSQL waits for a row lock only until the lock timeout."""
+    committed = MagicMock()
+    committed.__aenter__.return_value = committed
+    committed.begin.return_value = MagicMock()
+    committed.bind.dialect.name = dialect
+    committed.execute = AsyncMock()
+    session_factory = MagicMock(return_value=committed)
+
+    token = session_factory_context.set(session_factory)
+    try:
+        async with committed_session():
+            pass
+    finally:
+        session_factory_context.reset(token)
+
+    statements = [str(call.args[0]) for call in committed.execute.await_args_list]
+    expected = [f"SET LOCAL lock_timeout = '{COMMITTED_SESSION_LOCK_TIMEOUT}'"] if lock_timeout else []
+    assert statements == expected
+
+
+async def test_get_registration_after_committed_session(monkeypatch, tmp_path):
+    """Test that get_registration returns the registration updated in a committed session.
+
+    Only the Metax ID is updated, all other registrations are updated the same way.
+    """
+    monkeypatch.setenv("DATABASE_URL", get_sqllite_db_url(str(tmp_path / "refresh.db")))
+    engine = await create_engine()
+    session_factory = create_session_factory(engine)
+    factory_token = session_factory_context.set(session_factory)
+    repository = RegistrationRepository()
+    service = RegistrationService(repository)
+    request_session = session_factory()
+    try:
+        # Add a submission and its registration.
+        async with committed_session():
+            submission_id = await SubmissionRepository().add_submission(create_submission_entity())
+        await service.add_registration(
+            Registration(submissionId=submission_id, title="title", description="description")
+        )
+
+        # Start the request transaction, as the SessionMiddleware does, and load the registration.
+        await request_session.begin()
+        session_token = _session_context.set(request_session)
+        try:
+            registration = await repository.get_registration(submission_id)
+            assert registration.metax_id is None
+
+            # A publish step updates the registration in its own committed transaction.
+            await service.update_metax_id(submission_id, "metax_id")
+
+            # The request session returns the registration it has loaded, with the updated value.
+            assert await repository.get_registration(submission_id) is registration
+            assert registration.metax_id == "metax_id"
+        finally:
+            _session_context.reset(session_token)
+    finally:
+        await request_session.close()
+        session_factory_context.reset(factory_token)
+        await engine.dispose()

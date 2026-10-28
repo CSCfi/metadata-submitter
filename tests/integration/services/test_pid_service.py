@@ -32,7 +32,7 @@ async def test_publish_csd_pid(client, secret_env):
 
     # Add DataCite metadata and publish DOI.
     await service.publish(
-        registration, submission.metadata, discovery_url, require_field_of_science=False, publish=False
+        registration, submission.metadata, discovery_url, require_field_of_science=False, make_findable=False
     )
 
     # Get published DataCite metadata.

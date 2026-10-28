@@ -19,6 +19,7 @@ from ..api.models.rems import (
     RemsWorkflow,
 )
 from ..conf.rems import rems_config
+from ..helpers.logger import LOG
 from .service_handler import ServiceHandler
 
 REMS_LICENSE_TYPE_TEXT = "text"
@@ -353,3 +354,26 @@ class RemsServiceHandler(ServiceHandler):
         }
         created: dict[str, Any] = await self._request(method="POST", path="/catalogue-items/create", json_data=data)
         return int(created["id"])
+
+    async def edit_catalogue_item(self, catalogue_id: int, title: str, discovery_url: str) -> None:
+        """Edit the title and discovery url of a REMS catalogue item.
+
+        :param catalogue_id: The REMS catalogue item id.
+        :param title: The REMS catalogue item title.
+        :param discovery_url: The REMS catalogue item discovery url.
+        """
+
+        data = {
+            "id": catalogue_id,
+            "localizations": {
+                "en": {
+                    "title": title,
+                    "infourl": discovery_url,
+                }
+            },
+        }
+        # REMS reports a failed command in the response body.
+        response: dict[str, Any] = await self._request(method="PUT", path="/catalogue-items/edit", json_data=data)
+        if not response.get("success"):
+            LOG.error("Failed to edit REMS catalogue item %s: %s", catalogue_id, response.get("errors"))
+            raise ServiceHandlerSystemException(self.service_name)

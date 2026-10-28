@@ -1,7 +1,6 @@
 """Test the Alembic migrations against a temporary PostgreSQL database."""
 
 import asyncio
-import uuid
 
 import pytest
 import sqlalchemy as sa
@@ -19,27 +18,6 @@ pytestmark = pytest.mark.skipif(nbis_database_url is None, reason="Needs the NBI
 _XML = "<DATASET><TITLE>Migrated</TITLE></DATASET>"
 
 
-@pytest.fixture
-def database_url(monkeypatch):
-    """A new database on the NBIS database server, removed after the test."""
-    server = sa.make_url(nbis_database_url).set(drivername="postgresql+psycopg", database="postgres")
-    name = f"migrations_{uuid.uuid4().hex}"
-
-    admin = sa.create_engine(server, isolation_level="AUTOCOMMIT")
-    with admin.connect() as connection:
-        connection.execute(sa.text(f"CREATE DATABASE {name}"))
-    try:
-        url = sa.make_url(nbis_database_url).set(database=name)
-        monkeypatch.setenv("DATABASE_URL", url.render_as_string(hide_password=False))
-        # Keep the metadata objects unencrypted, so that they can be read back directly.
-        monkeypatch.delenv("OPENBAO_URL", raising=False)
-        yield url.set(drivername="postgresql+psycopg")
-    finally:
-        with admin.connect() as connection:
-            connection.execute(sa.text(f"DROP DATABASE {name} WITH (FORCE)"))
-        admin.dispose()
-
-
 async def _create_schema() -> None:
     """Create the schema as the server does when it starts."""
     engine = await create_engine()
@@ -50,13 +28,13 @@ def _version(connection: sa.Connection) -> str | None:
     return MigrationContext.configure(connection).get_current_revision()
 
 
-def test_downgrade_and_upgrade(database_url):
+def test_downgrade_and_upgrade(temp_nbis_database_url):
     """Test that every migration downgrades to the bottom and upgrades back to the models' schema."""
 
     # A new database is created from the models and stamped with the latest revision.
     asyncio.run(_create_schema())
 
-    engine = sa.create_engine(database_url)
+    engine = sa.create_engine(temp_nbis_database_url)
     try:
         with engine.begin() as connection:
             head = _version(connection)

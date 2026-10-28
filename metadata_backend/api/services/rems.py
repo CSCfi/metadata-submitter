@@ -129,8 +129,7 @@ async def find_rems_catalogue_item(
 ) -> RemsCatalogueItem | None:
     """Find the active REMS catalogue item of the resource with the given external id, to reuse it.
 
-    Only the resource, organization and workflow are checked. The title and discovery URL are not
-    compared, by design: a reused catalogue item is kept as it is.
+    Only the resource, organization and workflow are checked, not the title or discovery URL.
 
     :param rems_service: The REMS service.
     :param resid: The external resource id.

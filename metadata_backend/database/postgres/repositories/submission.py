@@ -5,6 +5,7 @@ import enum
 from typing import Awaitable, Callable, Sequence
 
 from sqlalchemy import ColumnElement, and_, delete, func, select
+from sqlalchemy.exc import DBAPIError
 
 from metadata_backend.api.models.submission import Submission, SubmissionWorkflow
 from metadata_backend.api.services.accession import generate_submission_accession
@@ -237,6 +238,34 @@ class SubmissionRepository:
 
         result = await session().execute(stmt)
         return list(result.scalars().all())
+
+    async def lock_submission(self, submission_id: str) -> bool:
+        """Lock the submission row until the transaction ends.
+
+        If another transaction already holds the lock, returns False at once rather than waiting
+        for that transaction to end.
+
+        Uses FOR NO KEY UPDATE, because a FOR UPDATE lock would also block other
+        transactions from inserting rows that reference the submission.
+
+        :param submission_id: The submission id.
+        :returns: False if another transaction has locked the submission.
+        """
+        stmt = (
+            select(SubmissionEntity)
+            .where(SubmissionEntity.submission_id == submission_id)
+            .with_for_update(key_share=True, nowait=True)  # FOR NO KEY UPDATE NOWAIT
+            # Refresh the submission, since another transaction may have changed it before the lock.
+            .execution_options(populate_existing=True)
+        )
+        try:
+            await session().execute(stmt)
+        except DBAPIError as ex:
+            # PostgreSQL lock_not_available.
+            if getattr(ex.orig, "sqlstate", None) == "55P03":
+                return False
+            raise
+        return True
 
     async def claim_submission_for_ingest(
         self, submission_id: str, *, workflow: SubmissionWorkflow | None = None

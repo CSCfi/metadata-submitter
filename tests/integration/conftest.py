@@ -14,6 +14,7 @@ from typing import Any, AsyncGenerator, Awaitable, Protocol
 import aiohttp
 import jwt
 import pytest
+import sqlalchemy as sa
 from dotenv import dotenv_values
 from yarl import URL
 
@@ -28,6 +29,7 @@ from tests.integration.conf import (
     mock_s3_region,
     mock_user,
     nbis_base_url,
+    nbis_database_url,
 )
 from tests.integration.helpers import (
     add_bucket,
@@ -359,3 +361,24 @@ async def s3_manager(secret_env):
 
     manager = S3Manager()
     yield manager
+
+
+@pytest.fixture
+def temp_nbis_database_url(monkeypatch):
+    """A new temporary NBIS database, removed after the test."""
+    server = sa.make_url(nbis_database_url).set(drivername="postgresql+psycopg", database="postgres")
+    name = f"test_{uuid.uuid4().hex}"
+
+    admin = sa.create_engine(server, isolation_level="AUTOCOMMIT")
+    with admin.connect() as connection:
+        connection.execute(sa.text(f"CREATE DATABASE {name}"))
+    try:
+        url = sa.make_url(nbis_database_url).set(database=name)
+        monkeypatch.setenv("DATABASE_URL", url.render_as_string(hide_password=False))
+        # Keep the metadata objects unencrypted, so that they can be read back directly.
+        monkeypatch.delenv("OPENBAO_URL", raising=False)
+        yield url.set(drivername="postgresql+psycopg")
+    finally:
+        with admin.connect() as connection:
+            connection.execute(sa.text(f"DROP DATABASE {name} WITH (FORCE)"))
+        admin.dispose()

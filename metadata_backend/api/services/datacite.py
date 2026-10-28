@@ -40,7 +40,7 @@ class DataciteService(ABC):
         discovery_url: str,
         *,
         require_field_of_science: bool = False,
-        publish: bool = True,
+        make_findable: bool = True,
     ) -> dict[str, Any]:
         """Publish a draft DOI with DataCite metadata.
 
@@ -48,7 +48,8 @@ class DataciteService(ABC):
         :param datacite: The DataCite metadata
         :param discovery_url: The discovery URL
         :param require_field_of_science: Require field of science.
-        :param publish: If True then publish the data. If false do not change the status.
+        :param make_findable: If True, send the publish event, which makes a draft DOI findable.
+            If False, only update the metadata and leave the DOI state unchanged.
         :return: The request body.
         """
 
@@ -72,7 +73,7 @@ class DataciteService(ABC):
                 "type": "dois",
                 "attributes": {
                     "doi": registration.doi,
-                    **({"event": "publish"} if publish else {}),
+                    **({"event": "publish"} if make_findable else {}),
                     "url": discovery_url,
                 },
             },

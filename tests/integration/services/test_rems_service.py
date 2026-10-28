@@ -242,6 +242,28 @@ async def test_create_catalogue_item(secret_env):
     assert not item.expired
 
 
+async def test_edit_catalogue_item(secret_env):
+    """Test REMS edit catalogue item using test service and test data."""
+
+    handler = RemsServiceHandler()
+
+    doi = create_doi()
+    resource_id = await handler.create_resource(organization_id="nbn", license_ids=[1], resid=doi)
+    discovery_url = discovery_config().DISCOVERY_URL.format(id=doi)
+    item_id = await handler.create_catalogue_item(
+        organization_id="nbn", workflow_id=1, resource_id=resource_id, title="old", discovery_url=discovery_url
+    )
+
+    item = await handler.get_catalogue_item(item_id)
+    assert item.localizations == {"en": RemsCatalogueItemLocalization(title="old", discovery_url=discovery_url)}
+
+    title = f"test_{uuid.uuid4()}"
+    await handler.edit_catalogue_item(item_id, title, discovery_url)
+
+    item = await handler.get_catalogue_item(item_id)
+    assert item.localizations == {"en": RemsCatalogueItemLocalization(title=title, discovery_url=discovery_url)}
+
+
 async def test_get_catalogue_items(secret_env):
     """Test REMS get catalogue items of a resource using test service and test data."""
 

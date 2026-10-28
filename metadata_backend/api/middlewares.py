@@ -14,7 +14,7 @@ from ..api.exceptions import AppException, SystemException, UnauthorizedUserExce
 from ..api.models.models import User
 from ..api.services.auth import AuthService
 from ..conf.deployment import deployment_config
-from ..database.postgres.repository import SessionFactory
+from ..database.postgres.repository import SessionFactory, session_factory_context
 from ..helpers.logger import LOG
 from .models.app import app_state
 
@@ -70,7 +70,8 @@ class SessionMiddleware:
                 LOG.error("Session middleware context already set: method: %s, path: %s", method, path)
                 raise SystemException("Session context is already set")
 
-            async with self.session_factory_provider()() as session:
+            session_factory = self.session_factory_provider()
+            async with session_factory() as session:
                 response_started = False
 
                 async def transactional_send(message: Message) -> None:
@@ -99,6 +100,7 @@ class SessionMiddleware:
 
                 try:
                     token = self.session_context.set(session)
+                    factory_token = session_factory_context.set(session_factory)
 
                     transaction = await session.begin()
 
@@ -118,6 +120,7 @@ class SessionMiddleware:
                         raise
 
                 finally:
+                    session_factory_context.reset(factory_token)
                     self.session_context.reset(token)
 
 

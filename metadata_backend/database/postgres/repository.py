@@ -3,6 +3,8 @@
 import os
 import re
 import sqlite3
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from pathlib import Path
 from typing import Callable
@@ -198,6 +200,17 @@ def create_session_factory(engine: AsyncEngine) -> SessionFactory:
 # and ended after the request processing is completed but before the response is sent back.
 _session_context: ContextVar[AsyncSession | None] = ContextVar("_session_context", default=None)
 
+# Holds the session factory for each request, set by the SessionMiddleware alongside the session,
+# so that committed_session can create a separate transaction.
+session_factory_context: ContextVar[SessionFactory | None] = ContextVar("session_factory_context", default=None)
+
+# Lets committed_session run its block in the caller's transaction when there is no session factory,
+# for example in the unit tests.
+allow_no_committed_session: ContextVar[bool] = ContextVar("allow_no_committed_session", default=False)
+
+# How long committed_session waits for a row lock before it fails.
+COMMITTED_SESSION_LOCK_TIMEOUT = "10s"
+
 
 def session() -> AsyncSession:
     """
@@ -207,6 +220,32 @@ def session() -> AsyncSession:
     if _session is None:
         raise SystemException("No active transaction")
     return _session
+
+
+@asynccontextmanager
+async def committed_session() -> AsyncIterator[None]:
+    """
+    Run the block in a new transaction that is committed when the block exits.
+
+    Without a session factory, raises unless allow_no_committed_session is set.
+    """
+    session_factory = session_factory_context.get(None)
+    if session_factory is None:
+        if not allow_no_committed_session.get():
+            raise SystemException("No session factory has been defined")
+        # Run the block in the caller's transaction.
+        yield
+        return
+
+    # The transaction is committed when the block exits, or rolled back if it raises.
+    async with session_factory() as _session, _session.begin():
+        if _session.bind.dialect.name == "postgresql":
+            await _session.execute(text(f"SET LOCAL lock_timeout = '{COMMITTED_SESSION_LOCK_TIMEOUT}'"))
+        token = _session_context.set(_session)
+        try:
+            yield
+        finally:
+            _session_context.reset(token)
 
 
 # python -m metadata_backend.database.postgres.repository

@@ -35,7 +35,13 @@ class RegistrationRepository:
         Returns:
             The registration entity.
         """
-        stmt = select(RegistrationEntity).where(RegistrationEntity.submission_id == submission_id)
+        # Refresh the registration entity from database, since the registration is updated in
+        # its own committed transaction.
+        stmt = (
+            select(RegistrationEntity)
+            .where(RegistrationEntity.submission_id == submission_id)
+            .execution_options(populate_existing=True)
+        )
         result = await session().execute(stmt)
         return result.scalar_one_or_none()
 
