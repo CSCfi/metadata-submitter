@@ -30,6 +30,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Fixed
 
+- (users) Retrying a failed publish after changing the submission's title or description registers the new title and description in DataCite, Metax and REMS.
+- (users) Retrying a failed publish no longer registers another DOI, Metax dataset or REMS item.
 - (users) Updating a submission no longer stores system fields such as datePublished.
 - (users) Updating a Bigpicture submission without datacite.xml also removes its DataCite metadata.
 - (users) Updating a Bigpicture submission deletes a removed metadata object even if an object of another type has the same alias.
@@ -47,6 +49,13 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- (admins) A retried publish does not publish a Metax dataset that is already published.
+- (admins) A retried publish updates the DataCite metadata of a DOI that is already findable, the Metax dataset's title and description (draft or published) when the submission has changed, and the REMS catalogue item's title when it differs. The catalogue item of an imported dataset is left unchanged.
+- (users) Publishing a submission that is already being published fails at once with 409 Conflict, rather than registering it twice.
+- The `publish` parameter of `DataciteService.publish` is renamed `make_findable`.
+- `committed_session()` raises without a session factory unless `allow_no_committed_session` is set, as the unit-test `session` fixture does, and its row lock waits time out after 10 seconds.
+- The submission is locked with `FOR NO KEY UPDATE NOWAIT` after the access check while it is published. A concurrent publish fails at once with 409, and the registration's own transactions are not blocked.
+- Each publish registration step (DOI, Metax ID, DataCite URL, REMS resource, catalogue item and URL) is committed in its own transaction through `committed_session()`, so a failed publish keeps the identifiers it registered and a retry resumes from them.
 - A submission update ignores the same fields as a new submission, including those sent in the update.
 - A workflow now lists metadata object types that the generic update does not delete. Bigpicture lists the DataCite object.
 - The generic submission update finds removed metadata objects by object type and name, or object type and accession.
@@ -72,6 +81,10 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 - (users) A `submission.json` that is not valid JSON is reported as a user error when a submission is created, as it already was when one is updated, instead of as a validation error.
 - (users) Authentication failures, unknown paths and unsupported methods also return a user error in problem JSON, instead of only a `detail`.
 - (users) User errors (HTTP 4xx) are returned as `{"detail": "User error", "errors": [...]}`. Read the error messages from `errors` instead of `detail`. Validation errors keep their shape: `{"detail": "Validation error", "errors": [{"field": ..., "message": ...}]}`.
+
+### Security
+
+- (admins) The production image no longer installs development dependencies, which included brotli 1.2.0 with critical vulnerabilities.
 
 ## [2026.10.1] - 2026-10-13
 
