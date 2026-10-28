@@ -49,6 +49,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- (users) Updated Bigpicture 3.0 XML schemas to metaflex v3.0.0-rc.2. A dataset now requires DESCRIPTION and an annotation's ONTOLOGY_REF is no longer nillable.
 - (admins) A retried publish does not publish a Metax dataset that is already published.
 - (admins) A retried publish updates the DataCite metadata of a DOI that is already findable, the Metax dataset's title and description (draft or published) when the submission has changed, and the REMS catalogue item's title when it differs. The catalogue item of an imported dataset is left unchanged.
 - (users) Publishing a submission that is already being published fails at once with 409 Conflict, rather than registering it twice.
