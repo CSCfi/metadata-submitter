@@ -1216,6 +1216,25 @@ def test_bp_submission_2_rejects_a_3_file():
             },
             "ONTOLOGY_REF': This element is not expected. Expected is \\( ANNOTATOR_REF \\)",
         ),
+        # An annotation must reference an ontology in 3.0: the reference is not nillable.
+        (
+            SUBMISSION_3_DIR,
+            BP_FILES,
+            {
+                "annotation": (
+                    '<ONTOLOGY_REF alias="1"/>',
+                    '<ONTOLOGY_REF xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:nil="true"/>',
+                )
+            },
+            "ONTOLOGY_REF': The element is not 'nillable'",
+        ),
+        # A dataset must have a description in 3.0.
+        (
+            SUBMISSION_3_DIR,
+            BP_FILES,
+            {"dataset": ("<DESCRIPTION>test_description</DESCRIPTION>", "")},
+            "VERSION': This element is not expected. Expected is \\( DESCRIPTION \\)",
+        ),
         # 2.0 documents declared as 3.0 are validated against the 3.0 schemas.
         (
             SUBMISSION_2_DIR,
@@ -1232,7 +1251,14 @@ def test_bp_submission_2_rejects_a_3_file():
             "XML Schema validation failed",
         ),
     ],
-    ids=["observation-annotation-ref", "annotation-without-annotator", "2.0-declared-3.0", "3.0-declared-2.0"],
+    ids=[
+        "observation-annotation-ref",
+        "annotation-without-annotator",
+        "annotation-nil-ontology",
+        "dataset-without-description",
+        "2.0-declared-3.0",
+        "3.0-declared-2.0",
+    ],
 )
 def test_bp_submission_schema_validation_follows_the_declared_version(submission_dir, filenames, replacements, error):
     with pytest.raises(SchemaValidationException, match=error):
