@@ -85,7 +85,7 @@ database/
 1. `SessionMiddleware` opens a SQLAlchemy async transaction for `/v1/...` and `/sync/...` requests and stores it in a `ContextVar`; commits or rolls back when the response starts. It is the outer middleware (`middlewares.py:add_middlewares`), so that the session exists when an API key is validated.
 2. `AuthMiddleware` validates a JWT bearer token, session cookie or API key on every `/v1/...` request. Paths outside `/v1` — `/health`, the OIDC login routes, `/openapi.json`, `/sync/...` — are passed through and authorize themselves, or not at all.
 3. FastAPI dispatches to a handler in `api/handlers/`. Handlers call `api/services/` for business logic and `services/` for external service calls.
-4. Repositories retrieve the session from the `ContextVar` directly — they never manage transactions themselves.
+4. Repositories retrieve the session from the `ContextVar` directly — they never manage transactions themselves. The one exception is `committed_session()` (`database/postgres/repository.py`), described under *Publishing*.
 
 ### Sync endpoints
 
@@ -130,6 +130,37 @@ without a provider does not serve the archive route at all.
 Tested in `tests/unit/api/test_dependencies.py` (`verify_sync` against a synthetic `Request`)
 and `tests/unit/api/handlers/test_sync.py` (that the dependency is on the router), both signing
 through `tests/sync.py`.
+
+### Publishing
+
+A publish registers the submission in external services (DOI, Metax, REMS) before the request
+transaction commits, so a failure after any one registration would roll back an identifier that
+already exists outside. `RegistrationService` therefore writes each step inside
+`committed_session()`, a separate transaction on its own connection that commits when the block
+exits. A failed publish keeps what it registered, and a retry resumes from the stored registration
+rather than registering again.
+
+A retry also brings the registrations up to date with the submission, which may have changed
+since the failure: Metax's title and description, the DataCite metadata (sent again without the
+`publish` event once the DOI is findable, `make_findable`), and the REMS catalogue item's title.
+An imported dataset's catalogue item may predate this service and is left unchanged.
+
+`publish_submission` checks access, then locks the submission row with `FOR NO KEY UPDATE NOWAIT`,
+then checks again that it is unpublished. A concurrent publish fails at once with 409 rather than
+waiting. The lock must stay `NO KEY`: the committed transactions insert registrations that
+reference the submission, which needs `KEY SHARE`, and `FOR UPDATE` would block them.
+
+`committed_session()`:
+
+- holds a second connection while the request still holds its own, so the request transaction
+  must never lock a row that a committed step needs. Postgres cannot detect that deadlock, so
+  `SET LOCAL lock_timeout` turns it into an error after 10 seconds.
+- raises without the session factory that `SessionMiddleware` sets in `session_factory_context`.
+  The unit-test `session` fixture sets `allow_no_committed_session`, so the block runs in the test
+  transaction instead. Tests of the real behaviour use a temporary SQLite database
+  (`tests/unit/database/postgres/test_repository.py`, and `_transactional_client` in
+  `tests/unit/api/handlers/test_publish.py`). The lock is tested against Postgres in
+  `tests/integration/test_submission_lock.py`.
 
 ### Encryption
 

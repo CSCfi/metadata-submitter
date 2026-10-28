@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -yqq git
 
 # Install dependencies and create virtual environment
 RUN --mount=type=secret,id=vault_secrets \
-    ./uv-artifactory.sh uv sync --frozen
+    ./uv-artifactory.sh uv sync --frozen --no-dev
 
 #=======================
 FROM ghcr.io/astral-sh/uv:0.13.5-python3.14-trixie-slim@sha256:d8e732839dfc4225a1ff698803b478b2223c05636c055d3add41ab9dbec0f315

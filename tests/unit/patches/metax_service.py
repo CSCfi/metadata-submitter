@@ -21,5 +21,9 @@ def patch_metax_update_dataset_description():
     return patch.object(MetaxServiceHandler, "update_dataset_description", new=AsyncMock(return_value=None))
 
 
+def patch_metax_update_dataset_title_and_description():
+    return patch.object(MetaxServiceHandler, "update_dataset_title_and_description", new=AsyncMock(return_value=None))
+
+
 def patch_metax_publish_dataset():
     return patch.object(MetaxServiceHandler, "publish_dataset", new=AsyncMock(return_value=None))

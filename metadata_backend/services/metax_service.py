@@ -114,6 +114,18 @@ class MetaxServiceHandler(MetaxService, ServiceHandler):
         await self._patch(metax_id, {"description": {"en": description}})
         LOG.debug("Updated dataset's description with Metax ID: %s", metax_id)
 
+    async def update_dataset_title_and_description(self, metax_id: str, title: str, description: str) -> None:
+        """Update the dataset's title and description.
+
+        :param metax_id: Metax ID
+        :param title: Dataset's title
+        :param description: Dataset's description
+        :raises: HTTPError depending on returned error from Metax
+        """
+        LOG.info("Updating the title and description of Metax ID: %r.", metax_id)
+        await self._patch(metax_id, {"title": {"en": title}, "description": {"en": description}})
+        LOG.debug("Updated dataset's title and description with Metax ID: %s", metax_id)
+
     async def publish_dataset(self, metax_id: str, doi: str) -> dict[str, Any]:
         """Publish draft dataset to Metax service.
 
@@ -121,6 +133,13 @@ class MetaxServiceHandler(MetaxService, ServiceHandler):
         :param doi: DOI
         :returns: Published Metax dataset with "state": "published"
         """
+
+        # The dataset is already published if a publish failed after publishing it to Metax.
+        dataset = await self.get_dataset(metax_id)
+        if dataset.get("state") == "published":
+            LOG.info("Metax dataset %s is already published.", metax_id)
+            return dataset
+
         LOG.info("Publishing Metax dataset: %s", metax_id)
         published_dataset = await self._publish(metax_id)
         LOG.debug("Dataset with Metax ID %s and DOI %s has been published to Metax service.", metax_id, doi)

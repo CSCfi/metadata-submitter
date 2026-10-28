@@ -11,6 +11,7 @@ from ...helpers.logger import LOG
 from ..exceptions import SystemException, UserException, external_service_call
 from ..models.datacite import DataCiteMetadata
 from ..models.models import Registration, SubmissionId
+from ..models.rems import RemsCatalogueItem
 from ..models.submission import Rems, Submission, SubmissionMetadata
 from ..services.datacite import DataciteService
 from ..services.rems import (
@@ -62,6 +63,10 @@ class PublishAPIHandler(RESTAPIHandler):
     ) -> None:
         """Publish to DataCite or CSC PID.
 
+        A retry sends the metadata again even if the DOI was already published, since the
+        submission can have been changed after the failed publish. Publishing also prepares the
+        DataCite metadata that is later sent to Metax.
+
         :param submission: The submission
         :param registration: The registration
         :param datacite: The DataCite metadata
@@ -69,22 +74,28 @@ class PublishAPIHandler(RESTAPIHandler):
         with external_service_call("Failed to publish submission in DataCite."):
             discovery_url = self.get_discovery_url(submission, registration)
 
+            publish_service: DataciteService | None = None
+            require_field_of_science: bool | None = None
+
+            if self._handlers.datacite is not None:
+                publish_service = self._handlers.datacite
+                require_field_of_science = False
+            elif self._handlers.pid is not None:
+                publish_service = self._handlers.pid
+                require_field_of_science = True
+
+            if publish_service:
+                await publish_service.publish(
+                    registration,
+                    datacite,
+                    discovery_url,
+                    require_field_of_science=require_field_of_science,
+                    # A stored DataCite URL means a failed publish already made the DOI findable.
+                    # The retry then updates only the metadata.
+                    make_findable=not registration.dataciteUrl,
+                )
+
             if not registration.dataciteUrl:
-                publish_service: DataciteService | None = None
-                require_field_of_science: bool | None = None
-
-                if self._handlers.datacite is not None:
-                    publish_service = self._handlers.datacite
-                    require_field_of_science = False
-                elif self._handlers.pid is not None:
-                    publish_service = self._handlers.pid
-                    require_field_of_science = True
-
-                if publish_service:
-                    await publish_service.publish(
-                        registration, datacite, discovery_url, require_field_of_science=require_field_of_science
-                    )
-
                 await self._services.registration.update_datacite_url(registration.submissionId, discovery_url)
 
     async def _update_metax(self, registration: Registration, metadata: SubmissionMetadata) -> None:
@@ -183,13 +194,12 @@ class PublishAPIHandler(RESTAPIHandler):
 
             # Create REMS catalogue item, or reuse the existing one.
             catalogue_id = registration.remsCatalogueId
+            catalogue_item: RemsCatalogueItem | None = None
             if not catalogue_id:
                 catalogue_item = await find_rems_catalogue_item(
                     self._handlers.rems, resid, organization_id, rems.workflowId, resource_id
                 )
                 if catalogue_item is not None:
-                    # By design, the existing catalogue item is reused unchanged. Its title and discovery URL
-                    # are neither compared with nor updated to match the registration.
                     LOG.info(
                         "Reusing REMS catalogue item %s for submission %s.",
                         catalogue_item.id,
@@ -208,17 +218,70 @@ class PublishAPIHandler(RESTAPIHandler):
                     )
                 await self._services.registration.update_rems_catalogue_id(registration.submissionId, catalogue_id)
                 registration.remsCatalogueId = catalogue_id
+            elif not submission.imported:
+                catalogue_item = await self._handlers.rems.get_catalogue_item(int(catalogue_id))
+
+            # An imported dataset's catalogue item may have been created outside this service, and is
+            # reused unchanged. Otherwise an existing catalogue item was created by a failed publish, and
+            # its title may have changed since. The discovery URL is built from identifiers that don't change.
+            if catalogue_item is not None and not submission.imported:
+                localization = catalogue_item.localizations.get("en")
+                if localization is None or localization.title != registration.title:
+                    await self._handlers.rems.edit_catalogue_item(
+                        int(catalogue_id), registration.title, self.get_discovery_url(submission, registration)
+                    )
 
             if not registration.remsUrl:
-                rems_url = self._handlers.rems.get_application_url(catalogue_id)
+                registration.remsUrl = self._handlers.rems.get_application_url(catalogue_id)
 
                 # Add rems URL to Metax description.
                 if registration.metaxId:
-                    new_description = registration.description + f"\n\nSD Apply Application link: {rems_url}"
-                    await self._handlers.metax.update_dataset_description(registration.metaxId, new_description)
+                    await self._handlers.metax.update_dataset_description(
+                        registration.metaxId, self._metax_description(registration)
+                    )
 
-                await self._services.registration.update_rems_url(registration.submissionId, rems_url)
-                registration.remsUrl = rems_url
+                await self._services.registration.update_rems_url(registration.submissionId, registration.remsUrl)
+
+    @staticmethod
+    def _metax_description(registration: Registration) -> str:
+        """Get the Metax dataset description, with the REMS application link once it is known.
+
+        :param registration: The registration
+        :returns: The Metax dataset description
+        """
+        if registration.remsUrl:
+            return registration.description + f"\n\nSD Apply Application link: {registration.remsUrl}"
+        return registration.description
+
+    async def _update_registration_title_and_description(
+        self, submission: Submission, rems: Rems, registration: Registration
+    ) -> None:
+        """Update the registration title and description, and the Metax dataset, if the submission has changed.
+
+        The submission can be changed after a failed publish, before the publish is retried.
+        DataCite and the REMS catalogue item are updated when they are published again.
+
+        :param submission: The submission
+        :param rems: The rems metadata
+        :param registration: The registration
+        """
+        title = workflow_profile(submission.workflow).registration_title(submission, rems)
+        if registration.title == title and registration.description == submission.description:
+            return
+
+        registration.title = title
+        registration.description = submission.description
+
+        # Metax is updated before the registration, so that a retry updates it again if this fails.
+        if self._handlers.metax is not None and registration.metaxId:
+            with external_service_call(f"Failed to update submission '{registration.submissionId}' in Metax."):
+                await self._handlers.metax.update_dataset_title_and_description(
+                    registration.metaxId, registration.title, self._metax_description(registration)
+                )
+
+        await self._services.registration.update_title_and_description(
+            registration.submissionId, registration.title, registration.description
+        )
 
     async def _publish_metax(
         self,
@@ -256,6 +319,13 @@ class PublishAPIHandler(RESTAPIHandler):
             user.user_id, submission_id, submission_service, project_service, workflow=workflow
         )
 
+        # Lock the submission so that a concurrent publish fails at once, rather than waiting for
+        # this one or registering the same external identifiers again.
+        await submission_service.lock_submission(submission_id)
+
+        # A concurrent publish may have finished after the check above.
+        await submission_service.check_not_published(submission_id)
+
         submission = await submission_service.get_submission_by_id(submission_id)
 
         jwt = self._services.auth._get_bearer_token(req.headers)
@@ -280,10 +350,9 @@ class PublishAPIHandler(RESTAPIHandler):
         if not rems:
             raise UserException(f"Submission '{submission_id}' does not have required REMS information.")
 
-        # TODO(improve): Any error after the DOI is published, for example REMS or Metax being
-        # unavailable, or a file upload to the SDA inbox failing, rolls back the registration with the
-        # request transaction, so a retry registers and publishes another DOI. Commit each registration step
-        # separately so that a retry resumes from it.
+        # Each registration step is committed in its own transaction, so that when a later step fails
+        # and the request transaction is rolled back, a retry resumes from the stored registration
+        # rather than registering another DOI, Metax dataset or REMS resource.
 
         if deployment_config().ALLOW_REGISTRATION:
             # Check REMS license creation before the DOI is registered.
@@ -339,6 +408,8 @@ class PublishAPIHandler(RESTAPIHandler):
 
             registration = self._create_registration(submission_id, title, submission.description, doi)
             await registration_service.add_registration(registration)
+        else:
+            await self._update_registration_title_and_description(submission, rems, registration)
 
         # Register Metax ID. Requires DOI.
         if self._handlers.metax is not None:

@@ -1,5 +1,6 @@
 import uuid
 from random import randrange
+from unittest.mock import patch
 
 from metadata_backend.api.models.metax import FieldOfScience, MetaxFields
 from metadata_backend.api.models.models import Registration
@@ -54,7 +55,7 @@ async def test_metax_service(client, secret_env):
     # Add DataCite metadata and publish DOI
     # Field_of_science is required for SD submission.
     await pid_service.publish(
-        registration, submission.metadata, metax_discovery_url, require_field_of_science=True, publish=False
+        registration, submission.metadata, metax_discovery_url, require_field_of_science=True, make_findable=False
     )
 
     # Update Metax dataset
@@ -66,10 +67,17 @@ async def test_metax_service(client, secret_env):
     await metax_service.update_dataset_description(metax_id, new_description)
 
     # Publish Metax dataset
-    published_dataset = await metax_service.publish_dataset(metax_id, doi)
+    with patch.object(metax_service, "_publish", wraps=metax_service._publish) as mock_publish:
+        published_dataset = await metax_service.publish_dataset(metax_id, doi)
+    mock_publish.assert_awaited_once()
 
     # Check Metax state changed from "draft" to "published"
     assert published_dataset["state"] == "published"
+
+    # Check that publishing the published dataset again is skipped,
+    with patch.object(metax_service, "_publish", wraps=metax_service._publish) as mock_publish:
+        assert (await metax_service.publish_dataset(metax_id, doi))["state"] == "published"
+    mock_publish.assert_not_awaited()
 
     published_metax = MetaxFields(**published_dataset)
     metadata = submission.metadata
@@ -142,6 +150,26 @@ async def test_metax_service(client, secret_env):
             date_split = date.date.split("/", 1)
             assert any(date_split[0] == temporal.start_date for temporal in published_metax.temporal)
             assert any(date_split[1] == temporal.end_date for temporal in published_metax.temporal)
+
+
+async def test_update_dataset_title_and_description(client, secret_env):
+    """Test updating the title and description of a Metax draft dataset using test service."""
+
+    from metadata_backend.services.pid_service import PIDServiceHandler
+
+    metax_service = MetaxServiceHandler()
+    pid_service = PIDServiceHandler(metax_service)
+
+    doi = await pid_service.create_draft_doi()
+    metax_id = await metax_service.create_draft_dataset(doi, "TestTitle", "TestDescription")
+
+    await metax_service.update_dataset_title_and_description(metax_id, "NewTitle", "NewDescription")
+
+    dataset = await metax_service.get_dataset(metax_id)
+    assert dataset["title"] == {"en": "NewTitle"}
+    assert dataset["description"] == {"en": "NewDescription"}
+    assert dataset["persistent_identifier"] == doi
+    assert dataset["state"] == "draft"
 
 
 async def test_get_fields_of_science(client, secret_env):

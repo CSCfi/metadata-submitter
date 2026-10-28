@@ -3,6 +3,8 @@
 from datetime import datetime
 from typing import Any
 
+from starlette import status
+
 from ....api.exceptions import NotFoundUserException, UserException
 from ....api.json import to_json_dict
 from ....api.models.submission import Submission, Submissions, SubmissionWorkflow
@@ -36,6 +38,19 @@ class PublishedSubmissionUserException(UserException):
         """
         message = f"Submission '{submission_id}' has been published and can no longer be modified."
         super().__init__(message)
+
+
+class LockedSubmissionUserException(UserException):
+    """Raised when a submission is already locked."""
+
+    def __init__(self, submission_id: str) -> None:
+        """
+        Initialize the exception.
+
+        :param submission_id: the submission id
+        """
+        message = f"Submission '{submission_id}' is already locked by another request."
+        super().__init__(message, status.HTTP_409_CONFLICT)
 
 
 class SubmissionService:
@@ -344,6 +359,15 @@ class SubmissionService:
         """
         if await self.is_published(submission_id):
             raise PublishedSubmissionUserException(submission_id)
+
+    async def lock_submission(self, submission_id: str) -> None:
+        """Lock the submission until the transaction ends.
+
+        :param submission_id: the submission id
+        :raises LockedSubmissionUserException: If another request has locked the submission.
+        """
+        if not await self.repository.lock_submission(submission_id):
+            raise LockedSubmissionUserException(submission_id)
 
     async def get_project_id(self, submission_id: str) -> str:
         """Get the project id for the submission.

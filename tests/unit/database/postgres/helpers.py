@@ -24,6 +24,7 @@ def create_submission_entity(
     document: dict[str, Any] | None = None,
     is_published: bool = False,
     is_ingested: bool = False,
+    is_imported: bool = False,
     created: datetime | None = None,
     modified: datetime | None = None,
 ) -> SubmissionEntity:
@@ -56,6 +57,7 @@ def create_submission_entity(
         metadata_version=metadata_version,
         is_published=is_published,
         is_ingested=is_ingested,
+        is_imported=is_imported,
         title=title,
         description=description,
         document=document,

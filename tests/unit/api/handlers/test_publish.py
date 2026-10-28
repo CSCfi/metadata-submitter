@@ -1,15 +1,18 @@
 """Tests for publish API handler."""
 
 import uuid
-from collections.abc import Iterator
-from contextlib import contextmanager
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
+from contextlib import asynccontextmanager, contextmanager
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import ANY, AsyncMock, Mock, patch
 
 import pytest
+from fastapi.testclient import TestClient
 
 from metadata_backend.api.exceptions import SystemException
 from metadata_backend.api.handlers.publish import PublishAPIHandler
+from metadata_backend.api.handlers.submission import SubmissionAPIHandler
 from metadata_backend.api.json import to_json_dict
 from metadata_backend.api.models.datacite import Subject
 from metadata_backend.api.models.models import Registration
@@ -17,17 +20,28 @@ from metadata_backend.api.models.sda import FileItem
 from metadata_backend.api.models.submission import Rems, Submission, SubmissionMetadata, SubmissionWorkflow
 from metadata_backend.api.processors.xml.bigpicture import BP_DATASET_OBJECT_TYPE, BP_POLICY_OBJECT_TYPE
 from metadata_backend.api.services.file import FileProviderService
-from metadata_backend.conf.deployment import deployment_config
+from metadata_backend.conf.deployment import Deployment, deployment_config
 from metadata_backend.database.postgres.models import FileEntity, ObjectEntity, SubmissionEntity
 from metadata_backend.database.postgres.repositories.submission import (
     SUB_FIELD_METADATA,
     SUB_FIELD_REMS,
 )
+from metadata_backend.database.postgres.repository import (
+    SessionFactory,
+    _session_context,
+    committed_session,
+    create_engine,
+    create_session_factory,
+    get_sqllite_db_url,
+    session_factory_context,
+)
+from metadata_backend.database.postgres.services.submission import PublishedSubmissionUserException, SubmissionService
+from metadata_backend.server import create_app
 from metadata_backend.services.rems_service import RemsServiceHandler
 from tests.unit.database.postgres.helpers import create_object_entity, create_submission_entity
 from tests.unit.patches.user import patch_verify_authorization, patch_verify_user_project
 
-from ...conftest import TEST_DISCOVERY_URL
+from ...conftest import TEST_DISCOVERY_URL, set_deployment_env
 from ...patches.datacite_service import (
     patch_datacite_create_draft_doi,
     patch_datacite_publish,
@@ -37,6 +51,7 @@ from ...patches.metax_service import (
     patch_metax_publish_dataset,
     patch_metax_update_dataset_description,
     patch_metax_update_dataset_metadata,
+    patch_metax_update_dataset_title_and_description,
     patch_metax_validate_dataset_metadata,
 )
 from ...patches.pid_service import (
@@ -52,6 +67,7 @@ from ...patches.rems_service import (
     mock_rems_resource_id,
     patch_rems_create_catalogue_item,
     patch_rems_create_resource,
+    patch_rems_edit_catalogue_item,
 )
 from .common import SUBMISSION_METADATA
 
@@ -132,6 +148,7 @@ def _patch_bp_publish(doi: str = "10.1/test") -> Iterator[SimpleNamespace]:
         patch_datacite_publish() as datacite_publish,
         patch_rems_create_resource() as rems_create_resource,
         patch_rems_create_catalogue_item() as rems_create_catalogue_item,
+        patch_rems_edit_catalogue_item() as rems_edit_catalogue_item,
     ):
         yield SimpleNamespace(
             generate_bp_metadata=generate_bp_metadata,
@@ -143,6 +160,7 @@ def _patch_bp_publish(doi: str = "10.1/test") -> Iterator[SimpleNamespace]:
             datacite_publish=datacite_publish,
             rems_create_resource=rems_create_resource,
             rems_create_catalogue_item=rems_create_catalogue_item,
+            rems_edit_catalogue_item=rems_edit_catalogue_item,
         )
 
 
@@ -471,6 +489,35 @@ async def test_publish_submission_of_other_workflow(request, submission_reposito
         assert not Submission.model_validate(response.json()).published
 
 
+async def test_publish_submission_lock(csc_client, submission_repository):
+    """Test that publish checks access before locking the submission, and the published state again after."""
+
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+    submission_id = await submission_repository.add_submission(create_submission_entity())
+
+    # The mocks are children of calls, which records their calls in order.
+    calls = AsyncMock()
+    calls.check_not_published.side_effect = PublishedSubmissionUserException(submission_id)
+    with (
+        patch_verify_user_project,
+        patch_verify_authorization,
+        patch.object(SubmissionAPIHandler, "check_submission_modifiable", new=calls.check_submission_modifiable),
+        patch.object(SubmissionService, "lock_submission", new=calls.lock_submission),
+        patch.object(SubmissionService, "check_not_published", new=calls.check_not_published),
+    ):
+        response = csc_client.patch(f"{api_prefix_v1}/publish/{submission_id}?no_files=true")
+
+    assert response.status_code == 400
+    # Access is checked before the lock, so that only users who can modify the submission hold it.
+    # The published state is checked again after the lock, since a concurrent publish may have
+    # finished between the access check and the lock.
+    assert [name for name, *_ in calls.mock_calls] == [
+        "check_submission_modifiable",
+        "lock_submission",
+        "check_not_published",
+    ]
+
+
 @pytest.mark.parametrize(
     ("published_to_rems", "licenses", "license_created"),
     [
@@ -692,11 +739,17 @@ def test_get_discovery_url_bp():
     )
 
 
-async def test_publish_submission_bp_reuses_rems(nbis_client, submission_repository, object_repository, caplog):
-    """Test that publishing a BP submission reuses the REMS resource and catalogue item of its dataset."""
+@pytest.mark.parametrize("is_imported", [False, True])
+async def test_publish_submission_bp_reuses_rems(
+    nbis_client, submission_repository, object_repository, caplog, is_imported
+):
+    """Test that publishing a BP submission reuses the REMS resource and catalogue item of its dataset.
+
+    The catalogue item is renamed to the registration title, unless the dataset was imported.
+    """
     api_prefix_v1 = deployment_config().API_PREFIX_V1
 
-    submission_entity = await _add_bp_submission(submission_repository, bucket="test-bucket")
+    submission_entity = await _add_bp_submission(submission_repository, bucket="test-bucket", is_imported=is_imported)
     submission_id = submission_entity.submission_id
     await _add_bp_object(object_repository, submission_entity, BP_DATASET_OBJECT_TYPE)
 
@@ -712,6 +765,13 @@ async def test_publish_submission_bp_reuses_rems(nbis_client, submission_reposit
         registration = Registration.model_validate(response.json())
         assert registration.remsResourceId == str(resource.id)
         assert registration.remsCatalogueId == str(item.id)
+
+        if is_imported:
+            mocks.rems_edit_catalogue_item.assert_not_awaited()
+        else:
+            mocks.rems_edit_catalogue_item.assert_awaited_once_with(
+                item.id, registration.title, TEST_DISCOVERY_URL.format(id=submission_id)
+            )
 
     assert f"keeping its licenses [{MOCK_REMS_DEFAULT_LICENSE_ID}]" in caplog.text
 
@@ -741,3 +801,233 @@ async def test_publish_submission_bp_rems_catalogue_item_without_resource(
         ]
         mocks.rems_create_resource.assert_not_awaited()
         mocks.rems_create_catalogue_item.assert_not_awaited()
+
+
+@asynccontextmanager
+async def _transactional_client(
+    monkeypatch, tmp_path, deployment: Deployment
+) -> AsyncIterator[tuple[TestClient, SessionFactory]]:
+    """Run the app with a database transaction per registration request, as in production.
+
+    A temporary database is used, since the test session keeps a write transaction open
+    on the shared SQLLite database, which would block the registration transactions.
+
+    Yields the client, and the session factory with which the test writes and reads the database.
+    """
+    monkeypatch.setenv("DATABASE_URL", get_sqllite_db_url(str(tmp_path / "publish.db")))
+    set_deployment_env(monkeypatch, deployment)
+
+    engine = await create_engine()
+    token = _session_context.set(None)
+    try:
+        with (
+            # Stop the NBIS ingest scanner, which would otherwise ingest the published submission during the test.
+            patch("metadata_backend.api.services.ingest.SDAIngestService.run_forever", new_callable=AsyncMock),
+            TestClient(create_app()) as client,
+        ):
+            yield client, create_session_factory(engine)
+    finally:
+        _session_context.reset(token)
+        await engine.dispose()
+
+
+@asynccontextmanager
+async def _committed_session(session_factory: SessionFactory) -> AsyncIterator[None]:
+    """Read and write the test database in a committed transaction."""
+
+    # Set the session factory for the publish registrations.
+    token = session_factory_context.set(session_factory)
+    try:
+        async with committed_session():
+            yield
+    finally:
+        session_factory_context.reset(token)
+
+
+async def _add_sd_submission(submission_repository) -> str:
+    """Add a SD submission with the default REMS information."""
+    return await submission_repository.add_submission(
+        create_submission_entity(document={SUB_FIELD_METADATA: SUBMISSION_METADATA, SUB_FIELD_REMS: to_json_dict(REMS)})
+    )
+
+
+@contextmanager
+def _patch_sd_publish(doi: str = "10.1/test") -> Iterator[SimpleNamespace]:
+    """Patch every external call made when publishing a SD submission without files.
+
+    Yields:
+        The mocks by name, so that a test can assert their calls.
+    """
+    with (
+        patch_verify_user_project,
+        patch_verify_authorization,
+        patch_pid_create_draft_doi(doi) as pid_create_draft_doi,
+        patch_pid_publish() as pid_publish,
+        patch_metax_create_draft_dataset("metax_id") as metax_create_draft_dataset,
+        patch_metax_validate_dataset_metadata(),
+        patch_metax_update_dataset_metadata(),
+        patch_metax_update_dataset_description(),
+        patch_metax_update_dataset_title_and_description() as metax_update_dataset_title_and_description,
+        patch_metax_publish_dataset(),
+        patch_rems_create_resource() as rems_create_resource,
+        patch_rems_create_catalogue_item() as rems_create_catalogue_item,
+        patch_rems_edit_catalogue_item() as rems_edit_catalogue_item,
+    ):
+        yield SimpleNamespace(
+            pid_create_draft_doi=pid_create_draft_doi,
+            pid_publish=pid_publish,
+            metax_create_draft_dataset=metax_create_draft_dataset,
+            metax_update_dataset_title_and_description=metax_update_dataset_title_and_description,
+            rems_create_resource=rems_create_resource,
+            rems_create_catalogue_item=rems_create_catalogue_item,
+            rems_edit_catalogue_item=rems_edit_catalogue_item,
+        )
+
+
+async def _fail_and_retry_publish(
+    client: TestClient,
+    submission_id: str,
+    target: str,
+    params: dict[str, str] | None = None,
+    before_retry: Callable[[], Awaitable[None]] | None = None,
+    **kwargs: Any,
+) -> Registration:
+    """Publish the submission with the target failing, check that it is left unpublished, and publish it again.
+
+    :param client: The test client.
+    :param submission_id: The submission id.
+    :param target: The import path of the function that fails on the first publish.
+    :param params: The query parameters of the publish requests.
+    :param before_retry: Called after the failed publish, for example to change the submission.
+    :param kwargs: The keyword arguments of every request, for example the headers.
+    :returns: The registration after the second publish.
+    """
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+    publish_url = f"{api_prefix_v1}/publish/{submission_id}"
+
+    # The step fails on the first publish, and the request transaction is rolled back.
+    with patch(target, new=AsyncMock(side_effect=SystemException("Unavailable"))):
+        assert client.patch(publish_url, params=params, **kwargs).status_code == 500
+    assert client.get(f"{api_prefix_v1}/submissions/{submission_id}", **kwargs).json()["published"] is False
+
+    if before_retry is not None:
+        await before_retry()
+
+    # The retry resumes from the stored registration.
+    assert client.patch(publish_url, params=params, **kwargs).status_code == 200
+    response = client.get(f"{api_prefix_v1}/submissions/{submission_id}/registrations", **kwargs)
+    return Registration.model_validate(response.json())
+
+
+@pytest.mark.parametrize(
+    "target",
+    [
+        "metadata_backend.services.metax_service.MetaxServiceHandler.create_draft_dataset",
+        "metadata_backend.services.pid_service.PIDServiceHandler.publish",
+        "metadata_backend.services.metax_service.MetaxServiceHandler.update_dataset_metadata",
+        "metadata_backend.services.rems_service.RemsServiceHandler.create_resource",
+        "metadata_backend.services.rems_service.RemsServiceHandler.create_catalogue_item",
+        "metadata_backend.services.metax_service.MetaxServiceHandler.update_dataset_description",
+        "metadata_backend.services.metax_service.MetaxServiceHandler.publish_dataset",
+        "metadata_backend.database.postgres.services.submission.SubmissionService.publish",
+    ],
+)
+async def test_publish_submission_sd_retry(monkeypatch, tmp_path, submission_repository, target):
+    """Test that a SD publish retried after a failed registration step does not create external identifier twice."""
+
+    doi = f"10.1/{uuid.uuid4()}"
+
+    async with _transactional_client(monkeypatch, tmp_path, Deployment.CSC) as (client, session_factory):
+        async with _committed_session(session_factory):
+            submission_id = await _add_sd_submission(submission_repository)
+
+        with _patch_sd_publish(doi) as mocks:
+            registration = await _fail_and_retry_publish(client, submission_id, target, params={"no_files": "true"})
+
+    mocks.pid_create_draft_doi.assert_awaited_once()
+    mocks.metax_create_draft_dataset.assert_awaited_once()
+    mocks.rems_create_resource.assert_awaited_once()
+    mocks.rems_create_catalogue_item.assert_awaited_once()
+    mocks.metax_update_dataset_title_and_description.assert_not_awaited()
+    mocks.rems_edit_catalogue_item.assert_not_awaited()
+
+    assert registration.doi == doi
+    assert registration.metaxId == "metax_id"
+    assert registration.remsUrl is not None
+
+
+@pytest.mark.parametrize(
+    "target",
+    [
+        "metadata_backend.services.datacite_service.DataciteServiceHandler.publish",
+        "metadata_backend.services.rems_service.RemsServiceHandler.create_resource",
+        "metadata_backend.services.rems_service.RemsServiceHandler.create_catalogue_item",
+        "metadata_backend.api.services.workflow.upload_bp_metadata_xmls",
+        "metadata_backend.database.postgres.services.submission.SubmissionService.publish",
+    ],
+)
+async def test_publish_submission_bp_retry(monkeypatch, tmp_path, submission_repository, target):
+    """Test that a BP publish retried after a failed registration step does not create external identifier twice."""
+
+    doi = f"10.1/{uuid.uuid4()}"
+
+    async with _transactional_client(monkeypatch, tmp_path, Deployment.NBIS) as (client, session_factory):
+        async with _committed_session(session_factory):
+            submission_entity = await _add_bp_submission(submission_repository)
+            submission_id = submission_entity.submission_id
+
+        with _patch_bp_publish(doi) as mocks:
+            registration = await _fail_and_retry_publish(
+                client, submission_id, target, headers={"Authorization": "Bearer oidc-token"}
+            )
+
+            mocks.datacite_create_draft_doi.assert_awaited_once()
+            mocks.rems_create_resource.assert_awaited_once()
+            mocks.rems_create_catalogue_item.assert_awaited_once()
+
+    assert registration.doi == doi
+    assert registration.dataciteUrl is not None
+    assert registration.remsUrl is not None
+
+
+async def test_publish_submission_sd_retry_changed(monkeypatch, tmp_path, submission_repository):
+    """Test that a SD publish retried after the submission is changed updates the registrations."""
+
+    async def change_submission(submission: SubmissionEntity) -> None:
+        submission.title = "New title"
+        submission.description = "New description"
+        submission.document = {**submission.document, "title": "New title", "description": "New description"}
+
+    async with _transactional_client(monkeypatch, tmp_path, Deployment.CSC) as (client, session_factory):
+        async with _committed_session(session_factory):
+            submission_id = await _add_sd_submission(submission_repository)
+
+        async def before_retry() -> None:
+            async with _committed_session(session_factory):
+                await submission_repository.update_submission(submission_id, change_submission)
+
+        with _patch_sd_publish() as mocks:
+            # The publish fails after the REMS URL has been added to the Metax description.
+            registration = await _fail_and_retry_publish(
+                client,
+                submission_id,
+                "metadata_backend.services.metax_service.MetaxServiceHandler.publish_dataset",
+                params={"no_files": "true"},
+                before_retry=before_retry,
+            )
+
+    mocks.metax_update_dataset_title_and_description.assert_awaited_once_with(
+        "metax_id", "New title", f"New description\n\nSD Apply Application link: {registration.remsUrl}"
+    )
+
+    # The findable DOI is updated without the publish event.
+    assert [call.kwargs["make_findable"] for call in mocks.pid_publish.await_args_list] == [True, False]
+    doi_registration = mocks.pid_publish.await_args.args[0]
+    assert (doi_registration.title, doi_registration.description) == ("New title", "New description")
+
+    mocks.rems_create_catalogue_item.assert_awaited_once()
+    mocks.rems_edit_catalogue_item.assert_awaited_once_with(
+        int(registration.remsCatalogueId), "New title", TEST_DISCOVERY_URL.format(id="metax_id")
+    )
+    assert registration.title == "New title"
+    assert registration.description == "New description"
