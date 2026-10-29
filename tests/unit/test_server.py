@@ -1,12 +1,15 @@
 """Tests for server module."""
 
-from unittest.mock import Mock, patch
+import logging
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
+from fastapi import FastAPI
 from pydantic import ValidationError
 
+from metadata_backend import __version__
 from metadata_backend.conf.deployment import Deployment
-from metadata_backend.server import main
+from metadata_backend.server import lifespan, main
 
 
 def test_main_csc(monkeypatch):
@@ -91,3 +94,31 @@ def test_main_migrate(monkeypatch, migrate):
     ):
         main()
         assert [call[0] for call in calls.mock_calls] == (["migrate_schema", "run"] if migrate else ["run"])
+
+
+def test_logs_server_starting(monkeypatch, caplog):
+    monkeypatch.setenv("DEPLOYMENT", Deployment.CSC)
+    monkeypatch.delenv("SERVER_PORT", raising=False)
+    monkeypatch.setenv("JWT_KEY", "bW9jay1zZWNyZXQ=")
+    caplog.set_level(logging.INFO, logger="server")
+    with (
+        patch("metadata_backend.server.create_app", return_value=Mock()),
+        patch("metadata_backend.server.uvicorn.run"),
+    ):
+        main()
+
+    assert f"Starting CSC server {__version__} on port 5430" in caplog.messages
+
+
+async def test_logs_server_started_and_stopped(caplog):
+    """Test that the server log says when the server has started, is stopping and has stopped."""
+    caplog.set_level(logging.INFO, logger="server")
+    with (
+        patch("metadata_backend.server.create_engine", AsyncMock()),
+        patch("metadata_backend.server.create_session_factory"),
+        patch("metadata_backend.server.ServiceHandler.close_health_client", AsyncMock()),
+    ):
+        async with lifespan(FastAPI()):
+            assert caplog.messages == ["Server started"]
+
+    assert caplog.messages == ["Server started", "Server stopping", "Server stopped"]

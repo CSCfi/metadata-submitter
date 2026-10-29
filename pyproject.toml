@@ -66,6 +66,7 @@ dependencies = [
     "python-multipart>=0.0.22",
     "crypt4gh==1.8.6",
     "alembic>=1.17.1",
+    "python-json-logger>=4.2.0",
 ]
 
 [dependency-groups]

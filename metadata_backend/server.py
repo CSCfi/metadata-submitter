@@ -1,8 +1,6 @@
 """Functions to launch backend server."""
 
 import asyncio
-import copy
-import logging
 from contextlib import asynccontextmanager
 from enum import Enum
 from typing import Any, AsyncGenerator, Final, override
@@ -31,7 +29,7 @@ from .api.handlers.restapi import RESTAPIServiceHandlers, RESTAPIServices
 from .api.handlers.submission import SubmissionAPIHandler
 from .api.handlers.sync import SyncAPIHandler
 from .api.handlers.user import UserAPIHandler
-from .api.middlewares import AuthMiddleware, add_middlewares
+from .api.middlewares import AuditMiddleware, AuthMiddleware, add_middlewares
 from .api.models.app import app_state
 from .api.models.submission import PaginatedSubmissions
 from .api.services.auth import AuthService
@@ -60,7 +58,7 @@ from .database.postgres.services.registration import RegistrationService
 from .database.postgres.services.submission import SubmissionService
 from .deployment import ServiceHandlerType, deployment_profile
 from .health import DatabaseHealthHandler
-from .helpers.logger import LOG, CallbackQueryFilter
+from .helpers.logger import LOG
 from .services.rems_service import RemsServiceHandler
 from .services.service_handler import ServiceHandler
 
@@ -112,7 +110,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         LOG.info("Starting background ingest scanner task")
         ingest_scanner_task = asyncio.create_task(ingest_scanner_service.run_forever())
 
+    LOG.info("Server started")
+
     yield
+
+    LOG.info("Server stopping")
 
     if ingest_scanner_task is not None:
         ingest_scanner_task.cancel()
@@ -129,6 +131,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
     # CLose health check client.
     await ServiceHandler.close_health_client()
+
+    LOG.info("Server stopped")
 
 
 def create_app(session: AsyncSession | None = None) -> ASGIApp:
@@ -159,13 +163,6 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
 
     # Register exception handlers to format errors as RFC 7807 formatted problem JSON.
     register_exception_handlers(app)
-
-    # Initialise logging.
-    logging.getLogger("sqlalchemy").setLevel(logging.WARNING)
-    logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
-    logging.getLogger("sqlalchemy.pool").setLevel(logging.WARNING)
-    # logging.getLogger("sqlalchemy.engine").setLevel(logging.DEBUG)
-    # logging.getLogger("sqlalchemy.pool").setLevel(logging.DEBUG)
 
     # Create the encryption service.
     openbao_service = OpenBaoService() if openbao_config().OPENBAO_URL else None
@@ -483,11 +480,11 @@ def create_app(session: AsyncSession | None = None) -> ASGIApp:
 
     app.openapi = custom_openapi  # type: ignore[method-assign]
 
-    # ASGI middleware is used to handle authentication and sessions,
+    # ASGI middleware is used to handle auditing, authentication and sessions,
     # before any FastAPI/Starlette route is processed.
     if session:
         # The session is managed by the caller.
-        return AuthMiddleware(app, auth_service)
+        return AuditMiddleware(AuthMiddleware(app, auth_service))
     return add_middlewares(app, auth_service, _session_context)
 
 
@@ -498,17 +495,18 @@ def main() -> None:
     if port is None:
         port = deployment_profile().default_port
 
+    LOG.info("Starting %s server %s on port %s", deployment_config().DEPLOYMENT.value, __version__, port)
+
     # Once, before the workers start.
     if database_config().DATABASE_MIGRATE:
         LOG.info("Applying database migrations")
         migrate_schema()
 
-    # Uvicorn applies its logging configuration when it starts, so the filter is added to it.
-    log_config = copy.deepcopy(uvicorn.config.LOGGING_CONFIG)
-    log_config.setdefault("filters", {})["callback_query"] = {"()": CallbackQueryFilter}
-    log_config["handlers"]["access"]["filters"] = ["callback_query"]
-
-    uvicorn.run(create_app(), host=host, port=port, loop="uvloop", log_config=log_config)
+    # log_config=None stops uvicorn from setting up its own log handlers and formats. Its logs then
+    # go to the root logger and are written in LOG_FORMAT like every other log; as a library, uvicorn
+    # logs warnings and errors only, so its request and startup lines are not written
+    # (helpers/logger.py).
+    uvicorn.run(create_app(), host=host, port=port, loop="uvloop", log_config=None)
 
 
 if __name__ == "__main__":
