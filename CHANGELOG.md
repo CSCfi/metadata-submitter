@@ -9,11 +9,17 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Removed
 
+- the lines in create_app() that set the SQLAlchemy loggers to WARNING. SQLAlchemy logs at WARNING by default, so nothing changes.
 - the `USER_ERRORS` and `PRESERVED_ERRORS` tuples and the duplicated exception handling in `ObjectSubmissionService.create()` and `update()`.
 - `problem_response()` and `problem_json()`. Use `user_error_response()`, `validation_error_response()`, `server_error_response()` or `app_exception_response()` instead.
 
 ### Added
 
+- (admins) server log lines when the server is starting, has started, is stopping and has stopped.
+- (admins) `LOG_FORMAT` environment variable, `TEXT` (default) or `JSON`, which sets the format of every log.
+- (admins) audit log of every `/v1` request with the `user_id`, method, path, route and status. It is written whatever `LOG_LEVEL` is, and its lines have the level `AUDIT`.
+- python-json-logger dependency for the JSON log format.
+- `audit_event(action, message, **details)` to write an audit record of a specific action with the current request's user. The details are written at the top level of the audit line.
 - (admins) made the OpenBao transit mount configurable using OPENBAO_TRANSIT_MOUNT env variable (defaults to 'transit').
 - (admins) Database migration that adds the submission's imported flag and date columns.
 - (admins) `IMPORT_USERS` setting: a JSON array of the ids of the users allowed to import datasets. Default `[]`, so nobody can import. Import is available only in the NBIS deployment.
@@ -30,6 +36,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Fixed
 
+- (users) a request whose database transaction cannot be committed now gets the 500 problem JSON error response, instead of no response from the app.
 - (users) Retrying a failed publish after changing the submission's title or description registers the new title and description in DataCite, Metax and REMS.
 - (users) Retrying a failed publish no longer registers another DOI, Metax dataset or REMS item.
 - (users) Updating a submission no longer stores system fields such as datePublished.
@@ -49,6 +56,12 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- (admins) unexpected errors in the middleware are logged with their traceback.
+- (admins) log times are written in UTC, as ISO 8601 with milliseconds and Z (2026-10-26T17:42:31.123Z), in both formats.
+- (admins) LOG_LEVEL and LOG_FORMAT are matched case-insensitively, and LOG_LEVEL also accepts WARN and FATAL. Any other value stops the server at startup.
+- (admins) `LOG_LEVEL` sets the level of the server log only. Libraries, uvicorn included, log warnings and errors only, so uvicorn's request (access) log and startup lines are no longer written.
+- CallbackQueryFilter stays on uvicorn.access. The access log is not written at the default levels, but if someone enables it, the filter keeps the OIDC authorization code out of it.
+- logging is configured in `helpers/logger.py` from `LogConfig` (`conf/log.py`), and uvicorn is started with `log_config=None`, so its logs use the same handler and format as every other log.
 - (users) Updated Bigpicture 3.0 XML schemas to metaflex v3.0.0-rc.2. A dataset now requires DESCRIPTION and an annotation's ONTOLOGY_REF is no longer nillable.
 - (admins) A retried publish does not publish a Metax dataset that is already published.
 - (admins) A retried publish updates the DataCite metadata of a DOI that is already findable, the Metax dataset's title and description (draft or published) when the submission has changed, and the REMS catalogue item's title when it differs. The catalogue item of an imported dataset is left unchanged.
@@ -85,6 +98,9 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Security
 
+- (admins) in the text format, the audit message is quoted and written after the other fields, so that a request path cannot add fields such as a forged user_id.
+- (admins) text log messages escape control characters (C0, C1, U+2028 and U+2029) and indent traceback lines, so that request data cannot forge log lines.
+- (admins) client IP addresses are no longer logged.
 - (admins) The production image no longer installs development dependencies, which included brotli 1.2.0 with critical vulnerabilities.
 
 ## [2026.10.1] - 2026-10-13
