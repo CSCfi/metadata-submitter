@@ -4,14 +4,21 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, Mock
 
 import pytest
-from sqlalchemy import text
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+from sqlalchemy import event, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.types import Receive, Send
 
-from metadata_backend.api.middlewares import AuthMiddleware, SessionMiddleware, add_middlewares
+from metadata_backend.api.middlewares import AuditMiddleware, AuthMiddleware, SessionMiddleware, add_middlewares
 from metadata_backend.conf.deployment import deployment_config
+from metadata_backend.database.postgres.repository import create_engine, create_session_factory, get_sqllite_db_url
+from tests.unit.patches.user import MOCK_USER_ID, patch_verify_authorization
 
 mock_session_context: ContextVar[AsyncSession | None] = ContextVar("mock_session_context", default=None)
+
+
+_AUDITED_TEST_ROUTE = "/items/{item_id}"
 
 
 async def test_session_middleware_api_route(session_factory):
@@ -324,3 +331,177 @@ async def test_add_middlewares_api_key_has_session(session_factory):
     auth_service.validate_api_key.assert_awaited_once_with("keyid.secret")
     # The request reaches the app only if the API key was valid.
     mock_app.assert_awaited_once()
+
+
+@pytest.fixture
+def audited_client() -> TestClient:
+    """Create a client of an app with two API routes, wrapped in the audit and authentication middleware."""
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+    app = FastAPI()
+
+    @app.get(f"{api_prefix_v1}{_AUDITED_TEST_ROUTE}")
+    async def get_item(item_id: str) -> dict:
+        return {"item_id": item_id}
+
+    @app.get(f"{api_prefix_v1}/fail")
+    async def fail() -> dict:
+        raise RuntimeError("unexpected")
+
+    return TestClient(AuditMiddleware(AuthMiddleware(app, MagicMock())), raise_server_exceptions=False)
+
+
+def test_audit_middleware_authenticated_request(audited_client, audit_records):
+    """Test that an authenticated request is audited with the user and the route."""
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+    path = f"{api_prefix_v1}/items/item1"
+
+    with patch_verify_authorization:
+        response = audited_client.get(f"{path}?q=secret-query", headers={"Authorization": "Bearer secret-api-key"})
+
+    assert response.status_code == 200
+    [record] = audit_records()
+    del record["time"]
+    # The record has these fields only, so neither the client address, the credentials nor the
+    # query are logged.
+    assert record == {
+        "levelname": "AUDIT",
+        "action": "http.request",
+        "message": f"GET {path} 200",
+        "user_id": MOCK_USER_ID,
+        "method": "GET",
+        "path": path,
+        "route": f"{api_prefix_v1}{_AUDITED_TEST_ROUTE}",
+        "status": 200,
+    }
+
+
+def test_audit_middleware_unauthenticated_request(audited_client, audit_records):
+    """Test that a request that fails authentication is audited without a user."""
+    path = f"{deployment_config().API_PREFIX_V1}/items/item1"
+
+    response = audited_client.get(path)
+
+    assert response.status_code == 401
+    [record] = audit_records()
+    del record["time"]
+    assert record == {
+        "levelname": "AUDIT",
+        "action": "http.request",
+        "message": f"GET {path} 401",
+        "user_id": None,
+        "method": "GET",
+        "path": path,
+        # The request did not reach a route.
+        "route": None,
+        "status": 401,
+    }
+
+
+def test_audit_middleware_unexpected_error(audited_client, audit_records):
+    """Test that a request that fails with an unexpected error is audited with the status 500."""
+    path = f"{deployment_config().API_PREFIX_V1}/fail"
+
+    with patch_verify_authorization:
+        response = audited_client.get(path)
+
+    assert response.status_code == 500
+    [record] = audit_records()
+    del record["time"]
+    assert record == {
+        "levelname": "AUDIT",
+        "action": "http.request",
+        "message": f"GET {path} 500",
+        "user_id": MOCK_USER_ID,
+        "method": "GET",
+        "path": path,
+        "route": path,
+        "status": 500,
+    }
+
+
+async def test_audit_middleware_exception_before_response(audit_records):
+    """Test that an exception raised before the response started is audited without a status."""
+    path = f"{deployment_config().API_PREFIX_V1}/test"
+    mock_app = AsyncMock(side_effect=RuntimeError("unexpected"))
+    scope = {"type": "http", "method": "POST", "path": path}
+
+    with pytest.raises(RuntimeError):
+        await AuditMiddleware(mock_app)(scope, AsyncMock(), AsyncMock())
+
+    [record] = audit_records()
+    del record["time"]
+    assert record == {
+        "levelname": "AUDIT",
+        "action": "http.request",
+        "message": f"POST {path} no response",
+        "user_id": None,
+        "method": "POST",
+        "path": path,
+        "route": None,
+        "status": None,
+    }
+
+
+async def test_audit_middleware_ignores_other_paths(audit_records):
+    """Test that requests outside the API are not audited."""
+    mock_app = AsyncMock()
+
+    await AuditMiddleware(mock_app)({"type": "http", "method": "GET", "path": "/health"}, AsyncMock(), AsyncMock())
+
+    mock_app.assert_awaited_once()
+    assert audit_records() == []
+
+
+async def test_add_middlewares_commit_failure(tmp_path, audit_records, caplog):
+    """Test that the client receives an error response if the transaction cannot be committed.
+
+    The commit fails when the route's response starts, so the route's response is never sent.
+    A real session is used, so that the test fails if the middleware rolls back the transaction
+    again after the failed commit has closed it.
+    """
+    engine = await create_engine(get_sqllite_db_url(str(tmp_path / "commit.db")))
+
+    @event.listens_for(engine.sync_engine, "commit")
+    def fail_commit(_connection) -> None:
+        raise RuntimeError("commit failed")
+
+    app = FastAPI()
+    app.state.session_factory = create_session_factory(engine)
+    path = f"{deployment_config().API_PREFIX_V1}/items"
+
+    @app.post(path)
+    async def create_item() -> dict:
+        await mock_session_context.get().execute(text("SELECT 1"))
+        return {"created": True}
+
+    client = TestClient(add_middlewares(app, MagicMock(), mock_session_context), raise_server_exceptions=False)
+
+    try:
+        with patch_verify_authorization:
+            response = client.post(path)
+    finally:
+        await engine.dispose()
+
+    # The app's error response, not the server's plain text one.
+    assert response.json() == {
+        "type": "about:blank",
+        "title": "Internal Server Error",
+        "detail": "Unexpected error",
+        "status": 500,
+        "instance": path,
+    }
+    # The failure is logged with its traceback.
+    [log_record] = [r for r in caplog.records if r.getMessage() == "Unexpected middleware exception: commit failed"]
+    assert log_record.exc_info is not None
+    [record] = audit_records()
+    del record["time"]
+    assert record == {
+        "levelname": "AUDIT",
+        "action": "http.request",
+        "message": f"POST {path} 500",
+        "user_id": MOCK_USER_ID,
+        "method": "POST",
+        "path": path,
+        "route": path,
+        "status": 500,
+    }

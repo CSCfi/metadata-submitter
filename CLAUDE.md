@@ -70,7 +70,7 @@ api/
   services/   # Business logic called by handlers
   models/     # Pydantic request/response models
   processors/ # XML parsing/generation (FEGA, Bigpicture, DataCite)
-  middlewares.py  # ASGI: SessionMiddleware (DB txn) + AuthMiddleware (JWT/cookie)
+  middlewares.py  # ASGI: AuditMiddleware (audit log) + SessionMiddleware (DB txn) + AuthMiddleware (JWT/cookie)
 database/
   postgres/
     models.py         # SQLAlchemy ORM models
@@ -82,10 +82,50 @@ database/
 
 ### Request lifecycle
 
-1. `SessionMiddleware` opens a SQLAlchemy async transaction for `/v1/...` and `/sync/...` requests and stores it in a `ContextVar`; commits or rolls back when the response starts. It is the outer middleware (`middlewares.py:add_middlewares`), so that the session exists when an API key is validated.
-2. `AuthMiddleware` validates a JWT bearer token, session cookie or API key on every `/v1/...` request. Paths outside `/v1` — `/health`, the OIDC login routes, `/openapi.json`, `/sync/...` — are passed through and authorize themselves, or not at all.
-3. FastAPI dispatches to a handler in `api/handlers/`. Handlers call `api/services/` for business logic and `services/` for external service calls.
-4. Repositories retrieve the session from the `ContextVar` directly — they never manage transactions themselves. The one exception is `committed_session()` (`database/postgres/repository.py`), described under *Publishing*.
+1. `AuditMiddleware` writes one audit record per `/v1/...` request (see *Audit log*). It is the outermost middleware, so that it records the status the client received.
+2. `SessionMiddleware` opens a SQLAlchemy async transaction for `/v1/...` and `/sync/...` requests and stores it in a `ContextVar`; commits or rolls back when the response starts. It wraps `AuthMiddleware` (`middlewares.py:add_middlewares`), so that the session exists when an API key is validated. If the commit fails, the transaction is rolled back, the route's response is dropped and the client receives a 500 error response instead. Sending that response does not commit or roll back the transaction again.
+3. `AuthMiddleware` validates a JWT bearer token, session cookie or API key on every `/v1/...` request. Paths outside `/v1` — `/health`, the OIDC login routes, `/openapi.json`, `/sync/...` — are passed through and authorize themselves, or not at all.
+4. FastAPI dispatches to a handler in `api/handlers/`. Handlers call `api/services/` for business logic and `services/` for external service calls.
+5. Repositories retrieve the session from the `ContextVar` directly — they never manage transactions themselves. The one exception is `committed_session()` (`database/postgres/repository.py`), described under *Publishing*.
+
+### Logging
+
+`LOG_FORMAT` (`TEXT` by default, or `JSON`) sets the format of every log. Every log except the audit
+log is written by the root logger's handler: uvicorn is started with `log_config=None`, so it
+configures no logging of its own. The root logger is at WARNING, so libraries, uvicorn included,
+inherit its level and log only problems, even at `LOG_LEVEL=DEBUG`. Uvicorn's request (access) log
+and startup lines are INFO, so they are not written: every `/v1` request is in the audit log instead,
+and no client IP address is logged. `LOG_LEVEL` sets the level of the `server` logger only. To debug a
+library, set its own logger's level. `LOG_FORMAT` and `LOG_LEVEL` are read by
+`conf/log.py:LogConfig` when `helpers/logger.py` is imported, unlike the other configs, since logging
+is set up before anything logs. Both are matched case-insensitively, and `LOG_LEVEL` also accepts
+`WARN` and `FATAL`, as the logging module does. An invalid value fails at startup. In JSON every line
+is one python-json-logger object. Both formats write the time in UTC, as ISO 8601 with milliseconds
+and `Z` (`2026-10-26T17:42:31.123Z`). The text format escapes control characters in a message (C0,
+C1, and U+2028 and U+2029), such as a newline from a decoded `%0A` in a path, and indents the lines
+of a traceback or stack, so that request data cannot start a forged log line; JSON escapes them
+anyway.
+
+### Audit log
+
+The `audit` logger (`helpers/logger.py`) records who did what. Its level is fixed and it does not
+propagate, so it is written whatever `LOG_LEVEL` is. A record has a machine-readable `action`, a readable
+`message` and the user's `user_id` (`User.user_id`). In the JSON log format it is one
+python-json-logger line; in the text format its fields follow as `key=value`, with the values and the
+message quoted as JSON and the message last, so that request data in it, such as a path, cannot add
+fields ahead of the real ones. In both formats an audit record is identified by its level, shown as
+`AUDIT` although the record's own level is INFO, and it has no logger, process, function or line. Every
+text line, audit or not, starts with the time and level; every JSON line has `levelname` and `time`. `AuditMiddleware` writes an `http.request` record
+for every `/v1` request, including those that fail authentication (`user_id` is null); its `status` is null if
+the app sent no response, for example if it raised before the response started. Other actions are
+recorded with `audit_event(action, message, **details)`, which takes the user from the
+current request: `AuditMiddleware` sets the `audit_state` context variable to an `AuditState` for each
+request, and `AuthMiddleware` sets its `user_id` once the user is authenticated. Details are snake_case. They
+are passed to logging as one `details` field, so that no name clashes with a log record attribute, and
+the audit formatters write them at the top level of the line. A detail named after a field of the audit
+line (`levelname`, `message`, `time`, `action`, `user_id`) is written with `_` appended, so that it does
+not replace the field. Never log tokens, API keys, the authentication method, client IP addresses,
+query strings or request bodies.
 
 ### Sync endpoints
 

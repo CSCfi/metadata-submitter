@@ -2,11 +2,12 @@
 
 import asyncio
 import atexit
+import io
 import json
 import os
 import tempfile
 from pathlib import Path
-from typing import AsyncGenerator, Generator
+from typing import Any, AsyncGenerator, Callable, Generator
 
 import pytest
 import pytest_asyncio
@@ -54,6 +55,7 @@ from metadata_backend.database.postgres.services.file import FileService
 from metadata_backend.database.postgres.services.object import ObjectService
 from metadata_backend.database.postgres.services.registration import RegistrationService
 from metadata_backend.database.postgres.services.submission import SubmissionService
+from metadata_backend.helpers.logger import _audit_formatter, _audit_handler
 from metadata_backend.server import create_app
 from metadata_backend.services.auth_service import DPoPHandler
 from tests.sync import sync_clients, sync_key_pair
@@ -279,3 +281,21 @@ def dpop_test_jwks(tmp_path: Path, monkeypatch) -> Path:
     monkeypatch.setattr(DPoPHandler, "PRIVATE_JWK_PATH", jwks_file)
 
     return jwks_file
+
+
+@pytest.fixture
+def audit_records() -> Generator[Callable[[], list[dict[str, Any]]], None, None]:
+    """Capture the lines written by the audit log handler, in the JSON log format.
+
+    :returns: A function that returns the audit records written so far, parsed from JSON.
+    """
+    handler = _audit_handler
+    stream = io.StringIO()
+    previous_stream = handler.setStream(stream)
+    previous_formatter = handler.formatter
+    handler.setFormatter(_audit_formatter("JSON"))
+    try:
+        yield lambda: [json.loads(line) for line in stream.getvalue().splitlines()]
+    finally:
+        handler.setStream(previous_stream)
+        handler.setFormatter(previous_formatter)

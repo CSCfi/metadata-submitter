@@ -15,7 +15,7 @@ from ..api.models.models import User
 from ..api.services.auth import AuthService
 from ..conf.deployment import deployment_config
 from ..database.postgres.repository import SessionFactory, session_factory_context
-from ..helpers.logger import LOG
+from ..helpers.logger import LOG, AuditState, audit_event, audit_state
 from .models.app import app_state
 
 AUTH_COOKIE = "access_token"
@@ -73,6 +73,30 @@ class SessionMiddleware:
             session_factory = self.session_factory_provider()
             async with session_factory() as session:
                 response_started = False
+                # One transaction ended flag per request.
+                transaction_ended = False
+
+                async def rollback() -> None:
+                    # A transaction that failed to commit may have been closed already, and
+                    # rolling back a closed transaction raises.
+                    if transaction.is_active:
+                        await transaction.rollback()
+
+                async def end_transaction(commit: bool) -> None:
+                    """Commit or rollback the transaction, unless it has already ended."""
+                    nonlocal transaction_ended
+                    if transaction_ended:
+                        # Transaction has already ended.
+                        return
+                    transaction_ended = True
+                    if commit:
+                        try:
+                            await transaction.commit()
+                        except Exception:
+                            await rollback()
+                            raise
+                    else:
+                        await rollback()
 
                 async def transactional_send(message: Message) -> None:
                     nonlocal response_started
@@ -81,18 +105,11 @@ class SessionMiddleware:
                     # to the client. After this response is considered started.
                     # https://asgi.readthedocs.io/en/latest/specs/www.html#response-start-send-event
                     if message["type"] == "http.response.start" and not response_started:
-                        try:
-                            # Commit or rollback before sending headers.
-                            status = message.get("status", None)
-                            if status is None or 400 <= status < 600:
-                                LOG.debug(f"Rollback session in middleware, status code: {status}")
-                                await transaction.rollback()
-                            else:
-                                LOG.debug(f"Commit session in middleware, status code: {status}")
-                                await transaction.commit()
-                        except Exception:
-                            await transaction.rollback()
-                            raise
+                        # Commit or rollback before sending headers.
+                        status = message.get("status", None)
+                        commit = status is not None and not 400 <= status < 600
+                        LOG.debug(f"{'Commit' if commit else 'Rollback'} session in middleware, status code: {status}")
+                        await end_transaction(commit)
 
                         response_started = True
 
@@ -108,10 +125,10 @@ class SessionMiddleware:
 
                     if not response_started:
                         LOG.error("Unexpected session middleware state (response not started)")
-                        await transaction.rollback()
+                        await end_transaction(commit=False)
 
                 except Exception as exc:
-                    await transaction.rollback()
+                    await end_transaction(commit=False)
 
                     if not response_started:
                         await _send_error_response(scope, receive, send, exc)
@@ -153,9 +170,10 @@ class AuthMiddleware:
 
             async def tracking_send(message: Message) -> None:
                 nonlocal response_started
+                await send(message)
+                # The response has started only once its start has been sent.
                 if message["type"] == "http.response.start":
                     response_started = True
-                await send(message)
 
             try:
                 # Extract JWT token or API key.
@@ -168,6 +186,11 @@ class AuthMiddleware:
                 state = scope.setdefault("state", {})
                 state["user"] = user
 
+                # Save user for the audit records of the request.
+                audit = audit_state.get()
+                if audit is not None:
+                    audit.user_id = user.user_id
+
                 await self.app(scope, receive, tracking_send)
             except Exception as exc:
                 if response_started:
@@ -177,12 +200,59 @@ class AuthMiddleware:
                     await _send_error_response(scope, receive, send, exc)
 
 
+class AuditMiddleware:
+    """
+    Write an audit record of every API request.
+
+    This is the outermost middleware, so that the record has the status the client received.
+    It sets the audit_state context variable for the request, and the authentication middleware
+    sets the state's user once the user is authenticated, so that the record has the user.
+    """
+
+    def __init__(self, app: ASGIApp):
+        self.app = app
+        self.api_prefix_v1 = deployment_config().API_PREFIX_V1
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        path = scope.get("path", "")
+
+        # Only intercept HTTP requests.
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+        # Only intercept API requests.
+        elif not path.startswith(self.api_prefix_v1):
+            await self.app(scope, receive, send)
+        else:
+            token = audit_state.set(AuditState())
+            status: int | None = None
+
+            async def audit_send(message: Message) -> None:
+                nonlocal status
+                if message["type"] == "http.response.start":
+                    status = message["status"]
+                await send(message)
+
+            try:
+                await self.app(scope, receive, audit_send)
+            finally:
+                audit_event(
+                    "http.request",
+                    f"{scope['method']} {path} {status if status is not None else 'no response'}",
+                    method=scope["method"],
+                    path=path,
+                    route=getattr(scope.get("route"), "path", None),
+                    status=status,
+                )
+                audit_state.reset(token)
+
+
 def add_middlewares(app: ASGIApp, auth_service: AuthService, session_context: ContextVar[AsyncSession]) -> ASGIApp:
     """
-    Wrap the app with the session and authentication middleware.
+    Wrap the app with the audit, session and authentication middleware.
 
-    The session middleware is the outer one, so that the database session is available
-    when the authentication middleware validates an API key.
+    The audit middleware is the outermost one, so that it records the status the client received.
+    The session middleware wraps the authentication middleware, so that the database session is
+    available when the authentication middleware validates an API key.
 
     :param app: The FastAPI app.
     :param auth_service: The service to validate JWT tokens and API keys.
@@ -190,7 +260,8 @@ def add_middlewares(app: ASGIApp, auth_service: AuthService, session_context: Co
     :returns: The wrapped app.
     """
     auth_middleware = AuthMiddleware(app, auth_service)
-    return SessionMiddleware(auth_middleware, session_context, lambda: app_state(app).session_factory)
+    session_middleware = SessionMiddleware(auth_middleware, session_context, lambda: app_state(app).session_factory)
+    return AuditMiddleware(session_middleware)
 
 
 async def _send_error_response(scope: Scope, receive: Receive, send: Send, exc: Exception) -> None:
@@ -199,7 +270,8 @@ async def _send_error_response(scope: Scope, receive: Receive, send: Send, exc: 
     if isinstance(exc, AppException):
         response: Response = app_exception_response(request, exc)
     else:
-        LOG.error("Unexpected middleware exception: %s", exc)
+        # With the traceback, since the exception is not raised further for the server to log.
+        LOG.error("Unexpected middleware exception: %s", exc, exc_info=exc)
         response = server_error_response(request, 500, "Unexpected error")
     await response(scope, receive, send)
 

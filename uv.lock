@@ -1831,6 +1831,7 @@ dependencies = [
     { name = "pyjwt" },
     { name = "pynacl" },
     { name = "python-dateutil" },
+    { name = "python-json-logger" },
     { name = "python-multipart" },
     { name = "pyyaml" },
     { name = "rdflib" },
@@ -1924,6 +1925,7 @@ requires-dist = [
     { name = "pytest-cov", marker = "extra == 'test'", specifier = "==7.1.0" },
     { name = "pytest-xdist", marker = "extra == 'test'", specifier = "==3.8.0" },
     { name = "python-dateutil", specifier = "==2.9.0.post0" },
+    { name = "python-json-logger", specifier = ">=4.2.0" },
     { name = "python-multipart", specifier = ">=0.0.22" },
     { name = "pyyaml", specifier = "==6.0.3" },
     { name = "rdflib", specifier = ">=7.5.0" },
@@ -2774,6 +2776,15 @@ dependencies = [
 sdist = { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/fc/65/f8bae11b228647e2e2f45b63dec7448efaddb7cb51f529de1fdba69e63b5/python_engineio-4.14.0.tar.gz", hash = "sha256:eaa1e386baf9c2c7959eef7f9d9165c5ea910c5b392f5316e78d29ed073cb43d" }
 wheels = [
     { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/e5/de/07cfd386974c2a26a7bde41f2111be29bbfc92b9ea0bb76694415a4a1a78/python_engineio-4.14.0-py3-none-any.whl", hash = "sha256:9f0fe275fb7d67bfc1a632421adf22949fd4843bd9c458c004b0a89cede302a2" },
+]
+
+[[package]]
+name = "python-json-logger"
+version = "4.2.0"
+source = { registry = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/simple" }
+sdist = { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/21/25/5473e46b179f8e8b4ad3aeeb36773d1701b7770eaf5e5bc2025c7303b598/python_json_logger-4.2.0.tar.gz", hash = "sha256:e371ebe22ec01e289850102091a2b1f6fc9e655c7f1f5f29073936756c290afa" }
+wheels = [
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/dc/55/6467fde553886cb293e41538f3a8b4e4fd4688c6df242cf982162d8367fb/python_json_logger-4.2.0-py3-none-any.whl", hash = "sha256:158a52126fcd6869e09574d2b66272666f3dc8f468c62637ef9a1fa883719cb9" },
 ]
 
 [[package]]
