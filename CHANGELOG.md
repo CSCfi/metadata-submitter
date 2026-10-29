@@ -7,6 +7,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ## [Unreleased]
 
+## [2026.10.2] - 2026-10-29
+
 ### Removed
 
 - the lines in create_app() that set the SQLAlchemy loggers to WARNING. SQLAlchemy logs at WARNING by default, so nothing changes.
@@ -36,6 +38,9 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Fixed
 
+- (admins) one submission's ingest failure no longer ends the scan before the other submissions finish, or hides their errors. Each failure is logged with its submission id.
+- (admins) ingest of a dataset that was deprecated, or had files removed, in SDA before its release now fails with an error on every scan until the dataset is registered again, instead of waiting silently. Documented in `docs/BP_import.md`.
+- (admins) a failed SDA Admin API call during ingest no longer discards the records of earlier requests that SDA already accepted, so those requests are not resent before `INGEST_RETRY_COOLDOWN_SECONDS` has passed.
 - (users) a request whose database transaction cannot be committed now gets the 500 problem JSON error response, instead of no response from the app.
 - (users) Retrying a failed publish after changing the submission's title or description registers the new title and description in DataCite, Metax and REMS.
 - (users) Retrying a failed publish no longer registers another DOI, Metax dataset or REMS item.
@@ -1071,7 +1076,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 - Files are also validated during submission process.
 
 
-[Unreleased]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.10.1...HEAD
+[Unreleased]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.10.2...HEAD
+[2026.10.2]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.10.1...2026.10.2
 [2026.10.1]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.10.0...2026.10.1
 [2026.10.0]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.9.1...2026.10.0
 [2026.9.1]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.9.0...2026.9.1
