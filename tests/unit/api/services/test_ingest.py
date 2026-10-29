@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from metadata_backend.api.exceptions import SystemException
+from metadata_backend.api.exceptions import ServiceHandlerSystemException, SystemException
 from metadata_backend.api.handlers.restapi import RESTAPIServiceHandlers, RESTAPIServices
 from metadata_backend.api.models.models import IngestFileState, IngestStatus
 from metadata_backend.api.models.sda import (
@@ -41,10 +41,19 @@ def _session_factory_provider():
 
 def _mock_with_session(service: SDAIngestService):
     async def _with_session(action):
-        result = action()
-        if asyncio.iscoroutine(result):
-            return await result
-        return result
+        # As a transaction, an error rolls back the dispatches recorded by the action.
+        store = getattr(getattr(service._services, "dispatch", None), "store", None)
+        snapshot = dict(store or {})
+        try:
+            result = action()
+            if asyncio.iscoroutine(result):
+                return await result
+            return result
+        except Exception:
+            if store is not None:
+                store.clear()
+                store.update(snapshot)
+            raise
 
     service._with_session = _with_session  # type: ignore[method-assign]
 
@@ -99,6 +108,7 @@ def _dispatch_services(dispatched: dict[DispatchKey, datetime] | None = None) ->
         store.clear()
 
     dispatch = MagicMock(spec=DispatchService)
+    dispatch.store = store
     dispatch.get_dispatches.side_effect = _get_dispatches
     dispatch.mark_dispatched.side_effect = _mark_dispatched
     dispatch.clear_dispatches.side_effect = _clear_dispatches
@@ -132,6 +142,36 @@ async def test_sda_ingest_scan_once_processes_candidates_with_worker_bound() -> 
     await service.scan_once()
     # 3 candidates with max_workers=2 must overlap up to, but never beyond, the worker bound.
     assert peak == 2
+
+
+@pytest.mark.asyncio
+async def test_sda_ingest_scan_once_logs_each_failure_and_waits_for_all_workers(caplog) -> None:
+    """A failed submission does not end the scan before the other workers, nor hide their errors."""
+    services = SimpleNamespace(
+        submission=SimpleNamespace(get_submission_ids_for_ingest=AsyncMock(return_value=["s1", "s2", "s3"])),
+        file=SimpleNamespace(),
+    )
+    handlers = SimpleNamespace(admin=AsyncMock())
+    service = _ingest_service(services, handlers, scan_interval_seconds=1, max_workers=3)
+
+    finished: list[str] = []
+
+    async def _ingest_submission_with_session(submission_id: str) -> bool:
+        # s1 fails first, and s3 fails after s2 has finished.
+        await asyncio.sleep({"s1": 0, "s2": 0.01, "s3": 0.02}[submission_id])
+        if submission_id != "s2":
+            raise SystemException(f"failure of {submission_id}")
+        finished.append(submission_id)
+        return True
+
+    service.ingest_submission_with_session = _ingest_submission_with_session  # type: ignore[method-assign]
+
+    with caplog.at_level("ERROR", logger="server"):
+        await service.scan_once()
+
+    assert finished == ["s2"]
+    errors = [r.getMessage() for r in caplog.records if r.levelname == "ERROR"]
+    assert errors == ["Ingest failed for submission s1", "Ingest failed for submission s3"]
 
 
 @pytest.mark.asyncio
@@ -355,6 +395,47 @@ async def test_sda_ingest_does_not_redispatch_dataset_release_within_cooldown() 
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("status", [DatasetStatus.DEPRECATED, DatasetStatus.FILE_REMOVED])
+async def test_sda_ingest_dataset_release_fails_from_status(status: DatasetStatus) -> None:
+    """A dataset whose status is not registered or released fails the release without a request to SDA."""
+    file_state = IngestFileState(file_id="id-a", path="f1", ingest_status=IngestStatus.READY)
+    services = SimpleNamespace(
+        submission=_submission_services(), file=_file_services(file_state), dispatch=_dispatch_services()
+    )
+    handlers = SimpleNamespace(admin=AsyncMock())
+    # The dataset was changed in SDA outside SD Submit before its release.
+    handlers.admin.get_dataset_status = AsyncMock(return_value=status)
+
+    service = _ingest_service(services, handlers)
+
+    with pytest.raises(SystemException, match=f"can't be released from status '{status.value}'"):
+        await service.ingest_submission_with_session(_SUBMISSION_ID)
+    handlers.admin.create_dataset.assert_not_awaited()
+    handlers.admin.release_dataset.assert_not_awaited()
+    services.submission.update_ingested.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_sda_ingest_keeps_dataset_create_dispatch_when_later_call_fails() -> None:
+    """A dataset creation SDA accepted is not requested again within the cooldown when a later call fails."""
+    file_state = IngestFileState(file_id="id-a", path="f1", ingest_status=IngestStatus.READY)
+    services = SimpleNamespace(
+        submission=_submission_services(), file=_file_services(file_state), dispatch=_dispatch_services()
+    )
+    handlers = SimpleNamespace(admin=AsyncMock())
+    # The dataset creation is accepted, but the status check after it fails.
+    handlers.admin.get_dataset_status = AsyncMock(side_effect=[None, ServiceHandlerSystemException("sda_admin"), None])
+
+    service = _ingest_service(services, handlers, retry_cooldown_seconds=3600)
+
+    with pytest.raises(ServiceHandlerSystemException):
+        await service.ingest_submission_with_session(_SUBMISSION_ID)
+    # SDA has not created the dataset yet, and the cooldown has not elapsed.
+    assert await service.ingest_submission_with_session(_SUBMISSION_ID) is False
+    handlers.admin.create_dataset.assert_awaited_once()
+
+
+@pytest.mark.asyncio
 async def test_sda_ingest_summarises_files_without_admin_status(caplog) -> None:
     """Files the Admin API does not list are logged once in total, not once per file."""
     file_states = [
@@ -494,6 +575,7 @@ class _MockAdminServiceHandler(AdminServiceHandler):
     :param inbox_files: The files in the user's inbox, as path to Admin API file status: the new metadata XMLs,
         written to the inbox at publish.
     :param ignored_removals: How many of the first removal requests are ignored, as SDA may do.
+    :param failing_removals: The accession ids whose removal requests fail.
     """
 
     def __init__(
@@ -502,6 +584,7 @@ class _MockAdminServiceHandler(AdminServiceHandler):
         *,
         inbox_files: dict[str, str] | None = None,
         ignored_removals: int = 0,
+        failing_removals: set[str] | None = None,
     ) -> None:
         # The Admin API configuration and HTTP client of the real handler are not needed.
         self.sda_files = dict(sda_files)
@@ -510,6 +593,7 @@ class _MockAdminServiceHandler(AdminServiceHandler):
         self.ingested_files: dict[str, str] = {}
         self.status: DatasetStatus | None = DatasetStatus.RELEASED
         self.ignored_removals = ignored_removals
+        self.failing_removals = set(failing_removals or ())
         self.calls: list[tuple[str, ...]] = []
 
     @override
@@ -549,6 +633,8 @@ class _MockAdminServiceHandler(AdminServiceHandler):
     @override
     async def remove_ingested_file(self, _dataset_id: str, accession_id: str) -> None:
         self.calls.append(("remove_ingested_file", accession_id))
+        if accession_id in self.failing_removals:
+            raise ServiceHandlerSystemException("sda_admin")
         if self.ignored_removals:
             self.ignored_removals -= 1
             return
@@ -701,6 +787,49 @@ async def test_sda_ingest_retry_removal(caplog) -> None:
     ]
     assert "requesting its removal again" in caplog.text
     assert "old-dataset-id" not in admin.sda_files
+
+
+@pytest.mark.asyncio
+async def test_sda_ingest_keeps_removal_dispatch_when_later_removal_fails() -> None:
+    """A file removal SDA accepted is not requested again within the cooldown when a later removal fails."""
+
+    dataset_file_path = f"{_SDA_ROOT}/METADATA/dataset.xml.c4gh"
+    policy_file_path = f"{_SDA_ROOT}/METADATA/policy.xml.c4gh"
+    # The new XMLs replace the old ones, which are removed in accession order: the dataset XML first. Its removal
+    # is accepted but has not taken effect, and the removal of the policy XML fails.
+    admin = _MockAdminServiceHandler(
+        sda_files={
+            "old-dataset-id": dataset_file_path,
+            "old-policy-id": policy_file_path,
+        },
+        ignored_removals=1,
+        failing_removals={"old-policy-id"},
+    )
+    services = _imported_services(
+        _ready_file("new-dataset-id", dataset_file_path),
+        _ready_file("new-policy-id", policy_file_path),
+        dispatch=_dispatch_services(),
+    )
+    service = _ingest_service(
+        services, RESTAPIServiceHandlers.model_construct(admin=admin), retry_cooldown_seconds=3600
+    )
+
+    with pytest.raises(ServiceHandlerSystemException):
+        await service.ingest_submission_with_session(_SUBMISSION_ID)
+    assert admin.calls == [
+        ("mark_file_removed", "file-old-dataset-id"),
+        ("remove_ingested_file", "old-dataset-id"),
+        ("mark_file_removed", "file-old-policy-id"),
+        ("remove_ingested_file", "old-policy-id"),
+    ]
+
+    # Within the cooldown only the failed removal is requested again.
+    admin.failing_removals.clear()
+    assert await service.ingest_submission_with_session(_SUBMISSION_ID) is False
+    assert admin.calls[4:] == [
+        ("mark_file_removed", "file-old-policy-id"),
+        ("remove_ingested_file", "old-policy-id"),
+    ]
 
 
 @pytest.mark.asyncio

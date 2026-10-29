@@ -224,20 +224,20 @@ async def test_real_publish_bp(nbis_client, bp_submission, monkeypatch):
     # To run this test against the staging SDA pipeline
     # Set NBIS_JWT environment variable to a valid upload JWT token
 
-    # Create new submission
-    submission, _ = await bp_submission(is_datacite=True)
+    submission, _ = await bp_submission(is_datacite=True, version=BigpictureVersion.V3_0)
     assert submission.submissionId is not None
     submission_id = submission.submissionId
 
     # Check submission files to be uploaded to S3 inbox
     get_files_response = await get_files(nbis_client, submission_id)
-    assert len(get_files_response) == 3
+    assert len(get_files_response) == 6
     filenames = {file["path"] for file in get_files_response}
-    # assert filenames == {
-    #     f"DATASET_{submission_id}/IMAGES/IMAGE_1_.../test.dcm.c4gh",
-    #     f"DATASET_{submission_id}/IMAGES/IMAGE_2_.../test2.dcm.c4gh",
-    #     f"DATASET_{submission_id}/ANNOTATIONS/test.geojson.c4gh",
-    # }
+    assert {
+        f"DATASET_{submission_id}/ANNOTATIONS/test.geojson.c4gh",
+        f"DATASET_{submission_id}/ANNOTATIONS/test2.geojson.c4gh",
+        f"DATASET_{submission_id}/ANNOTATION_TASKS/task.pdf.c4gh",
+        f"DATASET_{submission_id}/ONTOLOGIES/ontology.json.c4gh",
+    } <= filenames
 
     # Get bearer token from the nbis_client headers
     token = nbis_client._default_headers.get("Authorization", "").replace("Bearer ", "")
@@ -249,7 +249,7 @@ async def test_real_publish_bp(nbis_client, bp_submission, monkeypatch):
     # Public BP key
     monkeypatch.setenv(
         "CRYPT4GH_PUBLIC_KEY",
-        "LS0tLS1CRUdJTiBDUllQVDRHSCBQVUJMSUMgS0VZLS0tLS0KTWExUzVKVW90ZXRsOVdGSVNobU5ncEhMNDBkZG42QmxEelBXbE1oK1puND0KLS0tLS1FTkQgQ1JZUFQ0R0ggUFVCTElDIEtFWS0tLS0tCg==",
+        "LS0tLS1CRUdJTiBDUllQVDRHSCBQVUJMSUMgS0VZLS0tLS0KNkYvYVFzZzRKaXJic0tBMit4dkRDdldNSEpHWUF6VHhrMCtzVTg1bUpVVT0KLS0tLS1FTkQgQ1JZUFQ0R0ggUFVCTElDIEtFWS0tLS0t",
     )
 
     s3_inbox = S3InboxSDAService(AsyncMock(), Crypt4GHPublicKeyProvider(read_bp_public_key))

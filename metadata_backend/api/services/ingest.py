@@ -7,6 +7,7 @@ from collections.abc import Awaitable, Callable
 from contextlib import suppress
 from datetime import datetime
 
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from ...api.exceptions import ServiceHandlerSystemException, SystemException
@@ -105,7 +106,12 @@ class SDAIngestService(IngestService):
 
         async def _start(submission_id: str) -> None:
             async with sem:
-                await self.ingest_submission_with_session(submission_id)
+                # An error is logged here rather than raised, so that the scan waits for every worker
+                # and the error of each submission is logged.
+                try:
+                    await self.ingest_submission_with_session(submission_id)
+                except Exception:
+                    LOG.exception("Ingest failed for submission %s", submission_id)
 
         await asyncio.gather(*(_start(submission_id) for submission_id in submission_ids))
         LOG.debug("Ingest scan cycle finished")
@@ -113,13 +119,35 @@ class SDAIngestService(IngestService):
     async def ingest_submission_with_session(self, submission_id: str) -> bool:
         """Attempt to claim and fully process one submission.
 
+        An error other than a database error is raised only after the transaction commits, so that the
+        dispatch records of the requests SDA accepted before it are kept.
+
         :param submission_id: ID of the submission to process.
         :returns: ``True`` when ingest completed successfully, ``False`` when the submission
             could not be claimed (already processed or locked by another worker) or when ingest
             is still in progress.
         """
         LOG.debug("Starting ingest attempt for submission %s", submission_id)
-        completed = await self._with_session(lambda: self.ingest_submission(submission_id))
+        error: Exception | None = None
+
+        async def _ingest() -> bool:
+            nonlocal error
+            try:
+                return await self.ingest_submission(submission_id)
+            except SQLAlchemyError:
+                # A failed transaction cannot be committed.
+                raise
+            except Exception as e:
+                # Return instead of raising, so that the transaction commits the dispatch records of the
+                # requests SDA accepted before the error. The error is raised after the commit. The records
+                # can't be written in a separate transaction, because on another connection it would wait
+                # for this transaction's lock on the submission.
+                error = e
+                return False
+
+        completed = await self._with_session(_ingest)
+        if error is not None:
+            raise error
         LOG.debug("Finished ingest attempt for submission %s (completed=%s)", submission_id, completed)
         return completed
 
@@ -264,8 +292,13 @@ class SDAIngestService(IngestService):
         :param file_ids: accession IDs of the files making up the dataset.
         :param dispatches: dispatches already recorded for this submission, keyed by (action, target).
         :returns: ``True`` once the dataset status reaches ``released``.
+        :raises SystemException: if the dataset has a status it can't be released from.
         """
         dataset_status = await self._admin_handler.get_dataset_status(submission_id)
+        if dataset_status is not None and dataset_status not in (DatasetStatus.REGISTERED, DatasetStatus.RELEASED):
+            raise SystemException(
+                f"Dataset '{submission_id}' can't be released from status '{dataset_status.value}' in SDA."
+            )
 
         if dataset_status is None:
             # Check if a dispatch is already active without the cooldown having elapsed.

@@ -108,3 +108,6 @@ Between steps 1 and 2 the dataset briefly has no metadata XMLs.
 
 Each step is confirmed by checking the dataset files in SDA. Requests that SDA doesn't execute are sent
 again.
+
+A dataset that is deprecated, or has files removed, in SDA outside SD Submit before step 3 can't be
+released. Ingest then stops with an error, logged on every scan until the dataset is registered again.

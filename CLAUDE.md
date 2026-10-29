@@ -88,6 +88,10 @@ database/
 4. FastAPI dispatches to a handler in `api/handlers/`. Handlers call `api/services/` for business logic and `services/` for external service calls.
 5. Repositories retrieve the session from the `ContextVar` directly — they never manage transactions themselves. The one exception is `committed_session()` (`database/postgres/repository.py`), described under *Publishing*.
 
+The background ingest scanner runs outside the middleware: `SDAIngestService._with_session` opens one
+transaction per submission and sets the same `ContextVar`. An ingest error other than a database error is
+raised only after that transaction commits, so the dispatch records of Admin API calls SDA accepted are kept.
+
 ### Logging
 
 `LOG_FORMAT` (`TEXT` by default, or `JSON`) sets the format of every log. Every log except the audit
