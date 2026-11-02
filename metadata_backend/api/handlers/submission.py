@@ -22,7 +22,7 @@ SubmissionDocumentBody = Annotated[Submission, Body(description="Submission docu
 SubmissionDocumentFragmentBody = Annotated[dict[str, Any], Body(description="Submission document")]
 ProjectIdQueryParam = Annotated[str | None, Query(alias="projectId", description="The project ID")]
 SubmissionNameFilterQueryParam = Annotated[str | None, Query(description="Submission name")]
-PublishedFilterQueryParam = Annotated[bool | None, Query(escription="Submission published status")]
+PublishedFilterQueryParam = Annotated[bool | None, Query(description="Submission published status")]
 CreatedDateStartFilterQueryParam = Annotated[
     date | None, Query(description="Submissions created on or after this date (YYYY-MM-DD)")
 ]
