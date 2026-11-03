@@ -69,14 +69,7 @@ class FileProviderService(ABC):
         Returns:
             A list of buckets found.
         """
-        buckets = await self._list_buckets(credentials)
-
-        if not buckets:
-            reason = "No buckets found."
-            LOG.error(reason)
-            raise UserException(reason)
-
-        return buckets
+        return await self._list_buckets(credentials)
 
     async def list_files_in_bucket(self, bucket: str) -> Files:
         """

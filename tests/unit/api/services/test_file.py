@@ -109,8 +109,7 @@ async def test_list_buckets_and_files(s3_endpoint):
 
     async with session.client("s3", endpoint_url=s3_endpoint) as s3:
         # No buckets yet
-        with pytest.raises(UserException):
-            await service.list_buckets(creds)
+        assert await service.list_buckets(creds) == []
 
         # Create bucket
         await s3.create_bucket(Bucket=bucket)

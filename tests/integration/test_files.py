@@ -12,9 +12,8 @@ LOG.setLevel(logging.DEBUG)
 # async def test_list_buckets(sd_client, s3_manager):
 #     """Test listing buckets in a project."""
 #     response = await sd_client.get(f"{files_url}?projectId={project_id}")
-#     assert response.status == 404
-#     resp = await response.json()
-#     assert resp["detail"] == "No buckets found."
+#     assert response.status == 200
+#     assert await response.json() == []
 
 #     await s3_manager.add_bucket("bucket1")
 #     await s3_manager.add_bucket("bucket2")

@@ -13,7 +13,7 @@ from tests.unit.patches.user import patch_verify_authorization, patch_verify_use
 
 
 async def test_get_project_buckets(csc_client) -> None:
-    """Test getting project buckets."""
+    """Test getting project buckets, including a project with no buckets."""
 
     api_prefix_v1 = deployment_config().API_PREFIX_V1
     project_id = "PRJ123"
@@ -23,14 +23,14 @@ async def test_get_project_buckets(csc_client) -> None:
         patch_verify_user_project,
         patch_keystone_get_project_entry,
         patch_keystone_get_ec2,
-        patch_keystone_delete_ec2,
+        patch_keystone_delete_ec2 as delete_ec2,
         patch(
             "metadata_backend.services.auth_service.AuthServiceHandler.get_pouta_access_token_from_userinfo",
             return_value="pouta-token",
         ),
         patch(
-            "metadata_backend.api.services.file.FileProviderService.list_buckets",
-            return_value=["bucket1", "bucket2"],
+            "metadata_backend.api.services.file.S3AllasFileProviderService._list_buckets",
+            side_effect=[["bucket1", "bucket2"], []],
         ),
     ):
         csc_client.cookies.set("oidc_access_token", "oidc-token")
@@ -38,10 +38,17 @@ async def test_get_project_buckets(csc_client) -> None:
             f"{api_prefix_v1}/buckets?projectId={project_id}",
         )
         assert response.status_code == 200
+        assert response.json() == ["bucket1", "bucket2"]
 
-        buckets = response.json()
-        assert len(buckets) == 2
-        assert "bucket1" and "bucket2" in buckets
+        # A project with no buckets is not an error.
+        response = csc_client.get(
+            f"{api_prefix_v1}/buckets?projectId={project_id}",
+        )
+        assert response.status_code == 200
+        assert response.json() == []
+
+        # The temporary EC2 credentials are deleted after each request.
+        assert delete_ec2.call_count == 2
 
 
 async def test_get_files_in_bucket(csc_client) -> None:
