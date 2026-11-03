@@ -1,7 +1,6 @@
 """OIDC service."""
 
 import hashlib
-import os
 import time
 import uuid
 from base64 import urlsafe_b64encode
@@ -200,7 +199,7 @@ class AuthServiceHandler(ServiceHandler):
 
         response = RedirectResponse(url=self.redirect_url, status_code=status.HTTP_303_SEE_OTHER)
 
-        secure_cookie = os.environ.get("OIDC_SECURE_COOKIE", "").upper() != "FALSE"
+        secure_cookie = self._config.OIDC_SECURE_COOKIE
 
         # Set the application JWT token
         response.set_cookie(
