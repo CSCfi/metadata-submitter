@@ -1,20 +1,26 @@
 """Tests for Auth API handler."""
 
+import asyncio
 import hashlib
 import json
+import threading
 from base64 import urlsafe_b64encode
 from http.cookies import SimpleCookie
 from unittest.mock import MagicMock
+from urllib.parse import parse_qs
 
 import jwt as pyjwt
 import pytest
+import requests
 from fastapi import HTTPException
 from fastapi.responses import RedirectResponse
-from requests import Session
+from idpyoidc.client.exception import OidcServiceError
+from requests import PreparedRequest, Response, Session
+from requests.adapters import HTTPAdapter
 from starlette import status
 
 from metadata_backend.api.services.auth import AuthService
-from metadata_backend.services.auth_service import AuthServiceHandler, DPoPHandler
+from metadata_backend.services.auth_service import AuthServiceHandler, DPoPHandler, dpop_request
 from tests.unit.patches.auth_service import (
     MockDPoPHandler,
     mock_response,
@@ -138,54 +144,54 @@ async def test_dpop_proof_generation(dpop_test_jwks):
     assert payload_dict["ath"] == expected_ath
 
 
-async def test_patched_request(dpop_test_jwks):
-    """Test that patched request adds DPoP header and converts Bearer to DPoP."""
-    original_session_request = Session.request
+async def test_dpop_request(dpop_test_jwks, monkeypatch):
+    """Test that DPoP requests add DPoP header and convert Bearer to DPoP."""
     handler = DPoPHandler()
 
-    handler.setup_http_interception()
-    original_request = handler._original_request  # Save original request method
+    # Mock requests.request to track both token and userinfo calls
+    server_nonce = "server-provided-nonce-123"
+    mock_response = MagicMock()
+    mock_response.headers = {"DPoP-Nonce": server_nonce}
+    mock_request = MagicMock(return_value=mock_response)
+    monkeypatch.setattr("metadata_backend.services.auth_service.requests.request", mock_request)
 
-    try:
-        # Mock the original request to track both token and userinfo calls
-        mock_session = MagicMock(spec=Session)
-        server_nonce = "server-provided-nonce-123"
-        mock_response = MagicMock()
-        mock_response.headers = {"DPoP-Nonce": server_nonce}
-        mock_original_request = MagicMock(return_value=mock_response)
-        handler._original_request = mock_original_request
+    # Test 1: Token endpoint adds DPoP header and extracts nonce
+    token_headers = {"Content-Type": "application/x-www-form-urlencoded"}
+    handler.request("POST", "https://oidc.example.com/token", data={}, headers=token_headers)
+    sent_headers = mock_request.call_args.kwargs["headers"]
+    assert len(sent_headers["DPoP"]) > 0
+    assert sent_headers["Content-Type"] == "application/x-www-form-urlencoded"
+    assert "DPoP" not in token_headers  # The caller's headers are not modified
+    assert handler.nonce == server_nonce
 
-        # Test 1: Token endpoint adds DPoP header and extracts nonce
-        token_kwargs = {"headers": {}}
-        handler._patched_request(mock_session, "POST", "https://oidc.example.com/token", **token_kwargs)
-        assert "DPoP" in token_kwargs["headers"]
-        assert len(token_kwargs["headers"]["DPoP"]) > 0
-        assert handler.nonce == server_nonce
+    # Test 2: Userinfo endpoint uses extracted nonce and converts Bearer to DPoP
+    access_token = "test_access_token"
+    handler.request(
+        "GET", "https://oidc.example.com/userinfo", headers={"Authorization": f"Bearer {access_token}"}, verify=True
+    )
+    sent_headers = mock_request.call_args.kwargs["headers"]
+    assert mock_request.call_args.kwargs["verify"] is True
 
-        # Test 2: Userinfo endpoint uses extracted nonce and converts Bearer to DPoP
-        access_token = "test_access_token"
-        userinfo_kwargs = {"headers": {"Authorization": f"Bearer {access_token}"}}
-        handler._patched_request(mock_session, "GET", "https://oidc.example.com/userinfo", **userinfo_kwargs)
+    # Verify Authorization header changed from Bearer to DPoP
+    assert sent_headers["Authorization"] == f"DPoP {access_token}"
 
-        # Verify Authorization header changed from Bearer to DPoP
-        assert userinfo_kwargs["headers"]["Authorization"].startswith("DPoP ")
-        assert access_token in userinfo_kwargs["headers"]["Authorization"]
+    # Verify DPoP header was added with ath claim and nonce from token endpoint
+    payload_dict = pyjwt.decode(sent_headers["DPoP"], options={"verify_signature": False})
+    assert "ath" in payload_dict  # Should have access token binding
+    assert payload_dict["nonce"] == server_nonce  # Should use nonce from token response
 
-        # Verify DPoP header was added with ath claim and nonce from token endpoint
-        assert "DPoP" in userinfo_kwargs["headers"]
-        proof = userinfo_kwargs["headers"]["DPoP"]
-        parts = proof.split(".")
-        payload = pyjwt.utils.base64url_decode(parts[1] + "==")
-        payload_dict = json.loads(payload)
-        assert "ath" in payload_dict  # Should have access token binding
-        assert payload_dict["nonce"] == server_nonce  # Should use nonce from token response
+    # requests.request was called once for /token, once for /userinfo
+    assert mock_request.call_count == 2
 
-        # Original request was called once for /token, once for /userinfo
-        assert mock_original_request.call_count == 2
-    finally:
-        handler._original_request = original_request  # Restore original request method (not mock)
-        handler.teardown_http_interception()
-        assert Session.request == original_session_request
+
+async def test_dpop_request_outside_login(dpop_test_jwks, monkeypatch):
+    """Test that idpyoidc requests outside an OIDC login are sent without DPoP headers."""
+    mock_request = MagicMock()
+    monkeypatch.setattr("metadata_backend.services.auth_service.requests.request", mock_request)
+
+    dpop_request("POST", "https://oidc.example.com/token", headers={})
+
+    mock_request.assert_called_once_with("POST", "https://oidc.example.com/token", headers={})
 
 
 async def test_get_pouta_access_token_from_userinfo_success(mock_oidc_url, async_client, monkeypatch):
@@ -240,3 +246,92 @@ async def test_get_pouta_access_token_from_userinfo_upstream_error(mock_oidc_url
         assert ex.status_code == status.HTTP_401_UNAUTHORIZED
     else:
         raise AssertionError("Expected HTTPException")
+
+
+def test_concurrent_dpop_callbacks(csc_client, dpop_test_jwks, monkeypatch):
+    """Test that overlapping OIDC callbacks each send their own DPoP proofs."""
+
+    issuer = "http://mock/oidc"
+    token_url = f"{issuer}/token"
+    userinfo_url = f"{issuer}/userinfo"
+    codes = ["code-a", "code-b"]
+
+    monkeypatch.setenv("OIDC_URL", issuer)
+    monkeypatch.setenv("OIDC_DPOP", "true")
+
+    handler = AuthServiceHandler()
+    rph = handler.rph
+
+    # Both logins wait here on their first token request, so that their finalize calls overlap.
+    overlap = threading.Barrier(len(codes), timeout=5)
+    proofs: dict[str, list[dict]] = {code: [] for code in codes}
+
+    def idp(adapter: HTTPAdapter, request: PreparedRequest, **_: object) -> Response:
+        """Mock IdP that requires a DPoP nonce of its own for each login."""
+        if request.url == token_url:
+            code = parse_qs(request.body)["code"][0]
+            access_token = None
+        else:
+            access_token = request.headers["Authorization"].removeprefix("DPoP ")
+            code = access_token.removeprefix("token-")
+        proof = pyjwt.decode(request.headers["DPoP"], options={"verify_signature": False})
+        proofs[code].append(proof)
+
+        response = Response()
+        response.headers["DPoP-Nonce"] = f"nonce-{code}"
+        if len(proofs[code]) == 1:
+            overlap.wait()
+        if proof["nonce"] != f"nonce-{code}":
+            response.status_code = status.HTTP_400_BAD_REQUEST
+            response._content = json.dumps({"error": "use_dpop_nonce"}).encode()
+        else:
+            response.status_code = status.HTTP_200_OK
+            response._content = json.dumps({"access_token": f"token-{code}", "sub": code}).encode()
+        return response
+
+    monkeypatch.setattr(HTTPAdapter, "send", idp)
+
+    def finalize(_issuer: str, session_info: dict) -> dict:
+        """Mock of RPHandler.finalize that sends its requests as idpyoidc does."""
+        httpc = rph.httpc or requests.request
+        code = session_info["code"]
+        token = httpc("POST", token_url, data={"code": code}, headers={}, **rph.httpc_params)
+        if token.status_code != status.HTTP_200_OK:
+            raise OidcServiceError(token.text)
+        access_token = token.json()["access_token"]
+        userinfo = httpc("GET", userinfo_url, headers={"Authorization": f"Bearer {access_token}"}, **rph.httpc_params)
+        return {"userinfo": userinfo.json()}
+
+    monkeypatch.setattr(rph, "get_session_information", lambda state: {"iss": issuer})
+    monkeypatch.setattr(rph, "finalize", finalize)
+    monkeypatch.setattr(rph, "get_valid_access_token", lambda state: (f"token-{state}", 0))
+
+    original_session_request = Session.request
+    monkeypatch.setattr(Session, "request", original_session_request)  # Restored even if a login leaks a patch
+    results: dict[str, object] = {}
+
+    def login(code: str) -> None:
+        try:
+            results[code] = asyncio.run(handler.callback(code, code))
+        except Exception as e:
+            results[code] = e
+
+    threads = [threading.Thread(target=login, args=(code,)) for code in codes]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert Session.request is original_session_request
+    for code in codes:
+        assert not isinstance(results[code], Exception), results[code]
+        _, access_token, _ = results[code]
+        assert access_token == f"token-{code}"
+
+        # First token request without nonce, the retry and userinfo with this login's own nonce.
+        assert [p["htu"] for p in proofs[code]] == [token_url, token_url, userinfo_url]
+        assert [p["nonce"] for p in proofs[code]] == [None, f"nonce-{code}", f"nonce-{code}"]
+        assert "ath" not in proofs[code][1]
+        assert proofs[code][2]["ath"] == (
+            urlsafe_b64encode(hashlib.sha256(f"token-{code}".encode()).digest()).decode().rstrip("=")
+        )

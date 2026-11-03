@@ -5,12 +5,13 @@ import os
 import time
 import uuid
 from base64 import urlsafe_b64encode
-from functools import partial
+from contextvars import ContextVar
 from pathlib import Path
 from typing import Any
 
 import httpx
 import jwt
+import requests
 import ujson
 from fastapi import HTTPException
 from fastapi.responses import RedirectResponse
@@ -19,7 +20,6 @@ from idpyoidc.client.rp_handler import RPHandler
 from idpyoidc.exception import OidcMsgError
 from idpyoidc.message import oidc
 from jwt import decode as jwt_decode
-from requests import Session
 from starlette import status
 from yarl import URL
 
@@ -61,23 +61,19 @@ class AuthServiceHandler(ServiceHandler):
                 _self.to_dict().get("id_token", ""), options={"verify_signature": False}, algorithms=["none"]
             )
 
-        # Initialize DPoP handler for RFC 9449 support
+        # RFC 9449 DPoP support
         self.use_dpop = self._config.OIDC_DPOP
-        self._dpop: DPoPHandler | None = None
-
-    @property
-    def dpop(self) -> DPoPHandler | None:
-        if self.use_dpop:
-            if self._dpop is None:
-                self._dpop = DPoPHandler()
-            return self._dpop
-        else:
-            return None
 
     @property
     def rph(self) -> RPHandler:
         if self._rph is None:
-            self._rph = RPHandler(self.oidc_url, client_configs=self.get_client_configs())
+            # With DPoP, idpyoidc sends its requests through dpop_request(), which adds the proofs of the
+            # login in progress. The RPHandler and its client are shared by every login.
+            self._rph = RPHandler(
+                self.oidc_url,
+                client_configs=self.get_client_configs(),
+                httpc=dpop_request if self.use_dpop else None,
+            )
         return self._rph
 
     def get_client_configs(self) -> dict[str, dict[str, Any]]:
@@ -148,13 +144,12 @@ class AuthServiceHandler(ServiceHandler):
         # Place authorization_code to session for finalize step
         session_info["code"] = code
 
-        # Setup HTTP interception for DPoP before RPHandler.finalize()
-        if self.use_dpop:
-            self.dpop.setup_http_interception()
+        # Each login has its own DPoP handler, and so its own nonce, for RPHandler.finalize()
+        login_dpop = _login_dpop.set(DPoPHandler() if self.use_dpop else None)
 
         try:
             # finalize requests id_token and access_token with code, validates them and requests userinfo data
-            # With DPoP interception enabled, token endpoint requests will include DPoP proofs
+            # With DPoP enabled, token and userinfo requests include DPoP proofs
             session = self.rph.finalize(self.iss, session_info)
         except KeyError as e:
             LOG.exception("Issuer: %s not found, failed with: %r.", session_info["iss"], e)
@@ -177,9 +172,7 @@ class AuthServiceHandler(ServiceHandler):
                 LOG.exception("OIDC Callback failed with: %r", e)
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
         finally:
-            # Clean up HTTP interception
-            if self.use_dpop:
-                self.dpop.teardown_http_interception()
+            _login_dpop.reset(login_dpop)
 
         # Generate a JWT token for application authentication
         jwt_token = await AuthService.create_jwt_token_from_userinfo(session["userinfo"])
@@ -410,67 +403,43 @@ class DPoPHandler:
         except Exception as e:
             raise ValueError(f"Failed to sign DPoP proof: {e}") from e
 
-    def setup_http_interception(self) -> None:
-        """Patch requests.Session.request to inject DPoP headers before each request."""
-
-        self._original_request = Session.request
-
-        # Reset nonce to None before each authentication attempt
-        # Auth server will provide nonce in response for subsequent requests
-        self.nonce = None
-        LOG.debug("Reset DPoP nonce to None for new authentication attempt")
-
-        # Apply patch using functools.partial to bind self to the instance method
-        Session.request = partial(self._patched_request)  # type: ignore[method-assign]
-
-    def _patched_request(
-        self,
-        session_self: Session,
-        method: str,
-        url: str,
-        **kwargs: Any,
-    ) -> Any:
-        """Patched request method that injects DPoP header and modifies Authorization scheme.
+    def request(self, method: str, url: str, **kwargs: Any) -> requests.Response:
+        """Send a request of the OIDC login with DPoP headers.
 
         For RFC 9449 DPoP compliance:
         - Token endpoint: Add DPoP proof header
         - Protected resources (userinfo, etc): Add DPoP proof + change Authorization to "DPoP"
 
-        :param session_self: The requests.Session instance (when called via partial binding)
         :param method: HTTP method (GET, POST, etc.)
         :param url: Request URL
         :param kwargs: Additional request arguments
-        :returns: HTTP response from original request method
+        :returns: HTTP response
         """
-        if "headers" not in kwargs:
-            kwargs["headers"] = {}
+        headers = kwargs["headers"] = dict(kwargs.get("headers") or {})
 
         # Add DPoP proof to token endpoint requests
         if "/token" in url:
             # Generate DPoP proof for token endpoint (without access token binding)
-            proof = self.generate_proof(method, url)
-            kwargs["headers"]["DPoP"] = proof
+            headers["DPoP"] = self.generate_proof(method, url)
             LOG.debug("Added DPoP proof to %s %s", method, url)
 
         # Add DPoP proof to protected resource requests (userinfo, etc.)
-        elif "/userinfo" in url or "Authorization" in kwargs["headers"]:
+        elif "/userinfo" in url or "Authorization" in headers:
             # Extract access token from Authorization header if present
             access_token = None
-            auth_header = kwargs["headers"].get("Authorization", "")
+            auth_header = headers.get("Authorization", "")
 
             if auth_header.startswith("Bearer "):
                 # Extract token and change scheme from Bearer to DPoP
                 access_token = auth_header[7:]  # Remove "Bearer " prefix
-                kwargs["headers"]["Authorization"] = f"DPoP {access_token}"
+                headers["Authorization"] = f"DPoP {access_token}"
                 LOG.debug("Changed Authorization scheme from Bearer to DPoP for %s", url)
 
             # Generate DPoP proof with access token binding (ath claim)
-            proof = self.generate_proof(method, url, access_token=access_token)
-            kwargs["headers"]["DPoP"] = proof
+            headers["DPoP"] = self.generate_proof(method, url, access_token=access_token)
             LOG.debug("Added DPoP proof with token binding to %s %s", method, url)
 
-        # Make the original request
-        response = self._original_request(session_self, method, url, **kwargs)
+        response = requests.request(method, url, **kwargs)
 
         # Extract nonce from DPoP-Nonce response header for next request (RFC 9449 Section 8)
         if "DPoP-Nonce" in response.headers:
@@ -478,9 +447,22 @@ class DPoPHandler:
 
         return response
 
-    def teardown_http_interception(self) -> None:
-        """Restore original requests.Session.request method."""
 
-        if hasattr(self, "_original_request"):
-            Session.request = self._original_request  # type: ignore[method-assign]
-            delattr(self, "_original_request")
+# The DPoP handler of the OIDC login in progress in this context.
+_login_dpop: ContextVar[DPoPHandler | None] = ContextVar("login_dpop", default=None)
+
+
+def dpop_request(method: str, url: str, **kwargs: Any) -> requests.Response:
+    """Send an idpyoidc request, with DPoP headers if an OIDC login is in progress.
+
+    idpyoidc's client calls this in place of requests.request().
+
+    :param method: HTTP method (GET, POST, etc.)
+    :param url: Request URL
+    :param kwargs: Additional request arguments
+    :returns: HTTP response
+    """
+    dpop = _login_dpop.get()
+    if dpop is None:
+        return requests.request(method, url, **kwargs)
+    return dpop.request(method, url, **kwargs)
