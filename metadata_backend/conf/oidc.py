@@ -2,7 +2,7 @@
 
 from urllib.parse import urljoin
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 from metadata_backend.conf.deployment import deployment_config
@@ -32,6 +32,15 @@ class OIDCConfig(BaseSettings):
     OIDC_VERIFY_ID_TOKEN: bool = Field(
         default=True, description="Allow unsigned ID tokens. NEVER disable in production."
     )
+    OIDC_SECURE_COOKIE: bool = Field(
+        default=True, description="Set the Secure flag on session cookies. NEVER disable in production."
+    )
+
+    @field_validator("OIDC_SECURE_COOKIE", mode="before")
+    @classmethod
+    def _empty_secure_cookie_is_default(cls, value: object) -> object:
+        """Treat an empty value, as docker compose passes for an unset variable, as the default."""
+        return True if value == "" else value
 
     @property
     def callback_url(self) -> str:
