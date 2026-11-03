@@ -9,6 +9,16 @@ from metadata_backend.api.exceptions import UserException
 from tests.integration.conf import mock_keystone_url
 
 
+async def _list_buckets_or_empty(service, credentials) -> list[str]:
+    """List buckets, treating a project with no buckets as an empty list."""
+    try:
+        return await service.list_buckets(credentials)
+    except UserException as e:
+        if str(e) != "No buckets found.":
+            raise
+        return []
+
+
 async def test_file_provider_service(client, secret_env, s3_manager, monkeypatch):
     """Test all methods of the FileProviderService using a test service."""
     monkeypatch.setenv("KEYSTONE_ENDPOINT", mock_keystone_url)
@@ -44,7 +54,7 @@ async def test_file_provider_service(client, secret_env, s3_manager, monkeypatch
         assert test_bucket in buckets
 
         # API should NOT see the same bucket with static credentials (in another project)
-        buckets = await service.list_buckets(api_static_creds)
+        buckets = await _list_buckets_or_empty(service, api_static_creds)
         assert test_bucket not in buckets
 
         # Methods requiring read access policy should fail before policy is set
@@ -89,5 +99,5 @@ async def test_file_provider_service(client, secret_env, s3_manager, monkeypatch
     finally:
         # Cleanup - remove the test bucket
         await s3_manager.delete_bucket(test_bucket)
-        buckets = await service.list_buckets(test_user_creds)
+        buckets = await _list_buckets_or_empty(service, test_user_creds)
         assert test_bucket not in buckets
