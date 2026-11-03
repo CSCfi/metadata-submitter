@@ -12,6 +12,10 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 - separate CI job `1-upload-jfrog-image` into two jobs, where one runs in the tag pipeline and the other in the MR pipeline. Use variable `JF_IDENTITY_TOKEN` instead of `JF_CONFIG` in the job that runs in the unprotected MR pipeline.
 - get Gitlab CI secrets from Vault
 
+### Fixed
+
+- Make OIDC DPoP safe for overlapping logins. Pass idpyoidc an httpc that adds the DPoP proofs of the login in progress, held in a ContextVar, instead of patching requests.Session.request for the whole process. Each login has its own DPoP handler and nonce.
+
 ## [2026.10.2] - 2026-10-29
 
 ### Removed
