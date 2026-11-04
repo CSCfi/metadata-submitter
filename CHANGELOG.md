@@ -16,6 +16,11 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 - Make OIDC DPoP safe for overlapping logins. Pass idpyoidc an httpc that adds the DPoP proofs of the login in progress, held in a ContextVar, instead of patching requests.Session.request for the whole process. Each login has its own DPoP handler and nonce.
 
+### Security
+
+- (admins) Configuration validation errors in settings classes no longer shows the input values that may include secrets.
+- (admins) Secrets in the configuration are now SecretStr, so they are shown as `**********` when the configuration is printed or logged.
+
 ## [2026.10.2] - 2026-10-29
 
 ### Removed
