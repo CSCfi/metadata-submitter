@@ -1,16 +1,17 @@
 """NeIC SDA Admin API external service configuration."""
 
-from pydantic import Field
-from pydantic_settings import BaseSettings
+from pydantic import Field, SecretStr
+
+from metadata_backend.conf.secret import SecretSettings
 
 
-class AdminConfig(BaseSettings):
+class AdminConfig(SecretSettings):
     """NeIC SDA Admin API external service configuration."""
 
     model_config = {"extra": "allow"}  # Allow creation using the constructor.
 
     ADMIN_URL: str = Field(description="NeIC SDA Admin API URL")
-    ADMIN_TOKEN: str = Field(description="NeIC SDA Admin API bearer token")
+    ADMIN_TOKEN: SecretStr = Field(description="NeIC SDA Admin API bearer token")
     INGEST_SCAN_INTERVAL: int = Field(
         60,
         description="Background ingest scanner interval in seconds.",

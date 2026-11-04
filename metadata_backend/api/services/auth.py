@@ -87,7 +87,7 @@ class AuthService:
             "iss": jwt_config().JWT_ISSUER,
         }
 
-        return jwt.encode(payload, jwt_config().JWT_KEY, algorithm=jwt_config().JWT_ALGORITHM)
+        return jwt.encode(payload, jwt_config().JWT_KEY.get_secret_value(), algorithm=jwt_config().JWT_ALGORITHM)
 
     @staticmethod
     def validate_jwt_token(token: str) -> tuple[str, str]:
@@ -102,7 +102,7 @@ class AuthService:
         Raises:
             HTTPUnauthorized: If the token is expired, malformed, or fails verification.
         """
-        key = jwt_config().JWT_KEY
+        key = jwt_config().JWT_KEY.get_secret_value()
         decoded = jwt.decode(token, key, algorithms=[jwt_config().JWT_ALGORITHM], issuer=jwt_config().JWT_ISSUER)
         return str(decoded["sub"]), str(decoded.get("user_name", decoded["sub"]))
 

@@ -43,7 +43,7 @@ class AdminServiceHandler(ServiceHandler):
     def get_admin_auth_headers(self) -> dict[str, str]:
         """Get authentication headers for Admin API service."""
         if self._config.ADMIN_TOKEN:
-            return {"Authorization": f"Bearer {self._config.ADMIN_TOKEN}"}
+            return {"Authorization": f"Bearer {self._config.ADMIN_TOKEN.get_secret_value()}"}
         else:
             LOG.error("Admin API token is not configured.")
             raise SystemException("Service configuration error.")

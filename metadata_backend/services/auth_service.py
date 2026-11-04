@@ -46,7 +46,7 @@ class AuthServiceHandler(ServiceHandler):
         self.callback_url = self._config.callback_url
         self.redirect_url = self._config.OIDC_REDIRECT_URL
         self.client_id = self._config.OIDC_CLIENT_ID
-        self.client_secret = self._config.OIDC_CLIENT_SECRET
+        self.client_secret = self._config.OIDC_CLIENT_SECRET.get_secret_value()
         self.oidc_url = self._config.OIDC_URL.rstrip("/") + "/.well-known/openid-configuration"
         self.iss = self._config.OIDC_URL
         self.scope = self._config.OIDC_SCOPE

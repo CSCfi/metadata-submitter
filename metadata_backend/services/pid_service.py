@@ -28,7 +28,7 @@ class PIDServiceHandler(DataciteService, ServiceHandler):
             healthcheck_url=URL(self._config.CSC_PID_URL) / "q" / "health" / "live",
             healthcheck_callback=self.healthcheck_callback,
         )
-        self._headers = {"Content-Type": "application/json", "apikey": self._config.CSC_PID_KEY}
+        self._headers = {"Content-Type": "application/json", "apikey": self._config.CSC_PID_KEY.get_secret_value()}
 
     @override
     async def create_draft_doi(self) -> str:

@@ -63,7 +63,7 @@ class RemsServiceHandler(ServiceHandler):
             service_name="rems",
             base_url=URL(config.REMS_URL) / "api",
             http_client_headers={
-                "x-rems-api-key": config.REMS_KEY,
+                "x-rems-api-key": config.REMS_KEY.get_secret_value(),
                 "x-rems-user-id": config.REMS_USER,
                 "accept": "application/json",
             },

@@ -224,7 +224,7 @@ class S3FileProviderService(FileProviderService, ABC):
         session_kwargs: dict[str, str] = {"region_name": self._config.S3_REGION}
         if self._config.STATIC_S3_ACCESS_KEY_ID and self._config.STATIC_S3_SECRET_ACCESS_KEY:
             session_kwargs["aws_access_key_id"] = self._config.STATIC_S3_ACCESS_KEY_ID
-            session_kwargs["aws_secret_access_key"] = self._config.STATIC_S3_SECRET_ACCESS_KEY
+            session_kwargs["aws_secret_access_key"] = self._config.STATIC_S3_SECRET_ACCESS_KEY.get_secret_value()
         self._session = aioboto3.Session(**session_kwargs)
         self.region = self._config.S3_REGION
         self.endpoint = self._config.S3_ENDPOINT

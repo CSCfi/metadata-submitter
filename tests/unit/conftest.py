@@ -12,7 +12,7 @@ from typing import Any, AsyncGenerator, Callable, Generator
 import pytest
 import pytest_asyncio
 from fastapi.testclient import TestClient
-from pydantic import BaseModel
+from pydantic import BaseModel, SecretStr
 from pydantic_core import PydanticUndefined
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
@@ -82,7 +82,7 @@ def pytest_configure(config):
         """
         for _conf_cls in _confs:
             for _name, _field in _conf_cls.model_fields.items():
-                if _field.annotation is str:
+                if _field.annotation in (str, SecretStr):
                     has_default = (_field.default is not PydanticUndefined) or (_field.default_factory is not None)
                     if not has_default:
                         # Initialize mandatory string fields.

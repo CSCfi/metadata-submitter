@@ -1,16 +1,17 @@
 """CSC PID external service configuration."""
 
-from pydantic import Field
-from pydantic_settings import BaseSettings
+from pydantic import Field, SecretStr
+
+from metadata_backend.conf.secret import SecretSettings
 
 
-class CscPidConfig(BaseSettings):
+class CscPidConfig(SecretSettings):
     """CSC PID external service configuration."""
 
     model_config = {"extra": "allow"}  # Allow creation using the constructor.
 
     CSC_PID_URL: str = Field(description="CSC PID URL")
-    CSC_PID_KEY: str = Field(description="CSC PID KEY")
+    CSC_PID_KEY: SecretStr = Field(description="CSC PID KEY")
 
 
 def csc_pid_config() -> CscPidConfig:

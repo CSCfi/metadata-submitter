@@ -2,9 +2,10 @@
 
 from typing import Literal
 
-from pydantic import Field, ValidationInfo, field_validator, model_validator
-from pydantic_settings import BaseSettings
+from pydantic import Field, SecretStr, ValidationInfo, field_validator, model_validator
 from typing_extensions import Self
+
+from metadata_backend.conf.secret import SecretSettings
 
 # Defines how a metadata object is encrypted when it is stored in the database.
 #
@@ -25,7 +26,7 @@ ENVELOPE: ObjectEncryption = "envelope"
 DIRECT: ObjectEncryption = "direct"
 
 
-class OpenBaoConfig(BaseSettings):
+class OpenBaoConfig(SecretSettings):
     """OpenBao configuration."""
 
     model_config = {"extra": "allow"}  # Allow creation using the constructor.
@@ -37,7 +38,7 @@ class OpenBaoConfig(BaseSettings):
             "objects it stores in the database."
         ),
     )
-    OPENBAO_TOKEN: str | None = Field(
+    OPENBAO_TOKEN: SecretStr | None = Field(
         default=None,
         description="OpenBao server token. The alternative to OPENBAO_KUBERNETES_ROLE.",
     )
