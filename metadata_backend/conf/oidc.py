@@ -2,13 +2,13 @@
 
 from urllib.parse import urljoin
 
-from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings
+from pydantic import Field, SecretStr, field_validator
 
 from metadata_backend.conf.deployment import deployment_config
+from metadata_backend.conf.secret import SecretSettings
 
 
-class OIDCConfig(BaseSettings):
+class OIDCConfig(SecretSettings):
     """OIDC external service configuration."""
 
     model_config = {"extra": "allow"}  # Allow creation using the constructor.
@@ -20,7 +20,7 @@ class OIDCConfig(BaseSettings):
         description="OIDC client ID",
         validation_alias="OIDC_CLIENT_ID",
     )
-    OIDC_CLIENT_SECRET: str = Field(
+    OIDC_CLIENT_SECRET: SecretStr = Field(
         description="OIDC client secret",
         validation_alias="OIDC_CLIENT_SECRET",
     )

@@ -221,7 +221,7 @@ class OpenBaoService(ServiceHandler):
 
         if self._config.OPENBAO_TOKEN:
             # Use a static token.
-            return {"X-Vault-Token": self._config.OPENBAO_TOKEN}
+            return {"X-Vault-Token": self._config.OPENBAO_TOKEN.get_secret_value()}
 
         async with self._k8_login_lock:
             # Use a k8 service token.

@@ -29,7 +29,7 @@ class MetaxServiceHandler(MetaxService, ServiceHandler):
         super().__init__(
             service_name="metax",
             base_url=URL(self._config.METAX_URL),
-            http_client_headers={"Authorization": f"Token {self._config.METAX_TOKEN}"},
+            http_client_headers={"Authorization": f"Token {self._config.METAX_TOKEN.get_secret_value()}"},
             healthcheck_url=(URL(self._config.METAX_URL) / "datasets").update_query(limit=1, fields="id"),
             healthcheck_callback=self.healthcheck_callback,
         )

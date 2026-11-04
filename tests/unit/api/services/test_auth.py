@@ -156,7 +156,7 @@ def test_read_expired_jwt_token_raises(jwt_config) -> None:
 def test_read_wrong_issuer_jwt_token_raises(jwt_config) -> None:
     token = AuthService.create_jwt_token(jwt_config.user_id, jwt_config.user_name, jwt_config.expiration)
     with pytest.raises(jwt.InvalidIssuerError):
-        jwt.decode(token, load_jwt_config().JWT_KEY, algorithms=["HS256"], issuer="invalid")
+        jwt.decode(token, load_jwt_config().JWT_KEY.get_secret_value(), algorithms=["HS256"], issuer="invalid")
 
 
 async def test_hash_api_key(jwt_config, service) -> None:

@@ -131,7 +131,7 @@ class LdapProjectService(ProjectService):
 
         host = config.CSC_LDAP_HOST
         user = config.CSC_LDAP_USER
-        password = config.CSC_LDAP_PASSWORD
+        password = config.CSC_LDAP_PASSWORD.get_secret_value()
 
         parsed = urlparse(host)
         scheme = parsed.scheme.lower()

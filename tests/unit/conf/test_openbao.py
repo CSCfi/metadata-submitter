@@ -36,7 +36,7 @@ def test_url_and_key(monkeypatch) -> None:
     config = OpenBaoConfig()
 
     assert config.OPENBAO_URL == "http://openbao:8200"
-    assert config.OPENBAO_TOKEN == "token"
+    assert config.OPENBAO_TOKEN.get_secret_value() == "token"
     assert config.OPENBAO_OBJECT_KEY_NAME == "test-key"
     # An envelope is the default.
     assert config.OPENBAO_OBJECT_ENCRYPTION == ENVELOPE

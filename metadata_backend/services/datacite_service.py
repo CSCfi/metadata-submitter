@@ -28,7 +28,9 @@ class DataciteServiceHandler(DataciteService, ServiceHandler):
             self,
             service_name="datacite",
             base_url=URL(self._config.DATACITE_API),
-            auth=httpx.BasicAuth(username=self._config.DATACITE_USER, password=self._config.DATACITE_KEY),
+            auth=httpx.BasicAuth(
+                username=self._config.DATACITE_USER, password=self._config.DATACITE_KEY.get_secret_value()
+            ),
             http_client_headers={"Content-Type": "application/vnd.api+json"},
             healthcheck_url=URL(self._config.DATACITE_API) / "heartbeat",
         )

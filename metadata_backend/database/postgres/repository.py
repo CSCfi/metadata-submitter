@@ -68,7 +68,7 @@ async def _create_schema(engine: AsyncEngine) -> None:
 
 def get_sync_database_url() -> str:
     """Return the database URL given by the DATABASE_URL environment variable with a synchronous driver."""
-    url = make_url(database_config().DATABASE_URL)
+    url = make_url(database_config().DATABASE_URL.get_secret_value())
 
     driver_map = {
         "postgresql+asyncpg": "postgresql+psycopg",
@@ -114,7 +114,7 @@ async def create_engine(db_url: str | None = None) -> AsyncEngine:
     """
 
     if db_url is None:
-        db_url = database_config().DATABASE_URL
+        db_url = database_config().DATABASE_URL.get_secret_value()
 
     # Hide bound parameters from SQL errors: they carry metadata documents and identifiers.
     engine = create_async_engine(db_url, pool_pre_ping=True, echo=False, hide_parameters=True)
