@@ -21,6 +21,10 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 - (admins) Configuration validation errors in settings classes no longer shows the input values that may include secrets.
 - (admins) Secrets in the configuration are now SecretStr, so they are shown as `**********` when the configuration is printed or logged.
 
+### Removed
+
+- Path `/home` from logout redirect URL
+
 ## [2026.10.2] - 2026-10-29
 
 ### Removed
