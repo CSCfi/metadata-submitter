@@ -7,6 +7,7 @@ from base64 import urlsafe_b64encode
 from contextvars import ContextVar
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
 import jwt
@@ -233,8 +234,9 @@ class AuthServiceHandler(ServiceHandler):
 
         :returns: Redirect response to login page.
         """
-
-        response = RedirectResponse(url=self.redirect_url, status_code=status.HTTP_303_SEE_OTHER)
+        parsed = urlsplit(self.redirect_url)
+        logout_redirect_url = f"{parsed.scheme}://{parsed.netloc}"
+        response = RedirectResponse(url=logout_redirect_url, status_code=status.HTTP_303_SEE_OTHER)
 
         # Delete cookies
         response.delete_cookie("access_token", path="/")
