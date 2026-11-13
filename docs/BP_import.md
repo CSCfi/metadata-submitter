@@ -21,10 +21,16 @@ else is refused.
 Send the dataset's Bigpicture XML files to `POST /v1/import`, the same files you would send for a new
 submission. `datacite.xml` is not accepted in an import.
 
+**The landing page:** `landing_page.xml` is optional, even for a dataset with a clinical policy. It is
+required only if the dataset in SDA already has one, because an import must include every metadata XML
+in SDA. Without a landing page, a version 3.0 `dataset.xml` must not have a `LANDING_PAGE_REF`, and the
+dataset's DOI and REMS access link are not written to SDA, because publishing adds them only to the
+landing page.
+
 ### What is validated
 
-**The metadata is validated exactly as for a new submission:** XML schemas, references between
-objects, mandatory content, and the policy.
+**The metadata is validated as for a new submission:** XML schemas, references between
+objects, mandatory content, and the policy. The only difference is the landing page, described above.
 
 **Accessions:**
 
@@ -33,7 +39,7 @@ objects, mandatory content, and the policy.
   `{BP_CENTER_ID}-dataset-xxxxxx-xxxxxx`, where each `x` is a lowercase letter or digit other than
   `i`, `l`, `o`, `0` and `1`.
 - No other object may have an accession. They will be assigned new ones.
-- A reference to another object may have an accession only if references the dataset.
+- A reference to another object may have an accession only if it references the dataset.
 
 **The dataset in SDA:**
 
@@ -57,8 +63,8 @@ without the `.c4gh` suffix:
 - Every data file named in the XMLs must be in SDA at its path.
 - Every file in SDA must be a metadata XML, a data file named in the XMLs, or a thumbnail. Anything
   else is an error.
-- The metadata XMLs in SDA must be the same ones being imported. The one exception: a landing page may
-  be added if the dataset in SDA doesn't have one.
+- The metadata XMLs in SDA must be the same ones being imported, except that a landing page may be
+  added (see above).
 - Two files with the same path in the dataset are an error.
 
 All problems found in the dataset's files are reported together, so they can be fixed in one go.
@@ -92,7 +98,9 @@ Publish an imported submission:
 - **skips the inbox check for data files**, because they are already archived
 - **registers the dataset in REMS**, reusing an existing resource and catalogue item if there are any.
   An existing resource keeps its licences, because REMS can't change a resource's licences after it is
-  created.
+  created. An existing catalogue item keeps its titles, languages and info URLs. A language without an
+  info URL gets the dataset's discovery URL. A catalogue item without any localization gets an English one
+  with the dataset's title and discovery URL, as does a new catalogue item.
 
 ## Ingest
 

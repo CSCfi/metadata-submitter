@@ -12,7 +12,13 @@ from metadata_backend.api.services.submission.bigpicture import (
     validate_bigpicture_documents,
 )
 from metadata_backend.api.services.submission.submission import ObjectSubmission
-from tests.utils import BP_ANNOTATION_1_FILE, BP_IMAGE_1_FILE, BP_IMAGE_2_FILE, bp_objects
+from tests.utils import (
+    BP_ANNOTATION_1_FILE,
+    BP_IMAGE_1_FILE,
+    BP_IMAGE_2_FILE,
+    bp_objects,
+    bp_objects_without_landing_page,
+)
 
 
 def _replace_object_document(
@@ -171,8 +177,34 @@ def test_validate_documents_adds_missing_dataset_references(version):
 
     assert dataset_ref_tags() == []
 
-    validate_bigpicture_documents(processor)
+    validate_bigpicture_documents(processor, require_clinical_landing_page=True)
 
     assert dataset_ref_tags() == ref_tags
     # Validates the dataset XML against the XML schema.
     XmlObjectProcessor(dataset_processor.config, dataset_processor.xml)
+
+
+def _objects_without_landing_page(version: BigpictureVersion, *, clinical: bool) -> list[ObjectSubmission]:
+    """BP objects without the landing page XML, or the dataset's reference to it."""
+
+    objects, _ = bp_objects(is_update=False, version=version)
+    objects = bp_objects_without_landing_page(objects)
+    if not clinical:
+        objects = _replace_object_document(objects, "policy.xml", "Clinical / Anonymized", "Non-Clinical / Obscured")
+    return objects
+
+
+@pytest.mark.parametrize("require_clinical_landing_page", [True, False])
+@pytest.mark.parametrize("clinical", [True, False])
+@pytest.mark.parametrize("version", [BigpictureVersion.V2_0, BigpictureVersion.V3_0])
+def test_validate_bigpicture_documents_without_landing_page(version, clinical, require_clinical_landing_page):
+    """A landing page is required only for a clinical policy, and only if require_clinical_landing_page is set."""
+
+    processor, _, _ = BigpictureObjectSubmissionService._create_processor(
+        _objects_without_landing_page(version, clinical=clinical)
+    )
+    if clinical and require_clinical_landing_page:
+        with pytest.raises(UserException, match="clinical policy must have a 'landing_page' metadata object"):
+            validate_bigpicture_documents(processor, require_clinical_landing_page=require_clinical_landing_page)
+    else:
+        validate_bigpicture_documents(processor, require_clinical_landing_page=require_clinical_landing_page)

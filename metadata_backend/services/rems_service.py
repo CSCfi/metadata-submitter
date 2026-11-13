@@ -13,6 +13,7 @@ from yarl import URL
 from ..api.exceptions import ServiceHandlerSystemException, UserException
 from ..api.models.rems import (
     RemsCatalogueItem,
+    RemsCatalogueItemLocalization,
     RemsLicense,
     RemsLicenseLocalization,
     RemsResource,
@@ -355,25 +356,33 @@ class RemsServiceHandler(ServiceHandler):
         created: dict[str, Any] = await self._request(method="POST", path="/catalogue-items/create", json_data=data)
         return int(created["id"])
 
-    async def edit_catalogue_item(self, catalogue_id: int, title: str, discovery_url: str) -> None:
-        """Edit the title and discovery url of a REMS catalogue item.
+    async def edit_catalogue_item(
+        self, item: RemsCatalogueItem, localizations: dict[str, RemsCatalogueItemLocalization]
+    ) -> None:
+        """Edit the titles and discovery urls of a REMS catalogue item.
 
-        :param catalogue_id: The REMS catalogue item id.
-        :param title: The REMS catalogue item title.
-        :param discovery_url: The REMS catalogue item discovery url.
+        REMS replaces the localizations of the given languages and keeps the others. It removes the
+        categories and children if they are left out.
+
+        Children are sent only if the item has any, because a REMS version without catalogue item
+        children rejects the key.
+
+        :param item: The REMS catalogue item, as it is in REMS.
+        :param localizations: The title and discovery url of each language to change.
         """
 
-        data = {
-            "id": catalogue_id,
+        data: dict[str, Any] = {
+            "id": item.id,
             "localizations": {
-                "en": {
-                    "title": title,
-                    "infourl": discovery_url,
-                }
+                language: {"title": localization.title, "infourl": localization.discovery_url}
+                for language, localization in localizations.items()
             },
+            "categories": [category.model_dump(by_alias=True) for category in item.categories],
         }
+        if item.children:
+            data["children"] = [child.model_dump(by_alias=True) for child in item.children]
         # REMS reports a failed command in the response body.
         response: dict[str, Any] = await self._request(method="PUT", path="/catalogue-items/edit", json_data=data)
         if not response.get("success"):
-            LOG.error("Failed to edit REMS catalogue item %s: %s", catalogue_id, response.get("errors"))
+            LOG.error("Failed to edit REMS catalogue item %s: %s", item.id, response.get("errors"))
             raise ServiceHandlerSystemException(self.service_name)

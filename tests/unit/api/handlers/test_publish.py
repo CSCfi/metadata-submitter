@@ -4,11 +4,11 @@ import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
 from contextlib import asynccontextmanager, contextmanager
 from types import SimpleNamespace
-from typing import Any
 from unittest.mock import ANY, AsyncMock, Mock, patch
 
 import pytest
 from fastapi.testclient import TestClient
+from httpx import Response
 
 from metadata_backend.api.exceptions import SystemException
 from metadata_backend.api.handlers.publish import PublishAPIHandler
@@ -16,9 +16,13 @@ from metadata_backend.api.handlers.submission import SubmissionAPIHandler
 from metadata_backend.api.json import to_json_dict
 from metadata_backend.api.models.datacite import Subject
 from metadata_backend.api.models.models import Registration
+from metadata_backend.api.models.rems import RemsCatalogueItemLocalization
 from metadata_backend.api.models.sda import FileItem
 from metadata_backend.api.models.submission import Rems, Submission, SubmissionMetadata, SubmissionWorkflow
-from metadata_backend.api.processors.xml.bigpicture import BP_DATASET_OBJECT_TYPE, BP_POLICY_OBJECT_TYPE
+from metadata_backend.api.processors.xml.bigpicture import (
+    BP_DATASET_OBJECT_TYPE,
+    BP_POLICY_OBJECT_TYPE,
+)
 from metadata_backend.api.services.file import FileProviderService
 from metadata_backend.conf.deployment import Deployment, deployment_config
 from metadata_backend.database.postgres.models import FileEntity, ObjectEntity, SubmissionEntity
@@ -77,6 +81,10 @@ REMS = Rems(
     licenses=[MOCK_REMS_DEFAULT_LICENSE_ID],
 )
 
+# The title and info URL of an existing REMS catalogue item, which are different from /publish assigned ones.
+_EXISTING_CATALOGUE_ITEM_TITLE = "Existing catalogue item"
+_EXISTING_CATALOGUE_ITEM_INFO_URL = "https://existing-catalogue-item.test"
+
 
 async def _add_bp_submission(submission_repository, **kwargs) -> SubmissionEntity:
     """Add a BP submission with the default REMS information."""
@@ -101,6 +109,43 @@ async def _add_bp_object(
     )
     await object_repository.add_object(object_entity, SubmissionWorkflow.BP)
     return object_entity
+
+
+async def _add_bp_file(file_repository, dataset_entity: ObjectEntity, path: str) -> None:
+    """Add a data file of the dataset metadata object to a BP submission."""
+    await file_repository.add_file(
+        FileEntity(submission_id=dataset_entity.submission_id, object_id=dataset_entity.object_id, path=path, bytes=1),
+        SubmissionWorkflow.BP,
+    )
+
+
+def _publish(client: TestClient, submission_id: str, *, no_files: bool = False, oidc_token: bool = False) -> Response:
+    """Publish the submission.
+
+    :param no_files: Whether to publish without checking the data files.
+    :param oidc_token: Whether to send the user's OIDC token, which a BP publish needs to upload the metadata
+        XMLs to the SDA inbox.
+    :returns: The response.
+    """
+    return client.patch(
+        f"{deployment_config().API_PREFIX_V1}/publish/{submission_id}",
+        params={"no_files": "true"} if no_files else None,
+        headers={"Authorization": "Bearer oidc-token"} if oidc_token else None,
+    )
+
+
+def _is_published(client: TestClient, submission_id: str) -> bool:
+    """Whether the API shows the submission as published."""
+    response = client.get(f"{deployment_config().API_PREFIX_V1}/submissions/{submission_id}")
+    assert response.status_code == 200, response.text
+    return Submission.model_validate(response.json()).published
+
+
+def _get_registration(client: TestClient, submission_id: str) -> Registration:
+    """Get the registration of the submission."""
+    response = client.get(f"{deployment_config().API_PREFIX_V1}/submissions/{submission_id}/registrations")
+    assert response.status_code == 200, response.text
+    return Registration.model_validate(response.json())
 
 
 @contextmanager
@@ -164,10 +209,8 @@ def _patch_bp_publish(doi: str = "10.1/test") -> Iterator[SimpleNamespace]:
         )
 
 
-async def test_publish_submission_sd(csc_client, submission_repository, object_repository, file_repository):
+async def test_publish_submission_sd(csc_client, submission_repository, file_repository):
     """Test publishing of CSC submission."""
-    api_prefix_v1 = deployment_config().API_PREFIX_V1
-
     submission_title = f"title_{str(uuid.uuid4())}"
     submission_description = f"description_{str(uuid.uuid4())}"
 
@@ -186,7 +229,7 @@ async def test_publish_submission_sd(csc_client, submission_repository, object_r
         # Create submission without bucket.
         submission_entity = create_submission_entity()
         submission_id = await submission_repository.add_submission(submission_entity)
-        response = csc_client.patch(f"{api_prefix_v1}/publish/{submission_id}")
+        response = _publish(csc_client, submission_id)
         data = response.json()
         assert response.status_code == 400
         assert data["detail"] == "User error"
@@ -227,7 +270,7 @@ async def test_publish_submission_sd(csc_client, submission_repository, object_r
         # Test edge case where file service has not received any files.
         submission_id = await submission_repository.add_submission(submission_entity)
         mock_file_provider.return_value = FileProviderService.Files(root=[])
-        response = csc_client.patch(f"{api_prefix_v1}/publish/{submission_id}")
+        response = _publish(csc_client, submission_id)
         data = response.json()
         assert response.status_code == 400
         assert data["detail"] == "User error"
@@ -239,7 +282,7 @@ async def test_publish_submission_sd(csc_client, submission_repository, object_r
         )
 
         # Publish submission.
-        response = csc_client.patch(f"{api_prefix_v1}/publish/{submission_id}")
+        response = _publish(csc_client, submission_id)
         data = response.json()
         assert response.status_code == 200
         assert data == {"submissionId": submission_id}
@@ -288,28 +331,19 @@ async def test_publish_submission_sd(csc_client, submission_repository, object_r
 
 async def test_publish_submission_bp(nbis_client, submission_repository, object_repository, file_repository):
     """Test publishing of BP submission."""
-    api_prefix_v1 = deployment_config().API_PREFIX_V1
 
     # The submission contains one dataset metadata object and one file.
     dataset_title = f"title_{str(uuid.uuid4())}"
-    submission_entity = await _add_bp_submission(submission_repository, bucket="test-bucket", title=dataset_title)
+    submission_entity = await _add_bp_submission(submission_repository, title=dataset_title)
     submission_id = submission_entity.submission_id
-    object_entity = await _add_bp_object(
+    dataset_entity = await _add_bp_object(
         object_repository,
         submission_entity,
         BP_DATASET_OBJECT_TYPE,
         title=dataset_title,
         description=f"description_{str(uuid.uuid4())}",
     )
-    await file_repository.add_file(
-        FileEntity(
-            submission_id=submission_id,
-            object_id=object_entity.object_id,
-            path=f"path_{str(uuid.uuid4())}",
-            bytes=1024,
-        ),
-        SubmissionWorkflow.BP,
-    )
+    await _add_bp_file(file_repository, dataset_entity, f"path_{str(uuid.uuid4())}")
 
     doi = f"doi_{str(uuid.uuid4())}/doi_{str(uuid.uuid4())}"
 
@@ -326,9 +360,7 @@ async def test_publish_submission_bp(nbis_client, submission_repository, object_
         call_order.attach_mock(mocks.upload_bp_metadata, "upload_bp_metadata_xmls")
 
         # Publish submission.
-        response = nbis_client.patch(
-            f"{api_prefix_v1}/publish/{submission_id}", headers={"Authorization": "Bearer oidc-token"}
-        )
+        response = _publish(nbis_client, submission_id, oidc_token=True)
         data = response.json()
         assert response.status_code == 200
         assert data == {"submissionId": submission_id}
@@ -363,10 +395,7 @@ async def test_publish_submission_bp(nbis_client, submission_repository, object_
         ]
 
         # Assert registrations.
-        response = nbis_client.get(f"{api_prefix_v1}/submissions/{submission_id}/registrations")
-        data = response.json()
-        assert response.status_code == 200
-        registration = Registration.model_validate(data)
+        registration = _get_registration(nbis_client, submission_id)
         # Check DOI
         assert registration.doi == doi
         # Check that metax ID does not exist
@@ -382,8 +411,6 @@ async def test_publish_submission_bp_non_clinical(nbis_client, submission_reposi
 
     A non-clinical dataset is not registered in REMS.
     """
-
-    api_prefix_v1 = deployment_config().API_PREFIX_V1
 
     submission_entity = await _add_bp_submission(submission_repository, metadata_version="2.0")
     submission_id = submission_entity.submission_id
@@ -404,10 +431,7 @@ async def test_publish_submission_bp_non_clinical(nbis_client, submission_reposi
     )
 
     with _patch_bp_publish() as mocks:
-        response = nbis_client.patch(
-            f"{api_prefix_v1}/publish/{submission_id}", headers={"Authorization": "Bearer oidc-token"}
-        )
-
+        response = _publish(nbis_client, submission_id, oidc_token=True)
         assert response.status_code == 200, response.text
         assert response.json() == {"submissionId": submission_id}
 
@@ -415,9 +439,7 @@ async def test_publish_submission_bp_non_clinical(nbis_client, submission_reposi
         mocks.rems_create_resource.assert_not_awaited()
         mocks.rems_create_catalogue_item.assert_not_awaited()
 
-        response = nbis_client.get(f"{api_prefix_v1}/submissions/{submission_id}/registrations")
-        assert response.status_code == 200
-        registration = Registration.model_validate(response.json())
+        registration = _get_registration(nbis_client, submission_id)
         assert registration.remsResourceId is None
         assert registration.remsCatalogueId is None
         assert registration.remsUrl is None
@@ -425,8 +447,6 @@ async def test_publish_submission_bp_non_clinical(nbis_client, submission_reposi
 
 async def test_publish_submission_bp_invalid_stored_policy(nbis_client, submission_repository, object_repository):
     """Test that an invalid stored policy XML is a server error, not a user error."""
-
-    api_prefix_v1 = deployment_config().API_PREFIX_V1
 
     submission_entity = await _add_bp_submission(submission_repository, metadata_version="2.0")
     submission_id = submission_entity.submission_id
@@ -440,18 +460,12 @@ async def test_publish_submission_bp_invalid_stored_policy(nbis_client, submissi
     await _add_bp_object(object_repository, submission_entity, BP_POLICY_OBJECT_TYPE, document="<POLICY>")
 
     with _patch_bp_publish():
-        response = nbis_client.patch(
-            f"{api_prefix_v1}/publish/{submission_id}", headers={"Authorization": "Bearer oidc-token"}
-        )
-
+        response = _publish(nbis_client, submission_id, oidc_token=True)
         assert response.status_code == 500, response.text
         problem_json = response.json()
         assert problem_json["detail"].startswith("Premature end of data in tag POLICY")
         assert "errors" not in problem_json
-
-    stored = await submission_repository.get_submission_by_id(submission_id)
-    assert stored is not None
-    assert not stored.is_published
+        assert not _is_published(nbis_client, submission_id)
 
 
 @pytest.mark.parametrize(
@@ -466,7 +480,6 @@ async def test_publish_submission_of_other_workflow(request, submission_reposito
     """Test that a deployment does not publish a submission of another workflow."""
 
     client = request.getfixturevalue(client_fixture)
-    api_prefix_v1 = deployment_config().API_PREFIX_V1
 
     submission_id = await submission_repository.add_submission(
         create_submission_entity(
@@ -479,20 +492,17 @@ async def test_publish_submission_of_other_workflow(request, submission_reposito
         patch_verify_authorization,
         patch("metadata_backend.api.handlers.publish.workflow_profile") as mock_workflow_profile,
     ):
-        response = client.patch(f"{api_prefix_v1}/publish/{submission_id}?no_files={str(no_files).lower()}")
+        response = _publish(client, submission_id, no_files=no_files)
         assert response.status_code == 400
         assert f"Submission belongs to a different workflow: '{workflow.value}'" in response.text
         mock_workflow_profile.assert_not_called()
 
-        response = client.get(f"{api_prefix_v1}/submissions/{submission_id}")
-        assert response.status_code == 200
-        assert not Submission.model_validate(response.json()).published
+        assert not _is_published(client, submission_id)
 
 
 async def test_publish_submission_lock(csc_client, submission_repository):
     """Test that publish checks access before locking the submission, and the published state again after."""
 
-    api_prefix_v1 = deployment_config().API_PREFIX_V1
     submission_id = await submission_repository.add_submission(create_submission_entity())
 
     # The mocks are children of calls, which records their calls in order.
@@ -505,7 +515,7 @@ async def test_publish_submission_lock(csc_client, submission_repository):
         patch.object(SubmissionService, "lock_submission", new=calls.lock_submission),
         patch.object(SubmissionService, "check_not_published", new=calls.check_not_published),
     ):
-        response = csc_client.patch(f"{api_prefix_v1}/publish/{submission_id}?no_files=true")
+        response = _publish(csc_client, submission_id, no_files=True)
 
     assert response.status_code == 400
     # Access is checked before the lock, so that only users who can modify the submission hold it.
@@ -543,81 +553,55 @@ async def test_publish_submission_bp_fails_when_metadata_upload_fails(
     nbis_client, submission_repository, object_repository, file_repository
 ):
     """BP publish should fail and remain unpublished if metadata encryption/upload fails."""
-    api_prefix_v1 = deployment_config().API_PREFIX_V1
-
-    submission_entity = await _add_bp_submission(submission_repository, bucket="test-bucket", title="bp-title")
+    submission_entity = await _add_bp_submission(submission_repository, title="bp-title")
     submission_id = submission_entity.submission_id
-    object_entity = await _add_bp_object(
+    dataset_entity = await _add_bp_object(
         object_repository, submission_entity, BP_DATASET_OBJECT_TYPE, title="bp-title", description="bp-description"
     )
-    await file_repository.add_file(
-        FileEntity(
-            submission_id=submission_id,
-            object_id=object_entity.object_id,
-            path="test-path",
-            bytes=1,
-        ),
-        SubmissionWorkflow.BP,
-    )
+    await _add_bp_file(file_repository, dataset_entity, "test-path")
 
     with _patch_bp_publish() as mocks:
         mocks.upload_bp_metadata.side_effect = SystemException("metadata upload failed")
 
-        response = nbis_client.patch(
-            f"{api_prefix_v1}/publish/{submission_id}", headers={"Authorization": "Bearer oidc-token"}
-        )
+        response = _publish(nbis_client, submission_id, oidc_token=True)
         data = response.json()
         assert response.status_code == 500
         assert "metadata upload failed" in data["detail"]
         mocks.upload_bp_metadata.assert_awaited_once_with(ANY, submission_id, "mock-userid", "oidc-token")
-
-    stored = await submission_repository.get_submission_by_id(submission_id)
-    assert stored is not None
-    assert not stored.is_published
+        assert not _is_published(nbis_client, submission_id)
 
 
 async def test_publish_submission_bp_invalid_metadata_fails_before_registration(
     nbis_client, submission_repository, object_repository, file_repository
 ):
     """BP publish fails on an invalid metadata XML before registering a DOI or uploading anything."""
-    api_prefix_v1 = deployment_config().API_PREFIX_V1
-
-    submission_entity = await _add_bp_submission(submission_repository, bucket="test-bucket", title="bp-title")
+    submission_entity = await _add_bp_submission(submission_repository, title="bp-title")
     submission_id = submission_entity.submission_id
-    object_entity = await _add_bp_object(
+    dataset_entity = await _add_bp_object(
         object_repository, submission_entity, BP_DATASET_OBJECT_TYPE, title="bp-title", description="bp-description"
     )
-    await file_repository.add_file(
-        FileEntity(submission_id=submission_id, object_id=object_entity.object_id, path="test-path", bytes=1),
-        SubmissionWorkflow.BP,
-    )
+    await _add_bp_file(file_repository, dataset_entity, "test-path")
 
     with _patch_bp_publish() as mocks:
         mocks.generate_bp_metadata.side_effect = SystemException("Generated XML document is not valid")
 
-        response = nbis_client.patch(
-            f"{api_prefix_v1}/publish/{submission_id}", headers={"Authorization": "Bearer oidc-token"}
-        )
+        response = _publish(nbis_client, submission_id, oidc_token=True)
         assert response.status_code == 500
 
         mocks.datacite_create_draft_doi.assert_not_awaited()
         mocks.upload_bp_metadata.assert_not_awaited()
-
-    stored = await submission_repository.get_submission_by_id(submission_id)
-    assert stored is not None
-    assert not stored.is_published
+        assert not _is_published(nbis_client, submission_id)
 
 
 async def test_publish_submission_bp_adds_thumbnail_jpgs_before_orphan_check(
     nbis_client, submission_repository, object_repository, file_repository, caplog
 ):
     """BP publish should add landing page thumbnail JPG files to submission but not other unexpected files."""
-    api_prefix_v1 = deployment_config().API_PREFIX_V1
     caplog.set_level("INFO", logger="server")
 
-    submission_entity = await _add_bp_submission(submission_repository, bucket="test-bucket", title="bp-title")
+    submission_entity = await _add_bp_submission(submission_repository, title="bp-title")
     submission_id = submission_entity.submission_id
-    object_entity = await _add_bp_object(
+    dataset_entity = await _add_bp_object(
         object_repository, submission_entity, BP_DATASET_OBJECT_TYPE, title="bp-title", description="bp-description"
     )
 
@@ -627,15 +611,7 @@ async def test_publish_submission_bp_adds_thumbnail_jpgs_before_orphan_check(
     unexpected_path = f"{submission_id}/LANDING_PAGE/unexpected.txt"
 
     # File which represents submission file parsed from XML upload and should exist in the inbox at publish time.
-    await file_repository.add_file(
-        FileEntity(
-            submission_id=submission_id,
-            object_id=object_entity.object_id,
-            path=existing_path,
-            bytes=1,
-        ),
-        SubmissionWorkflow.BP,
-    )
+    await _add_bp_file(file_repository, dataset_entity, existing_path)
 
     with _patch_bp_publish() as mocks:
         # thumbnail_jpg_path should be added to submission files before the orphaned files check
@@ -664,9 +640,7 @@ async def test_publish_submission_bp_adds_thumbnail_jpgs_before_orphan_check(
             path for path in [unencrypted_path, unexpected_path] if path not in {file.path for file in files}
         ]
 
-        response = nbis_client.patch(
-            f"{api_prefix_v1}/publish/{submission_id}", headers={"Authorization": "Bearer oidc-token"}
-        )
+        response = _publish(nbis_client, submission_id, oidc_token=True)
         data = response.json()
 
         assert response.status_code == 400
@@ -740,29 +714,25 @@ def test_get_discovery_url_bp():
 
 
 @pytest.mark.parametrize("is_imported", [False, True])
-async def test_publish_submission_bp_reuses_rems(
-    nbis_client, submission_repository, object_repository, caplog, is_imported
-):
-    """Test that publishing a BP submission reuses the REMS resource and catalogue item of its dataset.
-
-    The catalogue item is renamed to the registration title, unless the dataset was imported.
-    """
-    api_prefix_v1 = deployment_config().API_PREFIX_V1
-
-    submission_entity = await _add_bp_submission(submission_repository, bucket="test-bucket", is_imported=is_imported)
+async def test_publish_submission_bp_reuses_rems(nbis_client, submission_repository, caplog, is_imported):
+    """Test that publishing a BP submission reuses the REMS resource and catalogue item of its dataset."""
+    submission_entity = await _add_bp_submission(submission_repository, is_imported=is_imported)
     submission_id = submission_entity.submission_id
-    await _add_bp_object(object_repository, submission_entity, BP_DATASET_OBJECT_TYPE)
 
-    with mock_rems_existing_catalogue_item(submission_id) as (resource, item), _patch_bp_publish() as mocks:
-        response = nbis_client.patch(
-            f"{api_prefix_v1}/publish/{submission_id}?no_files=true", headers={"Authorization": "Bearer oidc-token"}
-        )
+    with (
+        mock_rems_existing_catalogue_item(
+            submission_id,
+            title=_EXISTING_CATALOGUE_ITEM_TITLE,
+            discovery_url=_EXISTING_CATALOGUE_ITEM_INFO_URL,
+        ) as (resource, item),
+        _patch_bp_publish() as mocks,
+    ):
+        response = _publish(nbis_client, submission_id, no_files=True, oidc_token=True)
         assert response.status_code == 200, response.text
         mocks.rems_create_resource.assert_not_awaited()
         mocks.rems_create_catalogue_item.assert_not_awaited()
 
-        response = nbis_client.get(f"{api_prefix_v1}/submissions/{submission_id}/registrations")
-        registration = Registration.model_validate(response.json())
+        registration = _get_registration(nbis_client, submission_id)
         assert registration.remsResourceId == str(resource.id)
         assert registration.remsCatalogueId == str(item.id)
 
@@ -770,31 +740,156 @@ async def test_publish_submission_bp_reuses_rems(
             mocks.rems_edit_catalogue_item.assert_not_awaited()
         else:
             mocks.rems_edit_catalogue_item.assert_awaited_once_with(
-                item.id, registration.title, TEST_DISCOVERY_URL.format(id=submission_id)
+                item,
+                {
+                    "en": RemsCatalogueItemLocalization(
+                        title=registration.title, discovery_url=TEST_DISCOVERY_URL.format(id=submission_id)
+                    )
+                },
             )
 
     assert f"keeping its licenses [{MOCK_REMS_DEFAULT_LICENSE_ID}]" in caplog.text
 
 
-async def test_publish_submission_bp_rems_catalogue_item_without_resource(
-    nbis_client, submission_repository, object_repository
-):
-    """Test that a REMS catalogue item without an active resource fails publishing before a resource is created."""
-    api_prefix_v1 = deployment_config().API_PREFIX_V1
-
-    submission_entity = await _add_bp_submission(submission_repository, bucket="test-bucket")
+async def test_publish_submission_bp_import_set_rems_catalogue_info_url(nbis_client, submission_repository):
+    """Test that publishing an imported BP dataset sets the info URL of its REMS catalogue item if it has none."""
+    submission_entity = await _add_bp_submission(submission_repository, is_imported=True)
     submission_id = submission_entity.submission_id
-    await _add_bp_object(object_repository, submission_entity, BP_DATASET_OBJECT_TYPE)
 
     with (
-        mock_rems_existing_catalogue_item(submission_id) as (resource, item),
+        mock_rems_existing_catalogue_item(submission_id, title=_EXISTING_CATALOGUE_ITEM_TITLE, discovery_url=None) as (
+            _,
+            item,
+        ),
+        _patch_bp_publish() as mocks,
+    ):
+        response = _publish(nbis_client, submission_id, no_files=True, oidc_token=True)
+        assert response.status_code == 200, response.text
+
+        mocks.rems_edit_catalogue_item.assert_awaited_once_with(
+            item,
+            {
+                "en": RemsCatalogueItemLocalization(
+                    title=_EXISTING_CATALOGUE_ITEM_TITLE, discovery_url=TEST_DISCOVERY_URL.format(id=submission_id)
+                )
+            },
+        )
+
+
+async def test_publish_submission_bp_import_create_rems_catalogue_item(nbis_client, submission_repository):
+    """Test that publishing an imported BP dataset without a REMS catalogue item creates one in English."""
+    submission_entity = await _add_bp_submission(submission_repository, is_imported=True)
+    submission_id = submission_entity.submission_id
+
+    with _patch_bp_publish() as mocks:
+        response = _publish(nbis_client, submission_id, no_files=True, oidc_token=True)
+        assert response.status_code == 200, response.text
+
+        registration = _get_registration(nbis_client, submission_id)
+        mocks.rems_create_catalogue_item.assert_awaited_once_with(
+            REMS.organizationId,
+            REMS.workflowId,
+            int(registration.remsResourceId),
+            registration.title,
+            TEST_DISCOVERY_URL.format(id=submission_id),
+        )
+        mocks.rems_edit_catalogue_item.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    "info_urls,edited_languages",
+    [
+        ({"fi": None}, ["fi"]),
+        ({"fi": None, "sv": None}, ["fi", "sv"]),
+        ({"en": None, "fi": _EXISTING_CATALOGUE_ITEM_INFO_URL}, ["en"]),
+        ({"en": _EXISTING_CATALOGUE_ITEM_INFO_URL, "fi": _EXISTING_CATALOGUE_ITEM_INFO_URL}, []),
+        ({}, ["en"]),
+    ],
+)
+async def test_publish_submission_bp_import_rems_catalogue_item_localisations(
+    nbis_client, submission_repository, info_urls, edited_languages
+):
+    """Test that publishing an imported BP dataset keeps the existing localisations of its REMS catalogue item.
+
+    An English localisation is added if the item has none, and the info URL is set in each language without one.
+    The item is not edited if every language has an info URL.
+    """
+    submission_entity = await _add_bp_submission(submission_repository, is_imported=True)
+    submission_id = submission_entity.submission_id
+    discovery_url = TEST_DISCOVERY_URL.format(id=submission_id)
+
+    localizations = {
+        language: RemsCatalogueItemLocalization(title=f"Title {language}", discovery_url=info_url)
+        for language, info_url in info_urls.items()
+    }
+    with (
+        mock_rems_existing_catalogue_item(
+            submission_id, title="unused", discovery_url=None, localizations=localizations
+        ) as (_, item),
+        _patch_bp_publish() as mocks,
+    ):
+        response = _publish(nbis_client, submission_id, no_files=True, oidc_token=True)
+        assert response.status_code == 200, response.text
+
+        registration_title = _get_registration(nbis_client, submission_id).title
+        if edited_languages:
+            mocks.rems_edit_catalogue_item.assert_awaited_once_with(
+                item,
+                {
+                    language: RemsCatalogueItemLocalization(
+                        title=f"Title {language}" if language in info_urls else registration_title,
+                        discovery_url=discovery_url,
+                    )
+                    for language in edited_languages
+                },
+            )
+        else:
+            mocks.rems_edit_catalogue_item.assert_not_awaited()
+
+
+@pytest.mark.parametrize("is_info_url_different", [True, False])
+async def test_publish_submission_bp_update_new_rems_catalogue_item_info_url(
+    nbis_client, submission_repository, is_info_url_different
+):
+    """Test that publishing a new BP submission updates the info URL of its REMS catalogue item if it has changed."""
+    submission_entity = await _add_bp_submission(submission_repository)
+    submission_id = submission_entity.submission_id
+
+    title = f"{submission_entity.name} ({REMS.organizationId}, {submission_id})"
+    discovery_url = TEST_DISCOVERY_URL.format(id=submission_id)
+    item_info_url = _EXISTING_CATALOGUE_ITEM_INFO_URL if is_info_url_different else discovery_url
+    with (
+        mock_rems_existing_catalogue_item(submission_id, title=title, discovery_url=item_info_url) as (_, item),
+        _patch_bp_publish() as mocks,
+    ):
+        response = _publish(nbis_client, submission_id, no_files=True, oidc_token=True)
+        assert response.status_code == 200, response.text
+        assert _get_registration(nbis_client, submission_id).title == title
+
+        if is_info_url_different:
+            mocks.rems_edit_catalogue_item.assert_awaited_once_with(
+                item, {"en": RemsCatalogueItemLocalization(title=title, discovery_url=discovery_url)}
+            )
+        else:
+            mocks.rems_edit_catalogue_item.assert_not_awaited()
+
+
+async def test_publish_submission_bp_rems_catalogue_item_without_resource(nbis_client, submission_repository):
+    """Test that a REMS catalogue item without an active resource fails publishing before a resource is created."""
+    submission_entity = await _add_bp_submission(submission_repository)
+    submission_id = submission_entity.submission_id
+
+    with (
+        mock_rems_existing_catalogue_item(
+            submission_id,
+            title=_EXISTING_CATALOGUE_ITEM_TITLE,
+            discovery_url=_EXISTING_CATALOGUE_ITEM_INFO_URL,
+        ) as (resource, item),
         # The catalogue item's resource is no longer active, so REMS lists no resource.
         patch.object(RemsServiceHandler, "get_resources", new=AsyncMock(return_value=[])),
         _patch_bp_publish() as mocks,
     ):
-        response = nbis_client.patch(
-            f"{api_prefix_v1}/publish/{submission_id}?no_files=true", headers={"Authorization": "Bearer oidc-token"}
-        )
+        response = _publish(nbis_client, submission_id, no_files=True, oidc_token=True)
         assert response.status_code == 400, response.text
         assert response.json()["errors"] == [
             f"REMS catalogue item '{item.id}' belongs to REMS resource '{resource.id}', not to an active REMS resource."
@@ -888,35 +983,32 @@ async def _fail_and_retry_publish(
     client: TestClient,
     submission_id: str,
     target: str,
-    params: dict[str, str] | None = None,
+    *,
+    no_files: bool = False,
+    oidc_token: bool = False,
     before_retry: Callable[[], Awaitable[None]] | None = None,
-    **kwargs: Any,
 ) -> Registration:
     """Publish the submission with the target failing, check that it is left unpublished, and publish it again.
 
     :param client: The test client.
     :param submission_id: The submission id.
     :param target: The import path of the function that fails on the first publish.
-    :param params: The query parameters of the publish requests.
+    :param no_files: Whether to publish without checking the data files.
+    :param oidc_token: Whether to send the user's OIDC token.
     :param before_retry: Called after the failed publish, for example to change the submission.
-    :param kwargs: The keyword arguments of every request, for example the headers.
     :returns: The registration after the second publish.
     """
-    api_prefix_v1 = deployment_config().API_PREFIX_V1
-    publish_url = f"{api_prefix_v1}/publish/{submission_id}"
-
     # The step fails on the first publish, and the request transaction is rolled back.
     with patch(target, new=AsyncMock(side_effect=SystemException("Unavailable"))):
-        assert client.patch(publish_url, params=params, **kwargs).status_code == 500
-    assert client.get(f"{api_prefix_v1}/submissions/{submission_id}", **kwargs).json()["published"] is False
+        assert _publish(client, submission_id, no_files=no_files, oidc_token=oidc_token).status_code == 500
+    assert not _is_published(client, submission_id)
 
     if before_retry is not None:
         await before_retry()
 
     # The retry resumes from the stored registration.
-    assert client.patch(publish_url, params=params, **kwargs).status_code == 200
-    response = client.get(f"{api_prefix_v1}/submissions/{submission_id}/registrations", **kwargs)
-    return Registration.model_validate(response.json())
+    assert _publish(client, submission_id, no_files=no_files, oidc_token=oidc_token).status_code == 200
+    return _get_registration(client, submission_id)
 
 
 @pytest.mark.parametrize(
@@ -942,7 +1034,7 @@ async def test_publish_submission_sd_retry(monkeypatch, tmp_path, submission_rep
             submission_id = await _add_sd_submission(submission_repository)
 
         with _patch_sd_publish(doi) as mocks:
-            registration = await _fail_and_retry_publish(client, submission_id, target, params={"no_files": "true"})
+            registration = await _fail_and_retry_publish(client, submission_id, target, no_files=True)
 
     mocks.pid_create_draft_doi.assert_awaited_once()
     mocks.metax_create_draft_dataset.assert_awaited_once()
@@ -977,9 +1069,7 @@ async def test_publish_submission_bp_retry(monkeypatch, tmp_path, submission_rep
             submission_id = submission_entity.submission_id
 
         with _patch_bp_publish(doi) as mocks:
-            registration = await _fail_and_retry_publish(
-                client, submission_id, target, headers={"Authorization": "Bearer oidc-token"}
-            )
+            registration = await _fail_and_retry_publish(client, submission_id, target, oidc_token=True)
 
             mocks.datacite_create_draft_doi.assert_awaited_once()
             mocks.rems_create_resource.assert_awaited_once()
@@ -988,6 +1078,43 @@ async def test_publish_submission_bp_retry(monkeypatch, tmp_path, submission_rep
     assert registration.doi == doi
     assert registration.dataciteUrl is not None
     assert registration.remsUrl is not None
+
+
+async def test_publish_submission_bp_imported_rems_info_url_retry(monkeypatch, tmp_path, submission_repository):
+    """Test that a retried publish of an imported BP dataset sets the info URL of its REMS catalogue item.
+
+    The first publish stores the catalogue item id and fails to set the info URL, so the retry gets the
+    catalogue item by its stored id rather than finding it.
+    """
+    async with _transactional_client(monkeypatch, tmp_path, Deployment.NBIS) as (client, session_factory):
+        async with _committed_session(session_factory):
+            submission_entity = await _add_bp_submission(submission_repository, is_imported=True)
+            submission_id = submission_entity.submission_id
+
+        with (
+            mock_rems_existing_catalogue_item(
+                submission_id, title=_EXISTING_CATALOGUE_ITEM_TITLE, discovery_url=None
+            ) as (_, item),
+            _patch_bp_publish() as mocks,
+        ):
+            registration = await _fail_and_retry_publish(
+                client,
+                submission_id,
+                "metadata_backend.services.rems_service.RemsServiceHandler.edit_catalogue_item",
+                oidc_token=True,
+            )
+
+            # The failing edit replaced the mock on the first publish, so only the retry's edit is recorded.
+            mocks.rems_edit_catalogue_item.assert_awaited_once_with(
+                item,
+                {
+                    "en": RemsCatalogueItemLocalization(
+                        title=_EXISTING_CATALOGUE_ITEM_TITLE, discovery_url=TEST_DISCOVERY_URL.format(id=submission_id)
+                    )
+                },
+            )
+
+    assert registration.remsCatalogueId == str(item.id)
 
 
 async def test_publish_submission_sd_retry_changed(monkeypatch, tmp_path, submission_repository):
@@ -1012,7 +1139,7 @@ async def test_publish_submission_sd_retry_changed(monkeypatch, tmp_path, submis
                 client,
                 submission_id,
                 "metadata_backend.services.metax_service.MetaxServiceHandler.publish_dataset",
-                params={"no_files": "true"},
+                no_files=True,
                 before_retry=before_retry,
             )
 
@@ -1026,8 +1153,11 @@ async def test_publish_submission_sd_retry_changed(monkeypatch, tmp_path, submis
     assert (doi_registration.title, doi_registration.description) == ("New title", "New description")
 
     mocks.rems_create_catalogue_item.assert_awaited_once()
-    mocks.rems_edit_catalogue_item.assert_awaited_once_with(
-        int(registration.remsCatalogueId), "New title", TEST_DISCOVERY_URL.format(id="metax_id")
-    )
+    mocks.rems_edit_catalogue_item.assert_awaited_once()
+    item, localizations = mocks.rems_edit_catalogue_item.await_args.args
+    assert item.id == int(registration.remsCatalogueId)
+    assert localizations == {
+        "en": RemsCatalogueItemLocalization(title="New title", discovery_url=TEST_DISCOVERY_URL.format(id="metax_id"))
+    }
     assert registration.title == "New title"
     assert registration.description == "New description"

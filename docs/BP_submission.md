@@ -99,6 +99,8 @@ The metadata version is read from the `METADATA_STANDARD` element of the dataset
 submission must follow the XML schemas of that version. The metadata standard version 3.0 adds three new metadata
 files: `annotator.xml`, `annotation_task.xml` and `ontology.xml`.
 
+The `landing_page.xml` is required only if the dataset's policy is clinical (`type_of_dataset` in `policy.xml`).
+
 Example for the metadata standard version 2.0:
 
 ```bash

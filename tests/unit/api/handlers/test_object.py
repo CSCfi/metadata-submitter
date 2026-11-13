@@ -1148,6 +1148,33 @@ async def test_missing_object_type_submission_bp(nbis_client):
 
 
 @pytest.mark.parametrize("version", list(BigpictureVersion))
+async def test_missing_landing_page_clinical_submission_bp(nbis_client, version):
+    """Test that a new Bigpicture submission with a clinical policy must have a landing page."""
+
+    api_prefix_v1 = deployment_config().API_PREFIX_V1
+
+    def processor_callback(processor: XmlDocumentsProcessor):
+        # Remove the dataset's reference to the landing page (version 3.0).
+        for dataset_processor in processor.get_xml_object_processors(BP_DATASET_SCHEMA, BP_DATASET_PATH):
+            for elem in dataset_processor.xml.getroot().findall(".//LANDING_PAGE_REF"):
+                elem.getparent().remove(elem)
+
+    # The test policy is clinical.
+    _, files = bp_submission_documents(is_datacite=True, processor_callback=processor_callback, version=version)
+    del files["landing_page.xml"]
+
+    file_data = prepare_file_data_bp(files)
+    with patch_get_user_projects, patch_verify_user_project, patch_verify_authorization:
+        response = nbis_client.post(f"{api_prefix_v1}/submit", files=file_data)
+        assert response.status_code == 400
+        problem_json = response.json()
+        assert problem_json["detail"] == "User error"
+        assert problem_json["errors"] == [
+            "A dataset with a clinical policy must have a 'landing_page' metadata object."
+        ]
+
+
+@pytest.mark.parametrize("version", list(BigpictureVersion))
 async def test_mandatory_constraint_7_submission_bp(nbis_client, version):
     """Test no observation for observer (mandatory constraint 7) in Bigpicture submissions."""
 

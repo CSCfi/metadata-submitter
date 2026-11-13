@@ -51,6 +51,9 @@ class BigpictureObjectImportService(BigpictureObjectSubmissionService):
     the paths of the old ones, which they replace in SDA after the submission is published.
     """
 
+    # An imported dataset need not have a landing page, whether its policy is clinical or not.
+    _require_clinical_landing_page = False
+
     def __init__(
         self,
         project_service: ProjectService,

@@ -63,9 +63,9 @@ async def test_upload_bp_metadata_xmls_v2(with_optional):
             '<SLIDE alias="1"><CREATED_FROM_REF alias="1"/><STAINING_INFORMATION_REF alias="1"/></SLIDE>'
         ],
     }
-    # Annotation and observer objects are optional.
+    # Annotation, observer and landing page objects are optional.
     if not with_optional:
-        del object_docs["annotation"], object_docs["observer"]
+        del object_docs["annotation"], object_docs["observer"], object_docs["landing_page"]
 
     def get_documents(_submission_id: str, object_type: str | tuple[str, ...]):
         async def _iter():
@@ -110,7 +110,11 @@ async def test_upload_bp_metadata_xmls_v2(with_optional):
         "DATASET_123/LANDING_PAGE/landing_page.xml.c4gh",
     }
     if not with_optional:
-        expected_keys -= {"DATASET_123/METADATA/annotation.xml.c4gh", "DATASET_123/METADATA/observer.xml.c4gh"}
+        expected_keys -= {
+            "DATASET_123/METADATA/annotation.xml.c4gh",
+            "DATASET_123/METADATA/observer.xml.c4gh",
+            "DATASET_123/LANDING_PAGE/landing_page.xml.c4gh",
+        }
 
     assert file_provider._add_file_to_bucket.await_count == len(expected_keys)
 
@@ -131,11 +135,12 @@ async def test_upload_bp_metadata_xmls_v2(with_optional):
     assert '<BIOLOGICAL_BEING alias="1"/>' in uploaded_by_key["DATASET_123/METADATA/sample.xml.c4gh"]
     assert '<SLIDE alias="1">' in uploaded_by_key["DATASET_123/METADATA/sample.xml.c4gh"]
 
-    landing_page_xml = uploaded_by_key["DATASET_123/LANDING_PAGE/landing_page.xml.c4gh"]
-    assert "<LANDING_PAGE_SET>" in landing_page_xml
-    assert "<REMS_ACCESS_LINK>https://rems.test</REMS_ACCESS_LINK>" in landing_page_xml
-    assert "<TAG>doi</TAG>" in landing_page_xml
-    assert "<VALUE>https://doi.test</VALUE>" in landing_page_xml
+    if with_optional:
+        landing_page_xml = uploaded_by_key["DATASET_123/LANDING_PAGE/landing_page.xml.c4gh"]
+        assert "<LANDING_PAGE_SET>" in landing_page_xml
+        assert "<REMS_ACCESS_LINK>https://rems.test</REMS_ACCESS_LINK>" in landing_page_xml
+        assert "<TAG>doi</TAG>" in landing_page_xml
+        assert "<VALUE>https://doi.test</VALUE>" in landing_page_xml
 
 
 async def test_upload_bp_metadata_xmls_v3():
