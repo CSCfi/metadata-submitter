@@ -198,7 +198,7 @@ scan-image:
 1-upload-jfrog-image-dev:
   extends: .upload-job
   secrets:
-    JF_CONFIG:
+    JF_IDENTITY_TOKEN:
       vault: gitlab-ci-upload-runner/unprotected/JF_IDENTITY_TOKEN@secret
       token: $VAULT_ID_TOKEN
       file: false
