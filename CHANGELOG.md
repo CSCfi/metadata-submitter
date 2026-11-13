@@ -7,13 +7,17 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ## [Unreleased]
 
+## [2026.11.0] - 2026-11-13
+
 ### Changed
 
+- (users) A Bigpicture landing page is now required only for new submissions with a clinical policy. Non-clinical submissions and imported datasets no longer need one.
 - separate CI job `1-upload-jfrog-image` into two jobs, where one runs in the tag pipeline and the other in the MR pipeline. Use variable `JF_IDENTITY_TOKEN` instead of `JF_CONFIG` in the job that runs in the unprotected MR pipeline.
 - get Gitlab CI secrets from Vault
 
 ### Fixed
 
+- (users) Bigpicture datasets whose REMS catalogue item has no info URL can now be imported and published.
 - Make OIDC DPoP safe for overlapping logins. Pass idpyoidc an httpc that adds the DPoP proofs of the login in progress, held in a ContextVar, instead of patching requests.Session.request for the whole process. Each login has its own DPoP handler and nonce.
 
 ### Security
@@ -1094,7 +1098,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 - Files are also validated during submission process.
 
 
-[Unreleased]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.10.2...HEAD
+[Unreleased]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.11.0...HEAD
+[2026.11.0]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.10.2...2026.11.0
 [2026.10.2]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.10.1...2026.10.2
 [2026.10.1]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.10.0...2026.10.1
 [2026.10.0]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.9.1...2026.10.0
