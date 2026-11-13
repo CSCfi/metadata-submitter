@@ -157,6 +157,24 @@ def bp_objects_with_dataset_id(
     ]
 
 
+def bp_objects_without_landing_page(objects: list[ObjectSubmission]) -> list[ObjectSubmission]:
+    """Remove the landing page XML, and the dataset's reference to it (version 3.0), from BP XML test files.
+
+    :param objects: The BP XML test files.
+    :return: ObjectSubmission list without the landing page.
+    """
+    return [
+        ObjectSubmission(
+            filename=o.filename,
+            document=re.sub(r"\s*<LANDING_PAGE_REF [^>]*/>", "", o.document)
+            if o.filename == "dataset.xml"
+            else o.document,
+        )
+        for o in objects
+        if o.filename != "landing_page.xml"
+    ]
+
+
 def _bp_submission_documents(
     *,
     object_names: BigpictureObjectNames | None = None,

@@ -258,10 +258,54 @@ async def test_edit_catalogue_item(secret_env):
     assert item.localizations == {"en": RemsCatalogueItemLocalization(title="old", discovery_url=discovery_url)}
 
     title = f"test_{uuid.uuid4()}"
-    await handler.edit_catalogue_item(item_id, title, discovery_url)
+    await handler.edit_catalogue_item(
+        item, {"en": RemsCatalogueItemLocalization(title=title, discovery_url=discovery_url)}
+    )
 
     item = await handler.get_catalogue_item(item_id)
     assert item.localizations == {"en": RemsCatalogueItemLocalization(title=title, discovery_url=discovery_url)}
+
+
+async def test_edit_catalogue_item_keeps_categories_and_languages(secret_env):
+    """Test that editing a REMS catalogue item keeps its categories and its other languages.
+
+    The test service's REMS version has no catalogue item children, so they are not tested here.
+    """
+
+    handler = RemsServiceHandler()
+
+    doi = create_doi()
+    resource_id = await handler.create_resource(organization_id="nbn", license_ids=[1], resid=doi)
+    discovery_url = discovery_config().DISCOVERY_URL.format(id=doi)
+    item_id = await handler.create_catalogue_item(
+        organization_id="nbn", workflow_id=1, resource_id=resource_id, title="old", discovery_url=discovery_url
+    )
+
+    # Add the item to the test data category "Ordinary".
+    category_id = 1
+    response = await handler._request(
+        method="PUT",
+        path="/catalogue-items/edit",
+        json_data={
+            "id": item_id,
+            "localizations": {"en": {"title": "old", "infourl": discovery_url}},
+            "categories": [{"category/id": category_id}],
+        },
+    )
+    assert response["success"], response
+    item = await handler.get_catalogue_item(item_id)
+    assert [category.id for category in item.categories] == [category_id]
+
+    await handler.edit_catalogue_item(
+        item, {"fi": RemsCatalogueItemLocalization(title="uusi", discovery_url=discovery_url)}
+    )
+
+    item = await handler.get_catalogue_item(item_id)
+    assert [category.id for category in item.categories] == [category_id]
+    assert item.localizations == {
+        "en": RemsCatalogueItemLocalization(title="old", discovery_url=discovery_url),
+        "fi": RemsCatalogueItemLocalization(title="uusi", discovery_url=discovery_url),
+    }
 
 
 async def test_get_catalogue_items(secret_env):

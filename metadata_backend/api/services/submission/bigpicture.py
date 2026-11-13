@@ -28,6 +28,8 @@ from ...processors.xml.bigpicture import (
     BP_IMAGE_OBJECT_TYPE,
     BP_IMAGE_PATH,
     BP_IMAGE_SCHEMA,
+    BP_LANDING_PAGE_OBJECT_TYPE,
+    BP_LANDING_PAGE_SCHEMA,
     BP_OBSERVATION_OBJECT_TYPE,
     BP_OBSERVATION_PATH,
     BP_OBSERVATION_SCHEMA,
@@ -85,7 +87,7 @@ DATACITE_OBJECT_TITLE = "DataCite"
 DATACITE_OBJECT_DESCRIPTION = "DataCite"
 
 
-def validate_bigpicture_documents(processor: XmlDocumentsProcessor) -> None:
+def validate_bigpicture_documents(processor: XmlDocumentsProcessor, *, require_clinical_landing_page: bool) -> None:
     """
     Validate Bigpicture XML documents beyond the XML Schema and reference validation.
 
@@ -94,6 +96,7 @@ def validate_bigpicture_documents(processor: XmlDocumentsProcessor) -> None:
     The validation may change the XMLs to make them valid.
 
     :param processor: The XML documents processor.
+    :param require_clinical_landing_page: Whether a dataset with a clinical policy must have a landing page.
     :raises UserException: if the documents do not pass validation.
     """
 
@@ -109,7 +112,9 @@ def validate_bigpicture_documents(processor: XmlDocumentsProcessor) -> None:
     version = get_bp_version_from_dataset(dataset.root_element)
 
     # Check policy type.
-    is_clinical_policy(policy)
+    if is_clinical_policy(policy) and require_clinical_landing_page:
+        # A clinical dataset must have a landing page, unless it is imported.
+        _check_clinical_landing_page(processor)
 
     # Normalise attribute tags and values.
     normalise_policy_attributes(policy, version)
@@ -119,6 +124,19 @@ def validate_bigpicture_documents(processor: XmlDocumentsProcessor) -> None:
 
     # Check that the REMS license can be created from the policy.
     create_policy_license(policy, version)
+
+
+def _check_clinical_landing_page(processor: XmlDocumentsProcessor) -> None:
+    """
+    Check that the submission has a landing page metadata object.
+
+    :param processor: The XML documents processor.
+    :raises UserException: If there is no landing page metadata object.
+    """
+    if not processor.get_object_identifiers(BP_LANDING_PAGE_SCHEMA):
+        raise UserException(
+            f"A dataset with a clinical policy must have a '{BP_LANDING_PAGE_OBJECT_TYPE}' metadata object."
+        )
 
 
 def check_mandatory_constraints(processor: XmlDocumentsProcessor) -> None:
@@ -280,6 +298,9 @@ class BigpictureObjectSubmissionService(ObjectSubmissionService):
     # The DataCite XML is not processed with the Bigpicture XMLs.
     _separately_managed_object_types = frozenset({DATACITE_OBJECT_TYPE})
 
+    # Whether a dataset with a clinical policy must have a landing page.
+    _require_clinical_landing_page = True
+
     def __init__(
         self,
         project_service: ProjectService,
@@ -400,7 +421,9 @@ class BigpictureObjectSubmissionService(ObjectSubmissionService):
         The validation may change the XMLs to make the valid.
         """
 
-        validate_bigpicture_documents(self._processor)
+        validate_bigpicture_documents(
+            self._processor, require_clinical_landing_page=self._require_clinical_landing_page
+        )
 
     @override
     def prepare_create_submission(self, project_id: str, submission_id: str) -> Submission:

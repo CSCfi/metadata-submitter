@@ -10,7 +10,7 @@ import pytest
 from metadata_backend.api.exceptions import UserException
 from metadata_backend.api.models.models import IngestStatus
 from metadata_backend.api.models.sda import DatasetFile, DatasetStatus
-from metadata_backend.api.processors.xml.bigpicture import BP_DATASET_OBJECT_TYPE
+from metadata_backend.api.processors.xml.bigpicture import BP_DATASET_OBJECT_TYPE, BigpictureVersion
 from metadata_backend.api.services.accession import generate_bp_accession_prefix
 from metadata_backend.api.services.project import NbisProjectService
 from metadata_backend.api.services.submission.bigpicture_import import BigpictureObjectImportService
@@ -18,17 +18,21 @@ from metadata_backend.api.services.submission.submission import ObjectSubmission
 from metadata_backend.services.admin_service import AdminServiceHandler
 from tests.utils import (
     BP_ANNOTATION_1_FILE,
+    BP_ANNOTATION_2_FILE,
+    BP_ANNOTATION_TASK_FILE,
     BP_IMAGE_1_FILE,
     BP_IMAGE_2_FILE,
+    BP_ONTOLOGY_FILE,
     bp_objects,
     bp_objects_with_dataset_id,
+    bp_objects_without_landing_page,
 )
 
 _SDA_ROOT = "ROOT"
 
 
 # The metadata version 2.0 XMLs in METADATA/ in the SDA dataset. The import requires the SDA dataset
-# to have the same metadata XMLs as it has. Only landing page XML may be added.
+# to have the same metadata XMLs as the import, except that the import may add a landing page XML.
 _SDA_METADATA_FILES = (
     "dataset.xml.c4gh",
     "policy.xml.c4gh",
@@ -39,6 +43,17 @@ _SDA_METADATA_FILES = (
     "sample.xml.c4gh",
     "staining.xml.c4gh",
 )
+
+# The metadata XMLs of each version in the SDA dataset. Version 3.0 adds three.
+_SDA_METADATA_FILES_BY_VERSION = {
+    BigpictureVersion.V2_0: _SDA_METADATA_FILES,
+    BigpictureVersion.V3_0: (
+        *_SDA_METADATA_FILES,
+        "annotator.xml.c4gh",
+        "ontology.xml.c4gh",
+        "annotation_task.xml.c4gh",
+    ),
+}
 
 
 _DATASET_ID = f"{generate_bp_accession_prefix(BP_DATASET_OBJECT_TYPE)}-abcdef-ghjkmn"
@@ -51,20 +66,28 @@ def _sda_file(accession_id: str, path: str) -> DatasetFile:
     return DatasetFile(id=f"file-{accession_id}", accessionID=accession_id, path=path)
 
 
-def _sda_data_files() -> list[DatasetFile]:
-    return [
+def _sda_data_files(version: BigpictureVersion = BigpictureVersion.V2_0) -> list[DatasetFile]:
+    """The data files named in the test XMLs of the version."""
+    files = [
         _sda_file("image-1", f"{_SDA_ROOT}/{BP_IMAGE_1_FILE}.c4gh"),
         _sda_file("image-2", f"{_SDA_ROOT}/{BP_IMAGE_2_FILE}.c4gh"),
         _sda_file("annotation-1", f"{_SDA_ROOT}/{BP_ANNOTATION_1_FILE}.c4gh"),
     ]
+    if version == BigpictureVersion.V3_0:
+        files += [
+            _sda_file("annotation-2", f"{_SDA_ROOT}/{BP_ANNOTATION_2_FILE}.c4gh"),
+            _sda_file("annotation-task-1", f"{_SDA_ROOT}/{BP_ANNOTATION_TASK_FILE}.c4gh"),
+            _sda_file("ontology-1", f"{_SDA_ROOT}/{BP_ONTOLOGY_FILE}.c4gh"),
+        ]
+    return files
 
 
-def _sda_metadata_files(names: Sequence[str] = _SDA_METADATA_FILES) -> list[DatasetFile]:
+def _sda_metadata_files(names: Sequence[str]) -> list[DatasetFile]:
     return [_sda_file(f"old-{name.removesuffix('.xml.c4gh')}-xml", f"{_SDA_ROOT}/METADATA/{name}") for name in names]
 
 
-def _sda_files() -> list[DatasetFile]:
-    return [*_sda_data_files(), *_sda_metadata_files()]
+def _sda_files(version: BigpictureVersion = BigpictureVersion.V2_0) -> list[DatasetFile]:
+    return [*_sda_data_files(version), *_sda_metadata_files(_SDA_METADATA_FILES_BY_VERSION[version])]
 
 
 def _replace_in_xml(objects: list[ObjectSubmission], filename: str, old: str, new: str) -> list[ObjectSubmission]:
@@ -98,7 +121,7 @@ async def test_import(import_service, admin, submission_service, object_service,
     data_files = _sda_data_files()
     thumbnail = _sda_file("thumbnail-1", f"{_SDA_ROOT}/LANDING_PAGE/THUMBNAILS/thumb.jpg.c4gh")
     # The dataset has no landing page, which the import adds.
-    admin.list_ingested_files.return_value = [*data_files, *_sda_metadata_files(), thumbnail]
+    admin.list_ingested_files.return_value = [*data_files, *_sda_metadata_files(_SDA_METADATA_FILES), thumbnail]
 
     submission = await import_service().create(_USER, _USER, bp_objects_with_dataset_id(_DATASET_ID))
 
@@ -134,6 +157,17 @@ async def test_import_with_landing_page(import_service, admin, file_service):
     # The old landing page XML is not saved as a submission file: publishing writes a new one that replaces it.
     paths = {f.path async for f in file_service.get_files(submission_id=_DATASET_ID)}
     assert landing_page.path not in paths
+
+
+@pytest.mark.parametrize("version", list(BigpictureVersion))
+async def test_import_without_landing_page(import_service, admin, version):
+    """An imported dataset does not require a landing page, even if its policy is clinical."""
+    # The test policy is clinical. The version 3.0 dataset references the landing page, so the reference
+    # is removed too.
+    objects = bp_objects_without_landing_page(bp_objects_with_dataset_id(_DATASET_ID, version))
+    admin.list_ingested_files.return_value = _sda_files(version)
+    submission = await import_service().create(_USER, _USER, objects)
+    assert submission.submissionId == _DATASET_ID
 
 
 async def test_import_requires_shared_root(import_service, admin):
@@ -218,7 +252,7 @@ async def test_import_file_mismatch(import_service, admin):
     admin.list_ingested_files.return_value = [
         _sda_file("image-1", f"{_SDA_ROOT}/test.dcm.c4gh"),
         *_sda_data_files()[1:],
-        *_sda_metadata_files(),
+        *_sda_metadata_files(_SDA_METADATA_FILES),
     ]
     with pytest.raises(UserException) as e:
         await import_service().create(_USER, _USER, bp_objects_with_dataset_id(_DATASET_ID))

@@ -157,9 +157,19 @@ async def _mock_rems_create_catalogue_item(
 
 @contextmanager
 def mock_rems_existing_catalogue_item(
-    resid: str, resource_id: int = 101, catalogue_id: int = 102
+    resid: str,
+    *,
+    title: str,
+    discovery_url: str | None,
+    localizations: dict[str, RemsCatalogueItemLocalization] | None = None,
+    resource_id: int = 101,
+    catalogue_id: int = 102,
 ) -> Iterator[tuple[RemsResource, RemsCatalogueItem]]:
-    """Register a REMS resource and catalogue item of the default organisation, workflow and license."""
+    """Register a REMS resource and catalogue item of the default organisation, workflow and license.
+
+    The catalogue item has the given localizations, or else an English one with the given title, and
+    the given info URL or none.
+    """
     organization = _mock_rems_organisations[MOCK_REMS_DEFAULT_ORGANISATION_ID]
     resource = RemsResource(
         id=resource_id,
@@ -175,7 +185,9 @@ def mock_rems_existing_catalogue_item(
         resid=resid,
         wfid=MOCK_REMS_DEFAULT_WORKFLOW_ID,
         organization=organization,
-        localizations={"en": RemsCatalogueItemLocalization(title="old title", discovery_url="https://old.test")},
+        localizations=localizations
+        if localizations is not None
+        else {"en": RemsCatalogueItemLocalization(title=title, discovery_url=discovery_url)},
         archived=False,
         enabled=True,
         expired=False,

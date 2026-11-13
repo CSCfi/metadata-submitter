@@ -1,9 +1,13 @@
 """Tests for finding a REMS license to reuse."""
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from typing_extensions import override
 
 from metadata_backend.api.models.rems import (
+    RemsCatalogueItem,
+    RemsCatalogueItemLocalization,
     RemsLicense,
     RemsLicenseLocalization,
     RemsOrganization,
@@ -177,3 +181,66 @@ async def test_get_or_create_license_cache_refresh():
     assert await rems.get_or_create_license(ORG_ID, _localisations()) == LICENSE_ID
     assert rems.gets == 2
     assert rems.creates == 1
+
+
+def _catalogue_item_response(**fields) -> dict:
+    return {
+        "id": 1,
+        "resource-id": 2,
+        "resid": "resid",
+        "wfid": 3,
+        "organization": {
+            "organization/id": ORG_ID,
+            "organization/name": {"en": "name"},
+            "organization/short-name": {"en": "short"},
+        },
+        "localizations": {"fi": {"id": 1, "langcode": "fi", "title": "otsikko", "infourl": None}},
+        "archived": False,
+        "enabled": True,
+        "expired": False,
+        **fields,
+    }
+
+
+def test_catalogue_item_without_info_url():
+    """A REMS catalogue item created outside SD Submit may have no info URL."""
+    item = RemsCatalogueItem.model_validate(_catalogue_item_response(localizations={"en": {"title": "title"}}))
+    assert item.localizations["en"].discovery_url is None
+
+
+@pytest.mark.parametrize(
+    "fields,categories,children",
+    [
+        ({}, [], []),
+        (
+            {
+                "categories": [
+                    {"category/id": 5, "category/title": {"en": "Cancer"}},
+                    {"category/id": 6, "category/title": {"en": "Bigpicture"}},
+                ],
+                "children": [{"catalogue-item/id": 7}],
+            },
+            [{"category/id": 5}, {"category/id": 6}],
+            [{"catalogue-item/id": 7}],
+        ),
+    ],
+    ids=["no categories or children", "categories and children"],
+)
+@pytest.mark.asyncio
+async def test_edit_catalogue_item_keeps_categories_and_children(fields, categories, children):
+    """An edit sends the item's categories and children back, since REMS removes them if left out."""
+    item = RemsCatalogueItem.model_validate(_catalogue_item_response(**fields))
+    rems = RemsServiceHandler()
+    with patch.object(rems, "_request", new=AsyncMock(return_value={"success": True})) as request:
+        await rems.edit_catalogue_item(
+            item, {"fi": RemsCatalogueItemLocalization(title="otsikko", discovery_url="https://discovery/1")}
+        )
+
+    expected = {
+        "id": 1,
+        "localizations": {"fi": {"title": "otsikko", "infourl": "https://discovery/1"}},
+        "categories": categories,
+    }
+    if children:
+        expected["children"] = children
+    request.assert_awaited_once_with(method="PUT", path="/catalogue-items/edit", json_data=expected)

@@ -11,7 +11,7 @@ from ...helpers.logger import LOG
 from ..exceptions import SystemException, UserException, external_service_call
 from ..models.datacite import DataCiteMetadata
 from ..models.models import Registration, SubmissionId
-from ..models.rems import RemsCatalogueItem
+from ..models.rems import RemsCatalogueItem, RemsCatalogueItemLocalization
 from ..models.submission import Rems, Submission, SubmissionMetadata
 from ..services.datacite import DataciteService
 from ..services.rems import (
@@ -218,18 +218,43 @@ class PublishAPIHandler(RESTAPIHandler):
                     )
                 await self._services.registration.update_rems_catalogue_id(registration.submissionId, catalogue_id)
                 registration.remsCatalogueId = catalogue_id
-            elif not submission.imported:
+            else:
                 catalogue_item = await self._handlers.rems.get_catalogue_item(int(catalogue_id))
 
-            # An imported dataset's catalogue item may have been created outside this service, and is
-            # reused unchanged. Otherwise an existing catalogue item was created by a failed publish, and
-            # its title may have changed since. The discovery URL is built from identifiers that don't change.
-            if catalogue_item is not None and not submission.imported:
-                localization = catalogue_item.localizations.get("en")
-                if localization is None or localization.title != registration.title:
-                    await self._handlers.rems.edit_catalogue_item(
-                        int(catalogue_id), registration.title, self.get_discovery_url(submission, registration)
-                    )
+            if catalogue_item is not None:
+                discovery_url = self.get_discovery_url(submission, registration)
+                if submission.imported:
+                    # Keep the imported catalogue item's titles, languages and info URLs. Set the discovery URL
+                    # in each language without an info URL.
+                    edits = {
+                        language: RemsCatalogueItemLocalization(title=localization.title, discovery_url=discovery_url)
+                        for language, localization in catalogue_item.localizations.items()
+                        if not localization.discovery_url
+                    }
+                    if not catalogue_item.localizations:
+                        # A catalogue item must have a localization. Add an English one if there is none.
+                        edits["en"] = RemsCatalogueItemLocalization(
+                            title=registration.title, discovery_url=discovery_url
+                        )
+                    if edits:
+                        await self._handlers.rems.edit_catalogue_item(catalogue_item, edits)
+                else:
+                    localization = catalogue_item.localizations.get("en")
+                    if (
+                        localization is None
+                        or localization.title != registration.title
+                        or localization.discovery_url != discovery_url
+                    ):
+                        # The catalogue item was created by a failed publish. Update its title and discovery
+                        # URL in case they have changed since.
+                        await self._handlers.rems.edit_catalogue_item(
+                            catalogue_item,
+                            {
+                                "en": RemsCatalogueItemLocalization(
+                                    title=registration.title, discovery_url=discovery_url
+                                )
+                            },
+                        )
 
             if not registration.remsUrl:
                 registration.remsUrl = self._handlers.rems.get_application_url(catalogue_id)

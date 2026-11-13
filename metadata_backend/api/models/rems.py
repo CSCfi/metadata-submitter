@@ -21,7 +21,8 @@ class RemsCatalogueItemLocalization(BaseModel):
     model_config = {"populate_by_name": True}
 
     title: str
-    discovery_url: str = Field(alias="infourl")
+    # A catalogue item created outside this service may have no info URL.
+    discovery_url: str | None = Field(default=None, alias="infourl")
 
 
 class RemsOrganization(BaseModel):
@@ -74,6 +75,22 @@ class RemsResource(BaseModel):
     enabled: bool
 
 
+class RemsCategoryId(BaseModel):
+    """The id of a REMS category, as a catalogue item refers to its categories."""
+
+    model_config = {"populate_by_name": True}
+
+    id: int = Field(alias="category/id")
+
+
+class RemsCatalogueItemId(BaseModel):
+    """The id of a REMS catalogue item, as a catalogue item refers to its children."""
+
+    model_config = {"populate_by_name": True}
+
+    id: int = Field(alias="catalogue-item/id")
+
+
 class RemsCatalogueItem(BaseModel):
     """REMS catalogue item."""
 
@@ -85,6 +102,10 @@ class RemsCatalogueItem(BaseModel):
     workflow_id: int | None = Field(default=None, alias="wfid")
     organization: RemsOrganization
     localizations: dict[str, RemsCatalogueItemLocalization]  # language, localization
+    # Categories and children arrange the catalogue items shown in the REMS catalogue. An edit must send them
+    # back, because REMS removes them if left out.
+    categories: list[RemsCategoryId] = []
+    children: list[RemsCatalogueItemId] = []
     archived: bool
     enabled: bool
     expired: bool

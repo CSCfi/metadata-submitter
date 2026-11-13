@@ -187,7 +187,9 @@ rather than registering again.
 A retry also brings the registrations up to date with the submission, which may have changed
 since the failure: Metax's title and description, the DataCite metadata (sent again without the
 `publish` event once the DOI is findable, `make_findable`), and the REMS catalogue item's title.
-An imported dataset's catalogue item may predate this service and is left unchanged.
+An imported dataset's catalogue item may predate this service. Its titles, languages and info URLs are
+left unchanged, except that a language without an info URL gets the discovery URL, and an item without
+any localization gets an English one.
 
 `publish_submission` checks access, then locks the submission row with `FOR NO KEY UPDATE NOWAIT`,
 then checks again that it is unpublished. A concurrent publish fails at once with 409 rather than

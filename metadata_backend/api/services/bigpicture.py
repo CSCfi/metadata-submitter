@@ -90,7 +90,8 @@ XML_OUTPUT_FILES: list[XmlOutputDir] = [
     XmlOutputDir(
         dir="LANDING_PAGE",
         files=[
-            XmlOutputFile(name="landing_page.xml.c4gh", object_types=[BP_LANDING_PAGE_OBJECT_TYPE]),
+            # Required only for new submissions with a clinical policy.
+            XmlOutputFile(name="landing_page.xml.c4gh", object_types=[BP_LANDING_PAGE_OBJECT_TYPE], mandatory=False),
         ],
     ),
 ]

@@ -72,6 +72,8 @@ Each XML file is recognised by its **file name**, so the uploaded files must be 
 `rems.xml`, `sample.xml` and `staining.xml`. Each file may be given only once. The form field names
 are not used.
 
+The `landing_page.xml` is required only if the dataset's policy is clinical (`type_of_dataset` in `policy.xml`).
+
 Example for the metadata standard version 2.0:
 
 ```bash
