@@ -1,63 +1,31 @@
 # Bigpicture submission API
 
-## Environmental variables
-
-| Variable                  | Description                                                                                                                                                                                                                                                                       |
-|---------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| DEPLOYMENT                | Deployment configuration ("NBIS").                                                                                                                                                                                                                                                |
-| API_PREFIX                | API root path (default value "").                                                                                                                                                                                                                                                 |
-| SERVER_PORT               | Port the server listens on (default value "5431").                                                                                                                                                                                                                                |
-| BP_CENTER_ID              | Center ID used in Bigpicture IDs assigned by the API.                                                                                                                                                                                                                             |
-| IMPORT_USERS              | JSON array of the ids of the users allowed to import existing datasets. See docs/BP_import.md.                                                                                                                                                                                    |
-| S3_ENDPOINT               | Bigpicture Inbox S3 bucket.                                                                                                                                                                                                                                                       |
-| S3_REGION                 | Bigpicture Inbox S3 bucket region.                                                                                                                                                                                                                                                |
-| CRYPT4GH_PUBLIC_KEY       | Base64 encoded PEM public Crypt4GH key for encrypting metadata objects written out after publish. Alternative to CRYPT4GH_PUBLIC_KEY_URL. Does not support key rotation.                                                                                                          |
-| CRYPT4GH_PUBLIC_KEY_URL   | URL providing the PEM public Crypt4GH key for encrypting metadata objects written out after publish. Cached for one hour. Supports key rotation.                                                                                                                                  |
-| OPENBAO_URL               | OpenBao server URL. Metadata objects stored in the database are encrypted using OpenBao when this is defined.                                                                                                                                                                     |
-| OPENBAO_TOKEN             | OpenBao token. Alternative to OPENBAO_KUBERNETES_ROLE.                                                                                                                                                                                                                            |
-| OPENBAO_KUBERNETES_ROLE   | OpenBao role for Kubernetes service account authentication. The service account token is exchanged for an OpenBao token. Alternative to OPENBAO_TOKEN.                                                                                                                            |
-| OPENBAO_KUBERNETES_MOUNT  | OpenBao Kubernetes authentication method mount path (default value "kubernetes").                                                                                                                                                                                                 |
-| OPENBAO_TRANSIT_MOUNT     | OpenBao transit secrets engine mount path holding OPENBAO_OBJECT_KEY_NAME (default value "transit").                                                                                                                                                                              |
-| OPENBAO_OBJECT_KEY_NAME   | OpenBao encryption key used to encrypt the metadata objects stored in the database. Required when OPENBAO_URL is defined.                                                                                                                                                         |
-| OPENBAO_OBJECT_ENCRYPTION | Encryption method used for metadata objects stored in the database. "envelope" (default): metadata objects are encrypted with data encryption keys created for the provided key encryption key. "direct": metadata object are directly encrypted with the provided symmetric key. |
-| ADMIN_URL                 | NeIC SDA Admin API URL.                                                                                                                                                                                                                                                           |
-| ADMIN_TOKEN               | NeIC SDA Admin API token.                                                                                                                                                                                                                                                         |
-| JWT_ISSUER                | User's JWT token issuer.                                                                                                                                                                                                                                                          |
-| JWT_ALGORITHM             | Algorithm used to sign and verify user's JWT.                                                                                                                                                                                                                                     |
-| JWT_KEY                   | Public key used to verify the user's JWT signature.                                                                                                                                                                                                                               |
-| DATABASE_URL              | Submit API database URL (postgresql+asyncpg:://username:password@host:port/database). *1                                                                                                                                                                                          |
-| DATABASE_MIGRATE          | Apply database migrations when the server starts (true/false, default false). *1                                                                                                                                                                                                  |
-| LOG_LEVEL                 | Log level of the server log: "DEBUG", "INFO" (default), "WARNING", "ERROR" or "CRITICAL". Matched case-insensitively. "WARN" and "FATAL" are also accepted. Libraries log warnings and errors only. Log level does not affect audit logs.                                         |
-| LOG_FORMAT                | Log format: "TEXT" (default) or "JSON", for all logs.                                                                                                                                                                                                                             |
-| DISCOVERY_URL             | URL used by REMS and DataCite to direct users to the dataset. Must include the placeholder {id}, which is replaced with the dataset ID (e.g., https://datasets.bp.nbis.se/datasets/{id}.html).                                                                                    |
-| DATACITE_API              | DataCite API URL.                                                                                                                                                                                                                                                                 |
-| DATACITE_USER             | DataCite user.                                                                                                                                                                                                                                                                    |
-| DATACITE_KEY              | DataCite key                                                                                                                                                                                                                                                                      |
-| DATACITE_DOI_PREFIX       | DataCite DOI prefix.                                                                                                                                                                                                                                                              |
-| REMS_URL                  | REMS API URL.                                                                                                                                                                                                                                                                     |
-| REMS_USER                 | REMS API user.                                                                                                                                                                                                                                                                    |
-| REMS_KEY                  | REMS API key.                                                                                                                                                                                                                                                                     |
-| SYNC_CLIENTS              | Clients allowed to sync published submissions. See docs/BP_sync.md.                                                                                                                                                                                                               |
-| SYNC_AUDIENCE             | Audience of the JWT tokens for syncing published submissions.                                                                                                                                                                                                                     |
-
-*1 The database schema is automatically created if it does not already exist or it can
-be created by executing the SQL statements in metadata_backend/database/postgres/schema/create.sql.
-An existing database is upgraded with the Alembic migrations, either when the server starts with
-DATABASE_MIGRATE=true or with `make db_upgrade`.
-
 ## Bigpicture Submission Workflow with SD Submit API
 
 SD Submit API supports the submission of Bigpicture datasets.
 
 This document explains the main dataset submission steps and how to
 execute them from the command line. SD Submit for Bigpicture currently
-does not provide a UI or a dedicated CLI, so HTTP requests must be issued using a tool
+does not provide a UI nor a dedicated CLI, so HTTP requests must be issued using a tool
 such as [cURL](https://curl.se/).
 
 The document lists the required curl commands for the submission process and briefly
 describes the purpose of each one. Detailed API specifications, including example JSON
 responses for all referenced HTTP requests, are available in the OpenAPI specification
 accessible from the root of the installed application.
+
+A submission goes through these steps:
+
+1. Authenticate to the SD Submit API.
+2. Create a submission by uploading the metadata XML files. The submission ID returned is the
+   dataset's accession ID.
+3. Inspect the submission.
+4. Update the submission if needed.
+5. Upload the encrypted data files to the Bigpicture Inbox under the submission's directory.
+6. Publish the submission.
+
+To bring a dataset that is already archived in SDA into SD Submit, see
+[BP_import.md](BP_import.md) instead.
 
 > **Note:** `curl` commands below include the additional `jq` command to
 > prettify the JSON response in the terminal. The `| jq` part can be
@@ -67,8 +35,9 @@ accessible from the root of the installed application.
 
 Go to the [Bigpicture login portal](https://login.bp.nbis.se) and complete OIDC authentication.
 
-Then copy the same access token as _"For **uploading** to the Inbox"_ use it for all
-suqsequent API calls in the authorization header:
+Then copy the access token shown _"For **uploading** to the Inbox"_ and use it for all
+subsequent API calls in the authorization header. The same token is needed when publishing,
+since the API then uploads the metadata files to your Inbox on your behalf.
 
 ```bash
 # Set the JWT as env variable
@@ -81,8 +50,8 @@ export API_URL="..."
 export API_URL="http://localhost:5431"
 
 # Ensure the API recognizes the user based on the access token with:
-curl --request GET $API_URL/v1/users \
-     --header "authorization: Bearer $TOKEN" | jq
+curl --request GET "$API_URL/v1/users" \
+     --header "Authorization: Bearer $TOKEN" | jq
 ```
 
 ### 2. Create a new submission entity
@@ -94,10 +63,14 @@ dataset.
 
 Create a new submission by uploading metadata XML files using the POST `submit` command. The examples below refer to
 example XML files provided in this repository for both metadata standard versions 2.0 and 3.0.
-
 The metadata version is read from the `METADATA_STANDARD` element of the dataset XML, and all XML files in one
-submission must follow the XML schemas of that version. The metadata standard version 3.0 adds three new metadata
-files: `annotator.xml`, `annotation_task.xml` and `ontology.xml`.
+submission must follow the XML schemas of that version.
+
+Each XML file is recognised by its **file name**, so the uploaded files must be named exactly
+`annotation.xml`, `annotation_task.xml`, `annotator.xml`, `datacite.xml`, `dataset.xml`, `image.xml`,
+`landing_page.xml`, `observation.xml`, `observer.xml`, `ontology.xml`, `organisation.xml`, `policy.xml`,
+`rems.xml`, `sample.xml` and `staining.xml`. Each file may be given only once. The form field names
+are not used.
 
 Example for the metadata standard version 2.0:
 
@@ -113,7 +86,7 @@ export SUBMISSION_ID=$(curl --request POST "$API_URL/v1/submit" \
      --form "observer=@./tests/test_files/xml/bigpicture/2.0/observer.xml;type=text/xml" \
      --form "organisation=@./tests/test_files/xml/bigpicture/2.0/organisation.xml;type=text/xml" \
      --form "policy=@./tests/test_files/xml/bigpicture/2.0/policy.xml;type=text/xml" \
-     --form "bprems=@./tests/test_files/xml/bigpicture/2.0/rems.xml;type=text/xml" \
+     --form "rems=@./tests/test_files/xml/bigpicture/2.0/rems.xml;type=text/xml" \
      --form "sample=@./tests/test_files/xml/bigpicture/2.0/sample.xml;type=text/xml" \
      --form "staining=@./tests/test_files/xml/bigpicture/2.0/staining.xml;type=text/xml" | jq -r '.submissionId')
 ```
@@ -135,12 +108,13 @@ export SUBMISSION_ID=$(curl --request POST "$API_URL/v1/submit" \
      --form "ontology=@./tests/test_files/xml/bigpicture/3.0/ontology.xml;type=text/xml" \
      --form "organisation=@./tests/test_files/xml/bigpicture/3.0/organisation.xml;type=text/xml" \
      --form "policy=@./tests/test_files/xml/bigpicture/3.0/policy.xml;type=text/xml" \
-     --form "bprems=@./tests/test_files/xml/bigpicture/3.0/rems.xml;type=text/xml" \
+     --form "rems=@./tests/test_files/xml/bigpicture/3.0/rems.xml;type=text/xml" \
      --form "sample=@./tests/test_files/xml/bigpicture/3.0/sample.xml;type=text/xml" \
      --form "staining=@./tests/test_files/xml/bigpicture/3.0/staining.xml;type=text/xml" | jq -r '.submissionId')
 ```
 
-All XML files are validated and then added to the submission entity.
+All XML files are validated and then added to the submission entity. Every metadata object is
+assigned an accession ID, and the dataset's accession ID becomes the submission ID.
 The `SUBMISSION_ID` environment variable is automatically extracted from the response to be used in subsequent API
 calls.
 
@@ -169,42 +143,44 @@ curl --request GET "$API_URL/v1/submissions/$SUBMISSION_ID/objects" \
 
 #### List files in the submission
 
-Retrieve a list of files that have been linked to the submission. The file list is parsed from the uploaded XML files.
+Retrieve a list of data files that have been linked to the submission. The file list is parsed from the
+uploaded XML files, and each `path` is where the file is expected in the Inbox (see
+[step 5](#5-upload-the-data-files-to-the-inbox)).
 
 ```bash
 curl --request GET "$API_URL/v1/submissions/$SUBMISSION_ID/files" \
-     --header "Authorization: Bearer $TOKEN"
+     --header "Authorization: Bearer $TOKEN" | jq
 ```
 
 #### List all submissions
 
-You can retrieve a list of all submissions you have made:
+You can retrieve a list of all submissions you have made. The list is paginated: use `page` (from 1) and
+`per_page` (default 5, at most 100) to see more. It can be filtered with, for example, `published=true` or
+`published=false`.
 
 ```bash
-curl --request GET "$API_URL/v1/submissions" \
+curl --request GET "$API_URL/v1/submissions?page=1&per_page=20" \
      --header "Authorization: Bearer $TOKEN" | jq
 ```
 
-#### 4. Retrieve individual XML files
+#### Retrieve individual XML files
 
 You can retrieve individual XML files from your submission by specifying the schema type.
-The returned XML content have been modified to include a new accession ID:
+The returned XML content has been modified to include the assigned accession IDs.
 
-#### Get dataset XML
+Get the dataset XML:
 
 ```bash
 curl --request GET "$API_URL/v1/submissions/$SUBMISSION_ID/objects/docs?schemaType=dataset" \
      --header "Authorization: Bearer $TOKEN"
 ```
 
-#### Get image XML
+Get the image XML:
 
 ```bash
 curl --request GET "$API_URL/v1/submissions/$SUBMISSION_ID/objects/docs?schemaType=image" \
      --header "Authorization: Bearer $TOKEN"
 ```
-
-**Other available XML files**
 
 For other schema types, replace the schema type in the url parameter (`schemaType=<HERE>`) with any of the available
 schema types:
@@ -212,6 +188,9 @@ schema types:
 - `annotation`
 - `annotation_task` (since 3.0)
 - `annotator` (since 3.0)
+- `datacite`
+- `dataset`
+- `image`
 - `landing_page`
 - `observation`
 - `observer`
@@ -224,7 +203,7 @@ schema types:
 
 ### 4. Update submission metadata
 
-You can update an existing dataset submission by uploading modified XML files with the PATCH `submit` command.
+You can update an unpublished submission by uploading modified XML files with the PATCH `submit` command.
 
 For example, to update the image metadata file in a metadata standard version 2.0 submission:
 
@@ -240,18 +219,18 @@ curl --request PATCH "$API_URL/v1/submit/$SUBMISSION_ID" \
      --form "observer=@./tests/test_files/xml/bigpicture/2.0/observer.xml;type=text/xml" \
      --form "organisation=@./tests/test_files/xml/bigpicture/2.0/organisation.xml;type=text/xml" \
      --form "policy=@./tests/test_files/xml/bigpicture/2.0/policy.xml;type=text/xml" \
-     --form "bprems=@./tests/test_files/xml/bigpicture/2.0/rems.xml;type=text/xml" \
+     --form "rems=@./tests/test_files/xml/bigpicture/2.0/rems.xml;type=text/xml" \
      --form "sample=@./tests/test_files/xml/bigpicture/2.0/sample.xml;type=text/xml" \
      --form "staining=@./tests/test_files/xml/bigpicture/2.0/staining.xml;type=text/xml" | jq
 ```
 
 **Note:** The submission update API call requires all necessary metadata XML files to be uploaded in the same call even
-if they have not been altered.
+if they have not been altered. Metadata objects that are missing from the update are removed from the submission.
 
 **Note:** The metadata version of a submission cannot be changed. To move a submission to another version before
 publishing it, delete the submission as shown below and submit it again.
 
-If you need to remove a submission entirely, you can delete it using the DELETE `submit` command:
+If you need to remove an unpublished submission entirely, you can delete it using the DELETE `submit` command:
 
 ```bash
 curl --request DELETE "$API_URL/v1/submit/$SUBMISSION_ID" \
@@ -260,3 +239,61 @@ curl --request DELETE "$API_URL/v1/submit/$SUBMISSION_ID" \
 
 **Warning:** This action is permanent and cannot be undone. Make sure you have the correct submission ID before
 executing this command.
+
+### 5. Upload the data files to the Inbox
+
+Before publishing, upload the dataset's data files to the Bigpicture Inbox, encrypted with Crypt4GH. Each file
+must be under the directory `DATASET_<SUBMISSION_ID>`, at the path given by its `filename` attribute in the XML
+files, with the `.c4gh` suffix added. The exact paths are listed by
+[List files in the submission](#list-files-in-the-submission).
+
+| Files                    | Path in the Inbox                                                       |
+|--------------------------|-------------------------------------------------------------------------|
+| Images (`image.xml`)     | `DATASET_<SUBMISSION_ID>/IMAGES/IMAGE_<image alias>/<file>.dcm.c4gh`    |
+| Annotations              | `DATASET_<SUBMISSION_ID>/ANNOTATIONS/<file>.c4gh`                       |
+| Ontologies (3.0)         | `DATASET_<SUBMISSION_ID>/ONTOLOGIES/<file>.c4gh`                        |
+| Annotation tasks (3.0)   | `DATASET_<SUBMISSION_ID>/ANNOTATION_TASKS/<file>.c4gh`                  |
+| Thumbnails (optional)    | `DATASET_<SUBMISSION_ID>/LANDING_PAGE/THUMBNAILS/<file>.jpg.c4gh`       |
+
+Do not upload the metadata XML files: publishing writes them to the Inbox itself. Thumbnails are not
+listed in the XML files; any `.jpg.c4gh` file in the thumbnails directory is added to the submission
+when it is published.
+
+### 6. Publish the submission
+
+Once the metadata is final and all data files are in the Inbox, publish the submission with the PATCH
+`publish` command:
+
+```bash
+curl --request PATCH "$API_URL/v1/publish/$SUBMISSION_ID" \
+     --header "Authorization: Bearer $TOKEN" | jq
+```
+
+The response contains the submission ID. Publishing:
+
+1. Checks the Inbox: every data file named in the XML files must be present, and the dataset directory
+   must not contain any other files. Missing or unexpected files are listed in the error message.
+2. Registers a DOI for the dataset with DataCite and, for a dataset with a clinical policy, creates the
+   access application in REMS.
+3. Writes the Crypt4GH-encrypted metadata XML files to `DATASET_<SUBMISSION_ID>/METADATA/` and
+   `DATASET_<SUBMISSION_ID>/LANDING_PAGE/` in the Inbox. The landing page XML includes the DOI and REMS links.
+4. Marks the submission published.
+
+After the request returns, the data and metadata files are ingested into SDA and the dataset is
+released in the background. This can take a while, and no further action is needed from you.
+
+**Warning:** A published submission cannot be updated or deleted.
+
+If publishing fails, for example because of a missing file, fix the problem and run the same command
+again. Identifiers already registered by the failed attempt (DOI, REMS) are reused rather than created
+again, and they are updated to match the current metadata. Publishing a submission that is already being
+published fails at once with HTTP status 409.
+
+#### Inspect the registrations
+
+After publishing, the DOI and REMS identifiers of the dataset can be retrieved with:
+
+```bash
+curl --request GET "$API_URL/v1/submissions/$SUBMISSION_ID/registrations" \
+     --header "Authorization: Bearer $TOKEN" | jq
+```
