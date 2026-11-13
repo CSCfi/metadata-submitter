@@ -12,7 +12,7 @@ copyright = f"{current_year}, CSC Developers"
 author = "CSC Developers"
 
 # The full version, including alpha/beta/rc tags
-release = "2026.10.2"
+release = "2026.11.0"
 
 
 # -- General configuration ---------------------------------------------------
