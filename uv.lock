@@ -224,11 +224,11 @@ wheels = [
 
 [[package]]
 name = "annotated-doc"
-version = "0.0.5"
+version = "0.0.6"
 source = { registry = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/simple" }
-sdist = { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/5a/8e/38aa427ed5402449e226975b649c5dc73ccadfefeb95e6aecb8f8ea4b6b6/annotated_doc-0.0.5.tar.gz", hash = "sha256:c7e58ce09192557605d8bbd92836d7e1d520ac9580096042c0bfd197efacf1bb" }
+sdist = { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/0f/6e/a61e86e43bb6039b31a33a8f5fba76fe1cdacf3661e7b9756d4ff1b28cdc/annotated_doc-0.0.6.tar.gz", hash = "sha256:7969bb69912085b2285849c0dcac0b4b374fd180c13cf10a87f284ffcf347bbf" }
 wheels = [
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/3e/30/e900b21425a860e195f32e37657aa1f7c7f2b1bfb26f03ca209b90933c06/annotated_doc-0.0.5-py3-none-any.whl", hash = "sha256:117bac03a25ede5df5440e855b32d556049ca169ead221505badf432fed4b101" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/cd/f5/3dd85d583e55be76cd02b1fc9bbec771b12d63124b01661d9535ccf8721f/annotated_doc-0.0.6-py3-none-any.whl", hash = "sha256:361ca0950cc7082f53fa69e9328409f40a62c61e57e0a47e1825a08078a58a53" },
 ]
 
 [[package]]
@@ -624,7 +624,7 @@ wheels = [
 
 [[package]]
 name = "cfn-lint"
-version = "1.60.0"
+version = "1.60.1"
 source = { registry = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/simple" }
 dependencies = [
     { name = "jsonpatch" },
@@ -634,9 +634,9 @@ dependencies = [
     { name = "sympy" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/c3/ec/3b58d77e21b0283aa9887f4c3f81aeaf3a839111f2ebabb34443c1c76f65/cfn_lint-1.60.0.tar.gz", hash = "sha256:8c12142205cdba8b63236cc6e61f06aff6b563ae957c83af76e56940a3a4fe6a" }
+sdist = { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/a9/9c/114b3e8bab54caa706ad9294982499f4d86e84d041953904e5ce5c4e72e6/cfn_lint-1.60.1.tar.gz", hash = "sha256:d07d50f0f60b5c719ed3ddcd06ab7329209f74892a14e1e853c49fe4d4bb5dce" }
 wheels = [
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/c3/4b/626f14a2b3a719ac90f30d9d0bfa50d334b1f939ee006902bd650211b0e9/cfn_lint-1.60.0-py3-none-any.whl", hash = "sha256:5b3ee70562e034548d707f4b80bd4cc016b7137861a614cd4534751ca4edeea0" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/70/4f/4fb7a278916ce8383efe9c2a5dcc72042cdec0a2b4b3e603a070dd044fe1/cfn_lint-1.60.1-py3-none-any.whl", hash = "sha256:3c2b9390fc8f8328c8f5655caa254578b499028e725c198fdc3ba95bdf0aa004" },
 ]
 
 [[package]]
@@ -762,79 +762,79 @@ wheels = [
 
 [[package]]
 name = "coverage"
-version = "7.17.2"
+version = "7.17.3"
 source = { registry = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/simple" }
-sdist = { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/78/4a/740c3134227763ebc30a226d7f2f29b25e35898d162dd8b2dd792be83fb2/coverage-7.17.2.tar.gz", hash = "sha256:d05a1bef52f4d7f1b484a1cf46a8929e50963f910e51396373f06cd3b6248f38" }
+sdist = { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/ed/8f/19651ed6f648de7e1383bb759207078e2ad8addeca711187e1cb3a495f14/coverage-7.17.3.tar.gz", hash = "sha256:6695d1bb2a9a2fbd7806d69d78cf30f35eb0f65045da0ec5b5045242fadd6a78" }
 wheels = [
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/96/f9/30d6ff7a66e1519d79940fdee542ead9a63601de60be5cc9fe62c74bab58/coverage-7.17.2-cp314-cp314-android_24_arm64_v8a.whl", hash = "sha256:0439f77deb5c023003533ae8909a9aa1e174c847d655327035b1e542c7c8a54e" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/1a/db/82c722c37dce98fe1abc953768903752bdd415dfe8cfeb7b744a7236a735/coverage-7.17.2-cp314-cp314-android_24_x86_64.whl", hash = "sha256:e86a66f96d80c770daeed78394c1d4f6e8d03e5a3e08c5dab5275d56414f296a" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/7d/07/71b68d870975776cb185f11cd80e053b01739f3646488fe8b9721744f56a/coverage-7.17.2-cp314-cp314-ios_13_0_arm64_iphoneos.whl", hash = "sha256:87b30f3daa0bedda6b770b303410a6def007844772aaa143dc52675b3d95cd8a" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/aa/23/ed60f79576175e108c77df2bdc116f46e367aab108542ddeecaab752f0f6/coverage-7.17.2-cp314-cp314-ios_13_0_arm64_iphonesimulator.whl", hash = "sha256:3f219efbc3ec71c377e278dee201633e1d4ad0d2d9bdaddfd9489b2869d584c4" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/10/7e/60a51850d3ff659b82cc211bc98fa126aab2ac9b81bd4ed6abc3e3720a09/coverage-7.17.2-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:36248fb6c03341501169539bcab35eb3a59159100be1246fad3c14cb73c17685" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/77/80/a9539c15076fb9b95d8cbdb7f0caec90857d80bddca3eeca439f5e2e64e2/coverage-7.17.2-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:2a6281011cf85699763bf88ab55e0774f6696f87b390f39152b14ecefadccb59" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/7f/3b/0a84b6032511834105fd4f8a8b4e76927783cea03dc4796032d5c4bfec8b/coverage-7.17.2-cp314-cp314-manylinux1_i686.manylinux_2_28_i686.manylinux_2_5_i686.whl", hash = "sha256:3dfefb1ec16ca1a01e5da40ba162e268ced8bd3624b9eba4e9384ebfa14af7ec" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/2e/e4/a3e6b8bcc219b00ea91e36f071c2659b253e5d6e1b258c31eb4524231718/coverage-7.17.2-cp314-cp314-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl", hash = "sha256:34e5c7a2da36804c6e6f10b368eae01ad56f5a4ac5ecce7297300a3d46fdef2a" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/05/54/a666b65c5bb145d8796b7902ff1c0f60600a6c2a08949e20f2fb7af15de3/coverage-7.17.2-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:e6bf531deaebf8f69ba6015bba3fb817cab6694dfb69ac2a708889dc59a3926e" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/a6/73/ac9d06da9e0c143b874a68b17d8dfeedc45acdf1bdcee5b22a42bece098e/coverage-7.17.2-cp314-cp314-manylinux2014_ppc64le.manylinux_2_17_ppc64le.manylinux_2_28_ppc64le.whl", hash = "sha256:88d4dc83b6ad09a2134cad9d8ec780b274b17ac7dfba8c2c6e92e3bc468fe85d" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/87/b1/8a500e16cf787383b00b5a86eb50a490b4d8ebde505f92e1aaca515afc0a/coverage-7.17.2-cp314-cp314-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl", hash = "sha256:8dc17707fd463b4dfab53792e41d50a23316ac6b98539007aa2388a1d44a8535" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/f7/be/642762c5973b89e2b8bf66c95778bdd80e96ceea442ae8fa753732597b73/coverage-7.17.2-cp314-cp314-musllinux_1_2_aarch64.whl", hash = "sha256:df0a34d445eea64f3766e9ca2ff57bcde600a89c7c0330434a7a37e8d6e2549f" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/e4/b1/f7d6c0ef0a4aecf3f91f19df4ab3fa131fec8c89f554187511716584c9f5/coverage-7.17.2-cp314-cp314-musllinux_1_2_i686.whl", hash = "sha256:c5a98aff9eb681312ed403ecb7beb5f15fd25d6e0acc2554b9ca4b4d6f0b6705" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/c7/c0/3ae087d52cfa5119ad9ecbd193c40089924d1101cef7333f15a86dccb444/coverage-7.17.2-cp314-cp314-musllinux_1_2_ppc64le.whl", hash = "sha256:7565c17092f2f4021abbe3f5007300c224f362364a388f5ddad9216dab44b611" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/c5/95/d324108991f892cb361ef8b2f91bd4cda9c2563e0954247409e9e6b911ab/coverage-7.17.2-cp314-cp314-musllinux_1_2_riscv64.whl", hash = "sha256:555257578e20a46020c27b2af4ef99059cd906aa9b8e163baf9da9a5afb65a64" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/14/b5/13a62eac66cecbaaa098bb753a3693b44454a4d21d53db4f1a0953f35f0b/coverage-7.17.2-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:460ba2139866e758c3a8e9d9422fdc889942bcbc5ccaf710dc4fbd8707d14aa8" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/53/13/9ea31cfa72434449b9a98666760169d1e0ab31b3f6cdb12e68149106668e/coverage-7.17.2-cp314-cp314-win32.whl", hash = "sha256:e72cf9556f799c3fce7597c1bd7dbfc9104befbd08088deb3b9ae9fd98117c02" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/f6/cc/aa8f34b014979c973740f5a5ed6861ecfc6009082c70e72030ca1519e0f8/coverage-7.17.2-cp314-cp314-win_amd64.whl", hash = "sha256:205f9e329d9d5e47c320f8712326a01620689edae50531cc8934511e2c5e8f7e" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/49/64/16afaa19b3886dc157c3c5ebace5241b84b96a005cb28545584e66b80895/coverage-7.17.2-cp314-cp314-win_arm64.whl", hash = "sha256:a5909dd087006c70c128297312ba67d877123e871100645d9bd73ae021a4d01d" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/e8/95/acc865e1411c8ebc5c5d230367f3bfed5c605ed54bb41b84fc58f4e7f137/coverage-7.17.2-cp314-cp314t-macosx_10_15_x86_64.whl", hash = "sha256:674bcd023a3743666d4d7a15238e57a00c968553780a36c80d3779fc410b912c" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/10/98/02c37c6a928ccfc84b7a43eda44d96d3b1ccbc93989c178754b7e67e7650/coverage-7.17.2-cp314-cp314t-macosx_11_0_arm64.whl", hash = "sha256:ba45dc072bfbf1798e68ec81379b73473fc912174bff9f91924d77711a1d2b30" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/28/ab/d503b0aaebb92b171260469463915af5e16a64457b289d4cb844e8c366ac/coverage-7.17.2-cp314-cp314t-manylinux1_i686.manylinux_2_28_i686.manylinux_2_5_i686.whl", hash = "sha256:0d8a5dc709da9b90ad5cc859a9b88c9b801e65ca2fbf7cbdbed5b9cbf457fcc9" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/f6/e5/6d6ba15bde22fcccd07e14305be14291d041f732771a73f787297445d3e7/coverage-7.17.2-cp314-cp314t-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl", hash = "sha256:248873a144c067f981742ff4bbfb48b57e281a8cb7a3821d4e293bdb50b47970" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/63/e7/bd6dcec5b8130f5bd8679087a2bc3a50a53c4ee78d5ec449610020088ff3/coverage-7.17.2-cp314-cp314t-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:d0332e2b27fc5cc761d6b8a33118b958e6a46be7f00fd30e03a5cf103350c0b3" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/55/c1/b3f06aa1f1c51f4295fdfa6500eb7409aaa6273cf5f27bafc25217f3547d/coverage-7.17.2-cp314-cp314t-manylinux2014_ppc64le.manylinux_2_17_ppc64le.manylinux_2_28_ppc64le.whl", hash = "sha256:27fc4384a1154f7df30d304ccddc05ef457368c065670ecbd392606279b3329a" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/a7/f0/b68ab3654af3541488b26856e3043c13c782d8e6104fc8149746ecaa83f0/coverage-7.17.2-cp314-cp314t-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl", hash = "sha256:603140eeae3f9adc562f91b1b98d4d1fc491bd1f66c5082482c568d0b7891bb1" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/fd/16/4a9d56bd4ca4572cbd20f9843813623cef1b88b15f979ec4f381704d2f84/coverage-7.17.2-cp314-cp314t-musllinux_1_2_aarch64.whl", hash = "sha256:be0fec33b69c40f845c76f67fb4495b62a84da8c31a579dc6e18c5a63fa6a1f3" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/78/d2/1c04b38bab92d2b7d62718d170b5bea43755fefee7e29cc056448c433d92/coverage-7.17.2-cp314-cp314t-musllinux_1_2_i686.whl", hash = "sha256:960e199965e506d78f62252355397a05c8cee8072ad2d82d932745517d566539" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/26/c9/2c639e9aee78b0522cb3dc245de09685e34b479bcc45d4d2a277d0de1174/coverage-7.17.2-cp314-cp314t-musllinux_1_2_ppc64le.whl", hash = "sha256:d7a363c0788435ff5324d9582d37c63f215c75f974d755cfd6cfc9fbe0e64b04" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/79/1f/11bdaf03c1b12f88094b57420b4238d3974ebec6a7d674b645a54e24f90c/coverage-7.17.2-cp314-cp314t-musllinux_1_2_riscv64.whl", hash = "sha256:afd81658f17b1a50bbc1d247a61fa435be0be471246136eb946f9cbfc437a4fa" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/bb/f6/43d40d1b4d4892e54c68a241cd5b92efed4d5934109e0e5e24a94759f732/coverage-7.17.2-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:d88fcc24470d73ed4360e910f8549718b913ba56fb8775d9ef929a647835dfea" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/8e/33/6874185b791c71684c401fc74abd71bbdb102e8ee41c8f380cf25af41d29/coverage-7.17.2-cp314-cp314t-win32.whl", hash = "sha256:2c42c222939b8699e7bc0e453149627f211ebbbb2f74c1a04331b0cd9834e2c8" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/16/e0/9057b4cf962ca6089b144f0d93a748f5e2d13876dd0f33f9d5a2c2ec49d2/coverage-7.17.2-cp314-cp314t-win_amd64.whl", hash = "sha256:b94c509e26603ba7f8cb1bf8bb63967c7be533493be5668d8442cd06ec853d76" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/5e/4f/bd626297c942380279dff323e1d8a8937990d553119a4f887358488b1b54/coverage-7.17.2-cp314-cp314t-win_arm64.whl", hash = "sha256:eca90e028932de597e2c50f454ad8cc631281e14d20b9f801a649ab555deb580" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/ac/92/ff8badc05ff0c4ed26ca62fb3d155e9014ff65768b76d5f399e63d9e9a79/coverage-7.17.2-cp315-cp315-android_24_arm64_v8a.whl", hash = "sha256:cbf751ae86ef0d80e719915c087b05776c8d9300141f6c3e56f536d78a62c301" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/5a/8b/c5a5392e5a5dceb68f3b1b8cdba925c7997699f351d811cd4a41add9c29e/coverage-7.17.2-cp315-cp315-android_24_x86_64.whl", hash = "sha256:249c4b4eaac9ced6fb85e465027ca26348111c2760108fffc356a16be4f54cd9" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/7b/bc/9259a1fc49ad663861cbfb3df6a99d4c8f62a11b242a2db3358822d28b17/coverage-7.17.2-cp315-cp315-ios_13_0_arm64_iphoneos.whl", hash = "sha256:e2fd4e664a34854cae8db58ca6132fb7b5a7efc67b14233e797194bd0d63b6b0" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/20/ad/83f03da8ab846af246d4a47b651e5d90229a4c3314e31e8eecade63b378f/coverage-7.17.2-cp315-cp315-ios_13_0_arm64_iphonesimulator.whl", hash = "sha256:0712a43e39410aa567f2e85846490f8dd6c839820e7edef2142767c5c03162ba" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/f3/08/e110687f24245edbbe9c0986a6ccd04f1f9a6e90e329cbd4347e2b81d76e/coverage-7.17.2-cp315-cp315-macosx_10_15_x86_64.whl", hash = "sha256:298849ca0e385767096995cb57f72059b469f43f9927b8393f29d134f7bb1062" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/93/24/7cfcd6adb4a0c18a10de12fd695edbf8cd121fdca0a6a63cea1bffc029fe/coverage-7.17.2-cp315-cp315-macosx_11_0_arm64.whl", hash = "sha256:81a432793440edef268dbadd493393bd6f70fa4b87f76c58114f7f77f1ccfaea" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/54/7a/af167a0bb6d0564209d35c8039b290327ecf7b3e34f838f9360b56d3a03c/coverage-7.17.2-cp315-cp315-manylinux1_i686.manylinux_2_28_i686.manylinux_2_5_i686.whl", hash = "sha256:d14872ccef35972c4ac290f2432f43d0a7bb230cae2b5ed26871ab86221e8b5f" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/f5/c6/4f3931c3ff80a6f2608209181adb00527970a4b43b64c3aa323383c37d51/coverage-7.17.2-cp315-cp315-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl", hash = "sha256:3bd065e75c077d6de8cd3fe68699a8b47be3ec595af6b66e3629926839094609" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/3e/71/31a4945459008952061147ea9b85853902507d865a7272a9f64be0c4a093/coverage-7.17.2-cp315-cp315-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:8d3626b9816f7eadd0993c3703a1d8ed124b579cebe5201b446f1c0d551fa245" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/82/6b/a4eb258b0373034f8f19aeea4c1bc4c89942b5b228812ee9952f033dc611/coverage-7.17.2-cp315-cp315-manylinux2014_ppc64le.manylinux_2_17_ppc64le.manylinux_2_28_ppc64le.whl", hash = "sha256:c9639c2ea019c948b52067a0f74485039eb84b7a2de828ba6d178e663fb2b8bd" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/02/ae/9410f2f4bbaa698ff3869c7c09e0fa10d74482a1ec8040063157612f07a0/coverage-7.17.2-cp315-cp315-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl", hash = "sha256:19d508b0611486f8e23e28abcba77795ee865ff0e0cd936349ba692c8d0d8ca4" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/ad/ee/97549ec1bdf6ff6d17612dbcf4b2205daa74510273ac1efd1460e3db275c/coverage-7.17.2-cp315-cp315-musllinux_1_2_aarch64.whl", hash = "sha256:cfe64d2501806a04507217852a3132a9a9076321435500bf3b11943a5c872732" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/36/72/76e04605522a6dd81bbf43e1b407ca611f415c04b67e18c123ee440b1d69/coverage-7.17.2-cp315-cp315-musllinux_1_2_i686.whl", hash = "sha256:4274acd35aae5bbbd0908792260819b9720b171ccc099a8168f7c20ef5d6ab3a" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/30/8d/163e027635790ab232f3ec0261d2a26bec34c377bea2096554261444d0f5/coverage-7.17.2-cp315-cp315-musllinux_1_2_ppc64le.whl", hash = "sha256:85bccf6fe19ea3747147387971465f6a06197d6b9f6b644a97ba90ca5b09c5cd" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/18/35/11dd585a06be350285d42c17aa2fccd0af18d962b6979f03dd1a258eb705/coverage-7.17.2-cp315-cp315-musllinux_1_2_riscv64.whl", hash = "sha256:d5024913651813801fd43b65b6409b0d50f8bae95316c8f1512dfbd8ca96cb1f" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/1a/ed/f1f3b4bf6081122bf1820b1f38352377a75a2d5f39bb6331598e165b64af/coverage-7.17.2-cp315-cp315-musllinux_1_2_x86_64.whl", hash = "sha256:99b64a12fe6017c254a8027790e0eaa22eaeec201e7dfda5eaac176a6984ef27" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/ab/bb/61e07a606a9f4d0f5391ac9b62b1f008a997f87860ad233f99833fd6e6bd/coverage-7.17.2-cp315-cp315-win32.whl", hash = "sha256:74d91af590514dda16165d5d7cfa94183150c6a6a80a99f61068369ae3959455" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/86/40/2d4980d3374a023a34c5ea7cd5d2b93c02c5588a324ca7faf8a0a8c7dbac/coverage-7.17.2-cp315-cp315-win_amd64.whl", hash = "sha256:075566a44289afb634ceaafa7d8d377bb2667a5b4a90fbee2609efdcd015c66e" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/f8/c8/b307327b1256f9ed8ffc3271db041913835cfee065fbaf45105978093c08/coverage-7.17.2-cp315-cp315-win_arm64.whl", hash = "sha256:be699e76b57fede8920a0f568eff23b270d9004414b7cf6744bdda851638be6e" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/40/18/0912e37f23c101faebd7c5e544c6ba6bd750715f81f2a2c7ea66f83a2295/coverage-7.17.2-cp315-cp315t-macosx_10_15_x86_64.whl", hash = "sha256:ffbaadf8612781358b3f949ad68dce26c5a35beaafcc48125fc231dbcce7d362" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/5e/a0/c4ce9bbf82b2e9dbf2e0326004c8c37d87a275f515fc7bb22344a6162050/coverage-7.17.2-cp315-cp315t-macosx_11_0_arm64.whl", hash = "sha256:d4004fce7b3a8ae5ef2af835670763f12723e9b9d74837697607b89a17f77312" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/3f/05/9c7429c87589534755398a58fe9837fdb2870a22d99e87623fcb261e1d4e/coverage-7.17.2-cp315-cp315t-manylinux1_i686.manylinux_2_28_i686.manylinux_2_5_i686.whl", hash = "sha256:a838a10afb5b60a6cc6315348b176badaf2409d821208a3e3cda1dc608129e23" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/e9/22/d1ad2ea7c8871d66f8453d33cdeec39986e6e1f2a104628e9bcb171f0209/coverage-7.17.2-cp315-cp315t-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl", hash = "sha256:0fc17882975fe485cfc95fb2f20eed937e05e0c0d8ffa5048857cda3aa838e8a" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/0d/1d/5038de4bf6549903ec3d86959c6f18aff54911616b47aa96f4d6a5660c93/coverage-7.17.2-cp315-cp315t-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:a65faa1ee98e090a5fd7c116f6d3ab5c6a85fcc46849b8494835608715836399" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/8b/ea/68a26b4b5eb255d92de906fd66e8d720b1df15e705949ea9a9cef2cc7f8b/coverage-7.17.2-cp315-cp315t-manylinux2014_ppc64le.manylinux_2_17_ppc64le.manylinux_2_28_ppc64le.whl", hash = "sha256:7c17f716c837db550a202e7732cdfaa726b8515cba88be42193616913970d223" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/70/86/0f4238f09b22bc03a907346fabcabe5449626879cdedbc1edd362ab0e570/coverage-7.17.2-cp315-cp315t-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl", hash = "sha256:545ca42488c7f0e62324fb2621aa05737db843b75e84e65a271bbf976f496f66" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/f1/ac/1885255425900f691c543d88394d9f0dacd2f2dc78422e660c747ca9c95c/coverage-7.17.2-cp315-cp315t-musllinux_1_2_aarch64.whl", hash = "sha256:8de787f533b13aeeea5d7139610eadb56f249cc739840b973603d1d18d0fb023" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/02/d6/0111601342d91e25d13e22a55f34600aa387c55b5027b90e78d941911821/coverage-7.17.2-cp315-cp315t-musllinux_1_2_i686.whl", hash = "sha256:485b2ed9e13b7e9209276843d7147e2f1cd1c816582655650a64c8f922093c58" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/70/48/d9bdc5346a9ad09711f55b6901ee05b57305e6b2b66e6edfd50f81f0d410/coverage-7.17.2-cp315-cp315t-musllinux_1_2_ppc64le.whl", hash = "sha256:a472e23a7514478e1c8124ea056424d681e3173975650b0a06b6181658f1009a" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/98/75/3a4d8ce4aa59ed2e898364acf923b39471689d51876bb978c42e664cdb79/coverage-7.17.2-cp315-cp315t-musllinux_1_2_riscv64.whl", hash = "sha256:0a623de5c57c5c3f3aed830c73a3a5aad91dbf76d53bc30ec161be758c8ca408" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/4a/11/d15082e504e7852a25848ee0dcb59453579ec923c6d1f3010316e1fb6118/coverage-7.17.2-cp315-cp315t-musllinux_1_2_x86_64.whl", hash = "sha256:2ad189c65706306644399e48530ad1aea1dfb311bd21d988df1ace422d09f3f8" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/f1/9d/6460101b0191afae9ed84c8d8136cc8cc09675f376ce08acb3118b8c27be/coverage-7.17.2-cp315-cp315t-win32.whl", hash = "sha256:6fd6f218e39a621a30dbaf9543831fa10fe713afc8a44b52fc42cfe277412609" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/9a/f2/3462d9616445a8cb36ec2e027d1c0ae82f6f90f224d9851ba0b22b7425d6/coverage-7.17.2-cp315-cp315t-win_amd64.whl", hash = "sha256:ef07aae0a666ef5edcab5bc1bb590468c6f4120a8cdad50a010d042a59ab6e77" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/4c/06/abeca0cf853e77aba9464d4ada4603c8b6e744b667c13e1d4eefecc487af/coverage-7.17.2-cp315-cp315t-win_arm64.whl", hash = "sha256:c68f64d96857749a215657c172f7144ed026063489686b901774f271997923c2" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/da/91/1805cc144497d76a436f66a21fa57492bee7ed1257826fb992f03b9b2b6f/coverage-7.17.2-py3-none-any.whl", hash = "sha256:e674027ceb6bfd959f1bb035000fd20fa8b717dc6765adaaf8bca347822c8c7d" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/98/bd/86199a63e36d1ec253e128aa3df186933c7c5993945be114b9e5102b7c77/coverage-7.17.3-cp314-cp314-android_24_arm64_v8a.whl", hash = "sha256:6f8f925262bc0d6fea12d5dde6998aa57f162e05d5a7d50b95d400ab05bb4537" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/d5/43/e0366c117f7cd88889674837e2146e9114d7c045fd7383c9f3c551f5b863/coverage-7.17.3-cp314-cp314-android_24_x86_64.whl", hash = "sha256:9e888603ea67c63ba264f39f3459f4cf68adc78dcd9f8bfa65dde601265a40f1" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/a6/b6/1f7e3f29bb0700586d6709d533a0421ed96e1372b608facc6870c05b0489/coverage-7.17.3-cp314-cp314-ios_13_0_arm64_iphoneos.whl", hash = "sha256:fab6f713a1f2f0ab7fb7d55f3aea15d1f3fbd31ace61b585ecd87c8e34f898fb" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/9e/cd/81261279e5a47a1295992e5d648fa30626af692c05b0767a037120953a17/coverage-7.17.3-cp314-cp314-ios_13_0_arm64_iphonesimulator.whl", hash = "sha256:4300ad360b21af19584c4cc82022979544d776ba2fb2df5418b2f3cae1eee6d2" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/78/37/3a28b845dc06bcf17e0501fd641020760b61754444b904aa4973fd7c8098/coverage-7.17.3-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:e033255f24c1df6e046b6c4e9f91baacae08426beb5296bea8d46176b3a137d8" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/79/dd/b770682a17e5e911e9c4db6af947641ed334dfd6155632f71fa54375f4a3/coverage-7.17.3-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:22a80bbdee3c22fb3319befaa112a2ed2d6e1417aa75c310f048235170ceca44" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/e9/e4/420e4d6f9ce1e6b8234bafad3508974950ec926063eb4d5e8d71c498b0a5/coverage-7.17.3-cp314-cp314-manylinux1_i686.manylinux_2_28_i686.manylinux_2_5_i686.whl", hash = "sha256:cfb1d2c52bb66e847669000658a5394d50aba835df8e31c2146034f978c8a4cf" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/26/2c/c871c22a11981f58895e4dd167f4aa64c04853c5a0e91de853408c0f2d3e/coverage-7.17.3-cp314-cp314-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl", hash = "sha256:eb25b51a30d07db8493901e3040284f2e756ec2b6549ee392798b9ef4c0607b3" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/43/f3/f90e9619f2b0e1dc4d5f487163c3e9fd21629acfe3cd8abb97fa2afa12b2/coverage-7.17.3-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:2b9a39e25bf0e6fe072c6f3bceaa02f5303b9f975e83f590d118c4e92aacf6d8" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/f3/8e/b45330abc908d11c65e68be5f240237ad433c8e03dcb99b474541f129e3e/coverage-7.17.3-cp314-cp314-manylinux2014_ppc64le.manylinux_2_17_ppc64le.manylinux_2_28_ppc64le.whl", hash = "sha256:9e331bc028b44496ad85d4a2656dbad0feb35baf4a66500042c4aaa878ea132c" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/38/80/06eaca23adf2d3b1526fca9e6d3433b0b4aa91e653b59774ea9fc44e1c03/coverage-7.17.3-cp314-cp314-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl", hash = "sha256:17a4bd9edd312744035e1298a6ac30dd7332a7f1ecdc63c9eb0685589b161eb1" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/58/1b/cf0a2d4d5aaf87b6b9f7d5f0c2e5d110079e9c2a23e11c04f20c98e98689/coverage-7.17.3-cp314-cp314-musllinux_1_2_aarch64.whl", hash = "sha256:cc12f44ac4d5d6be301285c0a4f9c4ae52e673672e284b2a2744e20d24025573" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/fb/23/ede764173d08bd9cefeeee344826c22e93d7111fd17b0677436616c98662/coverage-7.17.3-cp314-cp314-musllinux_1_2_i686.whl", hash = "sha256:0241e03dd65a1edf2e841eb19d8d72dca21ada5c869dcef6c9fde1b166d519a9" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/e1/44/b93c258ecbe1848f2117f7466e8c3060554b419f6eabd3761ef95d095c4b/coverage-7.17.3-cp314-cp314-musllinux_1_2_ppc64le.whl", hash = "sha256:42a1f511a334745a66b8f580c4d561e728243e35f3ada0ada35444c4b2fb9fa9" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/9f/fc/09a224782b0720b6a4c9e2fba0a479b87a2b046c523ffdd56339d2d8d516/coverage-7.17.3-cp314-cp314-musllinux_1_2_riscv64.whl", hash = "sha256:095ad10d17a28c845f2e5f99e398db2f0c680401731ff63a3a1789f2e61ef1e0" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/1d/c9/3027a58b3db40ded4dc43a8040a45a91e61ebb9f32a4de86e30a29d8effb/coverage-7.17.3-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:28b05f6b2622551805324196c32f3f20f4fa639bade8ac299ca83073253f6663" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/69/a5/f9f767f731fd5a314e66fecd55d8ae320da95467feaf0f3742edf890049f/coverage-7.17.3-cp314-cp314-win32.whl", hash = "sha256:8b8188229ab3b3769a1c4aaa22357447555416deb440326c665a3bd25fd45ce0" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/5b/1f/d377b98f63d876649083ce837f0e7cc2eefbfcb4088dc4a1428612ccd741/coverage-7.17.3-cp314-cp314-win_amd64.whl", hash = "sha256:957ba72e11d26b6e6e1abdaa72e41020871f4108c8ff64ff571fc50c81fb57a3" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/89/2e/2c1607f6f1505fbed80910d95e51ce520945ad34a640c532123f75de5580/coverage-7.17.3-cp314-cp314-win_arm64.whl", hash = "sha256:f7ff8b21efcbdf9c7a6c051dc158c9bb9e938b7af33e55ed264d2e529b836d17" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/11/79/428dc7fe065893833222ef604a261a5e16aa304be055ee99dff0fbb3bd66/coverage-7.17.3-cp314-cp314t-macosx_10_15_x86_64.whl", hash = "sha256:3f6d942e066ca009bd1f7ebf5450287a5e9bfc5a6e20a8d8c408a61b433c7f94" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/fe/e8/60ce9cf304d2505cff1389a98e13bd67792f44bed530935bcce48db693f1/coverage-7.17.3-cp314-cp314t-macosx_11_0_arm64.whl", hash = "sha256:e3948b2e5c3af0133af3e117ee033e6cc656c43d7549d3296e4b3807908dec9f" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/42/b3/f209433ec9dde9dd4e471afafd6b467b51653af4a678e39792638832c85e/coverage-7.17.3-cp314-cp314t-manylinux1_i686.manylinux_2_28_i686.manylinux_2_5_i686.whl", hash = "sha256:0bad8245a15bc7b15d26d25ece243bbf5d1b1229144f3db189014174429b63bb" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/4a/0c/34a2caf1e74950efe9f24de673767ec67fe60470c900610e58fa639366f7/coverage-7.17.3-cp314-cp314t-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl", hash = "sha256:bdf8fefb9f1acb3e92842fb42e29968d053e9545e4e9d9edb5c32a30fab8f899" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/ac/1b/1e87f731b4e930cb636cc15bfb55855d52a1f31e9193d645e96ad7ebe0ab/coverage-7.17.3-cp314-cp314t-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:499acdc43bf1addf7fecc59a3123847bb96873c07001cfbeb709a71b181fa03d" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/c8/1f/e6e2cfe9d4f4df4228587b7f528d8b9985005e9f904c2e59ce51d236dbd4/coverage-7.17.3-cp314-cp314t-manylinux2014_ppc64le.manylinux_2_17_ppc64le.manylinux_2_28_ppc64le.whl", hash = "sha256:11116ab42247d55980b51ab49b5c066de9b6baa56fe371fd555e54feae338619" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/9e/1f/3937e3745b511d67228dcbf15f7f24cec9da7fdacee443ecf837465c1663/coverage-7.17.3-cp314-cp314t-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl", hash = "sha256:56b469b63d8270aa67bc919ab8457f4d83115459556a76d09238052a3ab094db" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/33/73/1b597ea0d77d062ed62d556e3a94c85fb7d3e56cac526d8a273f4e8872ea/coverage-7.17.3-cp314-cp314t-musllinux_1_2_aarch64.whl", hash = "sha256:95da285cf77352d4a527e1fd16c1c5c3762e42d1d71cfa9ef2c72a5c796cce36" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/60/8a/1daee0aeb0a1d16884f5da92e2cf9300913bb216f42dff221329b3bd5651/coverage-7.17.3-cp314-cp314t-musllinux_1_2_i686.whl", hash = "sha256:c38a85dde92c4129641544aca998382f7448a87a17d202765a6adb8a87a33fc7" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/40/d3/78fa95e9980917e2b75b97c056c3e70f9c9c9170fcde210897b4c0b35d03/coverage-7.17.3-cp314-cp314t-musllinux_1_2_ppc64le.whl", hash = "sha256:e9396d4d90fb47a1e124a985ac6a3172dbd58334d1de5189f06b75ae96ff69ee" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/14/fa/2870663f070df38497ead9197a7e5af06f00286d5236192ea3d23bda68a1/coverage-7.17.3-cp314-cp314t-musllinux_1_2_riscv64.whl", hash = "sha256:e266c693c8bd6541f31cd71eda9b5aa3732adecbd04522880ea3d23d99b202eb" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/30/fa/390e1199f21b4c2a8797492aa5351e8b74065fef609b717255cd88e54c5a/coverage-7.17.3-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:0837b71a40749d9c4016cf8c51ba8c6153f7dd40cf4dfa287a2f28376fa50917" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/4e/e3/e29ec216a87330812142af2290224002b84804c5361eebe68c57e2ace5cd/coverage-7.17.3-cp314-cp314t-win32.whl", hash = "sha256:8a054b755bc6665b339a923fed14a54446c43c942bf4edf08a59b1225b284c93" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/9c/e0/3854a8d843b31a317f251a0fc148c1980dde60f872fce30f6f037dc432e2/coverage-7.17.3-cp314-cp314t-win_amd64.whl", hash = "sha256:fa8903475085973b5c916e8a958afd22101b9559880ffbeab5aeac4196768338" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/84/b7/748a7b92e7e7605532754e5718ef3109144ed7e58c0721d0d5c9fa9083a6/coverage-7.17.3-cp314-cp314t-win_arm64.whl", hash = "sha256:582c5d80b6de5b1909a4222ec1f5676bb2e03815c6be9ff43db2d8a71de5079c" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/e3/44/8cb5635090ddf8674625f5067c0575ead89863664fff3cf73fb2f93c9287/coverage-7.17.3-cp315-cp315-android_24_arm64_v8a.whl", hash = "sha256:49a4f12eff115fc2447d3438b2c08d7e5adb3abc811c050ee508f8189718cc5d" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/8a/54/b7ba20ab94696a790c2703ceb32f10b15f0a70dc2ae19178fd17d4915937/coverage-7.17.3-cp315-cp315-android_24_x86_64.whl", hash = "sha256:e04385647f444d55b483a0e4dc519f46134846eddd80910a0d0953ea19e58358" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/ae/57/00c6e8a207674280408907cf4861e925c8e136770d333f5c9ee4dde5dc12/coverage-7.17.3-cp315-cp315-ios_13_0_arm64_iphoneos.whl", hash = "sha256:faee34ea548318f6f9010928edab2f91b36a19b58376e69ab0e76d4f3a0bf9df" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/81/ab/b3f996c33524cef1d9bf80fe677619bf17282fefb9f3497da83fabea67cd/coverage-7.17.3-cp315-cp315-ios_13_0_arm64_iphonesimulator.whl", hash = "sha256:7c420ffa993c25cc74c263e9c1c869fbaea7d16dcb6448eef4fa6f1905560f5a" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/32/ed/83f6e5ef0f7e39deb1d7915c2eb3c8946c002afba2f5f58ae05f870e3532/coverage-7.17.3-cp315-cp315-macosx_10_15_x86_64.whl", hash = "sha256:e592f790fee57e2bedaa27cdc76988a082090d1aac560ca4bbea80a7a58436ec" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/d8/34/d256f50c5bf16255ae04aa917ba1857e127023dfd2c06499f777c7a4cd29/coverage-7.17.3-cp315-cp315-macosx_11_0_arm64.whl", hash = "sha256:59c15dcae783ed291da3af6be2e70762322637ac886b19671d12123521cf6ac3" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/35/a4/31617273e938a7d9c7378335cb41e147bc6c293acac8ea643d74b3bc29e3/coverage-7.17.3-cp315-cp315-manylinux1_i686.manylinux_2_28_i686.manylinux_2_5_i686.whl", hash = "sha256:733368982d2799ff04d768916fb755e54d4ce11af3573488ece451745c90d4a7" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/10/61/1bd79ec66957f4ea7ce5f687a18aa50f3b3e8715e4843f6ed3e5f03f24bf/coverage-7.17.3-cp315-cp315-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl", hash = "sha256:a13a946d8de807d8992e56a09502952d81bfbb4b80204ef77a6a2a38b4ce22be" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/e9/47/db887dff6eaf0a24396021ee4956eac563bd286677252e444f89a80e5166/coverage-7.17.3-cp315-cp315-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:c769e6a28bb645c915449ed8ddf6059765a72d8ef79590bfd6202022a4441cd3" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/69/b9/e86863e2ac724844a07dbd165da6912d31c6a2cad99ab23b2c204e655bbc/coverage-7.17.3-cp315-cp315-manylinux2014_ppc64le.manylinux_2_17_ppc64le.manylinux_2_28_ppc64le.whl", hash = "sha256:bf7a43782b20951fe9ddc6f6c28da51c65d3c0d5d5fc3c5a0e566986aa3ec0aa" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/72/d0/a3536c347bf036e3aa383c85db80a3ce5f2ca961f8500f46c25ac6a14c3c/coverage-7.17.3-cp315-cp315-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl", hash = "sha256:b65db089de3f219c850f21a2ca915f43f6fa1da5bfb55871c089d3be82c10369" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/7b/26/f7c1a5c62c66a4ceccb9889eb7fefaca6c34fc72f47553ffb134262533cb/coverage-7.17.3-cp315-cp315-musllinux_1_2_aarch64.whl", hash = "sha256:228f4bcecadcbb1ec3ed088b0595c5c08f3fca01406b72e8a02209a3af16aff9" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/45/4f/51a9d4af3dac74e146d65e0b696a98eaad7badc3837e42fa386c8ef96c55/coverage-7.17.3-cp315-cp315-musllinux_1_2_i686.whl", hash = "sha256:3a5691ef42b16e22976ec0352a76a0f7c3b4196fe3d39805dcc765e31ce54f22" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/e5/bb/6bcac633b71c1e675d9bc7ba97e9b28c32a3309db57185ce5af35176b1c7/coverage-7.17.3-cp315-cp315-musllinux_1_2_ppc64le.whl", hash = "sha256:2765261bdcb5f6c01af41d97ec4fcfe18acd1114d8d2690536a36f86b67c179f" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/d4/6f/fc1007053178d2fbef0a89014a60e34a8b7a9e831d2f78301a55f0cbf644/coverage-7.17.3-cp315-cp315-musllinux_1_2_riscv64.whl", hash = "sha256:45268757a45946ab3fc9d2c30019aff2d3804ae660121d5b31f523366f604e67" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/44/e4/90fee6c30eacfd84d6969223f823e4d14f02a07df9ad91e5de2b3fd6c466/coverage-7.17.3-cp315-cp315-musllinux_1_2_x86_64.whl", hash = "sha256:24389d7d50f1fe98ac8d8ec1c946656a75b97d953b51a714484e174ed9f48eb1" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/3e/03/4108b8e1f428dd511a422510fce64aae0afa7b7350f73a55f6d6d5812d7e/coverage-7.17.3-cp315-cp315-win32.whl", hash = "sha256:ff0ca078fe63faffff1cff24c804afd4010e35d9c75bb593877b3d4321826c91" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/95/46/e213941d820ab8e2ba788177569e781c50381bfd9ddb35d50f5f63d096cb/coverage-7.17.3-cp315-cp315-win_amd64.whl", hash = "sha256:f8f6252bb4c457d686c18e42965087b30155ff72b0dbda6e79a43ee3682c0870" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/f7/4c/703768310ea21b513fdfd42d114447f0a335b763d70aacd54f8ecbc1e59a/coverage-7.17.3-cp315-cp315-win_arm64.whl", hash = "sha256:5559549a14f997b261c936ca463ed67e030511f914ffd1692ad08b3b16ed6034" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/5b/4c/e27066a48746f622abc8ccf941917294bf46ee87077427d9a22aa98a74a3/coverage-7.17.3-cp315-cp315t-macosx_10_15_x86_64.whl", hash = "sha256:b6db3399e76a366353dd0c9a009fe74c3d1c892de35863331c4d06fbe0dd83b8" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/38/29/129c10c8b1555ece4aaa9ad197769abda281bc204d7b055bf85681e12e15/coverage-7.17.3-cp315-cp315t-macosx_11_0_arm64.whl", hash = "sha256:47e49fced11190fdc678182b0e7f8947db4fc1c1216094923a1d2bbedba3c84a" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/11/91/4cd15480a1d6bb7102dfd42c03197034aff1cb0f12b3791ed6e14872c2d6/coverage-7.17.3-cp315-cp315t-manylinux1_i686.manylinux_2_28_i686.manylinux_2_5_i686.whl", hash = "sha256:fb5945d7360fb258dee758258d93ea624a712fae494e7a0037a92505b3eb8b32" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/1e/b0/b7db33135f973cba720c20d8055c26177217cd07c4e903fc24a71715be0e/coverage-7.17.3-cp315-cp315t-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl", hash = "sha256:47cd7674a39bad6480e565e2a5b77f8089ebfbcd3aacc572abc6cebabe1f4cc9" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/a1/ea/207ab861d69f4008d90d193ab5e9d5721ea2a75ec4a1e826720519142795/coverage-7.17.3-cp315-cp315t-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:ff5069e99039739c2fade5dd12cf8df7dc1b1217a0b915110605e0bbdddf1187" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/a9/6e/d5144a94a9758d25f3d9143b86a0ab04feded2a30d8c9365c646d504aea9/coverage-7.17.3-cp315-cp315t-manylinux2014_ppc64le.manylinux_2_17_ppc64le.manylinux_2_28_ppc64le.whl", hash = "sha256:b7028eabf24ad18646dbfc6b352cece01779914e69254ddcacdfb9f805d89f61" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/e7/b4/8328eaa253b44b081e25236abb4717f7afd37ecae02cc6ca77d853efdde9/coverage-7.17.3-cp315-cp315t-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl", hash = "sha256:349ab42e0b6b72892f187a60a0890b3a76710e93b7c31579e81648d46230a8ed" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/6b/bd/22effefa744acb7cac84addd7d619538c7604fe7d7b6fe3b989ad6f60fed/coverage-7.17.3-cp315-cp315t-musllinux_1_2_aarch64.whl", hash = "sha256:397e5342fd4f19ae930a5234643a63a8eaccc18a2f034a2f1765a5313123489d" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/a0/b6/5e1a93260f8524832bd5781108dc38497d7930bb451014350ce61b22f848/coverage-7.17.3-cp315-cp315t-musllinux_1_2_i686.whl", hash = "sha256:8009572d242674765b84ecceba126c2392b1824b32f41db1f3323d23d4cb598f" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/25/35/e7ccdc8675afd66c4c9310e883c255dec3277fdff65c640ec0ac531b1f9e/coverage-7.17.3-cp315-cp315t-musllinux_1_2_ppc64le.whl", hash = "sha256:dc116b251f7a4ae0266dba0ef31a742c6c517d3a99b4d50016548a17d407ac5f" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/1e/a3/d8c76a38363e59654516041471cdc5b325fa22835a87d5213e20553454fb/coverage-7.17.3-cp315-cp315t-musllinux_1_2_riscv64.whl", hash = "sha256:b73148d024d086239fc04c03daaeb1934a6d295312dd0d6a04a937326c1207d4" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/0f/e9/cf0fded465f8d9a238d6b4fa4908a84f08ae483b3d4adddbd9668dc09ab0/coverage-7.17.3-cp315-cp315t-musllinux_1_2_x86_64.whl", hash = "sha256:7f02996b09190bcdee3b2af38bf2279e4a1a65306afd3e6c229029dbe41e42ea" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/ac/24/fcde10f418dec10e647c1d697f5fee500605adae2a0105fe772ed6dfff17/coverage-7.17.3-cp315-cp315t-win32.whl", hash = "sha256:80e219a51ef7ccf78fcd584257e523ece0d390cb3d9d3896660eac05a19ac691" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/80/bf/095490c7d43ba2e38eb0c4af31a37beb1f2347c4765613e39f8587c5f00a/coverage-7.17.3-cp315-cp315t-win_amd64.whl", hash = "sha256:86563b5323fc13239d943b22a1bb9ec60f9ca17bd9a0be09c40a89836697aea2" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/1e/f8/21db698c4785e3604755415aaeaa49bf00220c210f09c06dd185fce6f986/coverage-7.17.3-cp315-cp315t-win_arm64.whl", hash = "sha256:f8356475aba020621f8277f1a81c2dbdbda8286c7c6130f242c9816e044062a9" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/d1/8e/f7d7e69e2ad34ce08595b787eb578f669c00fd57d432ed4c7cfd71666f36/coverage-7.17.3-py3-none-any.whl", hash = "sha256:21745c08f2835b847a16887b748d3084dddeb0571ae2a0d62e33644413568b99" },
 ]
 
 [[package]]
@@ -927,7 +927,7 @@ wheels = [
 
 [[package]]
 name = "datacite"
-version = "1.4.1"
+version = "1.4.2"
 source = { registry = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/simple" }
 dependencies = [
     { name = "idutils" },
@@ -936,9 +936,9 @@ dependencies = [
     { name = "lxml" },
     { name = "requests" },
 ]
-sdist = { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/35/ac/13c3563c854ed1b96ea74e675eee6112a88bae11811fe9314693e3335739/datacite-1.4.1.tar.gz", hash = "sha256:7eb7ad82bc81a0aea50c55a7fa1f6e660ec79882a0085de60e1d7a4690fc75b8" }
+sdist = { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/46/46/2fb316625bd9a8079618c8f718651acaf2864ed749a290d835744a12796d/datacite-1.4.2.tar.gz", hash = "sha256:fec2be7867bd891aa7a351b00b7cabe6f6e5ea4fab581418a919c2f21d824b0e" }
 wheels = [
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/f3/f8/f1d7e837d9937ae762564dc7c0e865c13f1dfcbd8b53f4269755f3747daa/datacite-1.4.1-py3-none-any.whl", hash = "sha256:782ca32fe423c66bc74d7b4ee39cb22190c128e1e61a188becda12fd6f91d23b" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/39/99/903048e20e60cad624cf7d0039aec23298021aa6fd33628fd3897cd2d553/datacite-1.4.2-py3-none-any.whl", hash = "sha256:67615434120ab44fe177eeb7cd9ec6ddeb1de59cf0daaba2f40acf2df7302c1a" },
 ]
 
 [[package]]
@@ -1002,28 +1002,29 @@ wheels = [
 
 [[package]]
 name = "fastapi"
-version = "0.162.2"
+version = "0.163.1"
 source = { registry = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/simple" }
 dependencies = [
     { name = "annotated-doc" },
+    { name = "anyio" },
     { name = "opentelemetry-api" },
     { name = "pydantic" },
     { name = "starlette" },
     { name = "typing-extensions" },
     { name = "typing-inspection" },
 ]
-sdist = { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/c9/53/f6fed628a0c3d6a284125a93f9145b02ecc2c394735a878b5ad9938c8e17/fastapi-0.162.2.tar.gz", hash = "sha256:9ebd2a69b579141315b2447d8e3f518e6fd909abd6c01cac5cc6b06d5c8841f4" }
+sdist = { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/a4/62/19000d0f3699cacaeffe8a3c4cc7046d87aac3291163ffeb2ef08b82d859/fastapi-0.163.1.tar.gz", hash = "sha256:3d364b02a68b67292e833ff2dfed3b8dc3aeadf73e271c15316c6c166668792f" }
 wheels = [
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/d6/fb/0dc0f819163bc6b7f9e6802d7d0b1ac180fbbe4e75dbd10655c6a4d77796/fastapi-0.162.2-py3-none-any.whl", hash = "sha256:d0584f9662317e01140df94c64f4bed1d8b059fe35496e30c9c92f70e6e5ff15" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/20/b6/2424da1e40825d3fc54539621811f34e21472499677c9490e4967270e38e/fastapi-0.163.1-py3-none-any.whl", hash = "sha256:68f2d8050f5c3583121c0d203046cc7def5c16a7d6c43a0e7707a8ea610fe2d3" },
 ]
 
 [[package]]
 name = "filelock"
-version = "4.2.9"
+version = "4.2.10"
 source = { registry = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/simple" }
-sdist = { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/a3/1d/d730c664fcb4f1d264a722722a3134cf0881854f73c1fd58abf87572f232/filelock-4.2.9.tar.gz", hash = "sha256:96530b7c538d4ea08493ab067247aab7948c54d8cd622cce711c97cccc5d9896" }
+sdist = { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/a1/cf/05bcdacabdc0aec7dc8e19d76281bd82325df62dae3b6430e9ba57397689/filelock-4.2.10.tar.gz", hash = "sha256:fcc3c0cb8bfe7f4b3bb0e231c04b15dbad068cb3c2515f343d8fde4dce93bd5d" }
 wheels = [
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/00/05/76184fe08339723d643ab47887a8e4de8f2921ca4e008617ab7490af7857/filelock-4.2.9-py3-none-any.whl", hash = "sha256:a379c50a729e5b68c8519a4d26489f755d9769960a236ecd838190e2a78db2e9" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/ef/90/5d0096a325aa0f83ba7a3968bfb485b67e32c947bdf9cd0fcb4b485be718/filelock-4.2.10-py3-none-any.whl", hash = "sha256:9479aaeb4db20b5a53e3da28493edd24720b66b8a0b84030aa56ccdf243d6857" },
 ]
 
 [[package]]
@@ -1328,14 +1329,14 @@ wheels = [
 
 [[package]]
 name = "idutils"
-version = "1.7.1"
+version = "1.7.2"
 source = { registry = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/simple" }
 dependencies = [
     { name = "isbnlib2" },
 ]
-sdist = { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/d2/33/12b04eb3082a10328bb6e7770b9e89b336b4a2c5dbed0e52750f4d6e222c/idutils-1.7.1.tar.gz", hash = "sha256:f2e1b860d117e5389adaddb3b67a17b90a17fb428b59351bab6ecf74e64608a3" }
+sdist = { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/ff/59/e1be78f4fe3af0ae2e5e133d30cd63addae5f0878384722a200c08d4e3e2/idutils-1.7.2.tar.gz", hash = "sha256:563716b3b515594c0ebf608bd2b6b0b137e94ce5fa6b10897a655740aad55f6a" }
 wheels = [
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/07/ee/efa1d86e216fcd44747a0696624d13e3131438ed5f24108762d3ed9d5f79/idutils-1.7.1-py3-none-any.whl", hash = "sha256:2e6b5f8bf4fcc495e6186b2b0d59d38477641546506a363e13f42589f2bfa362" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/09/55/e4368149e2f6656686bcad4f7e60c69bb7f51ab2280d3464fecb93e90392/idutils-1.7.2-py3-none-any.whl", hash = "sha256:f10ad7243b13c2d647eaf9c8e3895b65d0bf41f5927f3cef39453f7e0e7be7a9" },
 ]
 
 [[package]]
@@ -1358,11 +1359,11 @@ wheels = [
 
 [[package]]
 name = "isbnlib2"
-version = "3.11.24"
+version = "3.11.26"
 source = { registry = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/simple" }
-sdist = { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/b3/63/3d3394634d9e14b1dfbc4d5c1ba9733c1018083cabad65f51636063f85d5/isbnlib2-3.11.24.tar.gz", hash = "sha256:d13dbb147779c975f42bd69c10715111a353d66cb720a858009101b8638f6ee7" }
+sdist = { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/b2/df/0dc579906e0f027cf2b750fc11a24b2c026b4e9c76f7afbc51c9c39b7427/isbnlib2-3.11.26.tar.gz", hash = "sha256:305e3b75a5ca249367c7d2b11d66776872719ff98e2baef4be4137bf84b6aed2" }
 wheels = [
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/0a/3b/69dfdc1990f6c154b101b656aa662b1f2890511e849fd060976d7e02b6f2/isbnlib2-3.11.24-py3-none-any.whl", hash = "sha256:bb49dffb55b112de3800cbbdf9a484592e2a1033c0d126a73f52db98ecbd69c9" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/3b/7c/d7ac9f39b472a0ea9a6d1f6ee2849fe1ba67e78e308f2b685810600b91ef/isbnlib2-3.11.26-py3-none-any.whl", hash = "sha256:539aa384745ad73bcbc6a40a0f58835d5567f4408c20a219d097d2449d9c234d" },
 ]
 
 [[package]]
@@ -1409,14 +1410,14 @@ wheels = [
 
 [[package]]
 name = "jsonpatch"
-version = "1.44"
+version = "1.47"
 source = { registry = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/simple" }
 dependencies = [
     { name = "jsonpointer" },
 ]
-sdist = { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/94/e0/5fff51896a5556c44890b4d211278284d6a4c847e509b4e585e5f4616060/jsonpatch-1.44.tar.gz", hash = "sha256:88fc1d9728168b4a9be27bb00de469dfb3cd28e8e5b568b24efb2ac583cba7b9" }
+sdist = { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/8f/13/43ae689f9340dc7339dc7f5a3b1772edcd48fb1eb62fd5d801a2aa09d382/jsonpatch-1.47.tar.gz", hash = "sha256:5ed650b7517789e0f43428aa7b09442c0b90de0a0fd17a53fd0ebf55205c601e" }
 wheels = [
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/6f/56/890cb3357504efa2f9848ffa7df18e9e2583402aeeccbba2dc1c9318f5bb/jsonpatch-1.44-py3-none-any.whl", hash = "sha256:801f9238740d19eb101f9f7cea9c1c4810dbc4746f3edc89f7751d1798b917ff" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/5d/e9/a09b859f5fbd7a192ed40f9098fb746607ab46eaacc1eecaea713e4df0de/jsonpatch-1.47-py3-none-any.whl", hash = "sha256:c9ba6de59c481bf2be05041514ecb0d97f994aa645c4e00831805dbe2281811a" },
 ]
 
 [[package]]
@@ -1430,11 +1431,11 @@ wheels = [
 
 [[package]]
 name = "jsonpointer"
-version = "3.10"
+version = "3.12"
 source = { registry = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/simple" }
-sdist = { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/93/f6/d1109cbb2c7cb692b432071802028052ba8d275c613c1a1cce427bc62c97/jsonpointer-3.10.tar.gz", hash = "sha256:69349c0e738c93e9efa501397091f49ad302ae686293effd05d7755c06f88ef0" }
+sdist = { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/46/cb/2c3112a061a718d93866c2555dad1e9d53865e4703d0f3be550d252b277b/jsonpointer-3.12.tar.gz", hash = "sha256:7a3dcc11b64053eaa9c549e85e413f8d40a075215f793a331bed9182a14251ae" }
 wheels = [
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/2e/66/25cbb926e981a849d1cfcd36817fba6bfa5e9b6a2944c41230fe83ff25d2/jsonpointer-3.10-py3-none-any.whl", hash = "sha256:3b08b9e5239f1b683e31c9561c350d75ce3fa8cdd407130ca8491fdb0c9e56f3" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/72/07/3c953fceee478798f6bdf7b39e0da0793f437e8b5f9e9e1360fba32fb25c/jsonpointer-3.12-py3-none-any.whl", hash = "sha256:89f391335ee2719ae72149e1bf30a4d4c7c5d92f15a3f53faa8d20cc7c6c7f19" },
 ]
 
 [[package]]
@@ -2317,21 +2318,21 @@ wheels = [
 
 [[package]]
 name = "playwright"
-version = "1.64.1"
+version = "1.65.2"
 source = { registry = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/simple" }
 dependencies = [
     { name = "greenlet" },
-    { name = "pyee" },
 ]
+sdist = { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/b9/33/151d28773e930d0d438b73e5dcd29b418da65150f9ad05ddd772b275395e/playwright-1.65.2.tar.gz", hash = "sha256:8b031f81de9cdbe8550d8fe8b58dba47d96239e53177ee4cd47dab0fff07a87e" }
 wheels = [
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/8d/c8/cc677856d89a0c077673b40ab915ed5597bf1347b205cabe70121c431ca9/playwright-1.64.1-py3-none-macosx_10_13_x86_64.whl", hash = "sha256:29453ff76e25c17d0b45658cacd6b92e9eec46e8db21e134fb3b7143df50f013" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/72/4f/572bbbe60a5787ca61a84bad934c3ce19c08c2bc9c0e9781bf0d99cad1a6/playwright-1.64.1-py3-none-macosx_11_0_arm64.whl", hash = "sha256:59f7b041284ce8d1b72098ae50ca48a2d83692eec25154ab5ba79d4b6b4fe8a9" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/44/fa/468f313a56d33a6420705147c8d47bef558f087856edf38c5b13eef8aa6c/playwright-1.64.1-py3-none-macosx_11_0_universal2.whl", hash = "sha256:6a6f99adad1ae40e6ee62efe89785db861ce7ddd57651521cb31894183cc4ae3" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/15/b9/e481a34572933b5cf179d5637c98da488c732ee339dff5b73a0624d2e42b/playwright-1.64.1-py3-none-manylinux1_x86_64.whl", hash = "sha256:577b8d88778c245cfbd145ae17cf53044f084b1b46c55c69081d4069d56057e2" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/0c/11/545f25e47ec54e1e8a2892ef9994fc2b298f909ab37b88578e3a1f87ac2e/playwright-1.64.1-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:a29fda44725e11b0b625c4bff6458a1f6dbee97b88c9788d12e18a8344458c2d" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/33/87/8ff7af99387ee72ae9b46a66ece7a0c0aa63f73320ecf6dd3dd087fa840a/playwright-1.64.1-py3-none-win32.whl", hash = "sha256:d3c48b31da426c2f3562d0919cb9ea4e5415f6dbd29d7211fa4d66cca24fbd2f" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/96/0a/64db6851aa1852a4f76be28eea71d4e2bf9f3ce493ee2e66939426729046/playwright-1.64.1-py3-none-win_amd64.whl", hash = "sha256:5e240a79464434c9260957b9ef59a5808e02e96e3fcabdc717fd7485260b9730" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/c5/4b/d7ddde9467a5fcfe6a0d3c954732332e98a4f4a9025fd42c8d091c16e5f9/playwright-1.64.1-py3-none-win_arm64.whl", hash = "sha256:983ccd085453ea5a7588193657fc349a6ffbf7bf7ba663fd58dc81e4aa3af9d9" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/9d/aa/17f3761bf5ef3f900a395b8962aa273736ec949e8d644f246e9094a8f071/playwright-1.65.2-py3-none-macosx_10_13_x86_64.whl", hash = "sha256:99dd0de21173375cded45f4e26a9e19b862d748b06cbb11376313758cedc220e" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/ef/fe/0a7f9109a7fd33631b271893fc311928dc568d1a5f3b3b3f18b90ed95561/playwright-1.65.2-py3-none-macosx_11_0_arm64.whl", hash = "sha256:2e03da7fd7cd6ea92d22524be147e5803649ab0ae9b362b9a78efa869c2f57c7" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/4f/29/68e20008d28e39778c724d69f28b19177a6a39539ea488aa0df9d4f26718/playwright-1.65.2-py3-none-macosx_11_0_universal2.whl", hash = "sha256:3bb758e12b963bf32f7fba5c4b86994f060126feb32d47f236589f53fe09746f" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/de/c3/2fc4b7da0496401ecf35c3fba50235e7f2cdbe141b42be83eb2d93f08fc5/playwright-1.65.2-py3-none-manylinux1_x86_64.whl", hash = "sha256:58932d35f56767ab7ebcdd3d4a733bfb3e62a1a5bc43c08e28b9fa9b3e61cf33" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/e8/eb/378dbf6da1a76aea9aa9ec3f39b60a03651a8f32ce8b7ca5a8a890b4d21c/playwright-1.65.2-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:dd3e54b6a926fc6510f272797eec0707dc34ae04d564e74a7056c4a813e53270" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/7a/e7/9fa224de4a94d7754a0654b369170fa5069274036061d0393b3a2f6a6c17/playwright-1.65.2-py3-none-win32.whl", hash = "sha256:4476703bcdd1a2db06f5db5136af7c02552b1bb519d5fa4b94a8eead2a6a41ba" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/51/9b/f071a3f3250017941a9d0ae27b8fe4deb141ce37b6b9fa176ff5bf8f34df/playwright-1.65.2-py3-none-win_amd64.whl", hash = "sha256:d0aec9e1c97b6f497f3d9f2ad6e1b7f299968e61239d71f100298b0690f3c776" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/3e/fe/ac7ee06f2a674f51577c4fa3690151e3c9147510cc1e08c8ad69eef35c03/playwright-1.65.2-py3-none-win_arm64.whl", hash = "sha256:33a224fba3fb72c5fa7eda49535b265c292f1fb87949c769754f9fcd0f5be2de" },
 ]
 
 [[package]]
@@ -2444,14 +2445,14 @@ wheels = [
 
 [[package]]
 name = "psycopg"
-version = "3.3.8"
+version = "3.3.9"
 source = { registry = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/simple" }
 dependencies = [
     { name = "tzdata", marker = "sys_platform == 'win32'" },
 ]
-sdist = { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/11/c8/3bd7e09770a5829eb26667df5e49f084d78bd106d5949ade9447288a8e18/psycopg-3.3.8.tar.gz", hash = "sha256:86c135a9a6f5e98404975c5787e620bf436a7807e088baebd1b20fa48d3b4b4f" }
+sdist = { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/b4/74/ff710399dfa9fe9b546c2f5a05ea2f9b9d1dc2145c0b59e53a3fa2013679/psycopg-3.3.9.tar.gz", hash = "sha256:87c1d85c3e0e88e811d3c0b3808f947bd967c6faf34af6cd86fd021f77793d6c" }
 wheels = [
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/7b/5c/50a0b0796ccb69b11934f7c5758051c08019bda2fafb417501109fffd569/psycopg-3.3.8-py3-none-any.whl", hash = "sha256:ca50af6072ba9ea6866f33021975230c2555d7bfdb9d8f94ca3af5c3d1bf2167" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/52/5d/a7957d1b5484f8e5094a15b1a400929324f978b670bd4a95179e1a012ec2/psycopg-3.3.9-py3-none-any.whl", hash = "sha256:d2d7d04a1ce6dab4f5b27316bea3b52585cafa2f2d631e5b09dd69823f5c26f6" },
 ]
 
 [package.optional-dependencies]
@@ -2461,31 +2462,31 @@ binary = [
 
 [[package]]
 name = "psycopg-binary"
-version = "3.3.8"
+version = "3.3.9"
 source = { registry = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/simple" }
 wheels = [
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/7a/67/7da6c17ce91cc8f991c104d7d557396d37bd2394436d446af87493e8bed7/psycopg_binary-3.3.8-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:e09cc11a367cbb147bacec0a41d748d22245e322827911d9c82b6066a8ba2059" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/f3/0c/56a7a35b304a7ae9f2796f76dd76a847d34f0cdaa76f0945294c06d13220/psycopg_binary-3.3.8-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:bf9388216da2069ca0dbad58479bb83e4b979ed35c4a80d247399ac93361417c" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/17/d1/99852fa4ebae1956c664be13758cf98219e9bf9613d58b9f4b21301dd1a9/psycopg_binary-3.3.8-cp314-cp314-manylinux2014_ppc64le.manylinux_2_17_ppc64le.whl", hash = "sha256:78f92c5c9c9177b247b0f72f03412bc829185786525a8cf8742460066762a7d1" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/6d/70/b0e38a0f80439e3b4a4ce52d1421ee5c6aa2803a43c50d32cfd16efb6df9/psycopg_binary-3.3.8-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:710183a2e29c72050c3a447f9f566de27c6efea9da40bf7b800381ac57026204" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/b6/b3/8bc56251ee11c9fcbf83fd87970116d9997834bb7ff8b9d1b8e23b468581/psycopg_binary-3.3.8-cp314-cp314-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:df35063b88af16c08bb8960aac9882cce620aea478dfec5a67cff397b575b97d" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/4a/c7/64fd282c7a16dbb56af75f336c58e16c7e00be147d8efb93eeec6a4d4def/psycopg_binary-3.3.8-cp314-cp314-manylinux_2_38_riscv64.manylinux_2_39_riscv64.whl", hash = "sha256:a63be4f745b778654e3c438d1b0e31bcf5ce265151c6982d5c6d5d286bae84c0" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/80/da/88d70f65c54a828f3d89597749e6c1b90991297e34de5f50b0f8f394022b/psycopg_binary-3.3.8-cp314-cp314-musllinux_1_2_aarch64.whl", hash = "sha256:ced3499d480a979b956536b3f71a4736451bf3a976e4e400fc5c4b8dd3f43b23" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/e8/fe/0bdcc827e2fdb4a63e9516ad9e6e3989c39076796074ee752e0fd5c7e2bd/psycopg_binary-3.3.8-cp314-cp314-musllinux_1_2_ppc64le.whl", hash = "sha256:bf96efb4530605813b30d664f5d3b510540d89434a8e89dd7c62fb2d4fa4278f" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/8e/7c/d870616fd18f371c710a08fee92d1f7c663753e992e03472b84954fa8a82/psycopg_binary-3.3.8-cp314-cp314-musllinux_1_2_riscv64.whl", hash = "sha256:0fd106e47b7d1f82744b23b6dd31856435e46c3d1b3d4972325d76f2e7a3d771" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/1b/bd/af3b881b42954a5cf406b084588dd7e2fd069bb998beeef2ab5057d4cbec/psycopg_binary-3.3.8-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:5deec7746acf1c742572b8bf8599f2f61a38c9925015d77254d87d3781169b3f" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/00/72/132dd54feeac60ecb77eae04bac76cdcf84f8fc1e8e7cae596cd2a9d43c9/psycopg_binary-3.3.8-cp314-cp314-win_amd64.whl", hash = "sha256:6d899f361effad9a23d90940b6b55683bc87ed2d457ef64a7fa76fee7c3b9dfc" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/22/85/7589ec7690974b56b5cd2c5c00174f9b78f958fb6a381317a33620696380/psycopg_binary-3.3.8-cp315-cp315-macosx_10_15_x86_64.whl", hash = "sha256:419a52eb62bdc0bf9eff80039329435c55a1943b1fa12f4d0cbdc45b5f856c5b" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/49/cd/7a01cfa27b2f062727d3abe82726915cc45789a4649bdab6f7740b779348/psycopg_binary-3.3.8-cp315-cp315-macosx_11_0_arm64.whl", hash = "sha256:f31dea98f8c5c6c60e8e049388f24eec14088518e2ded0f892d96c785401e688" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/e5/ae/06211024de518c5a5d02733fba9639a062dc41f1f322e273ad611973bb3b/psycopg_binary-3.3.8-cp315-cp315-manylinux2014_ppc64le.manylinux_2_17_ppc64le.whl", hash = "sha256:5fd40b5ced3f8b458024ea434f2dfee7aa62a65663089bde26c41302f6c31b2e" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/e5/48/82a13d5b04fb046582b87f0651252f66dc5e1cc3183d6807aff1ea126189/psycopg_binary-3.3.8-cp315-cp315-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:fc134798cd646a15326004bbeff4c2719e000a9ac52f6b893a767f7c5276e24b" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/ee/24/01ddf5382fe55372f85f174e9531bdcc5350a6c9b980e25e19653d038bf8/psycopg_binary-3.3.8-cp315-cp315-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:da101085aa9f74817e48fc96dda859528fc52fabcf81e27c3640d1df17dd6dcb" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/51/42/192a69f42c797d8dc09ebd97f69c2c3f745abba810379df83c38490fc428/psycopg_binary-3.3.8-cp315-cp315-manylinux_2_38_riscv64.manylinux_2_39_riscv64.whl", hash = "sha256:bb88457e8357a8709ab04f542c07361a816793f012a1c9818a4edd86d02cde4d" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/82/73/a420dc5c2888d5c91bd40ddd7a8a604b622f3d883048a6b92e5c33ac1e9b/psycopg_binary-3.3.8-cp315-cp315-musllinux_1_2_aarch64.whl", hash = "sha256:eb4cd3f0ad6ebcf2baeb94f93d87138044976b57b7113b6321ac3c5cf70a8130" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/29/57/b30555a448fcc60607cbee68880a4126786680e71b7cc25e0a836b31da8b/psycopg_binary-3.3.8-cp315-cp315-musllinux_1_2_ppc64le.whl", hash = "sha256:9199be795608cbd3e6cc39b21c19e6043c44bc15d5a1d28f1df379830c553dd5" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/48/4b/a6ead08df35feb2f5e10897e33c1ba26809f85365a7c2a0efa244acf9008/psycopg_binary-3.3.8-cp315-cp315-musllinux_1_2_riscv64.whl", hash = "sha256:6bde86fb307fe1698fbbfeaa96130d4825f265afbeff217b959c1905b86f924d" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/68/8a/7ff05b083c676024beb549863a19d59b205931010ec7f3a12aadf5de9901/psycopg_binary-3.3.8-cp315-cp315-musllinux_1_2_x86_64.whl", hash = "sha256:c2154bd84cf20148d9a59e3ade04f0f754462b96cfac91d54d76ef33af7946e5" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/59/a7/58ab2cf0a6da11d5c2b00d524f5d5b114e2e6359e629d34360cf57a22e20/psycopg_binary-3.3.8-cp315-cp315-win_amd64.whl", hash = "sha256:0332e83c2e78b1c8c00c1095688f9b332bdde9d5e9d61b8ce1cdcaf716a19b9e" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/25/ef/2369abcb3d7789117bca1f028eeb69e2798237f5b6e5a7b4172eb113a380/psycopg_binary-3.3.9-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:6bc7e10d05f236f53b184d9592e8f3d22587bc2e7b964fea9f5d0de2b1142fe5" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/d3/22/3a2f68ce0e414a6e76f09987f447f155e2ef8b79d13ea6cf4aaa74c941a3/psycopg_binary-3.3.9-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:e853041acf10de2dcb595167138dc9fc27de293d67caa1d80ed282ec27a28e87" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/af/1f/7e9e1f8c00e98fcf9d8be2d4d2120106100db5886cfce807c5d01523d64a/psycopg_binary-3.3.9-cp314-cp314-manylinux2014_ppc64le.manylinux_2_17_ppc64le.whl", hash = "sha256:c25fa1ee28f8fd73aecc5e8612ab9e5700682e8e23f9422437a1617016029934" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/2a/d5/ba4839c38d9d35daa815cb18dfe462582f783ba83b9d932692bb903fba01/psycopg_binary-3.3.9-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:4992acd5a7479013d52615b8c23fdce9bc22f3cacbfb1007fa474e6b5ebe94c7" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/f1/47/243682e14cac97cb7500625a2ca3a53195ddc39e4bb81a59f289286f23d2/psycopg_binary-3.3.9-cp314-cp314-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:eed1ac135d652e4454777afb4e4bb52cf88520bbfa2f30ae83066cd4df656697" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/c5/4c/5b1a99f245c3a22bd3cca9760f0595e0bd26b4a7c0d5f36fe0288ddc3b2e/psycopg_binary-3.3.9-cp314-cp314-manylinux_2_38_riscv64.manylinux_2_39_riscv64.whl", hash = "sha256:85b3892dbc4f5fb21880f82e3aed7329be6bee39fb58a0f059cbb1d0a382e98b" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/c6/cc/32d34dd14d7215b987cb76ce72035963b85a9b4e75d3e3e78104abf7c831/psycopg_binary-3.3.9-cp314-cp314-musllinux_1_2_aarch64.whl", hash = "sha256:4ba688a9402e3cc9d425e6ad20f97b96698f59f867279c265c1d0ca6df9dad57" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/79/c4/ac9f35d331f987d83e5534f35d28f76aeac101eebaddc5c0c9f252a2d21f/psycopg_binary-3.3.9-cp314-cp314-musllinux_1_2_ppc64le.whl", hash = "sha256:300bd86d4b81d297e204a8ba223f54ec09a4b54fd069c32a74bf75b42860703f" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/54/04/e91fedeeab7fe94df2364ad324c0de0e6ebd54b24f3dff396e24ffba9655/psycopg_binary-3.3.9-cp314-cp314-musllinux_1_2_riscv64.whl", hash = "sha256:e01a4f4fd0e4beee23af30517123bdde838d53c3ac0ae594da019e36b3adabda" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/da/fc/e522309105d4c1b1f8bfa7e887355a414c1c84e94e32e532a6595c5ded13/psycopg_binary-3.3.9-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:5117a4745b3b850872140d3a66a8d83c55801916ae6e3cf502af0a794f64f9b7" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/4e/50/643d5f523fa77a3b808e982716e7aa76da788218e40942721939c5e08c11/psycopg_binary-3.3.9-cp314-cp314-win_amd64.whl", hash = "sha256:109c5df5b0e5117e01a42d3b56a2f4ccd5431bd54d25efdfc89df095ac9f9605" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/c1/81/06d36165c60e32d3909bf9ad036f4120284872ad00234ac384be20fcef5f/psycopg_binary-3.3.9-cp315-cp315-macosx_10_15_x86_64.whl", hash = "sha256:0b513957b283d181ed04961567b9893cae79309e23655d54c91cb8781ad81fc5" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/4c/70/6c9eb0d0f1e124dbeba86dbd4c06b95bf15e7dfe60c0a3b91f6c7b45e237/psycopg_binary-3.3.9-cp315-cp315-macosx_11_0_arm64.whl", hash = "sha256:a9ee20e3b314c1f36ec13093f1ea46161704a7304a6c334396318d36416bd330" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/7f/84/99ecb47d6ef0752792b60b1fffd3739fae0605f4786aa9827646d1623f4b/psycopg_binary-3.3.9-cp315-cp315-manylinux2014_ppc64le.manylinux_2_17_ppc64le.whl", hash = "sha256:0793764fac48b5f0bf4d7154e38c60def4fa0cce16caa60b737f770bd29016ac" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/b0/32/2fbc8412c6d650886b201a0b1b2d522008d4a8858d885d2ca1b1f35df2d3/psycopg_binary-3.3.9-cp315-cp315-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:e51c7c493f07b51be56875cfa8a7674824749fa1cda3515339ca64e628f1b992" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/cf/51/cc921a2ce634cbe8ebf3cb2b062d303d97afbf4ee941f8190003d867bea9/psycopg_binary-3.3.9-cp315-cp315-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:e5af7a6d4ca7781c03f9f628ef83ff739de8a7e7e0ffe4b6e7a8c274caea6f81" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/db/37/74fd196f755b979de8d2ad8d84f54afe0628036a8d88b63f7fd204e2f8fc/psycopg_binary-3.3.9-cp315-cp315-manylinux_2_38_riscv64.manylinux_2_39_riscv64.whl", hash = "sha256:e047c843fb5cd3c9ebc370bf9a9394cb97feb71b678f07f58419de6d1c6cb5a5" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/37/16/096ce6aae0063f42b1d6ae6f6fe0276208fb929daa5405a92718cf3061b2/psycopg_binary-3.3.9-cp315-cp315-musllinux_1_2_aarch64.whl", hash = "sha256:9452241b4684a6321c8e047f4b31a029823fafceddb0809827ec1d506784a3cd" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/34/09/1e8063b591433174211908d9797c7d0e85304a11c92069f66ec66c2c741b/psycopg_binary-3.3.9-cp315-cp315-musllinux_1_2_ppc64le.whl", hash = "sha256:9926a6f98fbfbb47ad34fab6151d5e6de917d640a07e78cf07a91005593f7c65" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/f4/04/206ac77650b2313b3e6b2fb0d00ba3bb663095586b824d350a1937738575/psycopg_binary-3.3.9-cp315-cp315-musllinux_1_2_riscv64.whl", hash = "sha256:0f049ea20c87608eab3df8f055e8e29743a7af42f5e3e1bdb653611194fa64eb" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/ec/27/22d7d9865c4722abc12be9a15be1f671624f7d440afb66cbd719dcb44a3e/psycopg_binary-3.3.9-cp315-cp315-musllinux_1_2_x86_64.whl", hash = "sha256:6ab13f8174a0a63d0b9ec39ac27dd129a4d78f22099f146455b5c3a73957cfb2" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/fb/4e/d066faaffcb5b9d0ef593c2903e767bdd22a12ee36e117c3f13d59cc5efb/psycopg_binary-3.3.9-cp315-cp315-win_amd64.whl", hash = "sha256:d5281f3453caebc911b2c5553398d59e217a8101f6b2596311256ba3772167fb" },
 ]
 
 [[package]]
@@ -2573,7 +2574,7 @@ wheels = [
 
 [[package]]
 name = "pydantic-settings"
-version = "2.16.2"
+version = "2.16.3"
 source = { registry = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/simple" }
 dependencies = [
     { name = "pydantic" },
@@ -2581,9 +2582,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "typing-inspection" },
 ]
-sdist = { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/d0/31/21d21e0e38a8f5f7a7f0cde22820117b6d17d6bc36f348129527f915d7f4/pydantic_settings-2.16.2.tar.gz", hash = "sha256:3dc08ffabed2bbd5dc2dd55ead7b78b4e4c5cd776aecd04310db5f1224caaf46" }
+sdist = { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/59/28/227c843eedd29bd78e132e5aafa420d83154b10465c312f9c21ff2eaf77d/pydantic_settings-2.16.3.tar.gz", hash = "sha256:10e36f616623ebb586c05ca3d3cd22927146869db413d4f14c20c514442a1337" }
 wheels = [
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/39/88/4131c51ff87b7cd7f82a1194d0c0a2b7ca68c72d9da04c3b7e69ab91a79f/pydantic_settings-2.16.2-py3-none-any.whl", hash = "sha256:8d523e5c129b097686bde019bd6109bff53f4c8c3f63f1ddf9933ffa42e5ab4f" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/4c/26/3e68379ca313b6aa58e11fbd8b28d5c6f1b9f4428d70222ba021a76797ec/pydantic_settings-2.16.3-py3-none-any.whl", hash = "sha256:d1db16a2d34006323a1b42c0640898da58adfbad7ec30baaa9e2b18aafc08999" },
 ]
 
 [[package]]
@@ -2596,18 +2597,6 @@ dependencies = [
 sdist = { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/01/b7/30548d006fb1d57a6b7ec69c4852742669cab49a52daaf8c29dcb210de6d/pydantic_string_url-1.0.2.tar.gz", hash = "sha256:fa7690f7231b47ac89e2f0546ef1137af182bcaa9c93f9a3c0deaff2afbb79ca" }
 wheels = [
     { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/21/81/13a0edf1eb6f4a704fc4f7f2047d5e721c828e381cdb2c5dc7587b90f559/pydantic_string_url-1.0.2-py3-none-any.whl", hash = "sha256:9f97d415aa99f392d08882f2702f7eda9b8f979bb2526dbf75df9bc9ff062f21" },
-]
-
-[[package]]
-name = "pyee"
-version = "14.0.0"
-source = { registry = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/simple" }
-dependencies = [
-    { name = "typing-extensions" },
-]
-sdist = { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/1d/f1/fdedc2c75c3e31a330659c85e5793bb18b3397981fbf0844c6dee5b18926/pyee-14.0.0.tar.gz", hash = "sha256:76dd0f4314ecd27f02dc73589dea7fd3853f9b6176d8ef9b122860657e3602de" }
-wheels = [
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/81/12/5347938b1f9a6453f0dbdfcc3e2388a1320ef9b9ec17fbefbc4ab647ea98/pyee-14.0.0-py3-none-any.whl", hash = "sha256:3ac2d3229a9677f7de2c33d7f52fe25b638a46b19c413fea2edc8c6d0a644e4d" },
 ]
 
 [[package]]
@@ -2935,74 +2924,74 @@ wheels = [
 
 [[package]]
 name = "regex"
-version = "2026.11.9"
+version = "2026.11.15"
 source = { registry = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/simple" }
-sdist = { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/61/27/a5afeb952577b84ee5fe48b8b9ce47ae662dbb69cc5b76c28eff98f83b1e/regex-2026.11.9.tar.gz", hash = "sha256:316a70fbd70e999c9664681cb0eb5b4982b2cc0f623c7c86a8a112e1bd4c6277" }
+sdist = { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/cf/e7/67c67920a3b5183388e0853a0a564a4bf60f2dd190a4e7626f5dad2fed62/regex-2026.11.15.tar.gz", hash = "sha256:d6ec7e29e62ebf93ab2a593d1137022b6025497d8610e5cb666d52f9ee5bb0ce" }
 wheels = [
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/ad/76/0931cbbc2faec7eb35e1dc95bb6e3256ddd20d1995dc1474886954436d33/regex-2026.11.9-cp314-cp314-macosx_10_15_universal2.whl", hash = "sha256:8d8225ae4aec6154a9c895fc5ea7a4cd9347c955432ee3cf277871518b4a78cc" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/18/57/e06c598bd5935bce31faae0c20dbb27f7b3551f77c871da1fcc9d5e8806d/regex-2026.11.9-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:2d8f8f23200309b13a48a43379890bcdd34db49dda203445d2c9e1ebc1919419" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/e4/bc/8d2e21baca091b2f2bba7b6127cb60395018579736d41958d7398f381e5f/regex-2026.11.9-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:fb91fc79a06d276f7811b840840440c6a35178396bfab288a4814b9a05d08245" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/4d/14/561ec95a248d68b55598e80a8a7190fce98f8a1ab8c0aeb2fe46b153bb28/regex-2026.11.9-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:7f570129536763bce7bd06a24f555bfad989aca594459a09cd7d51e47b92e0b4" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/a5/f0/6398931f37cf3c3e9a1f8af33097ada8c17c7a991791e0b2e1df60f34666/regex-2026.11.9-cp314-cp314-manylinux2014_ppc64le.manylinux_2_17_ppc64le.manylinux_2_28_ppc64le.whl", hash = "sha256:992f562c10b100501d17abad5307cbe5049cecc9afe6f5bb58cc0c49be964a95" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/ed/49/eb615960e51bf824a24ef5ad3ea100f72ac5010aab835bd72fc0fbc5b9d2/regex-2026.11.9-cp314-cp314-manylinux2014_s390x.manylinux_2_17_s390x.manylinux_2_28_s390x.whl", hash = "sha256:5f571e667b3a0af4a37e231c535bec1237f531433fbeea4efe7196aae04eb734" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/88/4e/97c82477691afa0329b51ee801e5002cbf91ceff4864200cf2895833586a/regex-2026.11.9-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:b8d6cc5be22e9c839547d6ffc88b515845cbf47604c74d293955eea96281adbc" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/ab/87/c6b8dba287886b6b535b05cbb860110b84d11b864725cd39a35c7066da2b/regex-2026.11.9-cp314-cp314-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl", hash = "sha256:f026e602009c42175f5d7ab5ae0dc34884b09e5c1bb9c540e37f5f60c330173d" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/2f/d5/f9707218634b435d03839d0dd4c43b7b74426c7a010ea786846b36215887/regex-2026.11.9-cp314-cp314-musllinux_1_2_aarch64.whl", hash = "sha256:8088dcf06e237da99bdf1e802716ad29e9b4103b2b04f8dee87de3d6102a6c03" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/68/05/352600c95571b49ed1c7a9a73e9afc76459854439c8b5c1e811b3b81b6d8/regex-2026.11.9-cp314-cp314-musllinux_1_2_ppc64le.whl", hash = "sha256:063cfc54e91284d0d9808befba1b9624bf230c3d22c6dd32a539f7af81b391a5" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/43/c4/ff96ccc1515ed2fae491fd490dab2ea22c5536ae8de59f176eea07c6f886/regex-2026.11.9-cp314-cp314-musllinux_1_2_riscv64.whl", hash = "sha256:80c7f5a8236a751b9f0cfd160c68199db71860daa8609ec30ba79862926c6884" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/9c/b2/bbbee563872d031cbe160bddac0846195aa4cc9eb2d7d6b61510598c9c3e/regex-2026.11.9-cp314-cp314-musllinux_1_2_s390x.whl", hash = "sha256:590831103234f8b044dde16352234b24a7966ed685a8f5735da48f4044f5cb55" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/2c/4c/8d6060820dea2a10b3b026b462fd47986f54c0590deb13f16f1dadd7df27/regex-2026.11.9-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:961fe37a9e52575360599a4099ebb6d983b71a88e4cb44aef24e230adcb592dd" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/1b/32/5093383543e5c86b40e4117c0c6ee082715810b65283494aca48dc517d3f/regex-2026.11.9-cp314-cp314-win32.whl", hash = "sha256:4b9f3e8a40e00a8c46a23e780c06444fc19f048c44e0c533186bdd730a57eb92" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/4e/d0/5a472f1404c2217c92ebbd98d65a273cc48adc0a1f2948743ed59a873c18/regex-2026.11.9-cp314-cp314-win_amd64.whl", hash = "sha256:4d2bb485c68c8688201e5d56f6a7cd563ad9ee40ad2a700e77a13fceaac3a517" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/28/48/4addd74faf7531f713a9e765cadd1ddcb010363924fee94038e289452e5a/regex-2026.11.9-cp314-cp314-win_arm64.whl", hash = "sha256:dd0777e5cfa8508b0c1a903bfeb3b5859c1842c0b01f3ff39064c6bce3297e6b" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/ed/81/c88102ab3fa7eee7badc3f1554224d9012a5cd0fc2d40e3af4a4bb10e713/regex-2026.11.9-cp314-cp314t-macosx_10_15_universal2.whl", hash = "sha256:eb7c95df50b4132f938599f39758da9ee7c73ee66a8f40974160f07567e7301c" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/3e/da/ba9d89af353c54727086f705fff7b60bc0994191b76f2a560d69d44c612d/regex-2026.11.9-cp314-cp314t-macosx_10_15_x86_64.whl", hash = "sha256:18c2e3de5790cd5d1e1437f4805fda7f16b14931f86312d9542d6014434aa107" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/8e/13/d9079948364cbd94f693801c9673ed3f97052848380cd1b4271e6061ef4f/regex-2026.11.9-cp314-cp314t-macosx_11_0_arm64.whl", hash = "sha256:8d5b856217efc33802ae7bbd1b5d98c3117dae9dd6a36b75027291e2b79f72cf" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/e4/f9/dbadb579d336487bb226ab02686faa0142cc065426826d1d121cc01a59ac/regex-2026.11.9-cp314-cp314t-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:401055fcdbef098c6054e80e52813f7c937f4209c8c727ec4135df6a6f585222" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/64/d7/7e433fcdd1075dfce9423accf478a636b4e9a2078311b86a25ee4973df1a/regex-2026.11.9-cp314-cp314t-manylinux2014_ppc64le.manylinux_2_17_ppc64le.manylinux_2_28_ppc64le.whl", hash = "sha256:e68a02b7ff911d611c43457b029c76d6bbccf3c1a4f7e336e086a3b6afa1d19c" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/15/40/89d31d421367742d2854eba4f6a3d9ae1b15630fae9c7c791415c9a9373c/regex-2026.11.9-cp314-cp314t-manylinux2014_s390x.manylinux_2_17_s390x.manylinux_2_28_s390x.whl", hash = "sha256:7f854a607c31bc87b64d9ca13a9d25c6fb57f59f802d2fe871c48b205d06f566" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/bf/d5/5e16185a5ba2ebbf83ae24935c32e3a3fc25191347f529c06908b267b6f4/regex-2026.11.9-cp314-cp314t-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:2d6a2d52cd32a7cdfef4b3e22417eb7bde912a5624128851bb96aef5dc657067" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/7b/14/0e753b59a7ffed4d67c50e2674e870293fdf6f7f95ce65352407427687df/regex-2026.11.9-cp314-cp314t-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl", hash = "sha256:f4c1141775f79b742d9ad2d33e058cf06e7219030aadff8d4a132450cc7539dd" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/4d/6d/39a0e1ad06a26e04eb1fe2e00322c5d334d74c97a94a9dca01fb7e574eda/regex-2026.11.9-cp314-cp314t-musllinux_1_2_aarch64.whl", hash = "sha256:e886209417f98c2b8b817d531e72731c3fb78f990a402759f4a4c7714f9c5415" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/8a/99/1667c4ce3af04e661a0eff2008126ceeca874bc52d7f2895e75b86e7d11f/regex-2026.11.9-cp314-cp314t-musllinux_1_2_ppc64le.whl", hash = "sha256:85f327c6645bc0d924ef407d36aca97ed86bc41da28cabd77b347b1771b5eae1" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/ea/2d/124b69673327013b19e6cfaf7f59bcd1e801c1ebf893a056e0a0f6e0f84a/regex-2026.11.9-cp314-cp314t-musllinux_1_2_riscv64.whl", hash = "sha256:9cb9d77c5c9101f1b6aa3d22f679f7a41a5af6ab536bc7290457e9bfc40eeeac" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/83/4b/e4d277fe50a30bec2b98bb7c7e055efb33060c984cc41a75cc2d6b4c9e3a/regex-2026.11.9-cp314-cp314t-musllinux_1_2_s390x.whl", hash = "sha256:0ac46eb63c366482a268121d873a08014304ea774d349b9bd2340a622b88a3d4" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/25/a7/b1626d1a273b29f6104265488a7b82ef22a81f8a1066fd8d91e098887213/regex-2026.11.9-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:9622c0306e0864fa2cce4e5de97b3f0b7cbb86054c781550fceeb9f9c9bec290" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/d8/b8/2581a22a535eeaa301f8b3a71614d7bb8c30b821ba9373b991113b8b4c1a/regex-2026.11.9-cp314-cp314t-win32.whl", hash = "sha256:8cd7bda4894077adf35ec41df18d705e0f8028d40445066c870e517c754d78c2" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/10/21/a39d46035c96eaf530eabb6b57751c744c317c0af145240d3f1997d9ecc9/regex-2026.11.9-cp314-cp314t-win_amd64.whl", hash = "sha256:19c5affdda6dfe1bb2e5b0775cf5f4e71e664bcde2daafeec635d34d6f9704c8" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/20/64/1a9f6a13e365b1b23bd7ac264ceb8ecadbe962d3354a4cb4a303c88a749b/regex-2026.11.9-cp314-cp314t-win_arm64.whl", hash = "sha256:422c3dd2f8ff069c1050d4f4048bc8fa26fa92df09fcedbe13f77c922f5f7dc8" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/91/3e/a94fae619c5c72644732b393f241a4dc65e32a47c76a681b819390214d6f/regex-2026.11.9-cp315-cp315-macosx_10_15_universal2.whl", hash = "sha256:022c80076ecb4a1e967c6ff9feeecfdfc364183281667056d1953cd345b0b9a8" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/41/e3/d468930952cc613f7d63ad375ebe9c1e1b850b3a4c87ed411e8db8cfdd62/regex-2026.11.9-cp315-cp315-macosx_10_15_x86_64.whl", hash = "sha256:639d43b0898a2fd99e10eb5736f022c0fe8ee25bf60250061f8720c47a54483d" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/ae/ad/b53184107d89fc00a596d4306483a034d68353cb410cf7b19c7ee511cfa0/regex-2026.11.9-cp315-cp315-macosx_11_0_arm64.whl", hash = "sha256:569ec6f0f774caeef4e0bbc8161aff2b7f07b1051ebcfc9c2c9eccebe7320b06" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/b6/79/0fc94e5a21468d15e649c57ac327ea307712a5a1216557f6a7508d16abfb/regex-2026.11.9-cp315-cp315-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:5f209033452abebfa65f0d388b1f6d4f2b4b2791b3a403bc744c03e80e996be9" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/83/6e/3006d97b837a876223484206e4d7700798421958de49c081ce280a38d5e4/regex-2026.11.9-cp315-cp315-manylinux2014_ppc64le.manylinux_2_17_ppc64le.manylinux_2_28_ppc64le.whl", hash = "sha256:1dd7fa70f8b4956acb3e34eb9bea1c7ae3d31509abf979393181eaaa0f00e63d" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/cb/a9/f033d7aa75457dd3f6fa8f5701c5b4a5c685428bc7582b9c872a3e9e9c55/regex-2026.11.9-cp315-cp315-manylinux2014_s390x.manylinux_2_17_s390x.manylinux_2_28_s390x.whl", hash = "sha256:b10639d37913075b553ba9638be170a87f70c32bd9da0655c3093e7ebc4a8065" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/55/7e/378e356b11dbd903d61844215bd16e63e0bdf253c4c8e66cd60ed504737e/regex-2026.11.9-cp315-cp315-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:e8e8fd96057e04660a655f2f7fbc9a9eff6ffe2970ff01c0145a0d425f2d1bf6" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/28/2f/5d689c2b7b0083a54e47786699a08a2548cf317316b86385ac0646a56a61/regex-2026.11.9-cp315-cp315-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl", hash = "sha256:adce69b7696dec985977bc65d025c43dd7f2fa780f4f6e1d467d939884d7f918" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/d0/f4/231515fefa3051505ff3dd51d1eee987bcf637958d52dd7ae70d2daebe19/regex-2026.11.9-cp315-cp315-musllinux_1_2_aarch64.whl", hash = "sha256:346ac3b9664ca04dd9ff7f422a33d87015657b0674a2830d804d78e987cc1f4a" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/9e/10/f935d85b0155d0c621113fcef32aa148ef8d078c16907fbda6950c5d3abb/regex-2026.11.9-cp315-cp315-musllinux_1_2_ppc64le.whl", hash = "sha256:0c816b00198ddca1040fa2657619b1c6b4c861d158cbad9de77d01fdc44550cd" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/a0/5b/9e243ee822c1680cd1468520280a8bc96fe7a8b8ca5a7ed7f213fe9da92c/regex-2026.11.9-cp315-cp315-musllinux_1_2_riscv64.whl", hash = "sha256:aa62357d0dd25abd66100369828d6e28b50a5c44001a0fd20f95117c4038c648" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/12/67/2273b16db6d6a27bbc2a4f61ec9221d06adf3d1dacfbd6d8120f78e4c8ef/regex-2026.11.9-cp315-cp315-musllinux_1_2_s390x.whl", hash = "sha256:d1627410afc3f5a4b0c4d81dd1bdd1ed3de6407eda6d93524e643cf3891126d2" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/68/d8/58f8688bcdb9e482be40e25c13e7bb0701c2ce8c4514ce7af7c635877d81/regex-2026.11.9-cp315-cp315-musllinux_1_2_x86_64.whl", hash = "sha256:970201018e997ed4a2626ad894b657035397fa91c1c86eff1b0c8cb9eb03d478" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/c1/fd/382230164a17f509c155918771817378516a9ee8bd1b54a5ec4d3dacd7c3/regex-2026.11.9-cp315-cp315-win32.whl", hash = "sha256:1f4c9e7edad6ed655c83741413b350db98b1234a4fa8739bc1ed7167e19ce98e" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/9d/1f/3b08cdef84fae97450baf8c60c0f86a85c613ddfa7b106df9186069248c0/regex-2026.11.9-cp315-cp315-win_amd64.whl", hash = "sha256:72770400851673eee68e9d6cfc45c18a20736894e3002506a987a244780df36c" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/24/ee/ddf3c916425e7de6774df90e9b36ea7be709233f6e617863f9eeaf855211/regex-2026.11.9-cp315-cp315-win_arm64.whl", hash = "sha256:1e8fe618fe5eeceb827db2b49750fad345be0e6145c5c41ed701ee27e081ff9d" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/a6/d6/0e0566737f61954b66df56cee68a7412df3fd8f5a9325f08837cc641b9f5/regex-2026.11.9-cp315-cp315t-macosx_10_15_universal2.whl", hash = "sha256:6dc0dd2d31bc0e2301345c3b20f64a6d864218196c7c9ea2b96788e76b964578" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/9a/1e/7f95189e75cd26a634c9832b469f620bf45d02a6e2be184a1169ee7af61a/regex-2026.11.9-cp315-cp315t-macosx_10_15_x86_64.whl", hash = "sha256:6a1ee54c1e237fee890ef7045951613147fcf77a2c898229de44f165e5650aff" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/f5/cc/7e5406a25fe6cf378e770858133b044e451349ef2c1f2977b68dd061a2db/regex-2026.11.9-cp315-cp315t-macosx_11_0_arm64.whl", hash = "sha256:2bebc58114814ed6d78cc3d27b70d4f2dceb8a2e5d23dcc7d831809e86d3bc3c" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/f8/5c/6ad943248f553ce669fd2a6ad75ec27476f90a40e0f5173337db7089c13d/regex-2026.11.9-cp315-cp315t-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:9bc2cb2aa025b89ebe26c8dc3c1edb1c6b22be9dadea030a89f3a477faf646e8" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/a2/b6/be6a30c8bb5bc32fca59e9e6a7ace27fc5f8626b5b11a6ecca9f2d7834c6/regex-2026.11.9-cp315-cp315t-manylinux2014_ppc64le.manylinux_2_17_ppc64le.manylinux_2_28_ppc64le.whl", hash = "sha256:499313286c8ae346f19e6af6f78f45c356de293b37540fdea5f4309a5aa59b21" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/37/3d/a6fc734740e030e1479ff081c5af669c3543f6f04008c792c5566b30f07a/regex-2026.11.9-cp315-cp315t-manylinux2014_s390x.manylinux_2_17_s390x.manylinux_2_28_s390x.whl", hash = "sha256:d77014fe27bfc3565a0ef706ced0f7d5471937bce9b7ce38c46deeaa9f4b3963" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/ba/7f/c1860577baf5c3acea63fa812b7bb510825b28c44b474db00900e7cb3ab0/regex-2026.11.9-cp315-cp315t-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:e4498f31d71819a16b32e1a965bb587c7aaf153848c451d1e384ede77dc6a134" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/28/af/692419879b97a63e8342ccbd138329f900af38408f0b080d72a5a5fc9160/regex-2026.11.9-cp315-cp315t-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl", hash = "sha256:04e1c78cba5e3edd5400e9d7319a3036f652faa599bfabbf888fec584a9a4772" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/24/53/1ba04321ce8d15d219710e95f03feab54ca6a19ecad329a42efe7c46c873/regex-2026.11.9-cp315-cp315t-musllinux_1_2_aarch64.whl", hash = "sha256:5774579fca3431bd77518529d1ba54480d075396bdb0533daa0daa4db86e6594" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/e5/dc/3933476fab57134867d20d214d57393fbdb82a5a285083633bdf956372d5/regex-2026.11.9-cp315-cp315t-musllinux_1_2_ppc64le.whl", hash = "sha256:34087251368439c8238cbf2bde88a8e89fd865a2a61266a5c64b360414c7fe04" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/e9/53/e44fc4efa4de6dd29fc0f2e237f944a392478611d54d1af43e45c7726626/regex-2026.11.9-cp315-cp315t-musllinux_1_2_riscv64.whl", hash = "sha256:4cb820ff2fdcf610278c74dcfd45857b5177429e30bd0b7d1164855a011cd58d" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/fa/a5/a5e6f6b5904712646ed10023b75746d9492616f75f8ad9d8045fd28f04c5/regex-2026.11.9-cp315-cp315t-musllinux_1_2_s390x.whl", hash = "sha256:cb152514d21e3a0440e4c30ff2323f3bbc48de3c1d1aaffe0494470cf5566a42" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/09/60/73045aa8b48f37e12f18eb6ee5dee9573a31f381f987f1a2d0ea27310537/regex-2026.11.9-cp315-cp315t-musllinux_1_2_x86_64.whl", hash = "sha256:38cd15cf8407a4220bf387657cbd38d961161d152c08c731fc2e05fb45a00ab9" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/71/de/9f668597839d8abb969846be416ed6982a4ba10b83445f241f27752456cb/regex-2026.11.9-cp315-cp315t-win32.whl", hash = "sha256:c68ed3497146b830d27642193612bb6ac51cb70dd73b5f35f07b37cec915b795" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/cd/af/af2858db09db8ff0b9f50e67610da2d71517defc62f6eada14a1405c8930/regex-2026.11.9-cp315-cp315t-win_amd64.whl", hash = "sha256:83ee345b9feb7973c408187778fdf2f2498b54a51bc0b92d08b9b7468ddfb5dd" },
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/05/29/f38c146b8e4b9e9d844cd5387ff82b18a35efe34795366a2a98429695584/regex-2026.11.9-cp315-cp315t-win_arm64.whl", hash = "sha256:2fd69109525129c1823765f34d650247bcd20065eb842832b99d3e512dec0ed7" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/62/ef/62b34ed4d237d668e8fb469b0e5da33cd4b4481f55105f560b64ed516275/regex-2026.11.15-cp314-cp314-macosx_10_15_universal2.whl", hash = "sha256:b9aff8d89f72818646f192632c8249f3848a23d2c9527360de356d6025c5bcee" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/b3/a1/74492e58f68de7ac1521964491580dc3429e066e651baf6d7ad28c879a21/regex-2026.11.15-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:8a194defd67c120d7dfbd8459b9d98057bdcd03a8466b977d4d237a526c053a7" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/4e/0f/962bb0eccba12054cd855300339966c3215a066040ef4df1702d6f0db074/regex-2026.11.15-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:42f9f6d0f3698f8b32cfe45b03cbd1830a7c203c9930fe15a1516ab9dda19c36" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/7d/01/67786f8b04bdf3881e1222d78bd78a39633604d332c23e4e3f337b78a683/regex-2026.11.15-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:99e61a4f575b3439de59de524bed94d144b22a11877407c81c702ce98fb4e1d3" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/1e/52/4e31d7b6fea910b4cb3fb562a0b1aca6a1f0b7fef0fa3d3e0151a4602760/regex-2026.11.15-cp314-cp314-manylinux2014_ppc64le.manylinux_2_17_ppc64le.manylinux_2_28_ppc64le.whl", hash = "sha256:37f839f3a65368314d232376c754eee726ce4a34030c18247c76d238ef0ff249" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/7f/9b/7d9ad7a093e3b094030153a8dfc345e503e8416a041d7ef800e5397d04f1/regex-2026.11.15-cp314-cp314-manylinux2014_s390x.manylinux_2_17_s390x.manylinux_2_28_s390x.whl", hash = "sha256:481626b285706374a83f7ce569f2d1a0c640700a569d5ca54dba1d2668e03a04" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/d5/00/b40f90b30b5fc7b95ea59af624ec09367d746affb12274b40b6de868776b/regex-2026.11.15-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:bbe5efba8a008a2a684173286be44b85b2cfc3427107662440903ccce6ec00d5" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/a9/37/45504fcb232284570bdab7275d362ae84334e44438196dd01cb115ca49f5/regex-2026.11.15-cp314-cp314-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl", hash = "sha256:14feb390805c099e16bf7d37e5f574068eeac59c55336a76d0c1c6f7388b2510" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/dd/f9/015bf43465c083fc1c24aa1253ba9b0d729a033c2130a2cf8fbe5e8b4030/regex-2026.11.15-cp314-cp314-musllinux_1_2_aarch64.whl", hash = "sha256:20fb02e33c0e3c0a265d1b767c359c92d0df9292292c280ff67ace49e3e05467" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/91/9a/ee6d3425e890026bdabca30c9bfb1ad07faf914dcebd967496139283e622/regex-2026.11.15-cp314-cp314-musllinux_1_2_ppc64le.whl", hash = "sha256:3a16f20dcfb68ad67bcc326757facad9b3e922693409c1c8c0deea3869e70669" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/3d/56/f54de39dcb85e988edee4e3981452b147017ec6b89f6346abe7622181cd8/regex-2026.11.15-cp314-cp314-musllinux_1_2_riscv64.whl", hash = "sha256:8a3cb0651bc61270f3db6f733a277a9c1bea006ab9e0bf17d5a1ae36ea55def6" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/0a/f4/81b83ed91ba0642cb725ef1a9193c02f3e1f8d086c6cb92536a52be88a46/regex-2026.11.15-cp314-cp314-musllinux_1_2_s390x.whl", hash = "sha256:119909bbaae76605210572042196de125e261037f915dec273af3b13fae65c06" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/96/d6/eeed1f1ee8d3c93d7ca823684eac18a92a4adab60e9b46e465f00b683d2d/regex-2026.11.15-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:2388100a73abc2205b22b37f292661bfd1b221be0fde996e5e4f1ad272335471" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/7e/e9/59bea0ee2503ea7b92a806894f3e7198a9bf037b9bea27c5b0c0d2993740/regex-2026.11.15-cp314-cp314-win32.whl", hash = "sha256:34fd5add8dedc9b1de724049951e3835afddc21cc43e2741cdce6e1c92b88b81" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/7c/08/1b2f18cd1eb40b13e28204f951a2694cc0354f5a4c2a63e11fdad6ae8744/regex-2026.11.15-cp314-cp314-win_amd64.whl", hash = "sha256:1c3c89fbbb08d2f75e36179d27154e867836656a9ab57616aaf8042c089c0d20" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/f4/96/dfbb6663234f46adaab592f9d7af952d1fb4186ef49bfce6fcff05dc126e/regex-2026.11.15-cp314-cp314-win_arm64.whl", hash = "sha256:81a0a8a2cecab76abc0fbb4d50f849d004a6128accb32d77109b92e8324d4272" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/0e/bd/2bdd6363b294a05a55c573b8e4c4277954fad86a3b68527ff1ada5b52b44/regex-2026.11.15-cp314-cp314t-macosx_10_15_universal2.whl", hash = "sha256:c9d594f5785a4b0b7ad6a949ce8c799c67ee8105a6ffc8b4d5f4fd39f53bb9cb" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/dd/fa/bc5d743615f784cc4d11a7f429c8c4038a9c0729e26f95f7544935628cec/regex-2026.11.15-cp314-cp314t-macosx_10_15_x86_64.whl", hash = "sha256:0e1cd15586d8afa75a925f1837ad347e61e3d32d9bbe0b0e63edb194b4d718c5" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/bc/03/47d1753f3117eaf840c16cde2e39d6a04997f55552416f7447bd9f60f6cf/regex-2026.11.15-cp314-cp314t-macosx_11_0_arm64.whl", hash = "sha256:55db42bd5d8de089e2ab3e5ef48a83c013fa6eb81cc69e3e124556762b61cff3" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/dd/35/4998e53259a43a90d6146848072984b0027fae10249a8b4b37b25d70bfdc/regex-2026.11.15-cp314-cp314t-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:6dace895669eb1a4e4c02ffa6595fc4f02873de53f88fc21e70d41c4451220a7" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/4f/d5/ad0a9e9d9bb22bb2181edaedddd8bf48979748794f8031d308224204e549/regex-2026.11.15-cp314-cp314t-manylinux2014_ppc64le.manylinux_2_17_ppc64le.manylinux_2_28_ppc64le.whl", hash = "sha256:66a49a7a63c0d77d0abe20edcc2d9466c8bb7b6a78d77c61871c768d6894f72f" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/50/30/23ada23d3a379255a7b7e6a0787d2d3a1b3b5c67aca7421e15f1d10e7d65/regex-2026.11.15-cp314-cp314t-manylinux2014_s390x.manylinux_2_17_s390x.manylinux_2_28_s390x.whl", hash = "sha256:c2873cc9abe12d0ad55e4ff5b616856c2e1b764f39d58e931038c06b37e5a7f4" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/a7/ed/2c6a2707b91345500614247e98164ad73072612c2521b1a50565f9bc1e96/regex-2026.11.15-cp314-cp314t-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:808be73b8fcb4bc9f1996ce0dead2e49aaeee0cd11db0691f7b63eea7c0f8448" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/21/14/e25d550e5558482c8c47b2c39f8c6804abe210a60bcc4467fc429d230f87/regex-2026.11.15-cp314-cp314t-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl", hash = "sha256:7912578bc32a25cde9648f35ef00e064464792980f43fa0a690501277e33042e" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/a0/ff/564d946a9008b06007fad9ac615df01fbeea0a05e87bfe84e6ae4d19f076/regex-2026.11.15-cp314-cp314t-musllinux_1_2_aarch64.whl", hash = "sha256:befb860301d5c4736e0cdfabbbe2ea5887a7a643594f5e32c59d9a28f94a5f75" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/99/de/bfb6f45274c0ff6483a2bee363a3e70f30c07239b53e7e136a3e2b143fd1/regex-2026.11.15-cp314-cp314t-musllinux_1_2_ppc64le.whl", hash = "sha256:cfaf14e2080f5ced2699ebfbd5fd6cede980d331e14b2dc25235480bbd3de61d" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/35/84/633294d2a225e3e794df78e12d43dca25d586df31712bb2115721f45987f/regex-2026.11.15-cp314-cp314t-musllinux_1_2_riscv64.whl", hash = "sha256:958661f35e8f260fea889a9a4b42db0e2756f85971c8f7371d9059cfd1997f70" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/b8/26/2435cb56e6357dd6cc08a91e48eac460d400e73bdfd546e81ab9f44d80a1/regex-2026.11.15-cp314-cp314t-musllinux_1_2_s390x.whl", hash = "sha256:ca38887219a8b77e56a8ded792a4ca6b0e78138c0ea0817de44022b0f73da3a7" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/39/36/307b91f52edc841c26e3b4acdf59c7b7c8ff8ef90159a30cb9b4d0c1f7f0/regex-2026.11.15-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:9fc28a3e2f8a1d6930dcdbefb31a80a82caa86619980f147d5bfeca30eae76b3" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/a1/22/18403eb869ffa173802cba7570c284bbd4080f4c7b31d1d0e0fedb24665f/regex-2026.11.15-cp314-cp314t-win32.whl", hash = "sha256:7e0562f26fbe338b614691a3ab7040392b17c5ed1cb26e04032c9c1a874b0040" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/12/2a/3419c7ebf95d77458113cc1a297456a9918aed09415556fbb5eb84194550/regex-2026.11.15-cp314-cp314t-win_amd64.whl", hash = "sha256:7ddabafb036132a20a8868637bfade62a98e5edefc574a52a91ce73961bc4e47" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/ba/0a/9881ec29eb3ae31fd0377d9035fa472dabab9a0e751f399165fc0cdc4c4b/regex-2026.11.15-cp314-cp314t-win_arm64.whl", hash = "sha256:a99aa9a355ebe33cc7a68e6651c20712f338fa57a8e8cebd782e4208543c3b46" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/2a/d5/7cb08c33e73a04e497ef15e7bbd14d878647e2005699112187d20e9f373c/regex-2026.11.15-cp315-cp315-macosx_10_15_universal2.whl", hash = "sha256:49ca893a13a1fb68fcec24ddf19e8c8dfb13fef697c1ed9d65711b5881d03180" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/a1/8a/f8c44eda13303da6d0ea68596d0fc755cc741afae104f8ddaedd64234a7d/regex-2026.11.15-cp315-cp315-macosx_10_15_x86_64.whl", hash = "sha256:681e92c0de78a5124e5a2e53788538c7acba4c8086d90623fc8101840583d40b" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/60/3e/f9da25e1a071e88f9c07b53f8e48d69d80113ba665921259d902351d4dda/regex-2026.11.15-cp315-cp315-macosx_11_0_arm64.whl", hash = "sha256:82abe7618741745c83a8cf3f0decc4605c3bb5a2b6e1bc5e7412be01ed10eabb" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/e7/01/ef2a8a80fc796031c9da13bac089402937af743e007fd7550b73193e5514/regex-2026.11.15-cp315-cp315-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:d8d8f0dcd2583c0095e1764d591f35d9b974b6d98afec20b33512cc7778f389a" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/fc/29/44a482f7e02f990d689cb7fb174b646e419ded015b5da8c29b7d30edd0e6/regex-2026.11.15-cp315-cp315-manylinux2014_ppc64le.manylinux_2_17_ppc64le.manylinux_2_28_ppc64le.whl", hash = "sha256:5de7aeead82b6f40ec8524555bcbfdf21824ac97fd8e219598008befba56fc91" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/f0/86/2a4daa681896f89cb6509abc5ea52e7ae6abbfa0a51368fd1f549e34413b/regex-2026.11.15-cp315-cp315-manylinux2014_s390x.manylinux_2_17_s390x.manylinux_2_28_s390x.whl", hash = "sha256:b90e34261f0cc8ab174602a86bfc0b9b89825ba7fa05b996a1c97a1426730267" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/e6/d8/85aa8df18419349cf106402228d95d13731eee65f4863d0fcb902615e7bd/regex-2026.11.15-cp315-cp315-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:9f94950edcaee1925e1e9ab11d1b458029d525f42b32eb8014c93ead19a22fdb" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/26/2a/b45108680f18e2c44fa8bf3b7ef57d667d9eb9d4c61666a0664156bf334f/regex-2026.11.15-cp315-cp315-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl", hash = "sha256:20a86cd29d0323feab48ddb630cd7a48e66355504e6f4661329f11a931ed58f2" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/12/ab/0fb82d13b8e96e91ecdaff80279c6d60d31ca6f5781375a6dba4ed702fd4/regex-2026.11.15-cp315-cp315-musllinux_1_2_aarch64.whl", hash = "sha256:415ae840ea09b36e40fe602d65a84c2fec12a5bff845d932a6cc863c94a60b96" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/41/34/ed12680b8e5fe88dc1f0446209230c19186dc1cd2e9931a5263259c0a651/regex-2026.11.15-cp315-cp315-musllinux_1_2_ppc64le.whl", hash = "sha256:cb35195054f5eb044a9022a9d1c1799e0524adaa3f9ba936d2f134f3c7fa1d01" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/93/b2/3839c6b459b4add374ba123107c1bd007fab7191084795d5641f7a15b3c2/regex-2026.11.15-cp315-cp315-musllinux_1_2_riscv64.whl", hash = "sha256:9d304418a1de575974d85c1d3b4ca04b8371d18cbe55c9f953fbaebcb61741c6" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/a5/48/d6d394ab3bb41b2034800830cffa83a986b93f1c482ce77256b444ac9a33/regex-2026.11.15-cp315-cp315-musllinux_1_2_s390x.whl", hash = "sha256:e7d10c6ac4e4a7cc65cc12ad61daa188c7fd16b32ba1919913b5da054ec6fd35" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/ed/46/cd32011d9bdbaf096e315f3ff56e365f1b4e89a54094910d9bf4dc1c49b2/regex-2026.11.15-cp315-cp315-musllinux_1_2_x86_64.whl", hash = "sha256:1bdcc15a5e10be63a05f6660ac28679f7ab50cd48d8a53c9328b030d2bc36060" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/52/cb/12def7160a64ad9e046d6d49501aac634947ef99782e10a9eafb49e54719/regex-2026.11.15-cp315-cp315-win32.whl", hash = "sha256:f07145c751729bc78aa1a231018e4c98316c1e516514c09e926fbcb0d3b14ec8" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/34/ba/4001af138a8e02dd91927752dc61b3009ec26743b25685910be161d34ab4/regex-2026.11.15-cp315-cp315-win_amd64.whl", hash = "sha256:ece2f6ae38a8cd3eae07c8ca723af420351385294f989a76235a2b5bd465045a" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/3f/1b/8a36a8b019eeca1f69d48618f3d593aaff18179a3b372710d70ca1c379dd/regex-2026.11.15-cp315-cp315-win_arm64.whl", hash = "sha256:d9ab084d9c09cb95cce2e93bb59e19d55b98347e01649beeadf595d129111475" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/78/bb/ebda50b59ed99bfba7070e3383ae88276f069f5e412c4959a6a7f775e743/regex-2026.11.15-cp315-cp315t-macosx_10_15_universal2.whl", hash = "sha256:74e0b34c79b7c27e47d5929e565ab703a2149e89c5d50d99e06e33410ff29394" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/8d/f5/b3e7a1e11a126a0d078b990d1188cbbb6afac07f38f8a3e1edf7f5c673bb/regex-2026.11.15-cp315-cp315t-macosx_10_15_x86_64.whl", hash = "sha256:f8b2e49c18439db0a77533429d3ed7330671a262b8e82bdb6e9cf03b4ea91adc" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/1c/95/366a6ab556bf79f2eefb92c62ba69cc28b3eca5db097bd9325a1cb7e6c04/regex-2026.11.15-cp315-cp315t-macosx_11_0_arm64.whl", hash = "sha256:88da86058c8ee083aa4ecb8c73bcbb46e388a34a4d548b73c834e77409a445a1" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/d5/06/cf6b444b5d5c2b3965b97ea6bd9ce92c590503b66da421e1ba0bbc9e78bc/regex-2026.11.15-cp315-cp315t-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:03e3e31271f40e17f038e2810014a15b3e9b0950c8dac5ca910a3375ffc7b112" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/25/d5/c738f3998e5a74d48f1534b0c13ac0e44ae411acbac875693b167f020f47/regex-2026.11.15-cp315-cp315t-manylinux2014_ppc64le.manylinux_2_17_ppc64le.manylinux_2_28_ppc64le.whl", hash = "sha256:c58f6a5c1f080384010dfa8b33378fdc554b4ad96299d3dcbe362a7aaa50857d" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/2f/2a/1b428203a05d36deb09011604138f13158ba0aaad9528a4ba89ac3a69f34/regex-2026.11.15-cp315-cp315t-manylinux2014_s390x.manylinux_2_17_s390x.manylinux_2_28_s390x.whl", hash = "sha256:8ba7541b08666615b6a5348fb9b2553dcdb7b6543089f318b77135667c3a7d43" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/3c/e4/36efd126ca7c2a2343dc90295b372c61c9959e2f55044e2768a116f7f361/regex-2026.11.15-cp315-cp315t-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:b2bc7e596c7fd46f303a42ce40b4e9c08fdd37f431695052acbee2e7ac7db6ae" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/6a/95/2dc4ef984d9262495af3c0bd51baf7ccda096c777403317f20aad24635a5/regex-2026.11.15-cp315-cp315t-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl", hash = "sha256:8f1c6871464b8da493f1f6828f1073725a0e9cbaacb1181a3334e65422c062ef" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/43/41/84a5c37632f675fe6fb96390487fa402f6381a4df113190512c15dbbb99b/regex-2026.11.15-cp315-cp315t-musllinux_1_2_aarch64.whl", hash = "sha256:259abe2f6d24a87928715f758f55ad8bad58f02c950447cad42f46752cd96c66" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/7f/d4/0ad9ad762e5d2cdd6defb5ef4159613766e1651f7eb4d21ccc89cc520f21/regex-2026.11.15-cp315-cp315t-musllinux_1_2_ppc64le.whl", hash = "sha256:b55f41770984827e083808892b25022b618a74e228887bdfc51574621dcf96e9" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/b9/cf/71e503f75ff4aaa0fb9a4c207f43fb965a5311bd03b5224fe0320d393d5a/regex-2026.11.15-cp315-cp315t-musllinux_1_2_riscv64.whl", hash = "sha256:c487f7832327bbaf68d66b47e8848586e2d07ceb0028ba71a42cd5ec10585bd3" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/72/b9/a5503aaa5dd97671918bc5245e4e042f6c2b1f33dd354261a8af1e607023/regex-2026.11.15-cp315-cp315t-musllinux_1_2_s390x.whl", hash = "sha256:e6cd01d3cefde448faacee38fcb1372e8e8687dd05a23d767e684b5081bcd0b4" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/5b/6d/e15e9eaed27398bb5d34032143f8ea6c14a583e065a027cec496f72a9080/regex-2026.11.15-cp315-cp315t-musllinux_1_2_x86_64.whl", hash = "sha256:cde33ba347b399d6b4f4c4ad03679a2570f945222596a56f9ca335e8ceea9340" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/01/68/c7f456fcd0679d852c19d47a09e76a7b4faa8d01ee3ff3d904da427339d4/regex-2026.11.15-cp315-cp315t-win32.whl", hash = "sha256:3232156a2b62a063f21aa155154e9cc943ca05eeae1d1a00dca7910c7cc1976c" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/f8/10/a321539a2b282d5d1260b2e9adeb2b31fc42d4e2e8b216b4a0d0f239e3af/regex-2026.11.15-cp315-cp315t-win_amd64.whl", hash = "sha256:dcb2f4ce63699ba4606d928ccf1e9f81557ba8b2ff263c52610253324856e199" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/19/f1/4560498211212996ac0ff3d32501929c5bd91d0258bf0eafa5466f44f818/regex-2026.11.15-cp315-cp315t-win_arm64.whl", hash = "sha256:c5d722af534ac05fea28db7876d45aaae1f8b6c504cf82a5ab27cd80e543e9fe" },
 ]
 
 [[package]]
@@ -3404,11 +3393,11 @@ wheels = [
 
 [[package]]
 name = "types-pyyaml"
-version = "6.0.12.20261103"
+version = "6.0.12.20261113"
 source = { registry = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/simple" }
-sdist = { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/d9/82/2ed4d215a2840b467a9a864f03b0d21904250e28f5e1f006ad36fba0311a/types_pyyaml-6.0.12.20261103.tar.gz", hash = "sha256:7a1b5f837881dd35d5448b5f18275164f89f206185e31e8eae6e0b42607bc001" }
+sdist = { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/4d/8b/ba599d956693dbc98e170f32097128bdea0a17f9d42b0b490fa749c12b1a/types_pyyaml-6.0.12.20261113.tar.gz", hash = "sha256:0828be2580fd94151182364f4d0158e4de62fdbeeb8d4296f7f7d2b6c22bb640" }
 wheels = [
-    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/e8/10/4353eb86278f6a59aeb9fe2be4d979c20b110b4009fa455a3ea6467cf5cb/types_pyyaml-6.0.12.20261103-py3-none-any.whl", hash = "sha256:444654c61f635dab82c092a511aa96a0ce31164810784b9a37314e3e56532ac8" },
+    { url = "https://artifactory.ci.csc.fi/artifactory/api/pypi/sds-pypi/packages/packages/fd/2e/36fc0941a40ef066dbc8abac41bbbefb41389f547c779aef832aea6b873d/types_pyyaml-6.0.12.20261113-py3-none-any.whl", hash = "sha256:3600749e613748afdc4327f0b17c3296cf880cdbc7335f320007abd9dd815f67" },
 ]
 
 [[package]]
