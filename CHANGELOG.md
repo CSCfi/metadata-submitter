@@ -7,6 +7,10 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- (users) Bigpicture landing page files are no longer ingested into SDA.
+
 ## [2026.11.0] - 2026-11-13
 
 ### Changed
