@@ -7,9 +7,23 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ## [Unreleased]
 
+## [2026.11.1] - 2026-11-18
+
 ### Fixed
 
 - (users) Bigpicture landing page files are no longer ingested into SDA.
+
+### Removed
+
+- (admins) deploy/app.sh is no longer in the Docker image. It was unused, since the image starts the server with metadata_submitter.
+- Sphinx documentation and its build. Dropped the docs dependencies (sphinx, sphinx_rtd_theme) and the tox docs environment. Removed docs/conf.py.
+- Unused dependencies gunicorn, defusedxml, metomi-isodatetime, jsonschema, cryptojwt, python-dateutil, types-python-dateutil, xmlschema, datacite, aiofiles, certifi and pytest-aiohttp.
+- Out-of-date Procfile and its honcho dependency. Run the server and services with docker compose instead.
+- Locust performance tests and locust.conf.
+
+### Changed
+
+- aiohttp is a dev dependency, since only the integration tests and the mock Admin API use it.
 
 ## [2026.11.0] - 2026-11-13
 
@@ -1102,7 +1116,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 - Files are also validated during submission process.
 
 
-[Unreleased]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.11.0...HEAD
+[Unreleased]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.11.1...HEAD
+[2026.11.1]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.11.0...2026.11.1
 [2026.11.0]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.10.2...2026.11.0
 [2026.10.2]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.10.1...2026.10.2
 [2026.10.1]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.10.0...2026.10.1
