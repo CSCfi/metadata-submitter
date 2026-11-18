@@ -570,8 +570,8 @@ class _MockAdminServiceHandler(AdminServiceHandler):
     Removing a file sets the dataset status to file_removed, adding files sets it to registered, and releasing a
     registered dataset sets it to released. Every request is recorded in calls.
 
-    :param sda_files: The files in the SDA dataset when the test starts, as accession id to path: the data files,
-        thumbnails and old metadata XMLs, which were already in SDA. Removing and adding files changes them.
+    :param sda_files: The files in the SDA dataset when the test starts, as accession id to path: the data files
+        and old metadata XMLs, which were already in SDA. Removing and adding files changes them.
     :param inbox_files: The files in the user's inbox, as path to Admin API file status: the new metadata XMLs,
         written to the inbox at publish.
     :param ignored_removals: How many of the first removal requests are ignored, as SDA may do.

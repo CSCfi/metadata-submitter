@@ -3,7 +3,7 @@
 import io
 import zipfile
 from collections import defaultdict
-from typing import Iterable, Literal, Mapping, override
+from typing import Final, Iterable, Literal, Mapping, override
 
 import httpx
 from pydantic import BaseModel
@@ -51,11 +51,18 @@ class XmlOutputFile(BaseModel):
     mandatory: bool = True
 
 
+# The directory below the dataset root directory that contains the landing page XML and thumbnails.
+BP_LANDING_PAGE_DIR: Final = "LANDING_PAGE"
+
+
 class XmlOutputDir(BaseModel):
     """XML output directory and XML files."""
 
-    dir: Literal["METADATA", "LANDING_PAGE", "PRIVATE"]
+    dir: Literal["METADATA", "LANDING_PAGE"]
     files: list[XmlOutputFile]
+    # If True then the XML files are added as submission files and ingested into SDA.
+    # If False then the XML files are only written to the inbox.
+    ingested: bool = True
 
     def get_full_dir(self, dataset_dir: str) -> str:
         """Get the full XML file directory including the dataset directory name.
@@ -66,7 +73,7 @@ class XmlOutputDir(BaseModel):
         return f"{dataset_dir}/{self.dir}"
 
 
-# XML output files written to the METADATA, LANDING_PAGE and PRIVATE directories.
+# XML output files written to the METADATA and LANDING_PAGE directories.
 XML_OUTPUT_FILES: list[XmlOutputDir] = [
     XmlOutputDir(
         dir="METADATA",
@@ -88,13 +95,27 @@ XML_OUTPUT_FILES: list[XmlOutputDir] = [
         ],
     ),
     XmlOutputDir(
-        dir="LANDING_PAGE",
+        dir=BP_LANDING_PAGE_DIR,
+        # The landing page XML is written to the inbox, but it is not ingested.
+        ingested=False,
         files=[
             # Required only for new submissions with a clinical policy.
             XmlOutputFile(name="landing_page.xml.c4gh", object_types=[BP_LANDING_PAGE_OBJECT_TYPE], mandatory=False),
         ],
     ),
 ]
+
+
+def is_bp_landing_page_file(path: str) -> bool:
+    """
+    Check if a dataset file is in the landing page directory, by its path including the root directory.
+
+    The landing page XML is written to the inbox, but neither it nor the thumbnails are ingested.
+
+    :param path: The file path.
+    :returns: True if the file is in the landing page directory.
+    """
+    return path.split("/")[1:2] == [BP_LANDING_PAGE_DIR]
 
 
 def get_bp_ingested_dataset_root(paths: Iterable[str]) -> str | None:
@@ -111,34 +132,38 @@ def get_bp_ingested_dataset_root(paths: Iterable[str]) -> str | None:
     return roots.pop()
 
 
-def get_bp_metadata_file_paths(object_types: Iterable[str] | None = None) -> frozenset[str]:
+def get_bp_ingested_metadata_file_paths(object_types: Iterable[str] | None = None) -> frozenset[str]:
     """
-    Get the paths of the metadata XML files below the dataset root directory.
+    Get the paths of the ingested metadata XML files below the dataset root directory.
+
+    The landing page XML is excluded, because its directory is not ingested.
 
     :param object_types: Only the files of these object types, or None for all files.
     :returns: The paths without the encryption suffix.
     """
+    types = None if object_types is None else set(object_types)
     return frozenset(
         f"{xml_output_dir.dir}/{file.name}".removesuffix(".c4gh")
         for xml_output_dir in XML_OUTPUT_FILES
+        if xml_output_dir.ingested
         for file in xml_output_dir.files
-        if object_types is None or not set(object_types).isdisjoint(file.object_types)
+        if types is None or not types.isdisjoint(file.object_types)
     )
 
 
-# The paths of all metadata XML files below the dataset root directory, without the encryption suffix.
-BP_METADATA_FILE_PATHS = get_bp_metadata_file_paths()
+# The paths of all ingested metadata XML files below the dataset root directory, without the encryption suffix.
+BP_INGESTED_METADATA_FILE_PATHS = get_bp_ingested_metadata_file_paths()
 
 
-def _is_bp_metadata_file(path: str) -> bool:
+def _is_bp_ingested_metadata_file(path: str) -> bool:
     """
-    Check if a dataset file is a metadata XML file, by its path including the root directory.
+    Check if a dataset file is an ingested metadata XML file, by its path including the root directory.
 
     :param path: The file path.
-    :returns: True if the file is a metadata XML file.
+    :returns: True if the file is an ingested metadata XML file.
     """
     _, _, relative_path = path.partition("/")
-    return relative_path.removesuffix(".c4gh") in BP_METADATA_FILE_PATHS
+    return relative_path.removesuffix(".c4gh") in BP_INGESTED_METADATA_FILE_PATHS
 
 
 class BigpictureMetadataFileReplacements(BaseModel):
@@ -167,7 +192,7 @@ def get_bp_metadata_file_replacements(
     new_xmls = {
         accession: path.removesuffix(".c4gh")
         for accession, path in submission_path_by_accession.items()
-        if _is_bp_metadata_file(path)
+        if _is_bp_ingested_metadata_file(path)
     }
     replaced_paths = set(new_xmls.values())
 
@@ -335,7 +360,10 @@ async def upload_bp_metadata_xmls(services: RESTAPIServices, submission_id: str,
             body=xml.encode("utf-8"),
         )
 
-        # Add uploaded XML artifacts to submission file records for ingestion workflow.
+        # Add uploaded XML artifacts to submission file records for ingestion workflow. The landing page XML is
+        # not ingested, so it is not treated as a submission file.
+        if not _is_bp_ingested_metadata_file(inbox_path):
+            continue
         if not await services.file.is_file_by_path(submission_id, inbox_path):
             await services.file.add_file(
                 File(submissionId=submission_id, path=inbox_path),
