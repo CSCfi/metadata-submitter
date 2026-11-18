@@ -32,7 +32,7 @@ _SDA_ROOT = "ROOT"
 
 
 # The metadata version 2.0 XMLs in METADATA/ in the SDA dataset. The import requires the SDA dataset
-# to have the same metadata XMLs as the import, except that the import may add a landing page XML.
+# to have the same metadata XMLs as the import, except the landing page XML.
 _SDA_METADATA_FILES = (
     "dataset.xml.c4gh",
     "policy.xml.c4gh",
@@ -119,9 +119,16 @@ def import_service(
 
 async def test_import(import_service, admin, submission_service, object_service, file_service):
     data_files = _sda_data_files()
-    thumbnail = _sda_file("thumbnail-1", f"{_SDA_ROOT}/LANDING_PAGE/THUMBNAILS/thumb.jpg.c4gh")
-    # The dataset has no landing page, which the import adds.
-    admin.list_ingested_files.return_value = [*data_files, *_sda_metadata_files(_SDA_METADATA_FILES), thumbnail]
+    # The files in the LANDING_PAGE directory are ignored.
+    landing_page_files = [
+        _sda_file("thumbnail-1", f"{_SDA_ROOT}/LANDING_PAGE/THUMBNAILS/thumb.jpg.c4gh"),
+        _sda_file("other-1", f"{_SDA_ROOT}/LANDING_PAGE/other.txt"),
+    ]
+    admin.list_ingested_files.return_value = [
+        *data_files,
+        *_sda_metadata_files(_SDA_METADATA_FILES),
+        *landing_page_files,
+    ]
 
     submission = await import_service().create(_USER, _USER, bp_objects_with_dataset_id(_DATASET_ID))
 
@@ -136,13 +143,11 @@ async def test_import(import_service, admin, submission_service, object_service,
     assert all(o.objectId for o in objects)
     assert len({o.objectId for o in objects}) == len(objects)
 
-    # The data files and thumbnail are saved in the databae with their SDA paths and accessions,
-    # and in the ready state. The old metadata XMLs are not saved. Publishing will later write new ones
-    # that replace them in SDA.
+    # The data files are saved in the database with their SDA paths and accessions, and in the ready state.
+    # The old metadata XMLs are not saved. Publishing will later write new ones that replace them in SDA.
+    # The files in the LANDING_PAGE directory are not saved in the database.
     files = {f.path: f async for f in file_service.get_files(submission_id=_DATASET_ID)}
-    assert {path: f.fileId for path, f in files.items()} == {
-        file.path: file.accession_id for file in [*data_files, thumbnail]
-    }
+    assert {path: f.fileId for path, f in files.items()} == {file.path: file.accession_id for file in data_files}
     assert all(f.bytes is None for f in files.values())
     states = await file_service.get_ingest_file_states(_DATASET_ID)
     assert {s.ingest_status for s in states} == {IngestStatus.READY}
@@ -154,7 +159,8 @@ async def test_import_with_landing_page(import_service, admin, file_service):
     submission = await import_service().create(_USER, _USER, bp_objects_with_dataset_id(_DATASET_ID))
     assert submission.submissionId == _DATASET_ID
 
-    # The old landing page XML is not saved as a submission file: publishing writes a new one that replaces it.
+    # The old landing page XML in SDA is ignored: it is not saved as a submission file. Publishing writes the
+    # imported landing page XML to the same path in the inbox, but does not ingest it.
     paths = {f.path async for f in file_service.get_files(submission_id=_DATASET_ID)}
     assert landing_page.path not in paths
 
@@ -170,13 +176,32 @@ async def test_import_without_landing_page(import_service, admin, version):
     assert submission.submissionId == _DATASET_ID
 
 
-async def test_import_requires_shared_root(import_service, admin):
-    admin.list_ingested_files.return_value = [
-        *_sda_files(),
-        _sda_file("thumbnail-1", "OTHER/LANDING_PAGE/THUMBNAILS/thumb.jpg.c4gh"),
-    ]
+@pytest.mark.parametrize(
+    "other_path",
+    [
+        "OTHER/IMAGES/IMAGE_1/test.dcm.c4gh",
+        # The files in the LANDING_PAGE directory are ignored, but they must be under the same root directory.
+        "OTHER/LANDING_PAGE/THUMBNAILS/thumb.jpg.c4gh",
+    ],
+)
+async def test_import_requires_shared_root(import_service, admin, other_path):
+    admin.list_ingested_files.return_value = [*_sda_files(), _sda_file("other-file-1", other_path)]
     with pytest.raises(UserException, match="files in SDA are not under one root directory"):
         await import_service().create(_USER, _USER, bp_objects_with_dataset_id(_DATASET_ID))
+
+
+async def test_import_only_landing_page_files(import_service, admin):
+    # A dataset with only files in the LANDING_PAGE directory is reported as missing its metadata XMLs and data
+    # files, not as having no files.
+    admin.list_ingested_files.return_value = [
+        _sda_file("thumbnail-1", f"{_SDA_ROOT}/LANDING_PAGE/THUMBNAILS/thumb.jpg.c4gh"),
+        _sda_file("old-landing-page-xml", f"{_SDA_ROOT}/LANDING_PAGE/landing_page.xml.c4gh"),
+    ]
+    with pytest.raises(UserException) as e:
+        await import_service().create(_USER, _USER, bp_objects_with_dataset_id(_DATASET_ID))
+    assert "has no files in SDA" not in str(e.value)
+    assert "has no metadata file 'METADATA/dataset.xml' in SDA" in str(e.value)
+    assert f"has no file '{BP_IMAGE_1_FILE}' in SDA" in str(e.value)
 
 
 async def test_import_requires_dataset_accession(import_service):

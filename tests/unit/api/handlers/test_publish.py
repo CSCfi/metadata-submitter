@@ -17,7 +17,6 @@ from metadata_backend.api.json import to_json_dict
 from metadata_backend.api.models.datacite import Subject
 from metadata_backend.api.models.models import Registration
 from metadata_backend.api.models.rems import RemsCatalogueItemLocalization
-from metadata_backend.api.models.sda import FileItem
 from metadata_backend.api.models.submission import Rems, Submission, SubmissionMetadata, SubmissionWorkflow
 from metadata_backend.api.processors.xml.bigpicture import (
     BP_DATASET_OBJECT_TYPE,
@@ -156,7 +155,6 @@ def _patch_bp_publish(doi: str = "10.1/test") -> Iterator[SimpleNamespace]:
     - middlewares.verify_authorization: accept any user bearer token.
     - generate_bp_metadata_xmls: generate no metadata XMLs to validate before registration.
     - upload_bp_metadata_xmls: upload no metadata XMLs to the SDA inbox.
-    - S3InboxSDAService.list_submission_inbox_files: list no files in the SDA inbox.
     - S3InboxSDAService.find_missing_files: no submission file is missing from the SDA inbox.
     - S3InboxSDAService.find_orphaned_files: the SDA inbox has no unexpected files.
     - DataciteServiceHandler.create_draft_doi: create ``doi`` as the draft DOI.
@@ -180,10 +178,6 @@ def _patch_bp_publish(doi: str = "10.1/test") -> Iterator[SimpleNamespace]:
             "metadata_backend.api.services.workflow.upload_bp_metadata_xmls", new_callable=AsyncMock
         ) as upload_bp_metadata,
         patch(
-            "metadata_backend.api.services.file.S3InboxSDAService.list_submission_inbox_files",
-            new=AsyncMock(return_value=[]),
-        ) as list_submission_inbox_files,
-        patch(
             "metadata_backend.api.services.file.S3InboxSDAService.find_missing_files", new=AsyncMock(return_value=[])
         ) as find_missing_files,
         patch(
@@ -198,7 +192,6 @@ def _patch_bp_publish(doi: str = "10.1/test") -> Iterator[SimpleNamespace]:
         yield SimpleNamespace(
             generate_bp_metadata=generate_bp_metadata,
             upload_bp_metadata=upload_bp_metadata,
-            list_submission_inbox_files=list_submission_inbox_files,
             find_missing_files=find_missing_files,
             find_orphaned_files=find_orphaned_files,
             datacite_create_draft_doi=datacite_create_draft_doi,
@@ -382,7 +375,6 @@ async def test_publish_submission_bp(nbis_client, submission_repository, object_
             f"{submission_entity.name} ({REMS.organizationId}, {submission_id})",
             TEST_DISCOVERY_URL.format(id=submission_id),
         )
-        mocks.list_submission_inbox_files.assert_awaited_once_with("mock-userid", submission_id)
         mocks.upload_bp_metadata.assert_awaited_once_with(ANY, submission_id, "mock-userid", "oidc-token")
 
         # Assert the call order of XML generation for validation, registration and XML generation for upload. Only the
@@ -593,52 +585,29 @@ async def test_publish_submission_bp_invalid_metadata_fails_before_registration(
         assert not _is_published(nbis_client, submission_id)
 
 
-async def test_publish_submission_bp_adds_thumbnail_jpgs_before_orphan_check(
-    nbis_client, submission_repository, object_repository, file_repository, caplog
+async def test_publish_submission_bp_ignores_landing_page_files_in_orphan_check(
+    nbis_client, submission_repository, object_repository, file_repository
 ):
-    """BP publish should add landing page thumbnail JPG files to submission but not other unexpected files."""
-    caplog.set_level("INFO", logger="server")
-
+    """BP publish ignores the files in the LANDING_PAGE directory of the inbox, but not other unexpected files."""
     submission_entity = await _add_bp_submission(submission_repository, title="bp-title")
     submission_id = submission_entity.submission_id
     dataset_entity = await _add_bp_object(
         object_repository, submission_entity, BP_DATASET_OBJECT_TYPE, title="bp-title", description="bp-description"
     )
 
-    existing_path = f"{submission_id}/IMAGES/IMAGE_1/img1.dcm.c4gh"
-    thumbnail_jpg_path = f"DATASET_{submission_id}/LANDING_PAGE/THUMBNAILS/thumb.jpg.c4gh"
-    unencrypted_path = f"DATASET_{submission_id}/LANDING_PAGE/THUMBNAILS/thumb.jpg"
-    unexpected_path = f"{submission_id}/LANDING_PAGE/unexpected.txt"
+    existing_path = f"DATASET_{submission_id}/IMAGES/IMAGE_1/img1.dcm.c4gh"
+    landing_page_paths = [
+        f"DATASET_{submission_id}/LANDING_PAGE/THUMBNAILS/thumb.jpg.c4gh",
+        f"DATASET_{submission_id}/LANDING_PAGE/landing_page.xml.c4gh",
+        f"DATASET_{submission_id}/LANDING_PAGE/unexpected.txt",
+    ]
+    unexpected_path = f"DATASET_{submission_id}/IMAGES/unexpected.txt"
 
     # File which represents submission file parsed from XML upload and should exist in the inbox at publish time.
     await _add_bp_file(file_repository, dataset_entity, existing_path)
 
     with _patch_bp_publish() as mocks:
-        # thumbnail_jpg_path should be added to submission files before the orphaned files check
-        mocks.list_submission_inbox_files.return_value = [
-            FileItem(
-                fileID="12345678-1234-4234-8234-1234567890ab",
-                inboxPath=thumbnail_jpg_path,
-                fileStatus="uploaded",
-                createdAt="2024-01-01T00:00:00Z",
-            ),
-            FileItem(
-                fileID="22345678-1234-4234-8234-1234567890ab",
-                inboxPath=unencrypted_path,
-                fileStatus="uploaded",
-                createdAt="2024-01-01T00:00:00Z",
-            ),
-            FileItem(
-                fileID="32345678-1234-4234-8234-1234567890ab",
-                inboxPath=unexpected_path,
-                fileStatus="uploaded",
-                createdAt="2024-01-01T00:00:00Z",
-            ),
-        ]
-        # unencrypted_path and unexpected_path should not be added to submission files and are thus orphaned files
-        mocks.find_orphaned_files.side_effect = lambda _user_id, _submission_id, files: [
-            path for path in [unencrypted_path, unexpected_path] if path not in {file.path for file in files}
-        ]
+        mocks.find_orphaned_files.return_value = [*landing_page_paths, unexpected_path]
 
         response = _publish(nbis_client, submission_id, oidc_token=True)
         data = response.json()
@@ -646,21 +615,16 @@ async def test_publish_submission_bp_adds_thumbnail_jpgs_before_orphan_check(
         assert response.status_code == 400
         assert data["detail"] == "User error"
         assert data["errors"] == [
-            f"Unexpected files found in the inbox for submission '{submission_id}': "
-            f"{unencrypted_path}, {unexpected_path}."
+            f"Unexpected files found in the inbox for submission '{submission_id}': {unexpected_path}."
         ]
 
+        # The landing page files are not added to the submission, so they are not ingested.
         mocks.find_missing_files.assert_awaited_once()
-        orphan_call = mocks.find_orphaned_files.await_args
-        checked_paths = {file.path for file in orphan_call.args[2]}
-        assert thumbnail_jpg_path in checked_paths
-        assert unencrypted_path not in checked_paths
+        checked_paths = {file.path for file in mocks.find_orphaned_files.await_args.args[2]}
+        assert checked_paths == {existing_path}
 
-    assert await file_repository.get_file_by_path(submission_id, thumbnail_jpg_path) is not None
-    assert await file_repository.get_file_by_path(submission_id, unencrypted_path) is None
-    # The thumbnails added are logged once in total.
-    info = [r.getMessage() for r in caplog.records if r.levelname == "INFO" and "thumbnail" in r.getMessage()]
-    assert info == [f"Added 1 thumbnail file(s) to submission '{submission_id}'"]
+    for path in landing_page_paths:
+        assert await file_repository.get_file_by_path(submission_id, path) is None
 
 
 def test_get_discovery_url_csc():

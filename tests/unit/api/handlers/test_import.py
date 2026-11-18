@@ -132,14 +132,9 @@ def test_import_and_publish(nbis_client, import_users, sda_dataset):
                 "metadata_backend.api.services.file.S3InboxSDAService.find_missing_files", new_callable=AsyncMock
             ) as mock_find_missing_files,
             patch(
-                "metadata_backend.api.services.file.S3InboxSDAService.list_submission_inbox_files",
-                new_callable=AsyncMock,
-            ) as mock_list_submission_inbox_files,
-            patch(
                 "metadata_backend.api.services.file.S3InboxSDAService.find_orphaned_files", new_callable=AsyncMock
             ) as mock_find_orphaned_files,
         ):
-            mock_list_submission_inbox_files.return_value = []
             mock_find_missing_files.return_value = []
             mock_find_orphaned_files.return_value = []
 
@@ -150,7 +145,6 @@ def test_import_and_publish(nbis_client, import_users, sda_dataset):
             mock_upload_bp_metadata_xmls.assert_awaited_once()
             mock_find_missing_files.assert_not_awaited()
             mock_find_orphaned_files.assert_not_awaited()
-            mock_list_submission_inbox_files.assert_not_awaited()
 
 
 async def test_delete_import_not_imported(nbis_client, import_users, submission_repository):

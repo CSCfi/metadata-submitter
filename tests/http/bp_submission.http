@@ -12,7 +12,7 @@ $ make get_env_demo
 # Run this to launch the API service locally:
 $ docker compose --profile demo up --build -d
 
-# Login at: https://staging-login.bp.nbis.se
+# Login at: https://login.staging.bp.nbis.se
 # Copy the uploading access token for and paste it in the variable below
 @bearer_token = ...
 

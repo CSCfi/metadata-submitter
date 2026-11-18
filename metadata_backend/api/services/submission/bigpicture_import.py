@@ -14,10 +14,15 @@ from ...models.models import File, IngestStatus
 from ...models.sda import DatasetFile, DatasetStatus
 from ...models.submission import Rems, Submission
 from ...processors.models import ObjectIdentifier
-from ...processors.xml.bigpicture import BP_DATASET_OBJECT_TYPE, BP_DATASET_SCHEMA, BP_LANDING_PAGE_OBJECT_TYPE
+from ...processors.xml.bigpicture import BP_DATASET_OBJECT_TYPE, BP_DATASET_SCHEMA
 from ...processors.xml.processors import XmlStringDocumentsProcessor
 from ..accession import generate_bp_accession_prefix, is_bp_accession
-from ..bigpicture import BP_METADATA_FILE_PATHS, get_bp_ingested_dataset_root, get_bp_metadata_file_paths
+from ..bigpicture import (
+    BP_INGESTED_METADATA_FILE_PATHS,
+    get_bp_ingested_dataset_root,
+    get_bp_ingested_metadata_file_paths,
+    is_bp_landing_page_file,
+)
 from ..project import ProjectService
 from ..rems import find_rems_catalogue_item, find_rems_resource
 from .bigpicture import BigpictureObjectSubmissionService
@@ -45,8 +50,9 @@ class BigpictureObjectImportService(BigpictureObjectSubmissionService):
     The metadata objects are validated as for a new submission. Only the dataset may have an
     accession, which is kept and used as the submission id. The dataset must exist in SDA, its files
     must share one root directory, and below it they must be laid out as for a new submission: the
-    data files in the metadata, the thumbnails and the metadata XMLs. The data files and thumbnails
-    are saved with their SDA paths and accessions, as already ingested. The root directory replaces
+    data files in the metadata and the metadata XMLs. The files in the LANDING_PAGE directory, the
+    landing page XML and thumbnails, are ignored and remain in SDA unchanged. The data files are saved
+    with their SDA paths and accessions, as already ingested. The root directory replaces
     DATASET_{submission id} for this submission, so the newly accessioned metadata XMLs are written to
     the paths of the old ones, which they replace in SDA after the submission is published.
     """
@@ -154,19 +160,21 @@ class BigpictureObjectImportService(BigpictureObjectSubmissionService):
         - the dataset does not exist in SDA, is deprecated, or has no files
         - the dataset files in SDA are not under one root directory
         - the dataset's existing REMS resource or catalogue item has another organisation or workflow
-        - the metadata XMLs in SDA are not the ones the import will write (a landing page may be added)
+        - the metadata XMLs in SDA are not the same ones being imported
         - a data file in the metadata is not in SDA at the same path below the root directory
-        - SDA has a file that is not a metadata XML, a data file in the metadata, or a thumbnail
+        - SDA has a file that is not a metadata XML or a data file in the metadata
+
+        The files in the LANDING_PAGE directory must be under the same root directory, but are otherwise ignored.
 
         The errors found in the dataset files are all reported together.
 
-        The data files in the metadata, and the thumbnails, are returned with their SDA accession as the file
-        id and their SDA path. The old metadata XMLs are not returned, the new ones
-        replace them in SDA after the submission is published.
+        The data files in the metadata are returned with their SDA accession as the file id and their SDA
+        path. The old metadata XMLs are not returned, the new ones replace them in SDA after the submission
+        is published.
 
         :param submission: The prepared submission document, whose id is the dataset accession.
         :param files: The data files in the metadata, under the default root directory.
-        :returns: The data files and thumbnails, with their SDA paths and accessions.
+        :returns: The data files, with their SDA paths and accessions.
         """
         submission_id = submission.submissionId
 
@@ -189,9 +197,15 @@ class BigpictureObjectImportService(BigpictureObjectSubmissionService):
         if not sda_files:
             raise UserException(f"Dataset '{submission_id}' has no files in SDA.")
 
+        # Every file in SDA, the landing page files included, must be under one root directory, since publishing
+        # writes the new landing page XML under it.
         root = get_bp_ingested_dataset_root(file.path for file in sda_files)
         if root is None:
             raise UserException(f"Dataset '{submission_id}' files in SDA are not under one root directory.")
+
+        # The landing page XML and thumbnails are otherwise ignored. A dataset with no other files is reported
+        # below as missing its metadata XMLs and data files.
+        sda_files = [sda_file for sda_file in sda_files if not is_bp_landing_page_file(sda_file.path)]
 
         await self._check_rems(submission_id, submission.rems)
 
@@ -208,7 +222,7 @@ class BigpictureObjectImportService(BigpictureObjectSubmissionService):
             sda_file_by_path[path] = sda_file
 
         # The metadata XMLs in SDA must be the same ones that are being imported, so that each imported XML
-        # replaces an old one. The exception is the landing page XML, which may be added if SDA has none.
+        # replaces an old one.
         errors.extend(self._check_metadata_files(submission_id, sda_file_by_path.keys()))
 
         # Find each data file in the metadata in SDA, at the same path below the root directory. A found file
@@ -226,35 +240,20 @@ class BigpictureObjectImportService(BigpictureObjectSubmissionService):
                 continue
             matched_sda_files.append(file.model_copy(update={"fileId": sda_file.accession_id, "path": sda_file.path}))
 
-        # Thumbnails, not referenced by metadata. Any other file is unexpected.
-        thumbnails: list[File] = []
-        for path, sda_file in sda_file_by_path.items():
-            if path in BP_METADATA_FILE_PATHS:
-                continue
-            if path.startswith("LANDING_PAGE/THUMBNAILS/") and path.lower().endswith(".jpg"):
-                thumbnails.append(
-                    File(
-                        submissionId=submission_id,
-                        fileId=sda_file.accession_id,
-                        path=sda_file.path,
-                    )
-                )
-            else:
-                errors.append(f"Dataset '{submission_id}' has file '{path}' in SDA, which is not imported.")
+        # Any file left that is not a metadata XML is unexpected.
+        errors.extend(
+            f"Dataset '{submission_id}' has file '{path}' in SDA, which is not imported."
+            for path in sda_file_by_path
+            if path not in BP_INGESTED_METADATA_FILE_PATHS
+        )
 
-        if not errors and not matched_sda_files and not thumbnails:
+        if not errors and not matched_sda_files:
             errors.append(f"Dataset '{submission_id}' has no data files in SDA.")
         if errors:
             raise UserExceptions(errors)
 
-        LOG.info(
-            "Dataset '%s' has %d data file(s) and %d thumbnail(s) under '%s' in SDA.",
-            submission_id,
-            len(matched_sda_files),
-            len(thumbnails),
-            root,
-        )
-        return matched_sda_files + thumbnails
+        LOG.info("Dataset '%s' has %d data file(s) under '%s' in SDA.", submission_id, len(matched_sda_files), root)
+        return matched_sda_files
 
     async def _check_rems(self, submission_id: str, rems: Rems) -> None:
         """
@@ -290,8 +289,6 @@ class BigpictureObjectImportService(BigpictureObjectSubmissionService):
         """
         Check that the metadata XMLs in SDA are the ones that publishing will replace.
 
-        A landing page may be added, if the SDA dataset does not have one.
-
         :param submission_id: The submission id.
         :param sda_paths: The paths of the dataset files in SDA, below the root directory.
         :returns: The errors.
@@ -299,9 +296,8 @@ class BigpictureObjectImportService(BigpictureObjectSubmissionService):
 
         # Object types found in the imported XMLs.
         object_types = {identifier.object_type for identifier in self._processor.get_object_identifiers()}
-        imported_xml_paths = get_bp_metadata_file_paths(object_types)
-        landing_page_xml_paths = get_bp_metadata_file_paths([BP_LANDING_PAGE_OBJECT_TYPE])
-        sda_xml_paths = set(sda_paths) & BP_METADATA_FILE_PATHS
+        imported_xml_paths = get_bp_ingested_metadata_file_paths(object_types)
+        sda_xml_paths = set(sda_paths) & BP_INGESTED_METADATA_FILE_PATHS
 
         errors = [
             f"Dataset '{submission_id}' has metadata file '{path}' in SDA, which is not imported."
@@ -309,6 +305,6 @@ class BigpictureObjectImportService(BigpictureObjectSubmissionService):
         ]
         errors.extend(
             f"Dataset '{submission_id}' has no metadata file '{path}' in SDA."
-            for path in sorted(imported_xml_paths - sda_xml_paths - landing_page_xml_paths)
+            for path in sorted(imported_xml_paths - sda_xml_paths)
         )
         return errors

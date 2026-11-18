@@ -98,7 +98,12 @@ async def test_publish_bp(nbis_client, sync_client, bp_submission, version):
         if is_datacite:
             assert "datacite" in object_types
 
-        uploaded_metadata_files = {
+        # Before publish, the submission files are the data files named in the XMLs.
+        data_file_paths = {file["path"] for file in await get_files(nbis_client, submission_id)}
+        assert data_file_paths
+        assert not any("/METADATA/" in path or "/LANDING_PAGE/" in path for path in data_file_paths)
+
+        ingested_metadata_files = {
             f"DATASET_{submission_id}/METADATA/annotation.xml.c4gh",
             f"DATASET_{submission_id}/METADATA/dataset.xml.c4gh",
             f"DATASET_{submission_id}/METADATA/image.xml.c4gh",
@@ -107,18 +112,20 @@ async def test_publish_bp(nbis_client, sync_client, bp_submission, version):
             f"DATASET_{submission_id}/METADATA/policy.xml.c4gh",
             f"DATASET_{submission_id}/METADATA/sample.xml.c4gh",
             f"DATASET_{submission_id}/METADATA/staining.xml.c4gh",
-            f"DATASET_{submission_id}/LANDING_PAGE/landing_page.xml.c4gh",
         }
         if version == BigpictureVersion.V3_0:
-            uploaded_metadata_files |= {
+            ingested_metadata_files |= {
                 f"DATASET_{submission_id}/METADATA/annotation_task.xml.c4gh",
                 f"DATASET_{submission_id}/METADATA/annotator.xml.c4gh",
                 f"DATASET_{submission_id}/METADATA/ontology.xml.c4gh",
             }
 
+        # The landing page XML is written to the inbox, but it is not ingested.
+        landing_page_xml = f"DATASET_{submission_id}/LANDING_PAGE/landing_page.xml.c4gh"
+
         # Pre-create stale metadata XML files in inbox so publish must overwrite them.
         stale_payload = b"stale metadata payload"
-        for metadata_file in uploaded_metadata_files:
+        for metadata_file in ingested_metadata_files | {landing_page_xml}:
             await add_file_to_bucket(
                 bucket,
                 metadata_file,
@@ -129,7 +136,9 @@ async def test_publish_bp(nbis_client, sync_client, bp_submission, version):
                 body=stale_payload,
             )
 
-        thumbnails = {
+        # The files in the LANDING_PAGE directory are ignored: they are neither checked nor ingested.
+        landing_page_files = {
+            landing_page_xml,
             f"DATASET_{submission_id}/LANDING_PAGE/THUMBNAILS/1.jpg.c4gh",
             f"DATASET_{submission_id}/LANDING_PAGE/THUMBNAILS/2.jpg.c4gh",
         }
@@ -139,14 +148,14 @@ async def test_publish_bp(nbis_client, sync_client, bp_submission, version):
             nbis_client,
             mock_user,
             submission_id,
-            extra_inbox_paths=uploaded_metadata_files | thumbnails,
+            extra_inbox_paths=ingested_metadata_files | landing_page_files,
         )
 
         # Publish submission.
         await publish_submission(nbis_client, submission_id, no_files=False)
 
-        # Uploaded metadata XML files should have been replaced by publish.
-        for metadata_file in uploaded_metadata_files:
+        # Uploaded metadata XML files, and the landing page XML, should have been replaced by publish.
+        for metadata_file in ingested_metadata_files | {landing_page_xml}:
             payload, content_type = await get_file_from_bucket(
                 bucket,
                 metadata_file,
@@ -164,20 +173,13 @@ async def test_publish_bp(nbis_client, sync_client, bp_submission, version):
         assert published_submission.published is True
         assert published_submission.datePublished is not None
 
-        # Get submission files after publish to check that additional XML and thumbnail files are added
+        # After publish, the submission files are exactly the data files and the ingested metadata XMLs, each once.
+        # So the files in the LANDING_PAGE directory and the private XMLs are not submission files, and are not
+        # ingested.
         published_submission_files = await get_files(nbis_client, submission_id)
         published_submission_paths = {file["path"] for file in published_submission_files}
-        # 2.0: 9 XMLs + 2 image files + 1 annotation file + 2 thumbnails = 14 files in total
-        # 3.0: 12 XMLs + 2 image files + 2 annotation files + 1 ontology file + 1 annotation task file
-        # + 2 thumbnails = 20 files in total
-        assert len(published_submission_files) == (14 if version == BigpictureVersion.V2_0 else 20)
-        assert thumbnails.issubset(published_submission_paths)
-
-        # Private XML files should not be included in published submission files
-        assert all("/PRIVATE/" not in path for path in published_submission_paths)
-        assert all(not path.endswith("/organisation.xml.c4gh") for path in published_submission_paths)
-        assert all(not path.endswith("/rems.xml.c4gh") for path in published_submission_paths)
-        assert all(not path.endswith("/datacite.xml.c4gh") for path in published_submission_paths)
+        assert len(published_submission_files) == len(published_submission_paths)
+        assert published_submission_paths == data_file_paths | ingested_metadata_files
 
         # Get registrations.
         registration = await get_registrations(nbis_client, submission_id)
@@ -244,7 +246,7 @@ async def test_real_publish_bp(nbis_client, bp_submission, monkeypatch):
 
     # S3 config is loaded when the service is instantiated, so set these values lazily for this test.
     monkeypatch.setenv("S3_REGION", mock_s3_region)
-    endpoint_url = "https://staging-inbox.bp.nbis.se"
+    endpoint_url = "https://inbox.staging.bp.nbis.se"
     monkeypatch.setenv("S3_ENDPOINT", endpoint_url)
     # Public BP key
     monkeypatch.setenv(
@@ -253,7 +255,7 @@ async def test_real_publish_bp(nbis_client, bp_submission, monkeypatch):
     )
 
     s3_inbox = S3InboxSDAService(AsyncMock(), Crypt4GHPublicKeyProvider(read_bp_public_key))
-    assert s3_inbox.endpoint == "https://staging-inbox.bp.nbis.se"
+    assert s3_inbox.endpoint == "https://inbox.staging.bp.nbis.se"
 
     # Upload submission files to S3 inbox in the same way a user would manually before publishing
     filenames.add(f"DATASET_{submission_id}/LANDING_PAGE/THUMBNAILS/1.jpg.c4gh")

@@ -15,7 +15,6 @@ from ...services.admin_service import AdminServiceHandler
 from ...services.keystone_service import KeystoneServiceHandler
 from ..exceptions import ForbiddenUserException, SystemException, UserException
 from ..models.models import File as SubmissionFile
-from ..models.sda import FileItem
 from ..processors.xml.bigpicture import get_bp_default_dataset_dir
 from .crypt import Crypt4GHPublicKeyProvider, generate_private_key
 
@@ -126,18 +125,6 @@ class FileProviderService(ABC):
             The list of any missing file paths.
         """
         raise SystemException("Configured file provider does not support inbox file checks.")
-
-    async def list_submission_inbox_files(self, user_id: str, submission_id: str) -> list[FileItem]:
-        """Return list of files from the inbox specific to the submission.
-
-        Args:
-            user_id: The ID of the user.
-            submission_id: The ID of the submission (= dataset accession ID).
-
-        Returns:
-            The list of files from the inbox specific to the submission.
-        """
-        raise SystemException("Configured file provider does not support inbox file listing.")
 
     async def find_orphaned_files(self, user_id: str, submission_id: str, files: list[SubmissionFile]) -> list[str]:
         """Return file paths that are present in the provider but not referenced in the submission files.
@@ -489,18 +476,6 @@ class S3InboxSDAService(FileProviderService):
             The list of file paths missing from the inbox.
         """
         return [f for f in file_paths if f not in inbox_file_paths]
-
-    async def list_submission_inbox_files(self, user_id: str, submission_id: str) -> list[FileItem]:
-        """Return list of files from the S3 inbox bucket specific to the submission.
-
-        Args:
-            user_id: The ID of the user.
-            submission_id: The ID of the submission (= dataset accession ID).
-
-        Returns:
-            The list of files found in the inbox for the submission.
-        """
-        return await self._admin_handler.get_user_files(user_id, get_bp_default_dataset_dir(submission_id))
 
     async def find_orphaned_files(self, user_id: str, submission_id: str, files: list[SubmissionFile]) -> list[str]:
         """Return submission file paths that are not present in the inbox.

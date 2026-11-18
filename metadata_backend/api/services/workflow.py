@@ -10,12 +10,12 @@ from ...helpers.logger import LOG
 from ..exceptions import UserException
 from ..models.models import File, Registration
 from ..models.submission import Rems, Submission, SubmissionWorkflow
-from ..processors.xml.bigpicture import BP_POLICY_OBJECT_TYPE, get_bp_default_dataset_dir
+from ..processors.xml.bigpicture import BP_POLICY_OBJECT_TYPE
 from ..processors.xml.datacite import DATACITE_OBJECT_TYPE, DATACITE_SCHEMA
 from ..processors.xml.fega import FEGA_XML_OBJECT_CONFIG
 from ..processors.xml.models import XmlObjectConfig
 from ..processors.xml.processors import XmlObjectProcessor
-from .bigpicture import generate_bp_metadata_xmls, upload_bp_metadata_xmls
+from .bigpicture import generate_bp_metadata_xmls, is_bp_landing_page_file, upload_bp_metadata_xmls
 from .submission.bigpicture import BigpictureObjectSubmissionService
 from .submission.bigpicture_import import BigpictureObjectImportService
 from .submission.bigpicture_policy import is_clinical_policy
@@ -327,9 +327,9 @@ class BigpictureSubmissionWorkflow(XmlSubmissionWorkflowProfile):
         # Generate the metadata XMLs to validate them, so that an invalid XML fails before registration.
         metadata_xml_paths = (await generate_bp_metadata_xmls(services, submission_id)).keys()
 
-        # Check the files in the SDA inbox. Add uploaded thumbnails as submission files, and check that every
-        # submission file references by the XMLs is in the inbox and that there are no unexpected files. Skipped
-        # for an imported submission, whose data files and thumbnails have already been ingested.
+        # Check the files in the SDA inbox: every submission file referenced by the XMLs must be in the inbox, and
+        # there must be no unexpected files. Skipped for an imported submission, whose data files have already
+        # been ingested.
         if not await services.submission.is_imported(submission_id):
             await self._check_files_for_publish(services, user_id, submission_id, metadata_xml_paths)
 
@@ -352,9 +352,6 @@ class BigpictureSubmissionWorkflow(XmlSubmissionWorkflowProfile):
         :param submission_id: The submission id
         :param metadata_xml_paths: The inbox paths of the metadata XMLs, which are uploaded after this check.
         """
-        # Add any thumbnail files the user has uploaded to the inbox bucket for the submission as submission files.
-        await self._add_thumbnail_files(services, submission_id, user_id)
-
         submission_files = [file async for file in services.file.get_files(submission_id=submission_id)]
         LOG.info("Found %d files in submission '%s'.", len(submission_files), submission_id)
 
@@ -367,48 +364,21 @@ class BigpictureSubmissionWorkflow(XmlSubmissionWorkflowProfile):
         # Check that the submission directory in the inbox doesn't have unexpected files anymore at this point.
         # The metadata XMLs are uploaded only after this check, so they are not submission files yet. A publish
         # that failed after uploading them leaves them in the inbox, so they are counted as expected here.
-        # Otherwise a retry would be refused for unexpected files.
+        # Otherwise a retry would be refused for unexpected files. Files in the landing page directory are
+        # ignored, because they are not ingested.
         metadata_xml_files = [File(submissionId=submission_id, path=path) for path in metadata_xml_paths]
-        unexpected_files = await services.file_provider.find_orphaned_files(
-            user_id, submission_id, submission_files + metadata_xml_files
-        )
+        unexpected_files = [
+            path
+            for path in await services.file_provider.find_orphaned_files(
+                user_id, submission_id, submission_files + metadata_xml_files
+            )
+            if not is_bp_landing_page_file(path)
+        ]
         if unexpected_files:
             unexpected_paths = ", ".join(sorted(unexpected_files))
             raise UserException(
                 f"Unexpected files found in the inbox for submission '{submission_id}': {unexpected_paths}."
             )
-
-    async def _add_thumbnail_files(self, services: RESTAPIServices, submission_id: str, user_id: str) -> None:
-        """Discover thumbnail files from the inbox and add missing ones as submission files.
-
-        :param services: The REST API services.
-        :param submission_id: The submission id.
-        :param user_id: The user id.
-        """
-        thumbnails_prefix = f"{get_bp_default_dataset_dir(submission_id)}/LANDING_PAGE/THUMBNAILS/"
-
-        file_service = services.file
-        file_provider_service = services.file_provider
-
-        inbox_files = await file_provider_service.list_submission_inbox_files(user_id, submission_id)
-
-        added = 0
-        for inbox_file in inbox_files:
-            file_path = inbox_file.inbox_path
-
-            # Skip adding files that may already be added to the submission.
-            if await file_service.is_file_by_path(submission_id, file_path):
-                continue
-
-            # Thumbnail files are expected to be in the LANDING_PAGE/THUMBNAILS directory AND have .jpg.c4gh extension
-            if file_path.startswith(thumbnails_prefix) and file_path.lower().endswith(".jpg.c4gh"):
-                submission_file = File(submissionId=submission_id, path=file_path)
-                await file_service.add_file(submission_file, SubmissionWorkflow.BP)
-                added += 1
-                LOG.debug("Added thumbnail file '%s' to submission '%s'", file_path, submission_id)
-
-        if added:
-            LOG.info("Added %d thumbnail file(s) to submission '%s'", added, submission_id)
 
     @override
     def registration_title(self, submission: Submission, rems: Rems) -> str:

@@ -21,11 +21,11 @@ else is refused.
 Send the dataset's Bigpicture XML files to `POST /v1/import`, the same files you would send for a new
 submission. `datacite.xml` is not accepted in an import.
 
-**The landing page:** `landing_page.xml` is optional, even for a dataset with a clinical policy. It is
-required only if the dataset in SDA already has one, because an import must include every metadata XML
-in SDA. Without a landing page, a version 3.0 `dataset.xml` must not have a `LANDING_PAGE_REF`, and the
-dataset's DOI and REMS access link are not written to SDA, because publishing adds them only to the
-landing page.
+**The landing page:** `landing_page.xml` is optional, even for a dataset with a clinical policy.
+Without a landing page, a version 3.0 `dataset.xml` must not have a `LANDING_PAGE_REF`. As for a new
+submission, publishing writes the landing page XML, with the DOI and REMS links, to the `LANDING_PAGE`
+directory in the Inbox, but does not ingest it into SDA. **The `LANDING_PAGE` directory in SDA is ignored**,
+except that it must be under the same top-level directory as the other files. Its files are left in SDA unchanged.
 
 ### What is validated
 
@@ -53,18 +53,15 @@ without the `.c4gh` suffix:
 | Files            | Path below the top-level directory                                       |
 |------------------|--------------------------------------------------------------------------|
 | Metadata XMLs    | `METADATA/dataset.xml`, `METADATA/policy.xml`, …                         |
-| Landing page XML | `LANDING_PAGE/landing_page.xml`                                          |
-| Thumbnails       | `LANDING_PAGE/THUMBNAILS/*.jpg`                                          |
 | Images           | `IMAGES/IMAGE_{alias}/*.dcm`, as given in `image.xml`                    |
 | Other data files | `ANNOTATIONS/`, `ONTOLOGIES/`, `ANNOTATION_TASKS/`, as given in the XMLs |
 
 **Matching the XMLs and SDA:**
 
 - Every data file named in the XMLs must be in SDA at its path.
-- Every file in SDA must be a metadata XML, a data file named in the XMLs, or a thumbnail. Anything
-  else is an error.
-- The metadata XMLs in SDA must be the same ones being imported, except that a landing page may be
-  added (see above).
+- Every file in SDA, outside `LANDING_PAGE`, must be a metadata XML or a data file named in the XMLs.
+  Anything else is an error.
+- The metadata XMLs in SDA must be the same ones being imported.
 - Two files with the same path in the dataset are an error.
 
 All problems found in the dataset's files are reported together, so they can be fixed in one go.
@@ -79,7 +76,7 @@ All problems found in the dataset's files are reported together, so they can be 
 ### After a successful import
 
 - **The submission is marked as imported.**
-- **The data files and thumbnails are recorded** in the database with the accessions SDA gave them, and as already
+- **The data files are recorded** in the database with the accessions SDA gave them, and as already
   archived. They are never uploaded or ingested again.
 - **The old metadata XMLs in SDA are not recorded** in the database. They will be replaced during publish.
 

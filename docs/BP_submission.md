@@ -257,9 +257,9 @@ files, with the `.c4gh` suffix added. The exact paths are listed by
 | Annotation tasks (3.0)   | `DATASET_<SUBMISSION_ID>/ANNOTATION_TASKS/<file>.c4gh`                  |
 | Thumbnails (optional)    | `DATASET_<SUBMISSION_ID>/LANDING_PAGE/THUMBNAILS/<file>.jpg.c4gh`       |
 
-Do not upload the metadata XML files: publishing writes them to the Inbox itself. Thumbnails are not
-listed in the XML files; any `.jpg.c4gh` file in the thumbnails directory is added to the submission
-when it is published.
+Do not upload the metadata XML files: publishing writes them to the Inbox itself. Nothing in the
+`DATASET_<SUBMISSION_ID>/LANDING_PAGE/` directory is ingested into SDA. Thumbnails can be uploaded there,
+but they are also not ingested into SDA. Publishing also writes the landing page XML to this directory.
 
 ### 6. Publish the submission
 
@@ -274,11 +274,15 @@ curl --request PATCH "$API_URL/v1/publish/$SUBMISSION_ID" \
 The response contains the submission ID. Publishing:
 
 1. Checks the Inbox: every data file named in the XML files must be present, and the dataset directory
-   must not contain any other files. Missing or unexpected files are listed in the error message.
+   must not contain any other files, except in `LANDING_PAGE/`. Missing or unexpected files are listed in
+   the error message.
 2. Registers a DOI for the dataset with DataCite and, for a dataset with a clinical policy, creates the
    access application in REMS.
 3. Writes the Crypt4GH-encrypted metadata XML files to `DATASET_<SUBMISSION_ID>/METADATA/` and
    `DATASET_<SUBMISSION_ID>/LANDING_PAGE/` in the Inbox. The landing page XML includes the DOI and REMS links.
+   The metadata XMLs, excluding the landing page XML, are ingested together with the data files in `IMAGES/`,
+   `ANNOTATIONS/`, `ONTOLOGIES/` and `ANNOTATION_TASKS/`. Files in `LANDING_PAGE/` are not ingested. The private
+   metadata XMLs (`organisation.xml`, `rems.xml` and `datacite.xml`) are not written to the Inbox nor ingested.
 4. Marks the submission published.
 
 After the request returns, the data and metadata files are ingested into SDA and the dataset is
