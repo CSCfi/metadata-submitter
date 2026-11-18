@@ -116,32 +116,6 @@ Server can then be found from `http://localhost:5430`.
 > add `REDIRECT_URL=http://localhost:3000` into the `.env` file) and relaunch the development environment as specified
 > above.
 
-Alternatively, there is a more convenient method for developing the SD Submit API via a
-_**Python virtual environment using a Procfile**_, which is described here below.
-
-
-### Developing with a Python virtual environment
-
-Use `uv` to create and activate the virtual environment for development and testing
-as [instructed above](#initialise-the-project-for-development-and-testing).
-
-Then [configure environment variables](#configure-environment-variables) and edit the
-generated `.env` file as needed. The environment variables include hostnames for
-development within a Docker network (via the use of `docker compose`).
-These mock hostnames need to be renamed to `localhost`.
-
-Finally, start the servers with code reloading enabled, so any code changes restarts
-the servers automatically:
-
-```bash
-honcho start
-```
-
-The development server should now be accessible at `localhost:5430`.
-If it doesn't work right away, check your settings in `.env` and restart the servers
-manually if you make changes to `.env` file.
-
-
 ### Keeping Python requirements up to date
 
 The project Python package dependencies are automatically being kept up to date
@@ -229,22 +203,6 @@ and add:
 ```bash
 127.0.0.1   mockauth
 ```
-
-
-### Performance tests
-
-Performance tests are run with [`locust`](https://locust.io//).
-They use the same test containers as the integrations tests,
-and are executed using the following commands:
-
-```bash
-cd tests/performace
-locust -f locustfile_csc.py
-locust -f locustfile_nbis.py -u 2
-```
-
-The CSC and NBIS deployments have their own performance test files. The
-number of users (-u) has to be set to at least two to run all NBIS tests.
 
 </details>
 

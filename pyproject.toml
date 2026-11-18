@@ -22,23 +22,15 @@ classifiers = [
 ]
 
 dependencies = [
-    "aiohttp==3.14.4",
     "cryptography==49.0.0",
-    "defusedxml==0.7.1",
-    "gunicorn==26.2.0",
-    "metomi-isodatetime==1!3.1.0",
     "jinja2==3.1.6",
-    "jsonschema==4.26.0",
     "idpyoidc==5.0.0",
-    "cryptojwt==1.11.0",
     "pydantic==2.13.5",
     "pynacl==1.6.2",
     "pyyaml==6.0.3",
-    "python-dateutil==2.9.0.post0", # for building swagger html
     "requests==2.34.2",
     "ujson==5.13.0",
     "uvloop==0.22.1",
-    "xmlschema==4.3.2",
     "typing-extensions==4.16.0",
     "pyjwt>=2.14.0",
     "ldap3 @ git+https://github.com/cannatag/ldap3.git@refs/pull/983/head",
@@ -55,7 +47,6 @@ dependencies = [
     "ulid-py>=1.1.0",
     "lxml>=5.4.0",
     "fsspec>=2025.7.0",
-    "datacite>=1.3.1",
     "pydantic-settings>=2.12.0",
     "pydantic-string-url>=1.0.2",
     "aiocache>=0.12.3",
@@ -75,7 +66,6 @@ dev = [
     "mypy>=1.15.0",
     "types-requests==2.33.0.20260906",
     "types-ujson==5.10.0.20250822",
-    "types-python-dateutil>=2.9.0.20241206",
     # ruff
     "ruff==0.16.6",
     # pytest
@@ -84,14 +74,10 @@ dev = [
     "pytest-cov==7.1.0",
     "pytest-xdist==3.8.0",
     # other
-    "aiofiles==25.1.0",
+    "aiohttp==3.14.4",
     "authlib==1.9.1",
-    "certifi==2026.10.19",
-    "honcho==2.0.0",
     "moto[server]>=5.1.6",
-    "pytest-aiohttp>=1.1.0",
     "respx>=0.22.0",
-    "locust>=2.43.3",
     "playwright>=1.58.0",
     "python-dotenv>=1.2.1",
 ]
@@ -108,7 +94,6 @@ verify = [
     "mypy>=1.15.0",
     "types-requests==2.33.0.20260906",
     "types-ujson==5.10.0.20250822",
-    "types-python-dateutil>=2.9.0.20241206",
     # ruff
     "ruff==0.16.6",
     # vulture
@@ -120,11 +105,6 @@ test = [
     "pytest==9.1.1",
     "pytest-cov==7.1.0",
     "pytest-xdist==3.8.0",
-]
-
-docs = [
-    "sphinx>=1.4",
-    "sphinx_rtd_theme==3.1.0",
 ]
 
 [tool.hatch.version]

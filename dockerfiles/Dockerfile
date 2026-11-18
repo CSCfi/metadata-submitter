@@ -46,9 +46,6 @@ RUN groupadd -r -g 998 submitter \
 # Copy the application
 COPY --chown=998:998 --from=build-backend  /app .
 
-# Copy the launcher
-COPY --chown=998:998 ./deploy/app.sh /app/app.sh
-
 # Setup the user and PATH
 USER 998
 ENV PATH="/app/uv:$PATH"

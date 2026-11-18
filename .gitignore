@@ -74,7 +74,6 @@ instance/
 .scrapy
 
 # Sphinx documentation
-docs/_build/
 docs/metadata_backend.api/
 docs/metadata_backend.helpers/
 docs/metadata_backend.conf/

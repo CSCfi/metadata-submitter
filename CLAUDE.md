@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-# Run all checks in parallel (ruff, mypy, vulture, pytest, docs)
+# Run all checks in parallel (ruff, mypy, vulture, pytest)
 tox -p auto
 
 # Individual checks
@@ -29,11 +29,11 @@ docker compose -f docker-compose.yml --env-file tests/integration/.env --profile
 # Re-encrypt every stored metadata object with the configured OPENBAO_* key and method
 python -m metadata_backend.scripts.reencrypt_objects
 
-# Run the API server (dev, via Procfile with hot reload)
-honcho start
-
-# Or via Docker (server + database together)
+# Run the API server with its database and mock services
 docker compose --profile dev up --build
+
+# Start the server. This is run from Docker and requires the environment variables to be set.
+metadata_submitter
 
 # Database migrations
 make db_upgrade         # apply all pending Alembic migrations
