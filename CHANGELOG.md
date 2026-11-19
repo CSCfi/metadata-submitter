@@ -7,6 +7,10 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- (users) Reject Bigpicture landing page XMLs for non-clinical datasets.
+
 ## [2026.11.1] - 2026-11-18
 
 ### Fixed
