@@ -1,7 +1,5 @@
 """OIDC external service configuration."""
 
-from urllib.parse import urljoin
-
 from pydantic import Field, SecretStr, field_validator
 
 from metadata_backend.conf.deployment import deployment_config
@@ -45,7 +43,9 @@ class OIDCConfig(SecretSettings):
     @property
     def callback_url(self) -> str:
         """Get callback URL."""
-        return urljoin(self.BASE_URL, f"{deployment_config().API_PREFIX}/callback")
+        prefix = deployment_config().API_PREFIX.strip("/")
+        path = f"{prefix}/callback" if prefix else "callback"
+        return f"{self.BASE_URL.rstrip('/')}/{path}"
 
 
 def oidc_config() -> OIDCConfig:

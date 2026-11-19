@@ -151,7 +151,7 @@ for installing `uv` to create a virtual environment.
 Install all testing dependencies in the virtual environment by running the following commands:
 
 ```bash
-uv pip install ".[verify,test,docs]"
+uv pip install ".[verify,test]"
 source .venv/bin/activate  # activate uv virtual env
 ```
 
