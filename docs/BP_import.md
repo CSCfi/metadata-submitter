@@ -21,7 +21,8 @@ else is refused.
 Send the dataset's Bigpicture XML files to `POST /v1/import`, the same files you would send for a new
 submission. `datacite.xml` is not accepted in an import.
 
-**The landing page:** `landing_page.xml` is optional, even for a dataset with a clinical policy.
+**The landing page:** `landing_page.xml` is optional for a dataset with a clinical policy, and not
+not allowed for a dataset with a non-clinical policy.
 Without a landing page, a version 3.0 `dataset.xml` must not have a `LANDING_PAGE_REF`. As for a new
 submission, publishing writes the landing page XML, with the DOI and REMS links, to the `LANDING_PAGE`
 directory in the Inbox, but does not ingest it into SDA. **The `LANDING_PAGE` directory in SDA is ignored**,

@@ -97,6 +97,7 @@ def validate_bigpicture_documents(processor: XmlDocumentsProcessor, *, require_c
 
     :param processor: The XML documents processor.
     :param require_clinical_landing_page: Whether a dataset with a clinical policy must have a landing page.
+        A dataset with a non-clinical policy must never have one.
     :raises UserException: if the documents do not pass validation.
     """
 
@@ -112,9 +113,13 @@ def validate_bigpicture_documents(processor: XmlDocumentsProcessor, *, require_c
     version = get_bp_version_from_dataset(dataset.root_element)
 
     # Check policy type.
-    if is_clinical_policy(policy) and require_clinical_landing_page:
-        # A clinical dataset must have a landing page, unless it is imported.
-        _check_clinical_landing_page(processor)
+    if is_clinical_policy(policy):
+        if require_clinical_landing_page:
+            # A clinical dataset must have a landing page, unless it is imported.
+            _check_clinical_landing_page(processor)
+    else:
+        # A non-clinical dataset must not have a landing page.
+        _check_non_clinical_landing_page(processor)
 
     # Normalise attribute tags and values.
     normalise_policy_attributes(policy, version)
@@ -136,6 +141,19 @@ def _check_clinical_landing_page(processor: XmlDocumentsProcessor) -> None:
     if not processor.get_object_identifiers(BP_LANDING_PAGE_SCHEMA):
         raise UserException(
             f"A dataset with a clinical policy must have a '{BP_LANDING_PAGE_OBJECT_TYPE}' metadata object."
+        )
+
+
+def _check_non_clinical_landing_page(processor: XmlDocumentsProcessor) -> None:
+    """
+    Check that the submission has no landing page metadata object.
+
+    :param processor: The XML documents processor.
+    :raises UserException: If there is a landing page metadata object.
+    """
+    if processor.get_object_identifiers(BP_LANDING_PAGE_SCHEMA):
+        raise UserException(
+            f"A dataset with a non-clinical policy must not have a '{BP_LANDING_PAGE_OBJECT_TYPE}' metadata object."
         )
 
 

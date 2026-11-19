@@ -5,7 +5,12 @@ import re
 import pytest
 
 from metadata_backend.api.exceptions import UserException
-from metadata_backend.api.processors.xml.bigpicture import BP_DATASET_PATH, BP_DATASET_SCHEMA, BigpictureVersion
+from metadata_backend.api.processors.xml.bigpicture import (
+    BP_DATASET_PATH,
+    BP_DATASET_SCHEMA,
+    BP_LANDING_PAGE_SCHEMA,
+    BigpictureVersion,
+)
 from metadata_backend.api.processors.xml.processors import XmlObjectProcessor
 from metadata_backend.api.services.submission.bigpicture import (
     BigpictureObjectSubmissionService,
@@ -207,4 +212,18 @@ def test_validate_bigpicture_documents_without_landing_page(version, clinical, r
         with pytest.raises(UserException, match="clinical policy must have a 'landing_page' metadata object"):
             validate_bigpicture_documents(processor, require_clinical_landing_page=require_clinical_landing_page)
     else:
+        validate_bigpicture_documents(processor, require_clinical_landing_page=require_clinical_landing_page)
+
+
+@pytest.mark.parametrize("require_clinical_landing_page", [True, False])
+@pytest.mark.parametrize("version", [BigpictureVersion.V2_0, BigpictureVersion.V3_0])
+def test_validate_bigpicture_documents_non_clinical_with_landing_page(version, require_clinical_landing_page):
+    """A dataset with a non-clinical policy must not have a landing page, whether it is imported or not."""
+
+    objects, _ = bp_objects(is_update=False, version=version)
+    objects = _replace_object_document(objects, "policy.xml", "Clinical / Anonymized", "Non-Clinical / Obscured")
+    processor, _, _ = BigpictureObjectSubmissionService._create_processor(objects)
+    assert processor.get_object_identifiers(BP_LANDING_PAGE_SCHEMA)
+
+    with pytest.raises(UserException, match="non-clinical policy must not have a 'landing_page' metadata object"):
         validate_bigpicture_documents(processor, require_clinical_landing_page=require_clinical_landing_page)
