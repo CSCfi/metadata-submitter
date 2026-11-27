@@ -6,7 +6,6 @@ from fastapi import HTTPException, Path, Query, Request, Response, status
 
 from ...api.dependencies import UserDependency
 from ...helpers.logger import LOG
-from ...services.auth_service import AuthServiceHandler
 from ..services.file import FileProviderService
 from .restapi import RESTAPIHandler
 
@@ -28,6 +27,7 @@ class FilesAPIHandler(RESTAPIHandler):
         project_service = self._services.project
         file_service = self._services.file_provider
         keystone_service = self._handlers.keystone
+        auth_handler = self._handlers.auth
 
         # Check that user is affiliated with the project.
         user_id = user.user_id
@@ -38,7 +38,7 @@ class FilesAPIHandler(RESTAPIHandler):
         if not oidc_access_token:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing OIDC auth cookie")
 
-        access_token = await AuthServiceHandler.get_pouta_access_token_from_userinfo(oidc_access_token)
+        access_token = await auth_handler.get_pouta_access_token_from_userinfo(oidc_access_token)
         project_entry = await keystone_service.get_project_entry(project_id, access_token)
         credentials = await keystone_service.get_ec2_for_project(project_entry)
 
@@ -81,6 +81,7 @@ class FilesAPIHandler(RESTAPIHandler):
         project_service = self._services.project
         file_provider_service = self._services.file_provider
         keystone_handler = self._handlers.keystone
+        auth_handler = self._handlers.auth
 
         # Check that user is affiliated with the project.
         user_id = user.user_id
@@ -91,7 +92,7 @@ class FilesAPIHandler(RESTAPIHandler):
         if not oidc_access_token:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing OIDC auth cookie")
 
-        access_token = await AuthServiceHandler.get_pouta_access_token_from_userinfo(oidc_access_token)
+        access_token = await auth_handler.get_pouta_access_token_from_userinfo(oidc_access_token)
         project_entry = await keystone_handler.get_project_entry(project_id, access_token)
         credentials = await keystone_handler.get_ec2_for_project(project_entry)
 

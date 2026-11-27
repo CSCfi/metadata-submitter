@@ -18,7 +18,7 @@ class AuthAPIHandler:
     async def login(self) -> RedirectResponse:
         """Login using the OIDC Authorization Code flow."""
 
-        auth_url = await self._service_handler.get_oidc_auth_url()
+        auth_url = await self._service_handler.begin_login()
 
         return RedirectResponse(
             url=auth_url,
