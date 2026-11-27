@@ -7,9 +7,27 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ## [Unreleased]
 
+## [2026.11.2] - 2026-11-27
+
 ### Changed
 
+- (admins) The DPoP key must be P-256 with crv set. Rotating it requires a restart, after which users must log in again.
+- (users) Each login can be completed only once.
+- Updated dependencies
+- A login fails with 401 if the provider has no token or userinfo endpoint, or if the DPoP key is invalid.
+- DPoP proofs are sent only to the provider's token and userinfo endpoints, and the private key is loaded once per process.
 - (users) Reject Bigpicture landing page XMLs for non-clinical datasets.
+
+### Fixed
+
+- (admins) When `OIDC_DPOP` is false, fetching the Pouta access token sends a plain Bearer token and needs no DPoP key file.
+- (users) A slow or unresponsive OIDC provider makes a login fail after a timeout instead of stalling all logins.
+- (users) A login no longer fails when another user starts a login at the same time.
+- The Pouta access token request now retries only when the provider asks for a DPoP nonce, instead of on any 401 that carries a nonce header. It shares the login's DPoP code, and its timeout is 10 seconds instead of httpx's default 5.
+- A login fails with 401 instead of 500 if the provider returns an expired access token.
+- OIDC login requests to the provider no longer block the event loop.
+- The Pouta userinfo URL is taken from the provider's discovery document instead of being hardcoded.
+- A userinfo nonce error no longer fails the login, and the token code is never sent twice.
 
 ## [2026.11.1] - 2026-11-18
 
@@ -1120,7 +1138,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 - Files are also validated during submission process.
 
 
-[Unreleased]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.11.1...HEAD
+[Unreleased]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.11.2...HEAD
+[2026.11.2]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.11.1...2026.11.2
 [2026.11.1]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.11.0...2026.11.1
 [2026.11.0]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.10.2...2026.11.0
 [2026.10.2]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2026.10.1...2026.10.2
