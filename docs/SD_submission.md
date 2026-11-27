@@ -15,7 +15,7 @@ The sensitive data (SD) workflow is used by the CSC deployment (`DEPLOYMENT=CSC`
 | OIDC_CLIENT_SECRET          | SD AAI client secret.                                                                                                                                                                                                                     |
 | OIDC_REDIRECT_URL           | URL where the user is redirected after a successful SD AAI login (SD Submit UI).                                                                                                                                                          |
 | OIDC_SCOPE                  | OIDC scopes (default value "openid profile email").                                                                                                                                                                                       |
-| OIDC_DPOP                   | Enables DPoP (Demonstration of Proof-of-Possession) for OIDC requests (default value False). Must be set to True for the CSC deployment.                                                                                                  |
+| OIDC_DPOP                   | Enables DPoP (Demonstration of Proof-of-Possession) for OIDC requests (default value False). Must be set to True for the CSC deployment. *2                                                                                               |
 | JWT_KEY                     | Base64 encoded secret key used to sign and verify the JWT issued by the API after OIDC login.                                                                                                                                             |
 | JWT_ISSUER                  | Issuer claim of the JWT issued by the API (default value "SD Submit").                                                                                                                                                                    |
 | JWT_ALGORITHM               | Algorithm used to sign and verify the JWT issued by the API (default value "HS256").                                                                                                                                                      |
@@ -42,6 +42,10 @@ The sensitive data (SD) workflow is used by the CSC deployment (`DEPLOYMENT=CSC`
 | LOG_FORMAT                  | Log format: "TEXT" (default) or "JSON", for all logs.                                                                                                                                                                                     |
 
 *1 The database schema is created and upgraded using Alembic migrations (`make db_upgrade`).
+
+*2 DPoP proofs are signed with the first key in `private/private_jwks.json`, which must be an EC key on
+curve P-256 with `crv` set. The key is read once per process, so a rotated key is used only after a
+restart. Users' OIDC tokens are bound to the old key, so they must log in again.
 
 ### External services
 

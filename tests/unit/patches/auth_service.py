@@ -29,11 +29,3 @@ def patch_async_client(monkeypatch, responses: list[MagicMock]) -> MagicMock:
     )
 
     return client
-
-
-class MockDPoPHandler:
-    def generate_proof(self, htm: str, htu: str, access_token: str | None = None) -> str:
-        return "proof"
-
-    def update_nonce(self, nonce: str | None) -> None:
-        pass

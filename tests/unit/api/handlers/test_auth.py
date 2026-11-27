@@ -13,7 +13,7 @@ async def test_auth(csc_client, dpop_test_jwks, monkeypatch):
     api_prefix = deployment_config().API_PREFIX
     mock_rph = MagicMock()
     mock_auth_url = "http://mock/auth"
-    mock_rph.begin.return_value = mock_auth_url
+    mock_rph.init_authorization.return_value = f"{mock_auth_url}?state=state"
     mock_rph.get_session_information.return_value = {"code": "code"}
     mock_rph.finalize.return_value = {"userinfo": {"sub": "user"}}
     mock_rph.get_valid_access_token.return_value = ("oidc-access-token", 0)
@@ -24,7 +24,8 @@ async def test_auth(csc_client, dpop_test_jwks, monkeypatch):
         resp = csc_client.get(f"{api_prefix}/login", follow_redirects=False)
         assert resp.status_code == 303
         assert resp.headers["Location"] is not None
-        mock_rph.begin.assert_called_once_with("aai")
+        mock_rph.client_setup.assert_called_once_with("aai")
+        mock_rph.init_authorization.assert_called_once_with(client=mock_rph.client_setup.return_value)
 
         # Test /callback endpoint.
         resp = csc_client.get(
@@ -44,3 +45,4 @@ async def test_auth(csc_client, dpop_test_jwks, monkeypatch):
         # Ensure RPHandler methods were called correctly.
         mock_rph.get_session_information.assert_called_once_with("state")
         mock_rph.finalize.assert_called_once_with(oidc_config().OIDC_URL, {"code": "code"})
+        mock_rph.clear_session.assert_called_once_with("state")
